@@ -6,6 +6,7 @@ import { handleDialogue, handleWorldEvent, readMemory } from "./npcEngine.js";
 const HOST = process.env.DREAM_LIVE_NPC_HOST || "127.0.0.1";
 const PORT = Number(process.env.DREAM_LIVE_NPC_PORT || 9127);
 const CONTRACTS_DIR = path.resolve(process.cwd(), "data");
+const SAMPLES_DIR = path.join(CONTRACTS_DIR, "samples");
 const ZONES_BY_ID = new Map([
   ["first-gate", "first-zone.seed.json"]
 ]);
@@ -43,6 +44,17 @@ async function readSchemaIndex() {
   return readContractJson("schema-index.json");
 }
 
+async function readSampleJson(fileName) {
+  const safeName = path.basename(fileName);
+  const fullPath = path.join(SAMPLES_DIR, safeName);
+  const raw = await fs.readFile(fullPath, "utf8");
+  return JSON.parse(raw);
+}
+
+async function readSampleIndex() {
+  return readSampleJson("sample-index.json");
+}
+
 async function router(req, res) {
   const url = new URL(req.url || "/", `http://${req.headers.host || `${HOST}:${PORT}`}`);
 
@@ -75,6 +87,31 @@ async function router(req, res) {
       }
 
       sendJson(res, 200, await readContractJson(path.basename(entry.path)));
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/samples") {
+      sendJson(res, 200, await readSampleIndex());
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname.startsWith("/samples/")) {
+      const sampleId = decodeURIComponent(url.pathname.slice("/samples/".length));
+      const index = await readSampleIndex();
+      const fileName = index.samples.find((sampleFile) => {
+        const id = sampleFile.replace(/\.sample\.json$/, "");
+        return sampleFile === sampleId || id === sampleId;
+      });
+
+      if (!fileName) {
+        sendJson(res, 404, {
+          ok: false,
+          error: "sample_not_found"
+        });
+        return;
+      }
+
+      sendJson(res, 200, await readSampleJson(fileName));
       return;
     }
 

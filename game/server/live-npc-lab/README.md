@@ -37,6 +37,8 @@ http://127.0.0.1:9127
 GET  /health
 GET  /contracts
 GET  /contracts/:id
+GET  /samples
+GET  /samples/:id
 GET  /world/zones
 GET  /world/zones/:id
 POST /npc/dialogue
@@ -56,6 +58,17 @@ http://127.0.0.1:9127/contracts/live-npc-memory
 
 The contract endpoint serves local schema files only. It does not expose secrets,
 provider keys, payment tokens, or classified material.
+
+Sample examples:
+
+```text
+http://127.0.0.1:9127/samples
+http://127.0.0.1:9127/samples/character-profile
+http://127.0.0.1:9127/samples/combat-ability
+http://127.0.0.1:9127/samples/world-event
+```
+
+The sample endpoint serves local prototype payloads only.
 
 World-zone examples:
 

@@ -63,6 +63,33 @@ live-npc-memory
 The endpoint serves local schemas only. It is not a provider bridge and does not expose
 secrets, payment tokens, or classified material.
 
+## Local sample payloads
+
+Implemented local API:
+
+```text
+GET /samples
+GET /samples/:id
+```
+
+Example ids:
+
+```text
+character-profile
+progression
+combat-ability
+life-skill
+pvp-state
+item-inventory
+marketplace
+boosters-pets
+world-event
+live-npc-memory
+```
+
+The sample endpoint serves local prototype payloads only. It is for developer testing,
+Unreal integration planning, and contract examples.
+
 ## Local world seeds
 
 Implemented local API:
