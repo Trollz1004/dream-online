@@ -1,0 +1,321 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dream-online.local/schemas/item-inventory.schema.json",
+  "title": "Dream Online Item, Inventory, Durability, And Drop Contract",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "itemTemplate",
+    "itemInstance",
+    "inventoryState",
+    "durabilityRules",
+    "dropRules"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "itemTemplate": {
+      "type": "object",
+      "required": [
+        "itemTemplateId",
+        "displayName",
+        "category",
+        "rarity",
+        "stackable",
+        "marketEligible",
+        "dropEligible",
+        "repairEligible"
+      ],
+      "properties": {
+        "itemTemplateId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "weapon",
+            "armor",
+            "tool",
+            "resource",
+            "processed_material",
+            "meal",
+            "fish",
+            "repair_part",
+            "pet",
+            "cosmetic",
+            "boost_item",
+            "runner_token",
+            "quest_item"
+          ]
+        },
+        "rarity": {
+          "type": "string",
+          "enum": ["common", "uncommon", "rare", "epic", "legendary", "founder_test"]
+        },
+        "stackable": {
+          "type": "boolean"
+        },
+        "maxStackSize": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9999
+        },
+        "marketEligible": {
+          "type": "boolean"
+        },
+        "dropEligible": {
+          "type": "boolean"
+        },
+        "repairEligible": {
+          "type": "boolean"
+        },
+        "paidPowerRisk": {
+          "type": "string",
+          "enum": ["none", "low", "medium", "blocked"],
+          "default": "none"
+        }
+      },
+      "additionalProperties": false
+    },
+    "itemInstance": {
+      "type": "object",
+      "required": [
+        "itemInstanceId",
+        "itemTemplateId",
+        "ownerCharacterId",
+        "quantity",
+        "location",
+        "boundState",
+        "durability"
+      ],
+      "properties": {
+        "itemInstanceId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 120
+        },
+        "itemTemplateId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "ownerCharacterId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9999
+        },
+        "location": {
+          "type": "string",
+          "enum": [
+            "bag",
+            "equipped",
+            "treasury",
+            "storage_runner_locked",
+            "market_runner_locked",
+            "marketplace_listing",
+            "buy_order_lock",
+            "dropped_world",
+            "deleted_audit"
+          ]
+        },
+        "boundState": {
+          "type": "string",
+          "enum": ["unbound", "account_bound", "character_bound", "temporary_locked"]
+        },
+        "durability": {
+          "type": "object",
+          "required": ["current", "maximum"],
+          "properties": {
+            "current": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000
+            },
+            "maximum": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100000
+            },
+            "brokenAtZero": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "inventoryState": {
+      "type": "object",
+      "required": [
+        "characterId",
+        "baselineBagSlots",
+        "paidConvenienceBagSlots",
+        "treasuryBaselineSlots",
+        "treasuryPaidSlots",
+        "usedSlots"
+      ],
+      "properties": {
+        "characterId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "baselineBagSlots": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        },
+        "paidConvenienceBagSlots": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 500
+        },
+        "treasuryBaselineSlots": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "treasuryPaidSlots": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "usedSlots": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "overCapacityBehavior": {
+          "type": "string",
+          "enum": ["block_pickup", "temporary_overflow", "send_to_treasury_offer"],
+          "default": "block_pickup"
+        }
+      },
+      "additionalProperties": false
+    },
+    "durabilityRules": {
+      "type": "object",
+      "required": [
+        "combatWearEnabled",
+        "gatheringWearEnabled",
+        "pvpWearEnabled",
+        "fieldRepairAllowed",
+        "paidRepairBoundary"
+      ],
+      "properties": {
+        "combatWearEnabled": {
+          "type": "boolean"
+        },
+        "gatheringWearEnabled": {
+          "type": "boolean"
+        },
+        "pvpWearEnabled": {
+          "type": "boolean"
+        },
+        "fieldRepairAllowed": {
+          "type": "boolean"
+        },
+        "paidRepairBoundary": {
+          "type": "string",
+          "const": "Paid repair can reduce friction but must not create combat power, unlimited field uptime, or war-risk immunity."
+        },
+        "repairCostCurrency": {
+          "type": "string",
+          "enum": ["gold", "repair_part", "both"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "dropRules": {
+      "type": "object",
+      "required": [
+        "redNameDropEligibleItemPercent",
+        "warModeGearRiskSeparate",
+        "protectedCategories",
+        "lootableByAnyoneWhenDropped"
+      ],
+      "properties": {
+        "redNameDropEligibleItemPercent": {
+          "type": "integer",
+          "const": 50
+        },
+        "warModeGearRiskSeparate": {
+          "type": "boolean",
+          "const": true
+        },
+        "protectedCategories": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["quest_item", "account_bound", "character_bound", "founder_test"]
+          },
+          "uniqueItems": true
+        },
+        "lootableByAnyoneWhenDropped": {
+          "type": "boolean"
+        },
+        "dropAuditRequired": {
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "auditEvent": {
+      "type": "object",
+      "required": ["auditId", "eventType", "characterId", "createdAt"],
+      "properties": {
+        "auditId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 120
+        },
+        "eventType": {
+          "type": "string",
+          "enum": [
+            "item_created",
+            "item_moved",
+            "item_repaired",
+            "item_durability_changed",
+            "item_dropped",
+            "item_looted",
+            "item_market_locked",
+            "item_runner_locked",
+            "dupe_suspected"
+          ]
+        },
+        "characterId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "itemInstanceId": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
