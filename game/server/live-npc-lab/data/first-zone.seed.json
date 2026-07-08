@@ -1,0 +1,198 @@
+{
+  "seedVersion": "0.1.0",
+  "zoneId": "first-gate",
+  "displayName": "First Gate",
+  "purpose": "First playable zone seed for movement, combat, gathering, guide NPC memory, Nightfall risk, and live-world event tests.",
+  "worldState": {
+    "timeState": "day",
+    "threat": "low",
+    "liveWorldState": "calm",
+    "safeExitRequired": true
+  },
+  "spawn": {
+    "spawnId": "first-gate-spawn-01",
+    "label": "Old Road Arrival",
+    "safeRadiusMeters": 35,
+    "nearbyLandmarkId": "moon-gate-ruin"
+  },
+  "landmarks": [
+    {
+      "landmarkId": "moon-gate-ruin",
+      "displayName": "Moon Gate Ruin",
+      "function": "Primary readable landmark and first NPC guide location.",
+      "visibility": "seen_from_spawn"
+    },
+    {
+      "landmarkId": "worker-camp",
+      "displayName": "Worker Camp",
+      "function": "Life-skill introduction, repair hint, storage runner hint.",
+      "visibility": "short_walk"
+    },
+    {
+      "landmarkId": "low-road",
+      "displayName": "Low Road",
+      "function": "Starter enemy pocket and Nightfall danger preview.",
+      "visibility": "visible_from_gate"
+    },
+    {
+      "landmarkId": "closed-city-line",
+      "displayName": "Closed City Line",
+      "function": "Future wilderness-to-city Dream event boundary.",
+      "visibility": "distant_goal"
+    }
+  ],
+  "npcs": [
+    {
+      "npcId": "sup-guide",
+      "displayName": "Sup Guide",
+      "role": "guide",
+      "location": "moon-gate-ruin",
+      "firstPlayableUse": [
+        "movement hint",
+        "first combat hint",
+        "first gathering hint",
+        "memory test"
+      ]
+    },
+    {
+      "npcId": "gate-guard-01",
+      "displayName": "Gate Guard",
+      "role": "guard",
+      "location": "moon-gate-ruin",
+      "firstPlayableUse": [
+        "safe zone boundary",
+        "Red Name warning",
+        "ranged guard fantasy"
+      ]
+    },
+    {
+      "npcId": "field-gatherer-01",
+      "displayName": "Field Gatherer",
+      "role": "gatherer",
+      "location": "worker-camp",
+      "firstPlayableUse": [
+        "life-skill introduction",
+        "tool wear warning",
+        "day bonus hint"
+      ]
+    },
+    {
+      "npcId": "market-runner-01",
+      "displayName": "Market Runner",
+      "role": "merchant",
+      "location": "worker-camp",
+      "firstPlayableUse": [
+        "marketplace hint",
+        "one-transaction limit explanation",
+        "no fast-travel economy clue"
+      ]
+    }
+  ],
+  "resourceNodes": [
+    {
+      "nodeId": "first-ore-01",
+      "resourceType": "ore",
+      "location": "worker-camp-edge",
+      "toolRequired": "pickaxe",
+      "nightfallBehavior": "reduced_efficiency"
+    },
+    {
+      "nodeId": "first-herb-01",
+      "resourceType": "herb",
+      "location": "moon-gate-ruin",
+      "toolRequired": "hoe",
+      "nightfallBehavior": "danger_interrupt"
+    },
+    {
+      "nodeId": "first-timber-01",
+      "resourceType": "timber",
+      "location": "low-road-edge",
+      "toolRequired": "axe",
+      "nightfallBehavior": "danger_interrupt"
+    },
+    {
+      "nodeId": "first-fish-01",
+      "resourceType": "fish",
+      "location": "quiet-bank",
+      "toolRequired": "fishing_rod",
+      "nightfallBehavior": "reduced_efficiency"
+    }
+  ],
+  "enemyPockets": [
+    {
+      "pocketId": "low-road-wolves-01",
+      "displayName": "Low Road Pack",
+      "enemyType": "starter_beast",
+      "countMin": 2,
+      "countMax": 4,
+      "purpose": "First combat test and hit-confirm loop.",
+      "nightfallModifiers": {
+        "monsterExpMultiplier": 1.35,
+        "monsterHpMultiplier": 1.25,
+        "monsterDamageMultiplier": 1.2
+      }
+    },
+    {
+      "pocketId": "broken-cart-raiders-01",
+      "displayName": "Broken Cart Raiders",
+      "enemyType": "starter_humanoid",
+      "countMin": 1,
+      "countMax": 3,
+      "purpose": "Cooldown and range/melee modifier test.",
+      "nightfallModifiers": {
+        "monsterExpMultiplier": 1.35,
+        "monsterHpMultiplier": 1.25,
+        "monsterDamageMultiplier": 1.2
+      }
+    }
+  ],
+  "events": [
+    {
+      "eventId": "first-gate-flicker-01",
+      "eventType": "gate_flicker",
+      "triggerType": "player_action",
+      "purpose": "Teach that the world can visibly react."
+    },
+    {
+      "eventId": "first-resource-bloom-01",
+      "eventType": "resource_bloom",
+      "triggerType": "scheduled_time",
+      "purpose": "Test day routine and gathering route."
+    },
+    {
+      "eventId": "first-nightfall-surge-01",
+      "eventType": "nightfall_surge",
+      "triggerType": "scheduled_time",
+      "purpose": "Test Nightfall danger, monster boost, and safe exit messaging."
+    },
+    {
+      "eventId": "first-city-line-shift-01",
+      "eventType": "wilderness_to_city",
+      "triggerType": "manual_founder_test",
+      "purpose": "Future Dream event layer test without promising full-world replacement."
+    }
+  ],
+  "safeExits": [
+    {
+      "exitId": "return-to-moon-gate",
+      "from": "low-road",
+      "to": "moon-gate-ruin",
+      "purpose": "Safe retreat for under-geared players at Nightfall."
+    },
+    {
+      "exitId": "worker-camp-shelter",
+      "from": "worker-camp-edge",
+      "to": "worker-camp",
+      "purpose": "Life-skill retreat and repair tutorial."
+    }
+  ],
+  "prototypeChecks": [
+    "player can identify the Moon Gate Ruin from spawn",
+    "player can find guide NPC without minimap dependence",
+    "player can gather one resource",
+    "player can fight one starter enemy pocket",
+    "Nightfall makes combat riskier and life skills less efficient",
+    "guide NPC can explain the active world event",
+    "safe exit is readable before danger becomes lethal"
+  ]
+}
