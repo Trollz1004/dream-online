@@ -1,8 +1,11 @@
 import http from "node:http";
+import fs from "node:fs/promises";
+import path from "node:path";
 import { handleDialogue, handleWorldEvent, readMemory } from "./npcEngine.js";
 
 const HOST = process.env.DREAM_LIVE_NPC_HOST || "127.0.0.1";
 const PORT = Number(process.env.DREAM_LIVE_NPC_PORT || 9127);
+const CONTRACTS_DIR = path.resolve(process.cwd(), "data");
 
 function sendJson(res, status, body) {
   const payload = JSON.stringify(body, null, 2);
@@ -26,6 +29,17 @@ async function readJson(req) {
   return JSON.parse(raw);
 }
 
+async function readContractJson(fileName) {
+  const safeName = path.basename(fileName);
+  const fullPath = path.join(CONTRACTS_DIR, safeName);
+  const raw = await fs.readFile(fullPath, "utf8");
+  return JSON.parse(raw);
+}
+
+async function readSchemaIndex() {
+  return readContractJson("schema-index.json");
+}
+
 async function router(req, res) {
   const url = new URL(req.url || "/", `http://${req.headers.host || `${HOST}:${PORT}`}`);
 
@@ -36,6 +50,28 @@ async function router(req, res) {
         service: "dream-live-npc-lab",
         ts: new Date().toISOString()
       });
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/contracts") {
+      sendJson(res, 200, await readSchemaIndex());
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname.startsWith("/contracts/")) {
+      const contractId = decodeURIComponent(url.pathname.slice("/contracts/".length));
+      const index = await readSchemaIndex();
+      const entry = index.contracts.find((contract) => contract.id === contractId);
+
+      if (!entry) {
+        sendJson(res, 404, {
+          ok: false,
+          error: "contract_not_found"
+        });
+        return;
+      }
+
+      sendJson(res, 200, await readContractJson(path.basename(entry.path)));
       return;
     }
 
