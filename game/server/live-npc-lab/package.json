@@ -6,7 +6,8 @@
   "description": "Local live-NPC prototype lab for Dream ONLINE.",
   "scripts": {
     "start": "node src/server.js",
-    "test": "node test/smoke.mjs"
+    "test": "node test/smoke.mjs",
+    "test:contracts": "node test/contracts.mjs"
   },
   "engines": {
     "node": ">=20"

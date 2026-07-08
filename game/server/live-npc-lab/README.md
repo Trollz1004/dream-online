@@ -18,6 +18,13 @@ cd "E:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\server\live-npc-lab"
 npm start
 ```
 
+## Local checks
+
+```powershell
+npm test
+npm run test:contracts
+```
+
 Default URL:
 
 ```text
