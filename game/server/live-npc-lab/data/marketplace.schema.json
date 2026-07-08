@@ -1,0 +1,297 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dream-online.local/schemas/marketplace.schema.json",
+  "title": "Dream Online Marketplace And Runner Contracts",
+  "type": "object",
+  "required": ["schemaVersion", "marketplaceRules", "listing", "buyOrder", "runnerTransaction"],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "marketplaceRules": {
+      "type": "object",
+      "required": ["noFastTravelBypass", "noPaidMarketDominance", "auditRequired"],
+      "properties": {
+        "noFastTravelBypass": {
+          "type": "boolean",
+          "const": true
+        },
+        "noPaidMarketDominance": {
+          "type": "boolean",
+          "const": true
+        },
+        "auditRequired": {
+          "type": "boolean",
+          "const": true
+        },
+        "priceHistoryWindowDays": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 365,
+          "default": 30
+        }
+      },
+      "additionalProperties": false
+    },
+    "listing": {
+      "type": "object",
+      "required": [
+        "listingId",
+        "sellerCharacterId",
+        "itemInstanceId",
+        "itemTemplateId",
+        "quantity",
+        "unitPrice",
+        "currency",
+        "listingFee",
+        "taxRate",
+        "status",
+        "createdAt"
+      ],
+      "properties": {
+        "listingId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 80
+        },
+        "sellerCharacterId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "itemInstanceId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 120
+        },
+        "itemTemplateId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9999
+        },
+        "unitPrice": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["gold", "dream_coin"]
+        },
+        "listingFee": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "taxRate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.5
+        },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "active", "locked", "sold", "cancelled", "expired", "flagged"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
+    "buyOrder": {
+      "type": "object",
+      "required": [
+        "orderId",
+        "buyerCharacterId",
+        "itemTemplateId",
+        "quantityRequested",
+        "unitPrice",
+        "currency",
+        "status",
+        "createdAt"
+      ],
+      "properties": {
+        "orderId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 80
+        },
+        "buyerCharacterId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "itemTemplateId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "quantityRequested": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9999
+        },
+        "unitPrice": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["gold", "dream_coin"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "locked", "filled", "partial", "cancelled", "expired", "flagged"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
+    "runnerTransaction": {
+      "type": "object",
+      "required": [
+        "runnerTransactionId",
+        "runnerType",
+        "ownerCharacterId",
+        "action",
+        "transactionLimit",
+        "cooldownSeconds",
+        "fee",
+        "status",
+        "auditId",
+        "createdAt"
+      ],
+      "properties": {
+        "runnerTransactionId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 80
+        },
+        "runnerType": {
+          "type": "string",
+          "enum": ["storage_runner", "market_runner"]
+        },
+        "ownerCharacterId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "action": {
+          "type": "string",
+          "enum": ["send_to_storage", "buy_market_item", "list_market_item", "retrieve_market_item"]
+        },
+        "transactionLimit": {
+          "type": "integer",
+          "const": 1
+        },
+        "cooldownSeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 604800
+        },
+        "fee": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "itemInstanceId": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "listingId": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "orderId": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "status": {
+          "type": "string",
+          "enum": ["requested", "locked", "completed", "failed", "cancelled", "flagged"]
+        },
+        "auditId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 120
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
+    "auditEvent": {
+      "type": "object",
+      "required": ["auditId", "eventType", "actorCharacterId", "riskFlags", "createdAt"],
+      "properties": {
+        "auditId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 120
+        },
+        "eventType": {
+          "type": "string",
+          "enum": [
+            "listing_created",
+            "listing_locked",
+            "listing_sold",
+            "buy_order_created",
+            "buy_order_filled",
+            "runner_requested",
+            "runner_completed",
+            "market_flagged",
+            "dupe_suspected"
+          ]
+        },
+        "actorCharacterId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "riskFlags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "rapid_relist",
+              "price_outlier",
+              "dupe_pattern",
+              "runner_spam",
+              "new_account_high_value_trade",
+              "blocked_item",
+              "manual_review"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
