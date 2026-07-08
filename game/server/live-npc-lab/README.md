@@ -30,6 +30,8 @@ http://127.0.0.1:9127
 GET  /health
 GET  /contracts
 GET  /contracts/:id
+GET  /world/zones
+GET  /world/zones/:id
 POST /npc/dialogue
 POST /npc/event
 GET  /npc/memory?playerId=founder
@@ -47,6 +49,15 @@ http://127.0.0.1:9127/contracts/live-npc-memory
 
 The contract endpoint serves local schema files only. It does not expose secrets,
 provider keys, payment tokens, or classified material.
+
+World-zone examples:
+
+```text
+http://127.0.0.1:9127/world/zones
+http://127.0.0.1:9127/world/zones/first-gate
+```
+
+The world-zone endpoint serves local seed files only.
 
 ## Example dialogue request
 

@@ -62,3 +62,21 @@ live-npc-memory
 
 The endpoint serves local schemas only. It is not a provider bridge and does not expose
 secrets, payment tokens, or classified material.
+
+## Local world seeds
+
+Implemented local API:
+
+```text
+GET /world/zones
+GET /world/zones/:id
+```
+
+Current seed id:
+
+```text
+first-gate
+```
+
+The world-zone endpoint serves local seed files only and is intended for first-playable
+prototyping.
