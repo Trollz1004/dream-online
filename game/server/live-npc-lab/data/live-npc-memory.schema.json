@@ -1,0 +1,293 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dream-online.local/schemas/live-npc-memory.schema.json",
+  "title": "Dream Online Live NPC Memory And Action Contract",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "npcProfile",
+    "memoryRecord",
+    "retrievalRequest",
+    "dialogueTurn",
+    "proposedAction",
+    "providerRoute"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "npcProfile": {
+      "type": "object",
+      "required": ["npcId", "displayName", "role", "memoryScope", "allowedActionTypes"],
+      "properties": {
+        "npcId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "role": {
+          "type": "string",
+          "enum": ["guide", "guard", "merchant", "gatherer", "world_recovery", "event_witness"]
+        },
+        "voiceStyle": {
+          "type": "string",
+          "enum": ["protective", "direct", "warm", "strange", "stern", "playful"]
+        },
+        "memoryScope": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["player", "npc", "zone", "global_event"]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "allowedActionTypes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "suggest_hint",
+              "suggest_marker",
+              "suggest_event_pause",
+              "suggest_quest_note",
+              "suggest_safe_exit",
+              "suggest_trade_warning",
+              "suggest_repair_warning"
+            ]
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "memoryRecord": {
+      "type": "object",
+      "required": ["memoryId", "scope", "subjectId", "kind", "summary", "createdAt"],
+      "properties": {
+        "memoryId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 120
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["player", "npc", "zone", "global_event"]
+        },
+        "subjectId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "dialogue_summary",
+            "player_preference",
+            "world_event_seen",
+            "combat_warning",
+            "market_warning",
+            "quest_note",
+            "safety_note"
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "importance": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "default": 3
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expiresAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
+    "retrievalRequest": {
+      "type": "object",
+      "required": ["requestId", "npcId", "playerId", "query", "scopes", "maxRecords"],
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 120
+        },
+        "npcId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "playerId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "query": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["player", "npc", "zone", "global_event"]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "maxRecords": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 25
+        }
+      },
+      "additionalProperties": false
+    },
+    "dialogueTurn": {
+      "type": "object",
+      "required": ["turnId", "npcId", "playerId", "playerMessage", "npcReply", "worldState", "createdAt"],
+      "properties": {
+        "turnId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 120
+        },
+        "npcId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "playerId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "playerMessage": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 2000
+        },
+        "npcReply": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 2000
+        },
+        "worldState": {
+          "type": "object",
+          "required": ["zoneId", "timeState", "threat"],
+          "properties": {
+            "zoneId": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 120
+            },
+            "timeState": {
+              "type": "string",
+              "enum": ["day", "nightfall"]
+            },
+            "threat": {
+              "type": "string",
+              "enum": ["none", "low", "medium", "high", "war"]
+            }
+          },
+          "additionalProperties": false
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
+    "proposedAction": {
+      "type": "object",
+      "required": ["actionId", "actionType", "proposedByNpcId", "requiresApproval", "payload"],
+      "properties": {
+        "actionId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 120
+        },
+        "actionType": {
+          "type": "string",
+          "enum": [
+            "suggest_hint",
+            "suggest_marker",
+            "suggest_event_pause",
+            "suggest_quest_note",
+            "suggest_safe_exit",
+            "suggest_trade_warning",
+            "suggest_repair_warning"
+          ]
+        },
+        "proposedByNpcId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "requiresApproval": {
+          "type": "boolean",
+          "description": "Actions that alter world state should require system or founder approval."
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": {
+            "type": ["string", "number", "integer", "boolean", "null"]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "providerRoute": {
+      "type": "object",
+      "required": ["provider", "cloudEnabled", "reason", "maxTokens", "timeoutMs"],
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": ["mock", "openai", "one_min_ai", "ollama_local", "other_approved"]
+        },
+        "cloudEnabled": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 240
+        },
+        "maxTokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8000
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 120000
+        },
+        "fallbackProvider": {
+          "type": "string",
+          "enum": ["mock", "ollama_local", "none"],
+          "default": "mock"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
