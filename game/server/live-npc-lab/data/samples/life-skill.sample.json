@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "0.1.0",
+  "lifeSkill": {
+    "skillId": "gathering",
+    "displayName": "Gathering",
+    "category": "active",
+    "level": 1,
+    "exp": 0
+  },
+  "activity": {
+    "activityId": "first-ore-gather",
+    "lifeSkillId": "gathering",
+    "mode": "single_action",
+    "baseDurationSeconds": 4,
+    "toolRequired": "pickaxe",
+    "afkAllowed": false,
+    "afkSafetyLimit": {
+      "maxOfflineSeconds": 0,
+      "reducedYieldAfterSeconds": 0,
+      "requiresInventorySpace": true
+    },
+    "nightfallModifier": "reduced_efficiency"
+  },
+  "resourceNode": {
+    "nodeId": "first-ore-01",
+    "zoneId": "first-gate",
+    "resourceType": "ore",
+    "baseYield": 2,
+    "rareProcChanceBasisPoints": 50,
+    "respawnSeconds": 90,
+    "toolWear": 1
+  },
+  "craftingRecipe": {
+    "recipeId": "ore-to-repair-part",
+    "lifeSkillId": "processing",
+    "inputs": [
+      {
+        "itemTemplateId": "raw-ore",
+        "quantity": 3
+      }
+    ],
+    "outputs": [
+      {
+        "itemTemplateId": "repair-part",
+        "quantity": 1
+      }
+    ],
+    "durationSeconds": 8,
+    "qualityRollAllowed": false,
+    "batchAllowed": true
+  },
+  "workerTask": {
+    "workerTaskId": "worker-first-ore-route",
+    "workerId": "worker-test-001",
+    "nodeId": "first-ore-01",
+    "durationSeconds": 900,
+    "fatigueCost": 5,
+    "yieldPolicy": "skill_scaled"
+  },
+  "expRules": {
+    "dayMultiplier": 1.25,
+    "nightfallMultiplier": 0.75,
+    "paidBoostAllowed": true,
+    "paidBoostCapPercent": 250,
+    "antiMacroAuditRequired": true
+  }
+}

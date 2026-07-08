@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "0.1.0",
+  "characterId": "founder-test-001",
+  "pvpState": {
+    "flag": "red_name",
+    "playerKillsWhilePink": 3,
+    "redNameAfterKills": 3,
+    "redNameUntil": "2026-07-08T21:49:22.011Z",
+    "validWarMode": "none"
+  },
+  "levelScaling": {
+    "attackerLevel": 50,
+    "defenderLevel": 20,
+    "levelGap": 30,
+    "gapBracket": "one_shot_risk",
+    "secondaryModifiers": ["skill_cooldown", "range_profile", "melee_profile", "pvp_state"]
+  },
+  "riskState": {
+    "deathExpLossApplies": false,
+    "gearRiskApplies": true,
+    "dropEligibleItemPercent": 50,
+    "guardOneShotApplies": true,
+    "lootableByAnyone": true
+  },
+  "guardResponse": {
+    "zoneType": "protected_settlement",
+    "guardTypes": ["ranged", "magic", "projectile"],
+    "response": "one_shot_red_name"
+  },
+  "structuredWarRisk": {
+    "mode": "none",
+    "explicitEntryRequired": true,
+    "gearOrDurabilityRisk": "none",
+    "redNameRulesApply": true
+  },
+  "audit": {
+    "auditId": "audit-pvp-red-001",
+    "eventType": "red_name_started",
+    "createdAt": "2026-07-08T18:49:22.011Z"
+  }
+}

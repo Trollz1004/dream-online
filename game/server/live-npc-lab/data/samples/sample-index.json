@@ -1,0 +1,21 @@
+{
+  "sampleIndexVersion": "0.1.0",
+  "samples": [
+    "character-profile.sample.json",
+    "progression.sample.json",
+    "combat-ability.sample.json",
+    "life-skill.sample.json",
+    "pvp-state.sample.json",
+    "item-inventory.sample.json",
+    "marketplace.sample.json",
+    "boosters-pets.sample.json",
+    "world-event.sample.json",
+    "live-npc-memory.sample.json"
+  ],
+  "rules": {
+    "noSecrets": true,
+    "noPaymentTokens": true,
+    "noProviderKeys": true,
+    "noClassifiedPlotMaterial": true
+  }
+}

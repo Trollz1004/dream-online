@@ -1,0 +1,59 @@
+{
+  "schemaVersion": "0.1.0",
+  "itemTemplate": {
+    "itemTemplateId": "starter-pickaxe",
+    "displayName": "Starter Pickaxe",
+    "category": "tool",
+    "rarity": "common",
+    "stackable": false,
+    "maxStackSize": 1,
+    "marketEligible": false,
+    "dropEligible": true,
+    "repairEligible": true,
+    "paidPowerRisk": "none"
+  },
+  "itemInstance": {
+    "itemInstanceId": "item-pickaxe-001",
+    "itemTemplateId": "starter-pickaxe",
+    "ownerCharacterId": "founder-test-001",
+    "quantity": 1,
+    "location": "bag",
+    "boundState": "character_bound",
+    "durability": {
+      "current": 85,
+      "maximum": 100,
+      "brokenAtZero": true
+    }
+  },
+  "inventoryState": {
+    "characterId": "founder-test-001",
+    "baselineBagSlots": 24,
+    "paidConvenienceBagSlots": 0,
+    "treasuryBaselineSlots": 1,
+    "treasuryPaidSlots": 0,
+    "usedSlots": 7,
+    "overCapacityBehavior": "block_pickup"
+  },
+  "durabilityRules": {
+    "combatWearEnabled": true,
+    "gatheringWearEnabled": true,
+    "pvpWearEnabled": true,
+    "fieldRepairAllowed": true,
+    "paidRepairBoundary": "Paid repair can reduce friction but must not create combat power, unlimited field uptime, or war-risk immunity.",
+    "repairCostCurrency": "both"
+  },
+  "dropRules": {
+    "redNameDropEligibleItemPercent": 50,
+    "warModeGearRiskSeparate": true,
+    "protectedCategories": ["quest_item", "account_bound", "character_bound", "founder_test"],
+    "lootableByAnyoneWhenDropped": true,
+    "dropAuditRequired": true
+  },
+  "auditEvent": {
+    "auditId": "audit-item-001",
+    "eventType": "item_durability_changed",
+    "characterId": "founder-test-001",
+    "itemInstanceId": "item-pickaxe-001",
+    "createdAt": "2026-07-08T18:49:22.011Z"
+  }
+}

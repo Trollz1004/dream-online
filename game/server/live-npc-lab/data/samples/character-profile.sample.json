@@ -1,0 +1,38 @@
+{
+  "profileVersion": "0.1.0",
+  "characterId": "founder-test-001",
+  "displayName": "FirstGateTester",
+  "appearance": {
+    "bodyPreset": "balanced",
+    "facePreset": "face-01",
+    "skinTone": "tone-03",
+    "hairShape": "short-wave",
+    "hairColor": "black",
+    "eyeStyle": "gold",
+    "voiceStyle": "calm",
+    "starterOutfit": "blade"
+  },
+  "starterPath": "blade",
+  "lifeSkillInterest": "gathering",
+  "progression": {
+    "level": 1,
+    "combatExp": 0,
+    "lifeSkillExp": 0
+  },
+  "awakening": {
+    "eligibleLevel": 45,
+    "selectedClass": "none",
+    "previewUnlocked": false,
+    "visualState": {
+      "silhouette": "base",
+      "idleStance": "base",
+      "combatTrails": "base",
+      "skillEffects": "base",
+      "uiFrame": "base"
+    }
+  },
+  "entitlements": {
+    "cosmetics": [],
+    "convenience": []
+  }
+}

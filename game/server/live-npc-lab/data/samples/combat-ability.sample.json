@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "0.1.0",
+  "abilityId": "blade-shadow-cut-001",
+  "displayName": "Shadow Cut",
+  "starterPath": "nightmare_class",
+  "unlock": {
+    "level": 45,
+    "unlockType": "level_45_awakening",
+    "requiresClass": "nightmare_class"
+  },
+  "input": {
+    "inputStyle": "action_command",
+    "command": "Shift+F",
+    "controllerCommand": "LT+Y",
+    "softTargetAllowed": false
+  },
+  "costs": {
+    "stamina": 45,
+    "resource": "mark",
+    "resourceAmount": 1
+  },
+  "cooldown": {
+    "seconds": 18,
+    "profile": "awakening_commitment",
+    "missPunishWindowSeconds": 2
+  },
+  "hitShape": {
+    "shape": "arc",
+    "rangeMeters": 4.5,
+    "widthMeters": 3,
+    "aoeAllowed": true,
+    "groupPullRole": "solo_mass_grind"
+  },
+  "movement": {
+    "movementLock": "medium",
+    "gapCloseMeters": 3,
+    "cancelRules": ["dodge_cancel", "awakening_cancel"]
+  },
+  "tags": ["melee", "dark", "aoe", "burst", "awakening", "pvp_sensitive"],
+  "visualIdentity": {
+    "trail": "nightfall",
+    "impactEffect": "shadow_cut",
+    "silhouetteChange": "nightmare"
+  },
+  "balance": {
+    "rawDamageMultiplier": 1.8,
+    "pvpScalingProfile": "separate_pvp_tuning",
+    "fantasyImpactNote": "Feels dramatically stronger through movement, visual identity, and AOE shape, not a fixed 5x raw damage promise.",
+    "requiresPlaytest": true
+  }
+}

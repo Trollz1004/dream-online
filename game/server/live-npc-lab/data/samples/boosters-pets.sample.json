@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "0.1.0",
+  "boosterRules": {
+    "stackingMode": "diminishing_returns",
+    "hardCapPercent": 250,
+    "finePrintRequired": true,
+    "paidPowerBoundary": "Boosters can speed progression within caps but must not create uncapped combat, loot, or market dominance.",
+    "participationRequiredForPartyBoosts": true
+  },
+  "boostItem": {
+    "boostItemId": "solo-seal-3day-001",
+    "displayName": "Solo Seal",
+    "scope": "solo",
+    "category": "seal",
+    "durationHoursMin": 72,
+    "durationHoursMax": 72,
+    "baseBoostPercent": 100,
+    "appliesTo": ["combat_exp", "life_skill_exp"],
+    "rareDropAffects": false,
+    "stackingPriority": 1,
+    "playerFacingFinePrint": "Stacked boosts use reduced extra value and cannot exceed the active boost cap."
+  },
+  "activeBoostStack": {
+    "characterId": "founder-test-001",
+    "activeBoostItemIds": ["solo-seal-3day-001"],
+    "effectiveBoostPercent": 100,
+    "expiresAt": "2026-07-11T18:49:22.011Z"
+  },
+  "petRules": {
+    "manualLootBaseline": true,
+    "paidBoundary": "Pets sell convenience, style, pickup behavior, alerts, sorting, and durability support. Pets do not sell direct combat power.",
+    "rareDropBoundary": "Paid pets should not increase rare drop rates unless an earnable equivalent exists and the boost is tightly capped."
+  },
+  "petProfile": {
+    "petId": "pet-hawk-earnable-001",
+    "displayName": "Hawk Companion",
+    "acquisition": "earnable",
+    "role": "scout",
+    "capabilities": ["scouting_ping", "cosmetic_presence"],
+    "powerRisk": "medium",
+    "combatStatsGranted": false,
+    "rareDropBoostPercent": 0
+  }
+}

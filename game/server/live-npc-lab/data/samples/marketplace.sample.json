@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "0.1.0",
+  "marketplaceRules": {
+    "noFastTravelBypass": true,
+    "noPaidMarketDominance": true,
+    "auditRequired": true,
+    "priceHistoryWindowDays": 30
+  },
+  "listing": {
+    "listingId": "listing-raw-ore-001",
+    "sellerCharacterId": "founder-test-001",
+    "itemInstanceId": "item-raw-ore-stack-001",
+    "itemTemplateId": "raw-ore",
+    "quantity": 10,
+    "unitPrice": 25,
+    "currency": "gold",
+    "listingFee": 5,
+    "taxRate": 0.05,
+    "status": "active",
+    "createdAt": "2026-07-08T18:49:22.011Z",
+    "expiresAt": "2026-07-09T18:49:22.011Z"
+  },
+  "buyOrder": {
+    "orderId": "order-repair-part-001",
+    "buyerCharacterId": "founder-test-002",
+    "itemTemplateId": "repair-part",
+    "quantityRequested": 3,
+    "unitPrice": 80,
+    "currency": "gold",
+    "status": "active",
+    "createdAt": "2026-07-08T18:49:22.011Z",
+    "expiresAt": "2026-07-09T18:49:22.011Z"
+  },
+  "runnerTransaction": {
+    "runnerTransactionId": "runner-market-001",
+    "runnerType": "market_runner",
+    "ownerCharacterId": "founder-test-001",
+    "action": "list_market_item",
+    "transactionLimit": 1,
+    "cooldownSeconds": 3600,
+    "fee": 10,
+    "itemInstanceId": "item-raw-ore-stack-001",
+    "listingId": "listing-raw-ore-001",
+    "status": "requested",
+    "auditId": "audit-market-001",
+    "createdAt": "2026-07-08T18:49:22.011Z"
+  },
+  "auditEvent": {
+    "auditId": "audit-market-001",
+    "eventType": "runner_requested",
+    "actorCharacterId": "founder-test-001",
+    "riskFlags": [],
+    "createdAt": "2026-07-08T18:49:22.011Z"
+  }
+}

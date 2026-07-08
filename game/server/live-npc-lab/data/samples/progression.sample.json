@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "0.1.0",
+  "levelRules": {
+    "minimumLevel": 1,
+    "workingLevelCap": 50,
+    "earlyGameProtectionUntilLevel": 10,
+    "firstCombatShiftLevel": 20,
+    "firstAwakeningLevel": 45
+  },
+  "levelMilestone": {
+    "level": 45,
+    "milestoneType": "awakening",
+    "playerFacingGoal": "Unlock the first prestige identity and visibly evolve your combat style.",
+    "unlockTags": ["nightmare_class", "dream_class"]
+  },
+  "expModifier": {
+    "modifierId": "nightfall-combat-boost",
+    "source": "nightfall",
+    "appliesTo": ["combat_exp"],
+    "percent": 35,
+    "stackingGroup": "time_state",
+    "diminishingReturnsRequired": true
+  },
+  "deathPenalty": {
+    "deathType": "pve_nightfall",
+    "level": 50,
+    "expLossApplies": true,
+    "progressPercentLoss": 1,
+    "minimumLossAtCapPercent": 1,
+    "itemRiskApplies": false,
+    "itemRiskProfile": "none",
+    "auditRequired": true
+  },
+  "awakeningProgress": {
+    "characterId": "founder-test-001",
+    "eligibleLevel": 45,
+    "selectedAwakening": "nightmare_class",
+    "trialState": "available",
+    "visualEvolutionUnlocked": false,
+    "resetAllowed": false
+  }
+}

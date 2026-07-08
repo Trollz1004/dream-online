@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "0.1.0",
+  "eventId": "first-nightfall-surge-01",
+  "displayName": "Nightfall Surge",
+  "eventType": "nightfall_surge",
+  "zoneId": "first-gate",
+  "state": "scheduled",
+  "trigger": {
+    "triggerType": "scheduled_time",
+    "scheduledAt": "2026-07-08T20:00:00.000Z",
+    "minimumWorldState": "calm"
+  },
+  "duration": {
+    "minimumSeconds": 600,
+    "maximumSeconds": 1800
+  },
+  "playerImpact": {
+    "visibility": "zone_notice",
+    "riskLevel": "medium",
+    "safeExitRequired": true,
+    "rewardTags": ["combat_exp"]
+  },
+  "eventLayers": {
+    "lighting": "nightfall",
+    "audio": "danger",
+    "props": ["moon-gate-shadow-pulse"],
+    "npcSchedules": "guarded",
+    "combatRules": "nightfall_boost",
+    "resourceRules": "reduced"
+  },
+  "npcVisibility": {
+    "guideCanExplain": true,
+    "worldRecoveryVisible": false,
+    "playerHintLevel": "clear"
+  },
+  "rollback": {
+    "checkpointRequired": true,
+    "rollbackMode": "restore_zone_state",
+    "auditRequired": true,
+    "rollbackReason": "Founder test rollback path."
+  }
+}

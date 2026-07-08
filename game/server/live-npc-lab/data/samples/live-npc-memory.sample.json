@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "0.1.0",
+  "npcProfile": {
+    "npcId": "sup-guide",
+    "displayName": "Sup Guide",
+    "role": "guide",
+    "voiceStyle": "protective",
+    "memoryScope": ["player", "zone", "global_event"],
+    "allowedActionTypes": ["suggest_hint", "suggest_marker", "suggest_safe_exit", "suggest_repair_warning"]
+  },
+  "memoryRecord": {
+    "memoryId": "memory-first-route-001",
+    "scope": "player",
+    "subjectId": "founder-test-001",
+    "kind": "player_preference",
+    "summary": "Player asked for the safest first route and prefers clear combat warnings.",
+    "importance": 3,
+    "createdAt": "2026-07-08T18:49:22.011Z",
+    "expiresAt": null
+  },
+  "retrievalRequest": {
+    "requestId": "retrieval-first-route-001",
+    "npcId": "sup-guide",
+    "playerId": "founder-test-001",
+    "query": "What should the player test next in First Gate?",
+    "scopes": ["player", "zone"],
+    "maxRecords": 5
+  },
+  "dialogueTurn": {
+    "turnId": "turn-first-route-001",
+    "npcId": "sup-guide",
+    "playerId": "founder-test-001",
+    "playerMessage": "What should I test first?",
+    "npcReply": "Start at Moon Gate, gather one ore node, then test Low Road before Nightfall rises.",
+    "worldState": {
+      "zoneId": "first-gate",
+      "timeState": "day",
+      "threat": "low"
+    },
+    "createdAt": "2026-07-08T18:49:22.011Z"
+  },
+  "proposedAction": {
+    "actionId": "action-safe-route-001",
+    "actionType": "suggest_marker",
+    "proposedByNpcId": "sup-guide",
+    "requiresApproval": false,
+    "payload": {
+      "markerId": "worker-camp",
+      "message": "Try gathering at Worker Camp."
+    }
+  },
+  "providerRoute": {
+    "provider": "mock",
+    "cloudEnabled": false,
+    "reason": "Local first playable uses mock provider only.",
+    "maxTokens": 500,
+    "timeoutMs": 3000,
+    "fallbackProvider": "mock"
+  }
+}
