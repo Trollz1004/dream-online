@@ -1,0 +1,239 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dream-online.local/schemas/progression.schema.json",
+  "title": "Dream Online Progression And Death Penalty Contract",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "levelRules",
+    "levelMilestone",
+    "expModifier",
+    "deathPenalty",
+    "awakeningProgress"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "levelRules": {
+      "type": "object",
+      "required": [
+        "minimumLevel",
+        "workingLevelCap",
+        "earlyGameProtectionUntilLevel",
+        "firstCombatShiftLevel",
+        "firstAwakeningLevel"
+      ],
+      "properties": {
+        "minimumLevel": {
+          "type": "integer",
+          "const": 1
+        },
+        "workingLevelCap": {
+          "type": "integer",
+          "const": 50
+        },
+        "earlyGameProtectionUntilLevel": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "firstCombatShiftLevel": {
+          "type": "integer",
+          "const": 20
+        },
+        "firstAwakeningLevel": {
+          "type": "integer",
+          "const": 45
+        }
+      },
+      "additionalProperties": false
+    },
+    "levelMilestone": {
+      "type": "object",
+      "required": ["level", "milestoneType", "playerFacingGoal", "unlockTags"],
+      "properties": {
+        "level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "milestoneType": {
+          "type": "string",
+          "enum": [
+            "onboarding",
+            "first_combat_shift",
+            "grind_identity",
+            "awakening",
+            "current_cap"
+          ]
+        },
+        "playerFacingGoal": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "unlockTags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "basic_combat",
+              "aoe_combat",
+              "solo_mass_grind",
+              "party_grind",
+              "nightmare_class",
+              "dream_class",
+              "market_access",
+              "runner_access",
+              "life_skill_expansion"
+            ]
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "expModifier": {
+      "type": "object",
+      "required": ["modifierId", "source", "appliesTo", "percent", "stackingGroup"],
+      "properties": {
+        "modifierId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "day",
+            "nightfall",
+            "solo_seal",
+            "solo_scroll",
+            "party_seal",
+            "party_scroll",
+            "event",
+            "founder_test"
+          ]
+        },
+        "appliesTo": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["combat_exp", "life_skill_exp", "worker_exp", "awakening_trial_progress"]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "percent": {
+          "type": "integer",
+          "minimum": -100,
+          "maximum": 250
+        },
+        "stackingGroup": {
+          "type": "string",
+          "enum": ["time_state", "solo_boost", "party_boost", "event_boost", "test_only"]
+        },
+        "diminishingReturnsRequired": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "deathPenalty": {
+      "type": "object",
+      "required": [
+        "deathType",
+        "level",
+        "expLossApplies",
+        "progressPercentLoss",
+        "itemRiskApplies",
+        "auditRequired"
+      ],
+      "properties": {
+        "deathType": {
+          "type": "string",
+          "enum": [
+            "pve_day",
+            "pve_nightfall",
+            "pvp_safe",
+            "pvp_red_name",
+            "structured_war"
+          ]
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "expLossApplies": {
+          "type": "boolean"
+        },
+        "progressPercentLoss": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "minimumLossAtCapPercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 1
+        },
+        "itemRiskApplies": {
+          "type": "boolean"
+        },
+        "itemRiskProfile": {
+          "type": "string",
+          "enum": ["none", "red_name_drop", "war_durability", "war_mode_specific"],
+          "default": "none"
+        },
+        "auditRequired": {
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "awakeningProgress": {
+      "type": "object",
+      "required": [
+        "characterId",
+        "eligibleLevel",
+        "selectedAwakening",
+        "trialState",
+        "visualEvolutionUnlocked"
+      ],
+      "properties": {
+        "characterId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "eligibleLevel": {
+          "type": "integer",
+          "const": 45
+        },
+        "selectedAwakening": {
+          "type": "string",
+          "enum": ["none", "nightmare_class", "dream_class"]
+        },
+        "trialState": {
+          "type": "string",
+          "enum": ["not_started", "available", "in_progress", "completed", "reset_pending"]
+        },
+        "visualEvolutionUnlocked": {
+          "type": "boolean"
+        },
+        "resetAllowed": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
