@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dream-online.local/schemas/world-event.schema.json",
+  "title": "Dream Online World Event Contract",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "eventId",
+    "displayName",
+    "eventType",
+    "zoneId",
+    "state",
+    "trigger",
+    "duration",
+    "playerImpact",
+    "eventLayers",
+    "npcVisibility",
+    "rollback"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "eventId": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 120
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 80
+    },
+    "eventType": {
+      "type": "string",
+      "enum": [
+        "gate_flicker",
+        "caravan_delay",
+        "resource_bloom",
+        "nightfall_surge",
+        "dream_shift",
+        "wilderness_to_city",
+        "world_recovery"
+      ]
+    },
+    "zoneId": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 120
+    },
+    "state": {
+      "type": "string",
+      "enum": ["draft", "scheduled", "active", "paused", "recovering", "completed", "rolled_back"]
+    },
+    "trigger": {
+      "type": "object",
+      "required": ["triggerType"],
+      "properties": {
+        "triggerType": {
+          "type": "string",
+          "enum": ["scheduled_time", "player_action", "npc_action", "world_health", "manual_founder_test"]
+        },
+        "triggeredByCharacterId": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "scheduledAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "minimumWorldState": {
+          "type": "string",
+          "enum": ["calm", "active", "threatened", "damaged", "recovering"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "duration": {
+      "type": "object",
+      "required": ["minimumSeconds", "maximumSeconds"],
+      "properties": {
+        "minimumSeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 604800
+        },
+        "maximumSeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 604800
+        }
+      },
+      "additionalProperties": false
+    },
+    "playerImpact": {
+      "type": "object",
+      "required": ["visibility", "riskLevel", "safeExitRequired", "rewardTags"],
+      "properties": {
+        "visibility": {
+          "type": "string",
+          "enum": ["hidden", "local_notice", "zone_notice", "world_notice"]
+        },
+        "riskLevel": {
+          "type": "string",
+          "enum": ["none", "low", "medium", "high", "war"]
+        },
+        "safeExitRequired": {
+          "type": "boolean"
+        },
+        "rewardTags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["combat_exp", "life_skill_exp", "resource_bonus", "market_shift", "cosmetic", "lore", "none"]
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "eventLayers": {
+      "type": "object",
+      "required": ["lighting", "audio", "props", "npcSchedules", "combatRules", "resourceRules"],
+      "properties": {
+        "lighting": {
+          "type": "string",
+          "enum": ["unchanged", "day", "nightfall", "dream_glow", "city_warmth", "recovery_pulse"]
+        },
+        "audio": {
+          "type": "string",
+          "enum": ["unchanged", "calm", "gathering", "danger", "combat", "festival", "recovery"]
+        },
+        "props": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "uniqueItems": true
+        },
+        "npcSchedules": {
+          "type": "string",
+          "enum": ["unchanged", "work", "festival", "panic", "guarded", "recovery"]
+        },
+        "combatRules": {
+          "type": "string",
+          "enum": ["unchanged", "disabled", "reduced", "normal", "nightfall_boost", "war"]
+        },
+        "resourceRules": {
+          "type": "string",
+          "enum": ["unchanged", "reduced", "normal", "bloom", "depleted"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "npcVisibility": {
+      "type": "object",
+      "required": ["guideCanExplain", "worldRecoveryVisible", "playerHintLevel"],
+      "properties": {
+        "guideCanExplain": {
+          "type": "boolean"
+        },
+        "worldRecoveryVisible": {
+          "type": "boolean"
+        },
+        "playerHintLevel": {
+          "type": "string",
+          "enum": ["none", "subtle", "clear", "urgent"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "rollback": {
+      "type": "object",
+      "required": ["checkpointRequired", "rollbackMode", "auditRequired"],
+      "properties": {
+        "checkpointRequired": {
+          "type": "boolean",
+          "const": true
+        },
+        "rollbackMode": {
+          "type": "string",
+          "enum": ["none", "pause_only", "restore_zone_state", "restore_world_state"]
+        },
+        "auditRequired": {
+          "type": "boolean",
+          "const": true
+        },
+        "rollbackReason": {
+          "type": "string",
+          "maxLength": 240
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
