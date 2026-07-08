@@ -1,0 +1,163 @@
+{
+  "schemaIndexVersion": "0.1.0",
+  "project": "DREAM ONLINE",
+  "purpose": "Prototype data-contract index for the local Live NPC Lab and future game/backend services.",
+  "contracts": [
+    {
+      "id": "character-profile",
+      "path": "game/server/live-npc-lab/data/character-profile.schema.json",
+      "domain": "character_creation",
+      "covers": [
+        "appearance",
+        "starter path",
+        "life-skill interest",
+        "level 45 awakening",
+        "visual identity",
+        "cosmetic/convenience entitlement ids"
+      ]
+    },
+    {
+      "id": "progression",
+      "path": "game/server/live-npc-lab/data/progression.schema.json",
+      "domain": "progression",
+      "covers": [
+        "level cap",
+        "level 20 combat shift",
+        "level 45 awakening",
+        "day/Nightfall modifiers",
+        "death penalty",
+        "awakening trial state"
+      ]
+    },
+    {
+      "id": "combat-ability",
+      "path": "game/server/live-npc-lab/data/combat-ability.schema.json",
+      "domain": "action_combat",
+      "covers": [
+        "action-command inputs",
+        "stamina costs",
+        "cooldowns",
+        "hit shapes",
+        "movement locks",
+        "cancel rules",
+        "awakening abilities"
+      ]
+    },
+    {
+      "id": "life-skill",
+      "path": "game/server/live-npc-lab/data/life-skill.schema.json",
+      "domain": "life_skills",
+      "covers": [
+        "gathering",
+        "fishing",
+        "cooking",
+        "processing",
+        "farming",
+        "worker tasks",
+        "AFK-safe limits"
+      ]
+    },
+    {
+      "id": "pvp-state",
+      "path": "game/server/live-npc-lab/data/pvp-state.schema.json",
+      "domain": "pvp",
+      "covers": [
+        "Pink Flag",
+        "Red Name",
+        "guard response",
+        "level gap brackets",
+        "structured war modes",
+        "gear risk"
+      ]
+    },
+    {
+      "id": "item-inventory",
+      "path": "game/server/live-npc-lab/data/item-inventory.schema.json",
+      "domain": "items_inventory",
+      "covers": [
+        "item templates",
+        "item instances",
+        "bags",
+        "treasury",
+        "durability",
+        "repair",
+        "drop rules"
+      ]
+    },
+    {
+      "id": "marketplace",
+      "path": "game/server/live-npc-lab/data/marketplace.schema.json",
+      "domain": "marketplace",
+      "covers": [
+        "listings",
+        "buy orders",
+        "Storage Runner",
+        "Market Runner",
+        "fees",
+        "locks",
+        "audit flags"
+      ]
+    },
+    {
+      "id": "boosters-pets",
+      "path": "game/server/live-npc-lab/data/boosters-pets.schema.json",
+      "domain": "monetization_convenience",
+      "covers": [
+        "solo seals",
+        "solo scrolls",
+        "party seals",
+        "party scrolls",
+        "diminishing returns",
+        "pet convenience",
+        "paid power boundary"
+      ]
+    },
+    {
+      "id": "world-event",
+      "path": "game/server/live-npc-lab/data/world-event.schema.json",
+      "domain": "live_world_events",
+      "covers": [
+        "Dream Shift",
+        "wilderness-to-city events",
+        "Nightfall surge",
+        "event layers",
+        "safe exits",
+        "rollback"
+      ]
+    },
+    {
+      "id": "live-npc-memory",
+      "path": "game/server/live-npc-lab/data/live-npc-memory.schema.json",
+      "domain": "live_npc",
+      "covers": [
+        "NPC profiles",
+        "memory scopes",
+        "retrieval",
+        "dialogue turns",
+        "proposed actions",
+        "provider routing"
+      ]
+    },
+    {
+      "id": "day-night-economy-rules",
+      "path": "game/server/live-npc-lab/data/day-night-economy-rules.json",
+      "domain": "rule_seed",
+      "covers": [
+        "Day modifiers",
+        "Nightfall modifiers",
+        "death EXP loss",
+        "boosters",
+        "pets",
+        "runners",
+        "PvP scaling"
+      ]
+    }
+  ],
+  "rules": {
+    "noSecrets": true,
+    "noClassifiedPlotMaterial": true,
+    "noCompetitorNameDrops": true,
+    "noPlayerFacingSandboxJargon": true,
+    "paidSystemsBoundary": "Convenience, style, access, storage, runners, boosters, and pets can save friction, but must not sell direct combat power or uncapped market dominance."
+  }
+}
