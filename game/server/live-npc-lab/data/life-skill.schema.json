@@ -1,0 +1,297 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dream-online.local/schemas/life-skill.schema.json",
+  "title": "Dream Online Life Skill Contract",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "lifeSkill",
+    "activity",
+    "resourceNode",
+    "craftingRecipe",
+    "workerTask",
+    "expRules"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "lifeSkill": {
+      "type": "object",
+      "required": ["skillId", "displayName", "category", "level", "exp"],
+      "properties": {
+        "skillId": {
+          "type": "string",
+          "enum": ["gathering", "fishing", "cooking", "processing", "farming", "trading", "worker_management"]
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "category": {
+          "type": "string",
+          "enum": ["active", "batch", "afk_safe", "timer", "market_linked"]
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "exp": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "activity": {
+      "type": "object",
+      "required": [
+        "activityId",
+        "lifeSkillId",
+        "mode",
+        "baseDurationSeconds",
+        "toolRequired",
+        "afkAllowed",
+        "nightfallModifier"
+      ],
+      "properties": {
+        "activityId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "lifeSkillId": {
+          "type": "string",
+          "enum": ["gathering", "fishing", "cooking", "processing", "farming", "trading", "worker_management"]
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["single_action", "batch", "afk_tick", "timer_harvest", "worker_route"]
+        },
+        "baseDurationSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 86400
+        },
+        "toolRequired": {
+          "type": "string",
+          "enum": ["none", "axe", "pickaxe", "hoe", "fishing_rod", "cooking_tool", "processing_tool", "trade_pack", "worker_contract"]
+        },
+        "afkAllowed": {
+          "type": "boolean"
+        },
+        "afkSafetyLimit": {
+          "type": "object",
+          "properties": {
+            "maxOfflineSeconds": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 86400
+            },
+            "reducedYieldAfterSeconds": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 86400
+            },
+            "requiresInventorySpace": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "nightfallModifier": {
+          "type": "string",
+          "enum": ["none", "reduced_efficiency", "danger_interrupt", "blocked_in_high_risk_zone"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "resourceNode": {
+      "type": "object",
+      "required": [
+        "nodeId",
+        "zoneId",
+        "resourceType",
+        "baseYield",
+        "respawnSeconds",
+        "toolWear"
+      ],
+      "properties": {
+        "nodeId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "zoneId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "resourceType": {
+          "type": "string",
+          "enum": ["ore", "herb", "timber", "fish", "crop", "meat", "fiber", "stone", "water"]
+        },
+        "baseYield": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 999
+        },
+        "rareProcChanceBasisPoints": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "respawnSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 604800
+        },
+        "toolWear": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        }
+      },
+      "additionalProperties": false
+    },
+    "craftingRecipe": {
+      "type": "object",
+      "required": ["recipeId", "lifeSkillId", "inputs", "outputs", "durationSeconds", "qualityRollAllowed"],
+      "properties": {
+        "recipeId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "lifeSkillId": {
+          "type": "string",
+          "enum": ["cooking", "processing", "farming", "trading"]
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["itemTemplateId", "quantity"],
+            "properties": {
+              "itemTemplateId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 120
+              },
+              "quantity": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9999
+              }
+            },
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["itemTemplateId", "quantity"],
+            "properties": {
+              "itemTemplateId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 120
+              },
+              "quantity": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9999
+              }
+            },
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "durationSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 86400
+        },
+        "qualityRollAllowed": {
+          "type": "boolean"
+        },
+        "batchAllowed": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "workerTask": {
+      "type": "object",
+      "required": ["workerTaskId", "workerId", "nodeId", "durationSeconds", "fatigueCost", "yieldPolicy"],
+      "properties": {
+        "workerTaskId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "workerId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "durationSeconds": {
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 604800
+        },
+        "fatigueCost": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "yieldPolicy": {
+          "type": "string",
+          "enum": ["fixed", "skill_scaled", "zone_scaled", "event_modified"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "expRules": {
+      "type": "object",
+      "required": ["dayMultiplier", "nightfallMultiplier", "paidBoostAllowed", "paidBoostCapPercent"],
+      "properties": {
+        "dayMultiplier": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "nightfallMultiplier": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "paidBoostAllowed": {
+          "type": "boolean"
+        },
+        "paidBoostCapPercent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 250
+        },
+        "antiMacroAuditRequired": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
