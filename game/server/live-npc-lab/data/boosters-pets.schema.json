@@ -1,0 +1,224 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dream-online.local/schemas/boosters-pets.schema.json",
+  "title": "Dream Online Boosters And Pets Contract",
+  "type": "object",
+  "required": ["schemaVersion", "boosterRules", "boostItem", "petRules", "petProfile"],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "boosterRules": {
+      "type": "object",
+      "required": ["stackingMode", "hardCapPercent", "finePrintRequired", "paidPowerBoundary"],
+      "properties": {
+        "stackingMode": {
+          "type": "string",
+          "const": "diminishing_returns"
+        },
+        "hardCapPercent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 250
+        },
+        "finePrintRequired": {
+          "type": "boolean",
+          "const": true
+        },
+        "paidPowerBoundary": {
+          "type": "string",
+          "const": "Boosters can speed progression within caps but must not create uncapped combat, loot, or market dominance."
+        },
+        "participationRequiredForPartyBoosts": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "boostItem": {
+      "type": "object",
+      "required": [
+        "boostItemId",
+        "displayName",
+        "scope",
+        "category",
+        "durationHoursMin",
+        "durationHoursMax",
+        "baseBoostPercent",
+        "appliesTo",
+        "stackingPriority"
+      ],
+      "properties": {
+        "boostItemId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["solo", "party"]
+        },
+        "category": {
+          "type": "string",
+          "enum": ["seal", "scroll"]
+        },
+        "durationHoursMin": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 168
+        },
+        "durationHoursMax": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 168
+        },
+        "baseBoostPercent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 125
+        },
+        "appliesTo": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["combat_exp", "life_skill_exp", "common_loot", "material_loot"]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "rareDropAffects": {
+          "type": "boolean",
+          "default": false
+        },
+        "stackingPriority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "playerFacingFinePrint": {
+          "type": "string",
+          "maxLength": 400
+        }
+      },
+      "additionalProperties": false
+    },
+    "activeBoostStack": {
+      "type": "object",
+      "required": ["characterId", "activeBoostItemIds", "effectiveBoostPercent", "expiresAt"],
+      "properties": {
+        "characterId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "partyId": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "activeBoostItemIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "uniqueItems": true
+        },
+        "effectiveBoostPercent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 250
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
+    "petRules": {
+      "type": "object",
+      "required": ["manualLootBaseline", "paidBoundary", "rareDropBoundary"],
+      "properties": {
+        "manualLootBaseline": {
+          "type": "boolean",
+          "const": true
+        },
+        "paidBoundary": {
+          "type": "string",
+          "const": "Pets sell convenience, style, pickup behavior, alerts, sorting, and durability support. Pets do not sell direct combat power."
+        },
+        "rareDropBoundary": {
+          "type": "string",
+          "const": "Paid pets should not increase rare drop rates unless an earnable equivalent exists and the boost is tightly capped."
+        }
+      },
+      "additionalProperties": false
+    },
+    "petProfile": {
+      "type": "object",
+      "required": ["petId", "displayName", "acquisition", "role", "capabilities", "powerRisk"],
+      "properties": {
+        "petId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "acquisition": {
+          "type": "string",
+          "enum": ["earnable", "paid", "event", "founder_test"]
+        },
+        "role": {
+          "type": "string",
+          "enum": ["loot_companion", "fast_pickup", "repair_support", "storage_support", "scout", "presence"]
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "auto_pickup",
+              "pickup_speed",
+              "pickup_range",
+              "pickup_priority",
+              "durability_warning",
+              "field_repair_support",
+              "storage_prep",
+              "scouting_ping",
+              "cosmetic_presence"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "powerRisk": {
+          "type": "string",
+          "enum": ["low", "medium", "high"]
+        },
+        "combatStatsGranted": {
+          "type": "boolean",
+          "const": false
+        },
+        "rareDropBoostPercent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5,
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
