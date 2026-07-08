@@ -1,0 +1,30 @@
+name: Feature
+description: Propose a DREAM ONLINE feature or system.
+title: "feat: "
+labels:
+  - feature
+body:
+  - type: textarea
+    id: player_value
+    attributes:
+      label: Player value
+      description: What should the player feel, do, or understand?
+    validations:
+      required: true
+  - type: textarea
+    id: system_notes
+    attributes:
+      label: System notes
+      description: Combat, world, NPC, economy, PvP, UX, audio, or backend impact.
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0 first playable
+        - P1 core expansion
+        - P2 later production
+    validations:
+      required: true

@@ -1,0 +1,218 @@
+{
+  "version": "0.1.0",
+  "status": "draft",
+  "playerFacingName": "Nightfall",
+  "states": {
+    "day": {
+      "lifeSkillExpMultiplier": 1.25,
+      "monsterExpMultiplier": 1.0,
+      "monsterHpMultiplier": 1.0,
+      "monsterDamageMultiplier": 1.0,
+      "gatheringEfficiencyMultiplier": 1.15,
+      "intent": "Safer routine window for gathering, crafting, fishing, farming, cooking, processing, and trade prep."
+    },
+    "nightfall": {
+      "lifeSkillExpMultiplier": 0.75,
+      "monsterExpMultiplier": 1.35,
+      "monsterHpMultiplier": 1.25,
+      "monsterDamageMultiplier": 1.2,
+      "gatheringEfficiencyMultiplier": 0.8,
+      "intent": "Danger window for prepared combat players. Monsters are tougher, hit harder, and reward more combat EXP."
+    }
+  },
+  "deathExpLoss": {
+    "pvpUsesSeparateRules": true,
+    "earlyGameNoLossUntilLevel": 10,
+    "firstMajorCombatUnlockLevel": 20,
+    "firstPrestigeAwakeningLevel": 45,
+    "workingLevelCap": 50,
+    "minimumLossPercentAtCap": 1.0,
+    "notes": [
+      "PvE death should matter after onboarding.",
+      "PvP death must not become a grief tool.",
+      "Tune recovery time, not just percentage."
+    ]
+  },
+  "classAwakening": {
+    "level": 45,
+    "fantasyTarget": "Five times more fun and impactful, not a locked 5x raw damage multiplier.",
+    "lanes": {
+      "nightmare_class": {
+        "path": "dark melee assassin",
+        "notFor": "mage projectile builds",
+        "identity": [
+          "shadow movement",
+          "close-range burst",
+          "execution windows",
+          "dark visual effects",
+          "high-risk high-reward timing"
+        ]
+      },
+      "dream_class": {
+        "path": "mage projectile",
+        "notFor": "melee assassin builds",
+        "identity": [
+          "projectile shaping",
+          "field control",
+          "surreal visual effects",
+          "altered casting stance",
+          "high-visibility skill expression"
+        ]
+      }
+    },
+    "mustChange": [
+      "skill kit",
+      "visual effects",
+      "silhouette",
+      "idle stance",
+      "combat trails",
+      "player identity read"
+    ]
+  },
+  "pvpLevelScaling": {
+    "principle": "Level matters strongly. Extreme level gaps can produce one-shot outcomes in valid PvP.",
+    "modifierOrder": [
+      "level_gap",
+      "skill_cooldown",
+      "range_profile",
+      "melee_profile",
+      "pvp_state"
+    ],
+    "levelGapBrackets": [
+      {
+        "gapMin": 0,
+        "gapMax": 4,
+        "intent": "mostly skill matchup"
+      },
+      {
+        "gapMin": 5,
+        "gapMax": 9,
+        "intent": "higher level has clear advantage"
+      },
+      {
+        "gapMin": 10,
+        "gapMax": 19,
+        "intent": "lower level is in serious danger"
+      },
+      {
+        "gapMin": 20,
+        "gapMax": 29,
+        "intent": "lower level can be burst down quickly"
+      },
+      {
+        "gapMin": 30,
+        "gapMax": 999,
+        "intent": "lower level can be one-shot in valid PvP"
+      }
+    ],
+    "antiGriefBoundary": [
+      "starter zones can restrict hostile actions",
+      "repeated killing can trigger corruption or bounty",
+      "pvp death uses separate rules from pve death",
+      "valid pvp risk should not mean spawn-camp abuse"
+    ],
+    "pkConsequence": {
+      "warningState": "pink_flag",
+      "redNameAfterPlayerKillsWhilePink": 3,
+      "redNameClearLoggedInHours": 3,
+      "redNameUiRule": "nameplate or name text turns red so the player is clearly marked as hostile",
+      "guardResponse": {
+        "appliesIn": [
+          "protected settlements",
+          "controlled roads",
+          "guarded areas"
+        ],
+        "guardTypes": [
+          "ranged",
+          "magic",
+          "projectile"
+        ],
+        "result": "one-shot kill against red name players"
+      },
+      "deathLoot": {
+        "redNameDropEligibleItemPercent": 50,
+        "lootableByAnyone": true
+      },
+      "structuredWarModes": {
+        "purpose": "primary PvP areas with their own gear-risk rules",
+        "modes": [
+          "node_war",
+          "castle_siege",
+          "city_siege",
+          "guild_war"
+        ],
+        "gearRisk": "multiplayer kills, deaths, or war participation can cost gear or durability according to explicit war rules",
+        "redNameRelationship": "red name handles uncontrolled open-world PK; structured war has separate visible risk terms"
+      }
+    }
+  },
+  "boosters": {
+    "stackingRule": "diminishing_returns",
+    "hardCapPercent": 250,
+    "items": {
+      "solo_seal": {
+        "scope": "solo",
+        "durationHoursMin": 72,
+        "durationHoursMax": 168,
+        "baseBoostPercent": 100
+      },
+      "solo_scroll": {
+        "scope": "solo",
+        "durationHoursMin": 2,
+        "durationHoursMax": 4,
+        "baseBoostPercent": 75
+      },
+      "party_seal": {
+        "scope": "party",
+        "durationHoursMin": 72,
+        "durationHoursMax": 168,
+        "baseBoostPercent": 125
+      },
+      "party_scroll": {
+        "scope": "party",
+        "durationHoursMin": 2,
+        "durationHoursMax": 4,
+        "baseBoostPercent": 25
+      }
+    },
+    "copyRule": "Explain duration, scope, cap, and reduced stacking value in plain language before purchase."
+  },
+  "pets": {
+    "manualLootBaseline": true,
+    "paidBoundary": "Convenience and style only. No direct combat power and no uncapped rare-drop control.",
+    "concepts": {
+      "loot_companion": {
+        "function": "Auto-pickup convenience.",
+        "powerRisk": "low"
+      },
+      "fast_pickup_companion": {
+        "function": "Improved pickup speed or range.",
+        "powerRisk": "medium"
+      },
+      "repair_companion": {
+        "function": "Durability warnings or field-repair support.",
+        "powerRisk": "medium"
+      },
+      "bear": {
+        "function": "Earnable presence or defensive fantasy without paid combat dominance.",
+        "powerRisk": "medium"
+      },
+      "hawk": {
+        "function": "Earnable scouting fantasy without paid combat dominance.",
+        "powerRisk": "medium"
+      }
+    }
+  },
+  "runners": {
+    "storageRunner": {
+      "transactionLimit": 1,
+      "purpose": "Send one item or small bundle to storage without fast travel.",
+      "mustNot": "Move unlimited cargo or teleport the player."
+    },
+    "marketRunner": {
+      "transactionLimit": 1,
+      "purpose": "Buy, list, or retrieve one marketplace item from the field.",
+      "mustNot": "Enable unlimited remote trading or market dominance."
+    }
+  }
+}

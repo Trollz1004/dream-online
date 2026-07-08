@@ -1,0 +1,17 @@
+name: ollama-local
+version: 0.2
+source: local-cli
+description: "Local Ollama via OpenCode bridge. Self-hosted free models from http://localhost:11434. Zero cloud cost."
+owner: sabretooth
+node_id: sabretooth
+cli_command: "opencode"
+health_check: "curl -s http://localhost:11434/api/tags -o NUL && echo ollama-local:healthy || echo 'ollama may be at alt host; check 192.168.0.x:11434'"
+paperclip_adapter_type: "opencode_local"
+paperclip_adapter_config:
+  cwd: "E:\\CLAUDE's-N-Joshua's-Dream-Online-MMORPG"
+  model: "qwen2.5-coder:7b"
+paperclip_alias: "ollama-local"
+opencode_provider: "ollama-local"
+opencode_model: "qwen2.5-coder:7b"
+notes: "Uses `opencode_local` Paperclip adapter type with ollama-local provider. Separated from cloud providers. Local-only routing, no cloud cost. Fallbacks via hermes-router."
+

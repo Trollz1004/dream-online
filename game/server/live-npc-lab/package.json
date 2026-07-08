@@ -1,0 +1,14 @@
+{
+  "name": "dream-live-npc-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local live-NPC prototype lab for Dream ONLINE.",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node test/smoke.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

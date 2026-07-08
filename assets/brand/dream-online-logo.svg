@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+  <title id="title">DREAM ONLINE logo</title>
+  <desc id="desc">Original moon gate and horizon mark for DREAM ONLINE.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#08111f"/>
+      <stop offset="0.55" stop-color="#12304a"/>
+      <stop offset="1" stop-color="#e6a94f"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8d37a"/>
+      <stop offset="1" stop-color="#b96f2d"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="360" rx="48" fill="#06101d"/>
+  <circle cx="178" cy="180" r="112" fill="none" stroke="url(#gold)" stroke-width="18"/>
+  <path d="M104 190 C138 126 214 116 258 160 C220 148 172 164 146 212 C132 238 112 235 90 220 C93 210 97 200 104 190Z" fill="url(#sky)"/>
+  <path d="M78 232 C128 212 188 216 274 248" fill="none" stroke="#f8d37a" stroke-width="10" stroke-linecap="round"/>
+  <path d="M118 255 C164 242 212 247 278 270" fill="none" stroke="#d89445" stroke-width="6" stroke-linecap="round"/>
+  <text x="340" y="164" fill="#f7efe0" font-family="Georgia, 'Times New Roman', serif" font-size="78" font-weight="700" letter-spacing="8">DREAM</text>
+  <text x="346" y="238" fill="#e6a94f" font-family="Verdana, Geneva, sans-serif" font-size="42" font-weight="700" letter-spacing="14">ONLINE</text>
+  <path d="M342 264 H824" stroke="#355875" stroke-width="3" stroke-linecap="round"/>
+  <text x="844" y="267" fill="#91b2ca" font-family="Verdana, Geneva, sans-serif" font-size="24" letter-spacing="3">LIVE-WORLD OPEN-WORLD MMO</text>
+</svg>

@@ -1,0 +1,35 @@
+name: claude
+version: 0.2
+source: local-cli
+description: "Free Claude Code (FCC) — Paperclip `claude_local` adapter backed by fcc-server proxy (:8082). No Anthropic API key. Routes through free providers."
+owner: sabretooth
+node_id: sabretooth
+cli_command: "fcc-claude"
+health_check: "curl -s http://127.0.0.1:8082/health -o NUL && fcc-claude --version && echo fcc-claude:healthy || echo fcc-claude:unavailable"
+
+# --- PAPERCLIP OS ADAPTER TYPE ---
+# Paperclip runs Claude Code natively via `claude_local`. FCC becomes the backend
+# purely through environment variables — Paperclip thinks it talks to real Claude
+# Code, but the proxy intercepts and routes to free providers.
+paperclip_adapter_type: "claude_local"
+paperclip_adapter_config:
+  cwd: "E:\\CLAUDE's-N-Joshua's-Dream-Online-MMORPG"
+  model: "claude-sonnet-4-5-20250929"
+  env:
+    ANTHROPIC_BASE_URL: "http://127.0.0.1:8082"
+    ANTHROPIC_AUTH_TOKEN: "freecc"
+    CLAUDE_CONFIG_DIR: "C:\\Users\\joshl\\.claude-fcc"
+    CLAUDE_CODE_MAX_OUTPUT_TOKENS: "8192"
+
+# Legacy env block (kept for backward compat with run-with-env-payload.ps1):
+paperclip_native_env:
+  ANTHROPIC_BASE_URL: "http://127.0.0.1:8082"
+  ANTHROPIC_AUTH_TOKEN: "freecc"
+  CLAUDE_CONFIG_DIR: "C:/Users/joshl/.claude-fcc"
+  CLAUDE_CODE_MAX_OUTPUT_TOKENS: "8192"
+
+paperclip_alias: "claude"
+opencode_provider: "openai"
+opencode_model: "gpt-5.5"
+notes: "FCC proxy on localhost:8082. Requires fcc-server running. Uses `claude_local` Paperclip adapter type with FCC env vars. Model field uses claude-sonnet-* (FCC prefix detection maps to MODEL_SONNET in ~/.fcc/.env). Dedicated 'openai' provider for opencode routing. Never share 'codex' provider."
+

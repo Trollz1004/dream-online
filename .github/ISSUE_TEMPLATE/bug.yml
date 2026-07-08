@@ -1,0 +1,25 @@
+name: Bug
+description: Report a defect or broken behavior.
+title: "fix: "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Logs, screenshots, endpoint, branch, or command. Do not paste secrets.
+    validations:
+      required: false

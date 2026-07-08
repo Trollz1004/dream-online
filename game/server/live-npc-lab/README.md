@@ -1,0 +1,62 @@
+# Dream Live NPC Lab
+
+Local prototype for Dream ONLINE live-NPC behavior.
+
+This lab is intentionally small:
+
+- No dependencies.
+- No secrets.
+- No cloud call by default.
+- Local JSONL memory and event logs.
+- Provider-gated design so OpenAI or another cloud model can be attached later without
+  putting secrets in the game client.
+
+## Run
+
+```powershell
+cd "E:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\server\live-npc-lab"
+npm start
+```
+
+Default URL:
+
+```text
+http://127.0.0.1:9127
+```
+
+## Endpoints
+
+```text
+GET  /health
+POST /npc/dialogue
+POST /npc/event
+GET  /npc/memory?playerId=founder
+```
+
+## Example dialogue request
+
+```json
+{
+  "npcId": "sup-guide",
+  "playerId": "founder",
+  "message": "What should I test first?",
+  "worldState": {
+    "zone": "first-gate",
+    "timeOfDay": "dawn",
+    "threat": "low"
+  }
+}
+```
+
+## Cloud model gate
+
+Cloud calls stay disabled unless both values are set:
+
+```powershell
+$env:DREAM_ENABLE_CLOUD_AI="1"
+$env:DREAM_AI_PROVIDER="openai"
+```
+
+The prototype still needs a provider implementation before it will call a paid model.
+That is deliberate. Provider calls should be added only after Joshua approves the cost
+and runtime boundary.

@@ -1,0 +1,14 @@
+{
+  "name": "dreamops-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local DreamOps Bridge prototype for DREAM ONLINE world-state inspection and safe repair planning.",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {}
+}

@@ -1,0 +1,39 @@
+name: 1minai
+display_name: 1min.AI
+type: cloud-api
+node: sabretooth
+access: desktop-app
+description: All-in-one AI platform — chat, image, audio, video, code via cloud API and Windows desktop app
+paperclip_adapter_type: "cloud_api"
+paperclip_alias: "1minai"
+cli_command: "powershell"
+health_check: "powershell -NoProfile -Command if (Test-Path 'adapters\\1minai\\models.json') { '1minai:config-present' } else { '1minai:models-missing'; exit 1 }"
+
+api:
+  base_url: https://api.1min.ai
+  auth: Bearer token (API key from app settings)
+  endpoints:
+    chat: /api/v1/oneai/chat
+    feature: /api/v1/oneai/features
+    asset: /api/v1/oneai/assets
+    result: /api/v1/oneai/get-result
+
+capabilities:
+  - chat (60+ models)
+  - image-generation (DALL-E 3, Stable Diffusion XL, Ideogram 3.0, Recraft V4, FLUX.2, Nano Banana 2, Retro Diffusion)
+  - image-to-prompt
+  - image-variator
+  - image-upscaler
+  - background-remover
+  - background-replacer
+  - text-to-speech (OpenAI, ElevenLabs v3)
+  - speech-to-text
+  - text-to-video (Veo 3.1, Kling 1.5, Luma, Hailuo, SV4D 2.0)
+  - image-to-video
+  - code-generation
+  - content-writing
+  - music-generation (Lyria 3)
+
+use_case: DREAM ONLINE — fast cloud AI for real-time game events, NPC dialogue, world generation
+installed_on: Sabretooth only (Windows desktop app)
+

@@ -1,0 +1,20 @@
+name: gemini
+version: 0.2
+source: auth-signin
+description: "Google Gemini CLI — CLI/browser auth sign-in via Google account / Google AI Studio. No hardcoded credentials."
+owner: sabretooth
+node_id: sabretooth
+cli_command: "gemini"
+health_check: "opencode --version && echo 'gemini: google provider via opencode.json' || echo 'gemini: opencode not found'"
+paperclip_adapter_type: "opencode_local"
+paperclip_adapter_config:
+  cwd: "E:\\CLAUDE's-N-Joshua's-Dream-Online-MMORPG"
+  model: "gemini-2.5-pro"
+paperclip_alias: "gemini"
+opencode_provider: "google"
+opencode_model: "gemini-2.5-pro"
+auth:
+  type: browser-signin
+  instructions: "Open Gemini CLI, sign in with Google account via browser. No API key needed."
+notes: "CLI/browser sign-in lane. No hardcoded credentials. Uses `opencode_local` Paperclip adapter type with google provider when routed through OpenCode. CEO wheel: on FAIL swap to hermes-router/ollama-local."
+

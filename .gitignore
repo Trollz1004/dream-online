@@ -1,0 +1,67 @@
+# Secrets and local env
+.env
+.env.*
+!.env.example
+*.local
+*.secret
+*.pem
+*.key
+JOSHUAS.ENV
+
+# Local/private agent state
+.codex/
+.claude/
+.cursor/
+.vscode/
+.idea/
+opencode/
+**/local-agent-mode-sessions/
+**/outputs/
+
+# Dependency and build output
+node_modules/
+dist/
+build/
+out/
+.next/
+.turbo/
+.cache/
+coverage/
+
+# Logs and runtime state
+*.log
+logs/
+*.jsonl
+game/server/live-npc-lab/data/*.jsonl
+
+# Backups, exports, and cold copies
+ops/backups/
+**/backups/
+**/*coldcopy*/
+**/*export*/
+
+# OS/editor noise
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Unreal future outputs
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+*.sln
+*.opensdf
+*.sdf
+*.suo
+*.xcodeproj/
+
+# Legacy local stubs not reviewed for clean public/private repo
+ops/legacy/
+
+# Non-Dream support material stays out of this repo
+support/anythingllm/
+
+# Keep Dream repo independent from local Paperclip and ANTIGRAVITY sync state
+paperclip-tro/
+adapters/sync-from-antigravity.ps1
