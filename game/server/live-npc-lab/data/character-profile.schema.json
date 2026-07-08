@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dream-online.local/schemas/character-profile.schema.json",
+  "title": "Dream Online Character Profile",
+  "type": "object",
+  "required": [
+    "profileVersion",
+    "characterId",
+    "displayName",
+    "appearance",
+    "starterPath",
+    "lifeSkillInterest",
+    "progression",
+    "awakening"
+  ],
+  "properties": {
+    "profileVersion": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "characterId": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 80
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 24,
+      "pattern": "^[A-Za-z0-9 _'-]+$"
+    },
+    "appearance": {
+      "type": "object",
+      "required": [
+        "bodyPreset",
+        "facePreset",
+        "skinTone",
+        "hairShape",
+        "hairColor",
+        "eyeStyle",
+        "voiceStyle",
+        "starterOutfit"
+      ],
+      "properties": {
+        "bodyPreset": {
+          "type": "string",
+          "enum": ["lean", "balanced", "strong", "compact", "tall"]
+        },
+        "facePreset": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "skinTone": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "hairShape": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "hairColor": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "eyeStyle": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "voiceStyle": {
+          "type": "string",
+          "enum": ["calm", "bold", "warm", "sharp"]
+        },
+        "starterOutfit": {
+          "type": "string",
+          "enum": ["blade", "hammer", "spear", "bow", "focus"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "starterPath": {
+      "type": "string",
+      "enum": ["blade", "hammer", "spear", "bow", "focus"]
+    },
+    "lifeSkillInterest": {
+      "type": "string",
+      "enum": ["gathering", "fishing", "cooking", "processing", "farming", "trading", "undecided"]
+    },
+    "progression": {
+      "type": "object",
+      "required": ["level", "combatExp", "lifeSkillExp"],
+      "properties": {
+        "level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "combatExp": {
+          "type": "number",
+          "minimum": 0
+        },
+        "lifeSkillExp": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "awakening": {
+      "type": "object",
+      "required": ["eligibleLevel", "selectedClass", "previewUnlocked", "visualState"],
+      "properties": {
+        "eligibleLevel": {
+          "type": "integer",
+          "const": 45
+        },
+        "selectedClass": {
+          "type": "string",
+          "enum": ["none", "nightmare_class", "dream_class"]
+        },
+        "previewUnlocked": {
+          "type": "boolean"
+        },
+        "visualState": {
+          "type": "object",
+          "required": ["silhouette", "idleStance", "combatTrails", "skillEffects", "uiFrame"],
+          "properties": {
+            "silhouette": {
+              "type": "string",
+              "enum": ["base", "nightmare", "dream"]
+            },
+            "idleStance": {
+              "type": "string",
+              "enum": ["base", "nightmare", "dream"]
+            },
+            "combatTrails": {
+              "type": "string",
+              "enum": ["base", "nightfall", "radiant"]
+            },
+            "skillEffects": {
+              "type": "string",
+              "enum": ["base", "shadow", "surreal"]
+            },
+            "uiFrame": {
+              "type": "string",
+              "enum": ["base", "nightmare", "dream"]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "entitlements": {
+      "type": "object",
+      "description": "Cosmetic and convenience entitlement ids only. Do not store secrets or payment tokens here.",
+      "properties": {
+        "cosmetics": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "uniqueItems": true
+        },
+        "convenience": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
