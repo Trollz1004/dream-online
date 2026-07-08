@@ -1,0 +1,246 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dream-online.local/schemas/combat-ability.schema.json",
+  "title": "Dream Online Combat Ability Contract",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "abilityId",
+    "displayName",
+    "starterPath",
+    "unlock",
+    "input",
+    "costs",
+    "cooldown",
+    "hitShape",
+    "movement",
+    "tags",
+    "balance"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "abilityId": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 120
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 80
+    },
+    "starterPath": {
+      "type": "string",
+      "enum": ["blade", "hammer", "spear", "bow", "focus", "nightmare_class", "dream_class"]
+    },
+    "unlock": {
+      "type": "object",
+      "required": ["level", "unlockType"],
+      "properties": {
+        "level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "unlockType": {
+          "type": "string",
+          "enum": ["starter", "level_20_shift", "level_45_awakening", "quest_trial", "founder_test"]
+        },
+        "requiresClass": {
+          "type": "string",
+          "enum": ["none", "nightmare_class", "dream_class"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "input": {
+      "type": "object",
+      "required": ["inputStyle", "command"],
+      "properties": {
+        "inputStyle": {
+          "type": "string",
+          "const": "action_command"
+        },
+        "command": {
+          "type": "string",
+          "description": "Plain input label such as Shift+F, S+LeftMouse, or Shift+S+RightMouse.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "controllerCommand": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "softTargetAllowed": {
+          "type": "boolean",
+          "description": "Soft target is allowed for accessibility or interaction assist, not tab-target combat dominance."
+        }
+      },
+      "additionalProperties": false
+    },
+    "costs": {
+      "type": "object",
+      "required": ["stamina"],
+      "properties": {
+        "stamina": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "resource": {
+          "type": "string",
+          "enum": ["none", "focus", "mark", "charge", "ammo"]
+        },
+        "resourceAmount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        }
+      },
+      "additionalProperties": false
+    },
+    "cooldown": {
+      "type": "object",
+      "required": ["seconds", "profile"],
+      "properties": {
+        "seconds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 300
+        },
+        "profile": {
+          "type": "string",
+          "enum": ["fast_pressure", "medium_combo", "long_burst", "awakening_commitment"]
+        },
+        "missPunishWindowSeconds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 30
+        }
+      },
+      "additionalProperties": false
+    },
+    "hitShape": {
+      "type": "object",
+      "required": ["shape", "rangeMeters", "widthMeters"],
+      "properties": {
+        "shape": {
+          "type": "string",
+          "enum": ["single_target", "cone", "line", "circle", "arc", "projectile", "field"]
+        },
+        "rangeMeters": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "widthMeters": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 50
+        },
+        "aoeAllowed": {
+          "type": "boolean"
+        },
+        "groupPullRole": {
+          "type": "string",
+          "enum": ["none", "solo_mass_grind", "party_setup", "party_burst", "field_control"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "movement": {
+      "type": "object",
+      "required": ["movementLock", "cancelRules"],
+      "properties": {
+        "movementLock": {
+          "type": "string",
+          "enum": ["none", "light", "medium", "heavy", "rooted"]
+        },
+        "gapCloseMeters": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 50
+        },
+        "cancelRules": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["dodge_cancel", "block_cancel", "jump_cancel", "no_cancel", "awakening_cancel"]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "melee",
+          "ranged",
+          "projectile",
+          "dark",
+          "surreal",
+          "aoe",
+          "burst",
+          "pressure",
+          "stagger",
+          "bleed",
+          "mark",
+          "field_control",
+          "awakening",
+          "pvp_sensitive"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "visualIdentity": {
+      "type": "object",
+      "properties": {
+        "trail": {
+          "type": "string",
+          "enum": ["none", "steel", "nightfall", "radiant", "surreal"]
+        },
+        "impactEffect": {
+          "type": "string",
+          "enum": ["none", "dust", "spark", "shadow_cut", "dream_burst", "field_ripple"]
+        },
+        "silhouetteChange": {
+          "type": "string",
+          "enum": ["none", "nightmare", "dream"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "balance": {
+      "type": "object",
+      "required": ["rawDamageMultiplier", "pvpScalingProfile", "fantasyImpactNote"],
+      "properties": {
+        "rawDamageMultiplier": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "pvpScalingProfile": {
+          "type": "string",
+          "enum": ["normal", "reduced_in_pvp", "separate_pvp_tuning", "blocked_in_pvp"]
+        },
+        "fantasyImpactNote": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "requiresPlaytest": {
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
