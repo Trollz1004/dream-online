@@ -1,0 +1,47 @@
+name: Live NPC Lab
+
+on:
+  push:
+    paths:
+      - "game/server/live-npc-lab/**"
+      - ".github/workflows/live-npc-lab.yml"
+  pull_request:
+    paths:
+      - "game/server/live-npc-lab/**"
+      - ".github/workflows/live-npc-lab.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  local-checks:
+    name: Local smoke and contract checks
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: game/server/live-npc-lab
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install
+        run: npm install --ignore-scripts
+
+      - name: Smoke test
+        run: npm test
+        env:
+          DREAM_ENABLE_CLOUD_AI: "0"
+          DREAM_AI_PROVIDER: mock
+
+      - name: Contract index test
+        run: npm run test:contracts
+        env:
+          DREAM_ENABLE_CLOUD_AI: "0"
+          DREAM_AI_PROVIDER: mock
