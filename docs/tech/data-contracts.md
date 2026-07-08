@@ -38,5 +38,27 @@ game/server/live-npc-lab/data/schema-index.json
 
 ## Next implementation step
 
-The next safe code step is a schema-aware `/contracts` endpoint in the Live NPC Lab that
-returns `schema-index.json` and optionally serves individual schema files by id.
+Implemented local API:
+
+```text
+GET /contracts
+GET /contracts/:id
+```
+
+Example ids:
+
+```text
+character-profile
+progression
+combat-ability
+life-skill
+pvp-state
+item-inventory
+marketplace
+boosters-pets
+world-event
+live-npc-memory
+```
+
+The endpoint serves local schemas only. It is not a provider bridge and does not expose
+secrets, payment tokens, or classified material.

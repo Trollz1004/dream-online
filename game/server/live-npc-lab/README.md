@@ -28,10 +28,25 @@ http://127.0.0.1:9127
 
 ```text
 GET  /health
+GET  /contracts
+GET  /contracts/:id
 POST /npc/dialogue
 POST /npc/event
 GET  /npc/memory?playerId=founder
 ```
+
+Contract examples:
+
+```text
+http://127.0.0.1:9127/contracts
+http://127.0.0.1:9127/contracts/character-profile
+http://127.0.0.1:9127/contracts/combat-ability
+http://127.0.0.1:9127/contracts/marketplace
+http://127.0.0.1:9127/contracts/live-npc-memory
+```
+
+The contract endpoint serves local schema files only. It does not expose secrets,
+provider keys, payment tokens, or classified material.
 
 ## Example dialogue request
 
