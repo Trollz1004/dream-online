@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dream-online.local/schemas/pvp-state.schema.json",
+  "title": "Dream Online PvP State Contract",
+  "type": "object",
+  "required": ["schemaVersion", "characterId", "pvpState", "levelScaling", "riskState"],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "characterId": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 80
+    },
+    "pvpState": {
+      "type": "object",
+      "required": ["flag", "playerKillsWhilePink", "redNameUntil", "validWarMode"],
+      "properties": {
+        "flag": {
+          "type": "string",
+          "enum": ["safe", "pink_flag", "red_name", "war_participant"]
+        },
+        "playerKillsWhilePink": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "redNameAfterKills": {
+          "type": "integer",
+          "const": 3
+        },
+        "redNameUntil": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Expires after 3 hours of logged-in game time, not offline time."
+        },
+        "validWarMode": {
+          "type": "string",
+          "enum": ["none", "node_war", "castle_siege", "city_siege", "guild_war"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "levelScaling": {
+      "type": "object",
+      "required": ["attackerLevel", "defenderLevel", "levelGap", "gapBracket"],
+      "properties": {
+        "attackerLevel": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "defenderLevel": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "levelGap": {
+          "type": "integer",
+          "minimum": -49,
+          "maximum": 49
+        },
+        "gapBracket": {
+          "type": "string",
+          "enum": ["skill_matchup", "clear_advantage", "serious_danger", "burst_down", "one_shot_risk"]
+        },
+        "secondaryModifiers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["skill_cooldown", "range_profile", "melee_profile", "pvp_state"]
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "riskState": {
+      "type": "object",
+      "required": ["deathExpLossApplies", "gearRiskApplies", "dropEligibleItemPercent", "guardOneShotApplies"],
+      "properties": {
+        "deathExpLossApplies": {
+          "type": "boolean",
+          "description": "PvP death should not use PvE EXP loss unless a future explicit high-risk state enables it."
+        },
+        "gearRiskApplies": {
+          "type": "boolean"
+        },
+        "dropEligibleItemPercent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "guardOneShotApplies": {
+          "type": "boolean"
+        },
+        "lootableByAnyone": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "guardResponse": {
+      "type": "object",
+      "required": ["zoneType", "guardTypes", "response"],
+      "properties": {
+        "zoneType": {
+          "type": "string",
+          "enum": ["unguarded", "controlled_road", "protected_settlement", "guarded_area", "war_zone"]
+        },
+        "guardTypes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["ranged", "magic", "projectile"]
+          },
+          "uniqueItems": true
+        },
+        "response": {
+          "type": "string",
+          "enum": ["none", "warn", "attack", "one_shot_red_name"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "structuredWarRisk": {
+      "type": "object",
+      "required": ["mode", "explicitEntryRequired", "gearOrDurabilityRisk", "redNameRulesApply"],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["none", "node_war", "castle_siege", "city_siege", "guild_war"]
+        },
+        "explicitEntryRequired": {
+          "type": "boolean",
+          "const": true
+        },
+        "gearOrDurabilityRisk": {
+          "type": "string",
+          "enum": ["none", "durability_loss", "drop_eligible_items", "mode_specific"]
+        },
+        "redNameRulesApply": {
+          "type": "boolean",
+          "description": "False for structured war; Red Name handles uncontrolled open-world PK."
+        }
+      },
+      "additionalProperties": false
+    },
+    "audit": {
+      "type": "object",
+      "required": ["auditId", "eventType", "createdAt"],
+      "properties": {
+        "auditId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 120
+        },
+        "eventType": {
+          "type": "string",
+          "enum": [
+            "pink_flag_started",
+            "red_name_started",
+            "red_name_cleared",
+            "red_name_killed",
+            "red_name_items_dropped",
+            "guard_one_shot",
+            "war_entry",
+            "war_death",
+            "war_gear_risk_applied"
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
