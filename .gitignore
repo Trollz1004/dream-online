@@ -34,6 +34,10 @@ logs/
 *.jsonl
 game/server/live-npc-lab/data/*.jsonl
 
+# Story/twist spoiler content — OneDrive only, never repo, even private
+game/server/live-npc-lab/data/npc-profiles.json
+game/server/live-npc-lab/data/lore-snippets.json
+
 # Backups, exports, and cold copies
 ops/backups/
 **/backups/

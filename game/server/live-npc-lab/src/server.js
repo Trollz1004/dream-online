@@ -1,12 +1,13 @@
 import http from "node:http";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { handleDialogue, handleWorldEvent, readMemory } from "./npcEngine.js";
+import { compactMemory, handleDialogue, handleWorldEvent, readAiFailures, readMemory } from "./npcEngine.js";
 
 const HOST = process.env.DREAM_LIVE_NPC_HOST || "127.0.0.1";
 const PORT = Number(process.env.DREAM_LIVE_NPC_PORT || 9127);
 const CONTRACTS_DIR = path.resolve(process.cwd(), "data");
 const SAMPLES_DIR = path.join(CONTRACTS_DIR, "samples");
+const NPC_PROFILES_FILE = "npc-profiles.json";
 const ZONES_BY_ID = new Map([
   ["first-gate", "first-zone.seed.json"]
 ]);
@@ -42,6 +43,10 @@ async function readContractJson(fileName) {
 
 async function readSchemaIndex() {
   return readContractJson("schema-index.json");
+}
+
+async function readNpcProfileSet() {
+  return readContractJson(NPC_PROFILES_FILE);
 }
 
 async function readSampleJson(fileName) {
@@ -139,6 +144,31 @@ async function router(req, res) {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/npc/profiles") {
+      sendJson(res, 200, await readNpcProfileSet());
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname.startsWith("/npc/profiles/")) {
+      const npcId = decodeURIComponent(url.pathname.slice("/npc/profiles/".length));
+      const profileSet = await readNpcProfileSet();
+      const profile = profileSet.profiles.find((entry) => entry.npcId === npcId);
+
+      if (!profile) {
+        sendJson(res, 404, {
+          ok: false,
+          error: "npc_profile_not_found"
+        });
+        return;
+      }
+
+      sendJson(res, 200, {
+        ok: true,
+        profile
+      });
+      return;
+    }
+
     if (req.method === "POST" && url.pathname === "/npc/dialogue") {
       const body = await readJson(req);
       sendJson(res, 200, await handleDialogue(body));
@@ -152,7 +182,24 @@ async function router(req, res) {
     }
 
     if (req.method === "GET" && url.pathname === "/npc/memory") {
-      sendJson(res, 200, await readMemory(url.searchParams.get("playerId")));
+      sendJson(res, 200, await readMemory({
+        playerId: url.searchParams.get("playerId"),
+        npcId: url.searchParams.get("npcId"),
+        zone: url.searchParams.get("zone"),
+        eventType: url.searchParams.get("eventType"),
+        scopes: url.searchParams.get("scopes")
+      }));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/npc/memory/compact") {
+      const body = await readJson(req);
+      sendJson(res, 200, await compactMemory(body));
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/npc/ai-failures") {
+      sendJson(res, 200, await readAiFailures(url.searchParams.get("playerId")));
       return;
     }
 

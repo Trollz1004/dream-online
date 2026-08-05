@@ -16,15 +16,22 @@ Classified founder-only material remains outside repo in the OneDrive do-not-com
 2. `TASKS.md`
 3. `memory/glossary.md`
 4. `docs/gdd/00-vision.md`
-5. `docs/gdd/01-vertical-slice.md`
-6. `docs/gdd/02-action-combat.md`
-7. `docs/gdd/03-life-skills-economy.md`
-8. `docs/gdd/04-pvp-flagging-durability.md`
-9. `docs/tech/prototype-architecture.md`
-10. `docs/tech/live-ai-runtime-architecture.md`
-11. `docs/tech/c0d3x-world-recovery.md`
-12. `docs/testing/test-plan.md`
-13. `docs/testing/live-ai-load-test-plan.md`
+5. `docs/gdd/00a-first-playable-promise.md`
+6. `docs/gdd/01-vertical-slice.md`
+7. `docs/gdd/01a-first-15-minute-journey.md`
+8. `docs/gdd/02-action-combat.md`
+9. `docs/gdd/03-life-skills-economy.md`
+10. `docs/gdd/04-pvp-flagging-durability.md`
+11. `docs/tech/prototype-architecture.md`
+12. `docs/tech/live-ai-runtime-architecture.md`
+13. `docs/tech/ai-failure-behavior.md`
+14. `docs/tech/local-prototype-ports.md`
+15. `docs/tech/local-command-reference.md`
+16. `docs/tech/c0d3x-world-recovery.md`
+17. `docs/planning/first-playable-risk-register.md`
+18. `docs/testing/test-plan.md`
+19. `docs/testing/first-playable-acceptance-checklist.md`
+20. `docs/testing/live-ai-load-test-plan.md`
 
 ## Current Build Strategy
 
@@ -53,6 +60,12 @@ As of the current state note, no game server, game loop, or netcode exists yet. 
 
 - `docs/brand/BRAND.md`: brand voice, clean language, visual direction, and original placeholder logo rules.
 - `assets/brand/dream-online-logo.svg`: original placeholder logo mark for the private repo.
+- `docs/gdd/00a-first-playable-promise.md`: smallest P0 proof for movement, one enemy, one node, one guide NPC, one event, and persistence.
+- `docs/testing/first-playable-acceptance-checklist.md`: pass/fail gate for movement, one enemy, one gathering node, one NPC guide, one world event, and persistence.
+- `docs/tech/local-prototype-ports.md`: local port ownership and collision rules for DreamOps Bridge, Live NPC Lab, and reserved future services.
+- `docs/tech/local-command-reference.md`: safe start, health-check, test, port-inspection, and stop commands for DreamOps Bridge and Live NPC Lab.
+- `docs/tech/ai-failure-behavior.md`: P0 degraded-mode rules for no response, slow response, unsafe output, rate limits, and provider outage.
+- `docs/planning/first-playable-risk-register.md`: P0 blocker register for engine, C++ toolchain, art assets, AI cost, and network scale.
 - `CONTRIBUTING.md`: contribution rules, public-copy boundaries, commit style, and ownership.
 - `SECURITY.md`: secret handling and sensitive-system reporting.
 - `ops/software-install-plan.md`: engine/toolchain install order and current local-tool strategy.

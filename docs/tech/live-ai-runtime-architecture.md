@@ -76,6 +76,11 @@ Conservative launch budget:
 - Direct chat bursts allowed, but queued/throttled per player.
 - Batch summaries every 10-15 minutes or at logout.
 - Local fallback always available when cloud is rate-limited.
+- Prototype runtime guard: `DREAM_AI_MAX_CALLS_PER_PLAYER_PER_HOUR` defaults to
+  `20`; any player above the cap receives local fallback before a provider
+  callback is invoked.
+- Prototype route fields also carry `maxTokens`, `timeoutMs`, and
+  `fallbackProvider` so every cloud call has an explicit budget shape.
 
 Rough concurrency target at 180 RPM:
 

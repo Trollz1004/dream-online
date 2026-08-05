@@ -6,7 +6,15 @@
   "description": "Local live-NPC prototype lab for Dream ONLINE.",
   "scripts": {
     "start": "node src/server.js",
-    "test": "node test/smoke.mjs",
+    "test": "node test/smoke.mjs && node test/first-playable-flow.mjs && node test/npc-profiles.mjs && node test/ai-failure-behavior.mjs && node test/cost-guards.mjs && node test/memory-scopes.mjs && node test/memory-compaction.mjs && node test/lore-retrieval.mjs",
+    "test:smoke": "node test/smoke.mjs",
+    "test:first-playable": "node test/first-playable-flow.mjs",
+    "test:npc-profiles": "node test/npc-profiles.mjs",
+    "test:ai-failures": "node test/ai-failure-behavior.mjs",
+    "test:cost-guards": "node test/cost-guards.mjs",
+    "test:memory-scopes": "node test/memory-scopes.mjs",
+    "test:memory-compaction": "node test/memory-compaction.mjs",
+    "test:lore-retrieval": "node test/lore-retrieval.mjs",
     "test:contracts": "node test/contracts.mjs"
   },
   "engines": {

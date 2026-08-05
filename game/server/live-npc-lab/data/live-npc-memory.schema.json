@@ -257,7 +257,14 @@
     },
     "providerRoute": {
       "type": "object",
-      "required": ["provider", "cloudEnabled", "reason", "maxTokens", "timeoutMs"],
+      "required": [
+        "provider",
+        "cloudEnabled",
+        "reason",
+        "maxTokens",
+        "timeoutMs",
+        "maxCallsPerPlayerPerHour"
+      ],
       "properties": {
         "provider": {
           "type": "string",
@@ -279,6 +286,11 @@
           "type": "integer",
           "minimum": 100,
           "maximum": 120000
+        },
+        "maxCallsPerPlayerPerHour": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
         },
         "fallbackProvider": {
           "type": "string",

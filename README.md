@@ -50,9 +50,11 @@ http://127.0.0.1:9119/health
 - `SECURITY.md`
 - `docs/brand/BRAND.md`
 - `docs/gdd/00-vision.md`
+- `docs/gdd/00a-first-playable-promise.md`
 - `docs/gdd/05-day-night-economy-market.md`
 - `docs/gdd/06-pvp-level-scaling.md`
 - `docs/gdd/07-character-creation.md`
+- `docs/testing/first-playable-acceptance-checklist.md`
 - `ops/dream-task-bank-100.md`
 - `ops/software-install-plan.md`
 

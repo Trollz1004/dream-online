@@ -107,3 +107,26 @@ first-gate
 
 The world-zone endpoint serves local seed files only and is intended for first-playable
 prototyping.
+
+## Local NPC profiles
+
+Implemented local API:
+
+```text
+GET /npc/profiles
+GET /npc/profiles/:id
+```
+
+Current profile ids:
+
+```text
+sup-guide
+camp-guard
+market-runner
+field-gatherer
+c0d3x-rider
+```
+
+The profile registry defines first-playable NPC purpose, memory scopes, and allowed
+proposal types. NPC profiles may suggest approved game actions, but they do not execute
+world changes directly.

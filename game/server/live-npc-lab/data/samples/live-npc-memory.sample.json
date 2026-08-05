@@ -55,6 +55,7 @@
     "reason": "Local first playable uses mock provider only.",
     "maxTokens": 500,
     "timeoutMs": 3000,
+    "maxCallsPerPlayerPerHour": 20,
     "fallbackProvider": "mock"
   }
 }
