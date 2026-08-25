@@ -19,7 +19,10 @@
 - **C0D3X** — the rollback rider, Codex-class NPC riding MOLLMA (llama +
   reverse proxy). Restores last all-green-checks world state after disasters.
   Represents world-state snapshot + verified rollback requirement.
-- **NIGHTMARE Sup@** — CLASSIFIED, founder-eyes-only end-game world boss concept.
+- **End-game material** — founder-only, held in the private vault outside this
+  repo. Its existence is public; its content, names, and mechanics are not, and
+  must never be described, summarized, or hinted at in repo files, commit
+  messages, PR bodies, or issue text.
 
 ## Live-NPC tiers (cost-tier routing)
 - **T0 (Ambient)** — Ollama local, canned-persona + small context.
