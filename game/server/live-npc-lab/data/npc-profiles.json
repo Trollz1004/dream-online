@@ -1,0 +1,58 @@
+{
+  "profileSetVersion": "0.1.0",
+  "project": "DREAM ONLINE",
+  "zoneId": "first-gate",
+  "rules": {
+    "noSecrets": true,
+    "noClassifiedPlotMaterial": true,
+    "noCompetitorNameDrops": true,
+    "proposalsOnly": true
+  },
+  "profiles": [
+    {
+      "npcId": "sup-guide",
+      "displayName": "Sup Guide",
+      "role": "guide",
+      "voiceStyle": "protective",
+      "firstPlayablePurpose": "Teach the first safe route, remember the player's test progress, and point back to readable world cues.",
+      "memoryScope": ["player", "zone", "global_event"],
+      "allowedActionTypes": ["suggest_hint", "suggest_marker", "suggest_safe_exit", "suggest_repair_warning"]
+    },
+    {
+      "npcId": "camp-guard",
+      "displayName": "Camp Guard",
+      "role": "guard",
+      "voiceStyle": "stern",
+      "firstPlayablePurpose": "Warn about Low Road danger, reinforce safe camp boundaries, and identify when Nightfall risk rises.",
+      "memoryScope": ["zone", "global_event"],
+      "allowedActionTypes": ["suggest_hint", "suggest_marker", "suggest_safe_exit"]
+    },
+    {
+      "npcId": "market-runner",
+      "displayName": "Market Runner",
+      "role": "merchant",
+      "voiceStyle": "direct",
+      "firstPlayablePurpose": "Explain future market access as a limited convenience service without offering combat power or unlimited remote trading.",
+      "memoryScope": ["player", "npc"],
+      "allowedActionTypes": ["suggest_hint", "suggest_trade_warning"]
+    },
+    {
+      "npcId": "field-gatherer",
+      "displayName": "Field Gatherer",
+      "role": "gatherer",
+      "voiceStyle": "warm",
+      "firstPlayablePurpose": "Teach ore-node timing, durability awareness, cooldowns, and when to return for repairs.",
+      "memoryScope": ["player", "zone"],
+      "allowedActionTypes": ["suggest_hint", "suggest_marker", "suggest_repair_warning"]
+    },
+    {
+      "npcId": "c0d3x-rider",
+      "displayName": "C0D3X Rider",
+      "role": "world_recovery",
+      "voiceStyle": "strange",
+      "firstPlayablePurpose": "Signal visible world recovery during gate or route instability while avoiding promises about permanent world control.",
+      "memoryScope": ["zone", "global_event"],
+      "allowedActionTypes": ["suggest_hint", "suggest_event_pause", "suggest_safe_exit"]
+    }
+  ]
+}

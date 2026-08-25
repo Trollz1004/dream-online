@@ -35,8 +35,16 @@ logs/
 game/server/live-npc-lab/data/*.jsonl
 
 # Story/twist spoiler content — OneDrive only, never repo, even private
-game/server/live-npc-lab/data/npc-profiles.json
 game/server/live-npc-lab/data/lore-snippets.json
+
+# npc-profiles.json is NOT ignored, deliberately. It is a test input:
+# test/npc-profiles.mjs reads data/npc-profiles.json directly and CI fails with
+# ENOENT without it. It also holds no spoiler material — the file self-declares
+# noClassifiedPlotMaterial, and every id in it (sup-guide, camp-guard,
+# c0d3x-rider, ...) is already committed inside test/npc-profiles.mjs, which
+# hard-asserts them. Ignoring it protected nothing and broke the build.
+# lore-snippets.json stays ignored: test/lore-retrieval.mjs writes its own
+# temp fixture and never reads the real file.
 
 # Backups, exports, and cold copies
 ops/backups/
