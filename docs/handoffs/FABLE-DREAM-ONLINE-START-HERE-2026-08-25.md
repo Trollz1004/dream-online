@@ -58,11 +58,23 @@ Never read, copy, summarize, or commit material from the founder-only OneDrive v
 
 ### Local root
 
-The latest repository history says the active local root is:
+Joshua confirmed the project drive is connected. A read-only check on 2026-08-25 verified:
+
+- mounted drive: `D:`;
+- current volume label: `DREAM ONLINE MMORPG`;
+- volume health: Healthy;
+- checkout: `D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG`;
+- remote: `https://github.com/Trollz1004/dream-online.git`;
+- local branch: `main`, tracking `origin/main`;
+- checked-out commit: `74e7036` (`fix(ci): commit npc-profiles.json -- it is a test input, not spoiler content`).
+
+The working tree was not clean during that check. It contained untracked `DreamOnline/` and `game/server/live-npc-lab/package-lock.json`. These may belong to current or prior agent work. Inspect and attribute them before changing, staging, moving, or deleting either item.
+
+The verified active root is:
 
 `D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG`
 
-Runtime tooling should prefer `DREAM_ROOT` and resolve the portable drive by its verified label rather than guessing a drive letter. Do not relocate, consolidate, or delete any local copy solely from this briefing. First inspect the actual Sabretooth filesystem, remotes, current branch, uncommitted changes, and drive identity.
+Because the physical drive has been swapped between systems and may mount under a different letter or label later, the path above is evidence for this date, not a permanent identity. Runtime tooling should prefer `DREAM_ROOT`. Discovery should verify both repository contents and the exact `origin` remote; a label alone is not sufficient identity. Do not relocate, consolidate, or delete any local copy solely from this briefing. First inspect the actual Sabretooth filesystem, remotes, current branch, uncommitted changes, and drive identity.
 
 This project root is separate from the ANTIGRAVITY engineering repository. Any older document claiming a different topology is evidence of historical drift, not permission to move files.
 
