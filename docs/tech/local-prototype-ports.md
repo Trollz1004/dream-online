@@ -9,7 +9,7 @@ colliding while the first playable is still running on local tools.
 
 | Service | Default Host | Default Port | Env Overrides | Current Role |
 | --- | --- | --- | --- | --- |
-| DreamOps Bridge | `127.0.0.1` | `9119` | `DREAMOPS_HOST`, `DREAMOPS_PORT` | Local world operations, event inspection, rollback dry-run planning, hotfix proposals |
+| DreamOps Bridge | `127.0.0.1` | `9133` | `DREAMOPS_HOST`, `DREAMOPS_PORT` | Local world operations, event inspection, rollback dry-run planning, hotfix proposals |
 | Live NPC Lab | `127.0.0.1` | `9127` | `DREAM_LIVE_NPC_HOST`, `DREAM_LIVE_NPC_PORT` | Local NPC dialogue, event logging, memory reads, schema and seed inspection |
 | Future game server | `127.0.0.1` | `9130` reserved | `DREAM_GAME_HOST`, `DREAM_GAME_PORT` planned | First playable game loop once implementation begins |
 | Future web client | `127.0.0.1` | `9131` reserved | `DREAM_WEB_HOST`, `DREAM_WEB_PORT` planned | Local browser-facing prototype, if needed before Unreal work |
@@ -33,7 +33,7 @@ Before starting both current services, check whether the default ports are alrea
 owned by another process:
 
 ```powershell
-Get-NetTCPConnection -LocalPort 9119,9127 -ErrorAction SilentlyContinue |
+Get-NetTCPConnection -LocalPort 9133,9127 -ErrorAction SilentlyContinue |
   Select-Object LocalAddress,LocalPort,State,OwningProcess
 ```
 
@@ -59,7 +59,7 @@ unless the default ownership table changes.
 Current default health checks:
 
 ```text
-http://127.0.0.1:9119/health
+http://127.0.0.1:9133/health
 http://127.0.0.1:9127/health
 ```
 

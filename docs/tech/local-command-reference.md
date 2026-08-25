@@ -43,13 +43,13 @@ npm start
 Health check:
 
 ```powershell
-Invoke-WebRequest -Uri "http://127.0.0.1:9119/health" -UseBasicParsing
+Invoke-WebRequest -Uri "http://127.0.0.1:9133/health" -UseBasicParsing
 ```
 
 ## Check Running Services
 
 ```powershell
-Get-NetTCPConnection -LocalPort 9119,9127 -ErrorAction SilentlyContinue |
+Get-NetTCPConnection -LocalPort 9133,9127 -ErrorAction SilentlyContinue |
   Select-Object LocalAddress,LocalPort,State,OwningProcess
 ```
 

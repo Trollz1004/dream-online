@@ -20,13 +20,13 @@ Purpose: compact handoff for the current local prototype state. This file must s
 | Service | Path | Start Command | Health URL |
 | --- | --- | --- | --- |
 | Live NPC Lab | `game/server/live-npc-lab` | `npm start` | `http://127.0.0.1:9127/health` |
-| DreamOps Bridge | `game/server/dreamops-bridge` | `npm start` | `http://127.0.0.1:9119/health` |
+| DreamOps Bridge | `game/server/dreamops-bridge` | `npm start` | `http://127.0.0.1:9133/health` |
 
 Service notes:
 
 - Live NPC Lab defaults to local/mock behavior and has no cloud provider implementation enabled by default.
 - DreamOps Bridge is local-only and supports inspection plus safe proposal endpoints. It does not execute destructive rollback actions.
-- If both services are run at once, keep Live NPC Lab on port `9127` and DreamOps Bridge on port `9119`.
+- If both services are run at once, keep Live NPC Lab on port `9127` and DreamOps Bridge on port `9133`.
 - Future local game, web, and agent bridge ports are reserved in `docs/tech/local-prototype-ports.md` to prevent collisions.
 
 ## Current First-Playable Scope
