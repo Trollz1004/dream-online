@@ -28,7 +28,7 @@ Track B: Unreal vertical slice after engine install/decision.
 
 ## Live-NPC Backend Target
 
-Agent Hub on Sabretooth port `3130` is the intended webhook backend once the game server exists. Game server triggers call Agent Hub, Agent Hub routes to the correct NPC tier, and memory write-back persists the result.
+Paperclip on Sabretooth port `3100` is the intended webhook backend once the game server exists. Game server triggers call Paperclip, Paperclip routes to the correct NPC tier, and memory write-back persists the result. There is no Agent Hub on :3130.
 
 Initial implementation must stub this flow before spending on high-cost models.
 

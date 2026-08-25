@@ -1,35 +1,24 @@
 name: claude
-version: 0.2
+version: 0.3
 source: local-cli
-description: "Free Claude Code (FCC) — Paperclip `claude_local` adapter backed by fcc-server proxy (:8082). No Anthropic API key. Routes through free providers."
+description: "Claude Code — Paperclip `claude_local` adapter running the real signed-in CLI. No proxy, no interception, no API key held in this repo."
 owner: sabretooth
 node_id: sabretooth
-cli_command: "fcc-claude"
-health_check: "curl -s http://127.0.0.1:8082/health -o NUL && fcc-claude --version && echo fcc-claude:healthy || echo fcc-claude:unavailable"
+cli_command: "claude"
+health_check: "claude --version && echo claude:healthy || echo claude:unavailable"
 
 # --- PAPERCLIP OS ADAPTER TYPE ---
-# Paperclip runs Claude Code natively via `claude_local`. FCC becomes the backend
-# purely through environment variables — Paperclip thinks it talks to real Claude
-# Code, but the proxy intercepts and routes to free providers.
+# Paperclip runs Claude Code natively via `claude_local`. It talks to the real
+# CLI using Joshua's own signed-in session. Nothing rewrites ANTHROPIC_BASE_URL
+# and nothing sits in front of it.
 paperclip_adapter_type: "claude_local"
 paperclip_adapter_config:
   cwd: "D:\\CLAUDE's-N-Joshua's-Dream-Online-MMORPG"
-  model: "claude-sonnet-4-5-20250929"
+  model: "claude-sonnet-5"
   env:
-    ANTHROPIC_BASE_URL: "http://127.0.0.1:8082"
-    ANTHROPIC_AUTH_TOKEN: "freecc"
-    CLAUDE_CONFIG_DIR: "C:\\Users\\joshl\\.claude-fcc"
     CLAUDE_CODE_MAX_OUTPUT_TOKENS: "8192"
-
-# Legacy env block (kept for backward compat with run-with-env-payload.ps1):
-paperclip_native_env:
-  ANTHROPIC_BASE_URL: "http://127.0.0.1:8082"
-  ANTHROPIC_AUTH_TOKEN: "freecc"
-  CLAUDE_CONFIG_DIR: "C:/Users/joshl/.claude-fcc"
-  CLAUDE_CODE_MAX_OUTPUT_TOKENS: "8192"
 
 paperclip_alias: "claude"
 opencode_provider: "openai"
 opencode_model: "gpt-5.5"
-notes: "FCC proxy on localhost:8082. Requires fcc-server running. Uses `claude_local` Paperclip adapter type with FCC env vars. Model field uses claude-sonnet-* (FCC prefix detection maps to MODEL_SONNET in ~/.fcc/.env). Dedicated 'openai' provider for opencode routing. Never share 'codex' provider."
-
+notes: "Uses the `claude_local` Paperclip adapter type against the real CLI and its default config dir (~/.claude). Do not set ANTHROPIC_BASE_URL or ANTHROPIC_AUTH_TOKEN here — a redirected base URL is how the FCC lane worked, and FCC is permanently banned. Dedicated 'openai' provider for opencode routing. Never share the 'codex' provider."

@@ -37,6 +37,6 @@ The evolving AI world needs recovery and observability before live AI can change
 1. Add lightweight auth for local operators.
 2. Add real checkpoint generation.
 3. Add MCP tool wrapper over these endpoints.
-4. Add Agent Hub integration.
+4. Add Paperclip (:3100) integration.
 5. Add game server event emission.
 6. Add C0D3X in-world announcement queue.

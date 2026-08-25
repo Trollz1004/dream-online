@@ -35,7 +35,7 @@ Free alternative: Use `x-ai/grok-3:free` via OpenRouter (no sign-in needed).
 
 - Adversarial / red-team review (grok-adversarial agent preset)
 - General coding and reasoning
-- Second-opinion review (independent from Claude/FCC)
+- Second-opinion review (independent from Claude)
 
 ## Files
 

@@ -1,7 +1,7 @@
 name: hermes
 version: 0.3
 source: local-cli
-description: "Hermes Agent CLI — CEO/operator lane. Full model ladder: OpenAI, Ollama Cloud/Local, OpenRouter, Grok, xAI, Nous, Claude (FCC), and free models."
+description: "Hermes Agent CLI — CEO/operator lane. Full model ladder: OpenAI, Ollama Cloud/Local, OpenRouter, Grok, xAI, Nous, and free models."
 owner: sabretooth
 node_id: sabretooth
 cli_command: "hermes"
@@ -47,9 +47,7 @@ models:
   nous:
     - Hermes-4-405B
     - Hermes-4-70B
-  fcc:
-    - fcc-claude (Claude via FCC proxy 127.0.0.1:8082)
   free:
     - openrouter/openrouter/free
     - openrouter/google/gemini-2.5-flash
-notes: "Dashboard on :9119. Router on :11435. Full platform ladder: OpenAI, Ollama Cloud, Ollama Local, OpenRouter, xAI/Grok, Nous, FCC-Claude. Agents specify provider/model via hermes-router."
+notes: "Dashboard on :9119. Router on :11435. Full platform ladder: OpenAI, Ollama Cloud, Ollama Local, OpenRouter, xAI/Grok, Nous. Agents specify provider/model via hermes-router."

@@ -106,7 +106,7 @@ Private-first until Joshua intentionally makes it public.
 
 ## Ground truth
 - PaperclipAI HQ: `http://127.0.0.1:3110` is the human-facing board and CEO cockpit.
-- Agent Hub: `http://127.0.0.1:3130` is the dispatcher/backend bridge.
+- Paperclip is Mission Control at `http://127.0.0.1:3100`. Verify identity with `GET /api/openapi.json` -> `.info.title` == `Paperclip API`. There is no Agent Hub on :3130.
 - Sole authority: Joshua Coleman (joshlcoleman@gmail.com).
 - Full ANTIGRAVITY doctrine: C:\antigravity\CLAUDE.md (separate repo, not this drive).
 

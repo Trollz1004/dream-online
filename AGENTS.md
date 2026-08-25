@@ -49,7 +49,7 @@ All adapters (pi, hermes, opencode, grok) share full platform ladder:
 - **xAI/Grok**: grok-3, grok-3-mini, grok-3-reasoning
 - **Nous**: Hermes-4-405B, Hermes-4-70B
 - **Hermes Router**: hermes, hermes-deep, hermes-fast, code, fast, cfo
-- **FCC-Claude**: fcc-claude (via proxy 127.0.0.1:8082)
+- **Claude**: `claude` (real signed-in CLI, no proxy — FCC is banned)
 
 **Recommended** (in `opencode/opencode.json`):
 - Free: `openrouter/meta-llama/llama-3.3-70b-instruct:free`, `openrouter/google/gemini-2.5-flash`
