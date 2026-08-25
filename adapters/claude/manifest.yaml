@@ -13,7 +13,7 @@ health_check: "curl -s http://127.0.0.1:8082/health -o NUL && fcc-claude --versi
 # Code, but the proxy intercepts and routes to free providers.
 paperclip_adapter_type: "claude_local"
 paperclip_adapter_config:
-  cwd: "E:\\CLAUDE's-N-Joshua's-Dream-Online-MMORPG"
+  cwd: "D:\\CLAUDE's-N-Joshua's-Dream-Online-MMORPG"
   model: "claude-sonnet-4-5-20250929"
   env:
     ANTHROPIC_BASE_URL: "http://127.0.0.1:8082"

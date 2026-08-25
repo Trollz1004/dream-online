@@ -2,7 +2,7 @@
 
 ## Rule
 
-No agent edits `C:\antigravity` for this game lane. Dream ONLINE work lives in `E:\DreamOnline` unless Joshua explicitly changes it.
+No agent edits `C:\antigravity` for this game lane. Dream ONLINE work lives in `D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG` unless Joshua explicitly changes it.
 
 ## Core Agents
 

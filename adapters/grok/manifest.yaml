@@ -8,7 +8,7 @@ cli_command: "grok"
 health_check: "grok --version"
 paperclip_adapter_type: "opencode_local"
 paperclip_adapter_config:
-  cwd: "E:\\CLAUDE's-N-Joshua's-Dream-Online-MMORPG"
+  cwd: "D:\\CLAUDE's-N-Joshua's-Dream-Online-MMORPG"
   model: "xai/grok-3"
 paperclip_alias: "grok"
 opencode_provider: "xai"

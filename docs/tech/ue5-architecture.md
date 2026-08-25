@@ -57,9 +57,9 @@ Prototype target:
 When Unreal is installed:
 
 ```text
-E:\DreamOnline\DreamOnlineUE\DreamOnline.uproject
-E:\DreamOnline\DreamOnlineUE\Source\DreamOnline\
-E:\DreamOnline\DreamOnlineUE\Content\DreamOnline\
+D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\unreal\DreamOnline.uproject
+D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\unreal\Source\DreamOnline\
+D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\unreal\Content\DreamOnline\
 ```
 
 Modules:

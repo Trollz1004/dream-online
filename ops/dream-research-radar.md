@@ -2,7 +2,7 @@
 
 Status: active recurring Codex app automation
 Cadence: every 6 hours
-Workspace: `E:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG`
+Workspace: `D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG`
 Automation id: `dream-online-research-radar`
 
 ## Purpose

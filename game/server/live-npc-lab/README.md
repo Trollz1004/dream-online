@@ -14,7 +14,7 @@ This lab is intentionally small:
 ## Run
 
 ```powershell
-cd "E:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\server\live-npc-lab"
+cd "D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\server\live-npc-lab"
 npm start
 ```
 

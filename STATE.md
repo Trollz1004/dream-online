@@ -6,8 +6,8 @@ Purpose: compact handoff for the current local prototype state. This file must s
 
 ## Root
 
-- Repo root: `E:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG`
-- Expected env var: `DREAM_ROOT=E:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG`
+- Repo root: `D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG`
+- Expected env var: `DREAM_ROOT=D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG`
 - Task queue: `ops/dream-task-bank-100.md`
 - Primary project rules: `CLAUDE.md`, `AGENTS.md`
 - Design index: `docs/DESIGN-INDEX.md`

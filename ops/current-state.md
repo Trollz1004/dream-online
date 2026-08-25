@@ -13,7 +13,7 @@ https://github.com/Trollz1004/dream-online
 Local root:
 
 ```text
-E:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG
+D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG
 ```
 
 Current lane:

@@ -2,7 +2,7 @@
 
 Implementation path:
 
-`E:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\server\dreamops-bridge`
+`D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\server\dreamops-bridge`
 
 ## What Exists Now
 

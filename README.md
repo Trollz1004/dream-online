@@ -21,7 +21,7 @@ This repository is the clean project home for Dream design, prototype code, agen
 ### Live NPC Lab
 
 ```powershell
-cd "E:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\server\live-npc-lab"
+cd "D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\server\live-npc-lab"
 npm start
 ```
 
@@ -34,7 +34,7 @@ http://127.0.0.1:9127/health
 ### DreamOps Bridge
 
 ```powershell
-cd "E:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\server\dreamops-bridge"
+cd "D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\server\dreamops-bridge"
 npm start
 ```
 

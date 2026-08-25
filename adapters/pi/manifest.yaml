@@ -8,7 +8,7 @@ cli_command: "pi"
 health_check: "pi --version"
 paperclip_adapter_type: "pi_local"
 paperclip_adapter_config:
-  cwd: "E:\\CLAUDE's-N-Joshua's-Dream-Online-MMORPG"
+  cwd: "D:\\CLAUDE's-N-Joshua's-Dream-Online-MMORPG"
   model: "openai/gpt-5.5-pro"
 paperclip_alias: "pi"
 pi_provider: "openai-codex"

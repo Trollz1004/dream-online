@@ -4,7 +4,7 @@
 
 Detected:
 
-- `E:\` exists and is labeled `DREAM ONLINE MMORPG`.
+- `D:\` exists and is labeled `DREAM ONLINE MMORPG`.
 - Git installed.
 - Git LFS installed.
 - Python installed.
@@ -35,13 +35,13 @@ Missing from standard locations:
 
 ## Install Notes
 
-Unreal and Visual Studio installs are large and can take a long time. Install to `E:\` where possible to preserve `C:\` space.
+Unreal and Visual Studio installs are large and can take a long time. Install to `D:\` where possible to preserve `C:\` space.
 
 Recommended install target:
 
 ```text
-E:\EpicGames\UE_5.5
-E:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\unreal
+D:\EpicGames\UE_5.5
+D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\unreal
 ```
 
 ## First Verification Commands After Install

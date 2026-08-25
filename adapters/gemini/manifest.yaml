@@ -8,7 +8,7 @@ cli_command: "gemini"
 health_check: "opencode --version && echo 'gemini: google provider via opencode.json' || echo 'gemini: opencode not found'"
 paperclip_adapter_type: "opencode_local"
 paperclip_adapter_config:
-  cwd: "E:\\CLAUDE's-N-Joshua's-Dream-Online-MMORPG"
+  cwd: "D:\\CLAUDE's-N-Joshua's-Dream-Online-MMORPG"
   model: "gemini-2.5-pro"
 paperclip_alias: "gemini"
 opencode_provider: "google"

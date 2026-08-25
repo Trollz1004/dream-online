@@ -31,7 +31,7 @@ that folder when the repo adapter manifests change.
 Use the path-aware sync helper, not a blind copy:
 
 ```powershell
-E:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\adapters\sync-from-antigravity.ps1
+D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\adapters\sync-from-antigravity.ps1
 ```
 
 It copies canonical adapter files and rewrites manifest paths from

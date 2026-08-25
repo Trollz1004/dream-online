@@ -2,7 +2,7 @@
 
 This folder contains implementation-facing companion docs for the first playable slice.
 
-Canonical build root: `E:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG`
+Canonical build root: `D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG`
 
 Primary design source of truth remains:
 

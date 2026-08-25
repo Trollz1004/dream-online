@@ -9,13 +9,13 @@ classified plot notes, and payment data.
 ## Requirements
 
 - Node.js 20 or newer.
-- `DREAM_ROOT` points to `E:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG`.
+- `DREAM_ROOT` points to `D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG`.
 - Default ports are kept in `docs/tech/local-prototype-ports.md`.
 
 ## Start Live NPC Lab
 
 ```powershell
-cd "E:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\server\live-npc-lab"
+cd "D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\server\live-npc-lab"
 npm start
 ```
 
@@ -28,7 +28,7 @@ Invoke-WebRequest -Uri "http://127.0.0.1:9127/health" -UseBasicParsing
 Local tests:
 
 ```powershell
-cd "E:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\server\live-npc-lab"
+cd "D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\server\live-npc-lab"
 npm test
 npm run test:contracts
 ```
@@ -36,7 +36,7 @@ npm run test:contracts
 ## Start DreamOps Bridge
 
 ```powershell
-cd "E:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\server\dreamops-bridge"
+cd "D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\server\dreamops-bridge"
 npm start
 ```
 
@@ -84,7 +84,7 @@ DreamOps Bridge:
 
 ```powershell
 $env:DREAMOPS_PORT="9219"
-cd "E:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\server\dreamops-bridge"
+cd "D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\server\dreamops-bridge"
 npm start
 ```
 
@@ -92,7 +92,7 @@ Live NPC Lab:
 
 ```powershell
 $env:DREAM_LIVE_NPC_PORT="9227"
-cd "E:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\server\live-npc-lab"
+cd "D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\server\live-npc-lab"
 npm start
 ```
 

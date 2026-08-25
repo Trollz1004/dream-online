@@ -2,7 +2,7 @@
 
 ## Canonical Root
 
-`E:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG`
+`D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG`
 
 ## Rule
 
