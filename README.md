@@ -16,6 +16,37 @@ This repository is the clean project home for Dream design, prototype code, agen
 - Marketplace, Storage Runner, and Market Runner systems.
 - Character creation vision.
 
+## Founder governance lock — Drift Cart Doctrine
+
+Joshua defines DREAM's vision and founder-locked canon, but deliberately does **not** operate production code, player moderation, anti-cheat verdicts, live economy mutations, or direct database fixes.
+
+```text
+FOUNDER RUNTIME PERMISSIONS
+
+DRIFT CART                         FULL ADMIN
+HONK                               UNLIMITED
+DRIFT THROUGH WORLD EVENTS         ALLOWED WITHIN GAME RULES
+DESIGN / CANON                     FOUNDER AUTHORITY
+
+PRODUCTION CODE                    NO DIRECT WRITES
+ANTI-CHEAT VERDICTS                NO
+BAN / SUSPEND PLAYERS              NO
+MODERATOR CONSOLE                  NO
+ECONOMY LEDGER MUTATIONS           NO
+NEEDs MINTING                      NO
+LIVE DATABASE QUICK FIXES          NO
+```
+
+There is **no founder moderation backdoor**. A report submitted by the founder enters the same evidence/review pipeline as an ordinary player report. Anti-cheat evidence and deterministic security systems establish violations; authorized moderation processes handle enforcement.
+
+Fable Ultra Code and Codex build/review production code. C0D3X/MOLLMA represents the verified rollback/recovery doctrine. Hermes/runtime NPCs do not receive production administrative authority.
+
+The founder retains authority over what DREAM becomes while deliberately separating that authority from unilateral control over individual players, production state, and the game economy.
+
+If founder access attempts to cross this boundary, the canonical response is:
+
+> **ACCESS DENIED: PLEASE RETURN TO DRIFT CART.**
+
 ## Local prototypes
 
 ### Live NPC Lab
@@ -55,6 +86,7 @@ http://127.0.0.1:9133/health
 - `docs/gdd/06-pvp-level-scaling.md`
 - `docs/gdd/07-character-creation.md`
 - `docs/testing/first-playable-acceptance-checklist.md`
+- `docs/doctrine/DREAM-FABLE-CODEX-MASTER-DISPATCH.md`
 - `ops/dream-task-bank-100.md`
 - `ops/software-install-plan.md`
 
@@ -66,6 +98,7 @@ http://127.0.0.1:9133/health
 - No `sandbox` jargon in player-facing language.
 - No charity, split, private accounting, or vendor/TOS language in game-facing copy.
 - Monetization is convenience/style/access only, not paid combat power.
+- Founder authority over design/canon does not grant production, moderation, anti-cheat, economy-ledger, or database authority.
 
 ## Brand
 
@@ -75,7 +108,7 @@ Draft original logo:
 assets/brand/dream-online-logo.svg
 ```
 
-The logo is a placeholder original mark and can be replaced by commissioned art or Gemini-generated art later.
+The logo is a placeholder original mark and can be replaced by commissioned art or generated original art later.
 
 ## Repository status
 
@@ -109,4 +142,3 @@ Private-first until Joshua intentionally makes it public.
 - Paperclip is Mission Control at `http://127.0.0.1:3100`. Verify identity with `GET /api/openapi.json` -> `.info.title` == `Paperclip API`. There is no Agent Hub on :3130.
 - Sole authority: Joshua Coleman (joshlcoleman@gmail.com).
 - Full ANTIGRAVITY doctrine: C:\antigravity\CLAUDE.md (separate repo, not this drive).
-
