@@ -60,7 +60,7 @@ All adapters (pi, hermes, opencode, grok) share full platform ladder:
 ## Dev Commands
 - DREAM_ROOT env var must resolve to repo root
 - No lint/typecheck commands yet — design phase
-- Feature branch workflow: branch → PR → merge → delete (Trollz1004/ANTIGRAVITY repo)
+- `main` is the only branch on this repo (Trollz1004/dream-online); only the judge lane (Codex/Claude) pushes, merges, or deletes
 
 ## NPC Cost Tiers (for any AI/NPC work)
 - T0: Ollama local (ambient NPCs)
