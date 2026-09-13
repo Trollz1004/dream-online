@@ -77,3 +77,10 @@ support/anythingllm/
 # Keep Dream repo independent from local Paperclip and ANTIGRAVITY sync state
 paperclip-tro/
 adapters/sync-from-antigravity.ps1
+
+# runtime state written by DreamOps Bridge and Live NPC Lab when they run locally
+game/server/checkpoints/
+game/server/economy_snapshot.json
+game/server/events.json
+game/server/npc_memory_queue.json
+game/server/world_state.json
