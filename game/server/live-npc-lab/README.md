@@ -164,6 +164,26 @@ not call cloud providers or read private material.
 }
 ```
 
+## Hermes webhook provider
+
+The `hermes` provider is disabled by default. It needs all three environment values
+before the provider registry enables it:
+
+```powershell
+$env:DREAM_ENABLE_CLOUD_AI="1"
+$env:DREAM_AI_PROVIDER="hermes"
+$env:NPC_HERMES_WEBHOOK_URL="http://127.0.0.1:9134/hermes"
+```
+
+The webhook receives only the bounded dialogue payload. A local stub can be checked
+without any cloud call:
+
+```text
+curl -X POST http://127.0.0.1:9134/hermes -H "content-type: application/json" -d "{\"npcId\":\"sup-guide\",\"playerId\":\"founder\",\"zone\":\"first-gate\",\"recentMemory\":[],\"prompt\":\"Guide the next visible step.\"}"
+```
+
+Responses are limited to 400 characters and only allowed proposed actions are retained.
+
 ## Cloud model gate
 
 Cloud calls stay disabled unless both values are set:
