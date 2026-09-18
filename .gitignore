@@ -78,6 +78,9 @@ support/anythingllm/
 paperclip-tro/
 adapters/sync-from-antigravity.ps1
 
+# Obsidian vault lives here on the Alienware clone; never tracked
+DREAM-ONLINE/
+
 # runtime state written by DreamOps Bridge and Live NPC Lab when they run locally
 game/server/checkpoints/
 game/server/economy_snapshot.json
