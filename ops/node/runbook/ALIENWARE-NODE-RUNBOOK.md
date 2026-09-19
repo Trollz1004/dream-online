@@ -42,7 +42,7 @@ Other scheduled tasks on the box that are not ours: three Hermes gateway tasks a
 - `drift jarvis` opens Mission Control on Sabretooth in the browser.
 - `drift help` lists these.
 
-The tracked copy is `ops/node/drift.cmd`. The installed copy is `C:\Users\joshi\.local\bin\drift.cmd`, and that folder is on the user PATH. The two are byte-identical; check with `Get-FileHash`. The file is plain ASCII with CRLF line endings.
+The tracked copy is `ops/node/drift.cmd`. The installed copy is `%USERPROFILE%\.local\bin\drift.cmd`, and that folder is on the user PATH. The two are byte-identical; check with `Get-FileHash`. The file is plain ASCII with CRLF line endings.
 
 `drift` counts a supervisor as running when any PowerShell process holds `dream-stack.ps1` without `-Once`, `-Status` or `-Install`. When none is, it starts the "DREAM Stack" task, or the script in a minimized window if the task is missing. It never starts a second supervisor.
 
@@ -81,7 +81,7 @@ Tests: `Invoke-Pester -Path ops/node/alienware-health.Tests.ps1`. The box has Pe
 
 Only Claude, reached through `drift` on this node, edits these: everything under `ops/node/` (both copies of `drift.cmd`, the health probe, both copies of the launch skill, this runbook), the stack script `C:\DREAM\hermes\scripts\dream-stack.ps1`, and every file in the drop box. Not Hermes, not a harness, not a subagent on its own initiative. Every edit gets a line in `ops/node/runbook/PROTECTED-CHANGELOG.md`: date, time, file, what changed, commit. `.github/CODEOWNERS` names the same paths. A change to one of these that Claude did not make is drift to report.
 
-The drop box on this box is `C:\Users\joshi\DO_NOT_COMMIT_TO_GITHUB!!!!\OneDrive\claude-to-claude\`. Briefs from Sabretooth call it `C:\Users\joshi\OneDrive\claude-to-claude`; on this box that path is an almost empty leftover.
+The drop box on this box is `%USERPROFILE%\DO_NOT_COMMIT_TO_GITHUB!!!!\OneDrive\claude-to-claude\`. Briefs from Sabretooth call it `%USERPROFILE%\OneDrive\claude-to-claude`; on this box that path is an almost empty leftover.
 
 ## 8. What is validated, and how
 
@@ -109,4 +109,4 @@ Not validated, and why:
 
 ## 10. Remote access
 
-Sabretooth's judge lane has key-only SSH into this box as `joshi` at `192.168.0.40`, with PowerShell as the remote shell. It reads; it does not do this node's protected work. Sabretooth also offers a read-only MCP endpoint at `http://192.168.0.8:9150/mcp` behind a bearer token that Joshua holds; it is not connected here yet.
+Sabretooth's judge lane has key-only SSH into this box as Joshua's Windows user at `192.168.0.40`, with PowerShell as the remote shell. It reads; it does not do this node's protected work. Sabretooth also offers a read-only MCP endpoint at `http://192.168.0.8:9150/mcp` behind a bearer token that Joshua holds; it is not connected here yet.
