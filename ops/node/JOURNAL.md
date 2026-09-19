@@ -2,6 +2,25 @@
 
 One entry per session, newest first, in the form did, verified, blocked, next, commits. Written by the Claude judge lane for a reader with no memory of the session.
 
+## 2026-09-19 about 19:10 EDT, Claude Fable 5.1, second session, opened after a reboot
+
+**Did.** Ran the session start from the launch skill: no trigger file, health file GREEN, the main checkout clean and equal to `origin/main`. Joshua had just restarted the box and pasted the stack supervisor's console into the session to confirm that everything starts on reboot. Checked his claim against the machine and wrote the result into runbook section 8. Marked runbook open item 5 as done (the workspace rulebook is back at `C:\DREAM\AGENTS.md`). Added open item 6 for a finding below.
+
+**Verified.**
+- Reboot test passed. Boot at 19:06:12. The "DREAM Stack" task started one supervisor (pid 10980) at 19:06:24. The supervisor log holds exactly one "started" line per service, between 19:06:43 and 19:06:55. The first health pass at 19:07:04 showed all six DOWN while they warmed up and did not start second copies.
+- Direct identity probes at 19:10:12: Live NPC Lab 9127, DreamOps Bridge 9133, Hermes 9119, Ollama 11434, the older JARVIS HUD 9150, Crosslisting 3000, OmniRoute on Sabretooth and JARVIS on Sabretooth all UP. `health.log` has a GREEN line at 23:08:12Z.
+- The supervisor's one DOWN line, the Sentry probe of `192.168.0.8:9140`, is the dead probe already recorded. Expected.
+
+**Found.** Two Ollama servers run after a sign-in. The supervisor's copy (pid 26488) listens on `127.0.0.1:11434`. The Startup folder shortcut `Ollama.lnk` starts the tray app, whose own `ollama serve` (pid 8188, started 19:10:23) listens on `::` port 11434, every interface. `OLLAMA_HOST` is unset for the user and the machine. Risk: the same model loaded twice into the 16 GB card depending on whether a caller says `127.0.0.1` or `localhost`, and a copy reachable from the LAN. Nothing was changed. The Startup folder also holds `llama-ui.lnk`, not examined.
+
+**Blocked or left for Joshua.** Whether to remove `Ollama.lnk` from the Startup folder so the supervisor is the one owner of Ollama. Still open from the first session: retiring the old JARVIS HUD and Crosslisting from the stack on this node, the Obsidian plugin swap in his terminal, and the usage-cap recovery supervisor that Codex's handoff asks for.
+
+**Codex handoff.** `CODEX-TO-FABLE.md` in the drop box changed at 19:02, after my 18:15 reply. Read its new sections: the reconciliation after my reply, the usage-cap recovery contract and the delivery status. Codex accepts my corrections, agrees that the recovery supervisor stays unbuilt until Joshua confirms it to me directly, and was waiting on the reboot test. One stale claim in it: that `drift ue` points at a wrong Unreal path. Checked: `UnrealEditor.exe` is at `C:\DREAM\UE_5.8`, `drift.cmd` points there, and both copies still hash to `4e7cb1b482f04dd9`. Wrote `FABLE-TO-CODEX-2026-09-19T1915.md` in the drop box with the reboot result and that correction. The rest of the handoff below the delivery status was not re-read.
+
+**Next.** Runbook section 9. The game work is item 4: directive section 49 reconnaissance, then spec 001.
+
+**Commits.** Named in the git log as "ops(node): reboot test verified".
+
 ## 2026-09-19, Claude Fable 5.1, session opened by Joshua in the Orca desktop app
 
 **Did.** Joshua handed over the node setup brief from the Sabretooth lane as a OneDrive link. Read his preferences file, the brief and the 2026-09-18 prompt file. Verified both signed records against their SHA-256 anchors and countersigned `NODE-STATE-2026-09-17.md`. Ran a read-only Sonnet survey of the box. Installed Spec Kit in the game repository and wrote the constitution. Built, from spec 000: the `drift` command, the token-free health probe with tests, its scheduled task, the `alienware-node` launch skill, the runbook, the protected-files changelog and `CODEOWNERS`. Merged to `main`, pushed, fast-forwarded the main checkout, and installed `drift.cmd` and the skill.
