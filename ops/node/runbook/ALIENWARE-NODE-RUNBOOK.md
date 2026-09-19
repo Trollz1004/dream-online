@@ -101,7 +101,7 @@ Not validated, and why:
 
 ## 9. Open work, in order
 
-1. Replace the JARVIS HUD on port 9150. The ruling is that the one dashboard codebase is `mission-control/` in `Trollz1004/ANTIGRAVITY`, run here on its own port with the DREAM services as probe targets, and the hermes-repo copy is stopped once the replacement is up. `C:\ANTIGRAVITY` on this box is a stale clone from before the 2026-09-17 history rewrite, on a feature branch with no upstream, so it needs a fresh clone first. The stack script's identity string for this service changes when that lands, and Sabretooth's God's Eye targets need the new string.
+1. Joshua ruled on 2026-09-19 that this node is just the game. That drops the older brief's plan to run a `mission-control/` instance here, and with it the need for an ANTIGRAVITY clone on this box; `C:\ANTIGRAVITY` is a stale pre-rewrite clone and stays untouched. None of the Sabretooth MCP servers get wired here. What remains is a question for Joshua: the old JARVIS HUD on port 9150 and the Crosslisting OS on port 3000 are not game services, yet the stack script still starts and restarts them. Taking them out of `dream-stack.ps1` on this node stops running services, so it waits for his yes. The dead `sentry` probe of `192.168.0.8:9140` in the same script can go at the same time.
 2. Install the obsidian-second-brain plugin against the game vault, disable the older claude-obsidian plugin (version 2.2.0 is still enabled), and register the token-free session-note hook beside the Orca hooks already in `~/.claude/settings.json`. The plugin commands prompt, so this needs Joshua's terminal.
 3. Tell the Sabretooth lane the health routes and identity strings in section 2 so God's Eye can identify Hermes, the NPC lab and the bridge. The drop-box status note carries them.
 4. Directive section 49 reconnaissance, then spec 001: the world bus and the CrossEyed slice.
@@ -109,4 +109,8 @@ Not validated, and why:
 
 ## 10. Remote access
 
-Sabretooth's judge lane has key-only SSH into this box as Joshua's Windows user at `192.168.0.40`, with PowerShell as the remote shell. It reads; it does not do this node's protected work. Sabretooth also offers a read-only MCP endpoint at `http://192.168.0.8:9150/mcp` behind a bearer token that Joshua holds; it is not connected here yet.
+Sabretooth's judge lane has key-only SSH into this box as Joshua's Windows user at `192.168.0.40`, with PowerShell as the remote shell. It reads; it does not do this node's protected work. Mission Control lives on Sabretooth only. On the LAN it is `http://192.168.0.8:9150/` (`drift jarvis` opens it). From anywhere it is `https://dashboard.aidoesitall.website/`, proxied from Sabretooth's port and gated by Cloudflare Access with a one-time code mailed to Joshua; checked on 2026-09-19, the hostname redirects to the Access sign-in page as it should. Joshua has said Claude may sign in there when the work needs it.
+
+In the other direction, this node holds the key `%USERPROFILE%\.ssh\id_ed25519_sabretooth` for SSH to Sabretooth. Port 22 there is open, but on 2026-09-19 Sabretooth refused the key. On Windows OpenSSH an administrator account's keys are read from `C:\ProgramData\ssh\administrators_authorized_keys`, so the public half most likely needs adding there; the drop-box session note `2026-09-19T1743-alienware-claude-code.md` asks the Sabretooth lane to do it.
+
+Sabretooth also offers a read-only MCP endpoint at `http://192.168.0.8:9150/mcp` behind a bearer token that Joshua holds; it is not connected here yet.

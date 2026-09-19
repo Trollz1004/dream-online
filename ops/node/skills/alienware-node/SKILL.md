@@ -24,7 +24,8 @@ Everything below was verified on this box on 2026-09-19 unless it says otherwise
 - **Landing rule.** Work goes on a `judge/<topic>` branch. Merge only at a 90 percent or better pass rate of the affected tests; report the rate and name every failure. Today that means: run the tests locally, `git merge --no-ff` into `main`, push, and let the `live-npc-lab.yml` workflow confirm. There is no branch ruleset on `dream-online` yet; when one lands, the gate moves to GitHub Actions and this line changes.
 - **No Anthropic API key anywhere, ever.** Claude is auth login only and never routes through OmniRoute. Sup@ is the only in-game entity on the signed-in Claude CLI.
 - **OmniRoute is `http://192.168.0.8:20128/v1`, the only URL, on Sabretooth only.** Nothing on this node serves port 20128, and nothing here should. Every model call from a harness or the game goes through it. No provider key in code, config or client.
-- **One Mission Control: JARVIS on Sabretooth, `http://192.168.0.8:9150/`.** Nobody builds a dashboard on this node. A game operator view is a JARVIS panel that talks to the game through the DreamOps Bridge.
+- **This node is just the game** (Joshua, 2026-09-19). No dashboard instance runs here and none of the Sabretooth MCP servers (brain, mission, date-app desk, supabase) get wired here. That overrides the older brief's plan to run a `mission-control/` instance on this box.
+- **One Mission Control: JARVIS on Sabretooth.** On the LAN it is `http://192.168.0.8:9150/`. From anywhere it is `https://dashboard.aidoesitall.website/`, proxied from Sabretooth behind Cloudflare Access with a one-time code mailed to Joshua; he has said Claude may sign in there when the work needs it. A game operator view is a JARVIS panel that talks to the game through the DreamOps Bridge.
 - **The Unreal MCP plugin stays PARKED.** Loopback only, editor only, nothing depends on it. Un-parking is Joshua's click.
 - **Business-only public copy.** No competitor game names, recorded numbers only, world-native terms (see `AGENTS.md`, Project language). No loop where players earn something for people outside the game is ever built inside the game.
 - **Payments, the date app and its sale are closed matters on Sabretooth.** They are not this node's work. Do not wire date-app tooling here.
@@ -55,7 +56,7 @@ Each service is judged by its identity string, never by a port answering. Report
 - DreamOps Bridge, port 9133, `/health` contains `dreamops-bridge`. Required. The only path from a proposal into the running world. Code: `game/server/dreamops-bridge`.
 - Hermes dashboard, port 9119, `/api/health` contains `"ok":true` (Hermes v0.21.3). Optional.
 - Ollama, port 11434, `/api/tags` contains `"models":[`. Optional, T0 ambient NPCs only.
-- JARVIS HUD, port 9150, `/health` contains `airi-dashboard`. Optional. This is the hermes repository's older dashboard copy. The ruling is to replace it with an instance run from ANTIGRAVITY's `mission-control/`; that has not been done yet (runbook, open work).
+- JARVIS HUD, port 9150, `/health` contains `airi-dashboard`. Optional. This is the hermes repository's older dashboard copy, a non-game leftover in the stack. It is not being replaced with a local instance (this node is just the game). Retiring it from the stack waits for Joshua's yes.
 - Crosslisting OS, port 3000, `/` contains `<div id="root">`. Optional and not game work.
 - Remote, reported and never healed from here: OmniRoute `http://192.168.0.8:20128/v1/models` contains `"data":[`, and Sabretooth JARVIS `http://192.168.0.8:9150/health` contains `jarvis-dashboard`.
 
@@ -71,6 +72,7 @@ Each service is judged by its identity string, never by a port answering. Report
 - **Memory:** Claude auto-memory at `%USERPROFILE%\.claude\projects\C--DREAM-dream-online\memory\`. The mission memory MCP from Sabretooth is not wired here. Supermemory saves fail since 2026-09-03 for lack of write credits; reads work; do not debug it.
 - **Obsidian:** the game vault is `C:\DREAM\dream-online\DREAM-ONLINE`, id `2289237e7c63ff36`, gitignored. Two vaults only, and this is the game one. The obsidian-second-brain plugin and the token-free session-note hook are not installed yet (runbook, open work); the older claude-obsidian plugin is still enabled.
 - **Sabretooth's judge lane** has key-only SSH into this box as Joshua's Windows user. It reads; it does not do this node's protected work.
+- **SSH from this node to Sabretooth:** the key `%USERPROFILE%\.ssh\id_ed25519_sabretooth` exists and port 22 on `192.168.0.8` is open, but on 2026-09-19 Sabretooth refused the key (`Permission denied (publickey...)`). Its public half is in the drop-box session note `2026-09-19T1743-alienware-claude-code.md` so the Sabretooth lane can authorize it. Re-test from PowerShell with `ssh -i $env:USERPROFILE\.ssh\id_ed25519_sabretooth -o BatchMode=yes "$env:USERNAME@192.168.0.8" hostname` before relying on it (the account name is the same on both nodes). Use it to read, never to do Sabretooth's protected work.
 
 ## 5. Records before you stop
 
