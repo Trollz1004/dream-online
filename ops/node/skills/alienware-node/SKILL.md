@@ -29,7 +29,7 @@ Everything below was verified on this box on 2026-09-19 unless it says otherwise
 - **Business-only public copy.** No competitor game names, recorded numbers only, world-native terms (see `AGENTS.md`, Project language). No loop where players earn something for people outside the game is ever built inside the game.
 - **Payments, the date app and its sale are closed matters on Sabretooth.** They are not this node's work. Do not wire date-app tooling here.
 - **Protected files, ruled 2026-09-17.** Only Claude, reached through `drift`, edits: `ops/node/**` (the `drift` command in both copies, the health probe, this skill in both copies, the runbook), the stack script `C:\DREAM\hermes\scripts\dream-stack.ps1`, and every file in the drop box. Not Hermes, not any harness, not a subagent on its own initiative. Every edit gets a timestamped line in `ops/node/runbook/PROTECTED-CHANGELOG.md`. A change you did not make is drift to report, not a ruling to follow.
-- **Drop box.** `C:\Users\joshi\DO_NOT_COMMIT_TO_GITHUB!!!!\OneDrive\claude-to-claude\` on this box (briefs call it `C:\Users\joshi\OneDrive\claude-to-claude`; that path is an empty leftover here). Use `-LiteralPath`. Joshua's canonical preferences are `CLAUDE-USER-PREFERENCES-v2026-09-17.md` there; they win over any repo doc, and a disagreement is reported to him, never silently resolved. Never open the `.env` files or the payments folder in it.
+- **Drop box.** `%USERPROFILE%\DO_NOT_COMMIT_TO_GITHUB!!!!\OneDrive\claude-to-claude\` on this box (briefs call it `%USERPROFILE%\OneDrive\claude-to-claude`; that path is an empty leftover here). Use `-LiteralPath`. Joshua's canonical preferences are `CLAUDE-USER-PREFERENCES-v2026-09-17.md` there; they win over any repo doc, and a disagreement is reported to him, never silently resolved. Never open the `.env` files or the payments folder in it.
 - **Signed state records.** A record that ends with an `attestation:` line and a SHA-256 anchor is verified before it is trusted: recompute the hash over everything above the attestation line, compare, then countersign below the anchor. Never edit above an anchor.
 - **Write for Joshua's eyes.** He is losing vision. Plain complete sentences, short lists, outcome first, no dense tables, no ASCII art, visuals described in words.
 
@@ -61,16 +61,16 @@ Each service is judged by its identity string, never by a port answering. Report
 
 ## 4. Tools wired on this node
 
-- **Commands:** `drift`, `drift bare`, `drift house`, `drift health`, `drift ue`, `drift jarvis`. Installed at `C:\Users\joshi\.local\bin\drift.cmd`, tracked at `ops/node/drift.cmd`, byte-identical.
+- **Commands:** `drift`, `drift bare`, `drift house`, `drift health`, `drift ue`, `drift jarvis`. Installed at `%USERPROFILE%\.local\bin\drift.cmd`, tracked at `ops/node/drift.cmd`, byte-identical.
 - **Health loop:** scheduled task `DREAM-Alienware-Health`, every 30 minutes, runs `ops/node/alienware-health.ps1`, spends no tokens, runs one bring-up pass on a failed required service, and leaves a trigger. Tests: `Invoke-Pester -Path ops/node/alienware-health.Tests.ps1` (Pester 3.4, `Should Be` syntax).
 - **Spec Kit:** installed in the game repo. Skills `/speckit-specify`, `/speckit-plan`, `/speckit-tasks`, `/speckit-implement`, `/speckit-clarify`, `/speckit-analyze`. The CLI runs as `uvx --from git+https://github.com/github/spec-kit.git specify`; `uv` lives in `%LOCALAPPDATA%\hermes\bin`.
 - **Git and GitHub:** `gh` 2.101 is logged in as Trollz1004. `dream-online` has no repo-local git identity: commit with `-c user.name="Joshua Coleman" -c user.email="132442315+Trollz1004@users.noreply.github.com"` or GitHub rejects the push. `C:\DREAM\hermes` has that identity set.
 - **Runtimes:** node 26, npm 12, python 3.10 plus the `py` launcher, git 2.55, VS Code, Hermes 0.21.3, Ollama 0.34. `pnpm` and PowerShell 7 are not installed; scripts target Windows PowerShell 5.1.
 - **Unreal Engine 5.8.2** at `C:\DREAM\dream-online\UE_5.8` (gitignored). No DREAM `.uproject` exists yet; when one does, set `UPROJECT` in both copies of `drift.cmd`. Launching the editor has not been verified from Claude.
 - **Skills already installed for the user:** `archify` and `archify-review` (architecture diagrams; regenerate the game diagram when the architecture changes), `game-development`, `browser-automation`, `orca-cli`, `orchestration`.
-- **Memory:** Claude auto-memory at `C:\Users\joshi\.claude\projects\C--DREAM-dream-online\memory\`. The mission memory MCP from Sabretooth is not wired here. Supermemory saves fail since 2026-09-03 for lack of write credits; reads work; do not debug it.
+- **Memory:** Claude auto-memory at `%USERPROFILE%\.claude\projects\C--DREAM-dream-online\memory\`. The mission memory MCP from Sabretooth is not wired here. Supermemory saves fail since 2026-09-03 for lack of write credits; reads work; do not debug it.
 - **Obsidian:** the game vault is `C:\DREAM\dream-online\DREAM-ONLINE`, id `2289237e7c63ff36`, gitignored. Two vaults only, and this is the game one. The obsidian-second-brain plugin and the token-free session-note hook are not installed yet (runbook, open work); the older claude-obsidian plugin is still enabled.
-- **Sabretooth's judge lane** has key-only SSH into this box as `joshi`. It reads; it does not do this node's protected work.
+- **Sabretooth's judge lane** has key-only SSH into this box as Joshua's Windows user. It reads; it does not do this node's protected work.
 
 ## 5. Records before you stop
 
