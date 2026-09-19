@@ -38,6 +38,8 @@ Everything below was verified on this box on 2026-09-19 unless it says otherwise
 
 The Claude Max cap is the scarce resource. Sonnet subagents do every mechanical task: surveys, file moves, git plumbing, browser driving, drafting from a template. Pass `model: sonnet` on every Agent call that is not a judgment. You do rulings, design, prompts, verdicts, the protected files and the records. Never spawn a scout for something one shell call answers. Discard any report that answers a question nobody asked. Point workers at a spec's `tasks.md` instead of re-briefing them.
 
+Ruled by Joshua on 2026-09-19, in chat on this node. You are the brain only: Sonnet subagents do the work unless it is something only you can do. Do not change the default model to a lesser one; the saving comes from delegating. A large task that would eat the Max five-hour cap, which he hits often, goes to Hermes and not to Sonnets, because Hermes runs on his other sign-ins and costs the Claude cap nothing. Write a card file, run `hermes chat --query-file <file> -Q --oneshot -c <session> --create-if-missing` detached, and judge the `HERMES REPORT` block it returns. Hermes commits on a branch, never pushes and never touches the protected files. Payments and the date app belong to the claude.ai session he opened that day; this lane stays on the game.
+
 ## 2. Session start, in order
 
 1. Read `C:\DREAM\dream-online\ops\node\heartbeat\TRIGGERS.jsonl` if it exists. Each line is a failure the health loop could not clear on its own. Act on those first, then delete the file.
