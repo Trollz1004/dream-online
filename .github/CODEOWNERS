@@ -1,0 +1,7 @@
+# Protected paths on the Alienware node (ruled 2026-09-17). Only the Claude judge lane,
+# reached through `drift`, edits these. Every edit gets a line in
+# ops/node/runbook/PROTECTED-CHANGELOG.md. Reviews route to the repository owner.
+/ops/node/                          @Trollz1004
+/.github/                           @Trollz1004
+/.specify/memory/constitution.md    @Trollz1004
+/docs/DREAM-MASTER-DIRECTIVE.md     @Trollz1004
