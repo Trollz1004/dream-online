@@ -1,6 +1,6 @@
 @echo off
 rem =======================================================================
-rem  drift - Joshua's one way in on the Alienware node.   updated 2026-09-19
+rem  drift - Joshua's one way in on the Alienware node.   updated 2026-09-19b
 rem
 rem  Brings the DREAM stack up AND opens real Claude with the alienware-node
 rem  launch skill loaded. It is never a wrapper around Claude: the last line
@@ -40,7 +40,7 @@ set "ROOT=C:\DREAM\dream-online"
 set "HEALTH=%ROOT%\ops\node\alienware-health.ps1"
 set "STACKTASK=DREAM Stack"
 set "STACK=C:\DREAM\hermes\scripts\dream-stack.cmd"
-set "UE=%ROOT%\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe"
+set "UE=C:\DREAM\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe"
 rem Set UPROJECT to the full path of the DREAM .uproject once it exists.
 set "UPROJECT="
 set "HEALTHARGS=-Verbose"

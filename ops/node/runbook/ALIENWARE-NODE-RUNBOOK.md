@@ -11,7 +11,7 @@ This node builds and runs DREAM Online. Sabretooth designs, dispatches and revie
 - Drives: C has about 312 GB free, D about 839 GB free, A about 51 GB free.
 - The game repository is `C:\DREAM\dream-online` (`Trollz1004/dream-online`, branch `main`). The Obsidian game vault sits inside it at `C:\DREAM\dream-online\DREAM-ONLINE` (vault id `2289237e7c63ff36`) and is gitignored.
 - Hermes is cloned at `C:\DREAM\hermes` (`Trollz1004/hermes`). It holds the stack script, the older JARVIS HUD and the Crosslisting OS.
-- Unreal Engine 5.8.2 is at `C:\DREAM\dream-online\UE_5.8`, gitignored. It is not under Program Files and not at `C:\DREAM\UE_5.8`. There is no DREAM `.uproject` yet.
+- Unreal Engine 5.8.2 is at `C:\DREAM\UE_5.8`, which is the install location the Epic launcher has on record. It had been moved into the game folder along with the rest of the workspace root, and was moved back on 2026-09-19. There is no DREAM `.uproject` yet.
 
 ## 2. What runs on restart
 
@@ -74,7 +74,7 @@ Tests: `Invoke-Pester -Path ops/node/alienware-health.Tests.ps1`. The box has Pe
 - `C:\DREAM\dream-online` stays on `main`, tracked files clean and equal to origin. The health loop flags drift as YELLOW.
 - Only the judge lanes push. Work happens on a `judge/<topic>` branch. Merge with `git merge --no-ff` at a 90 percent or better pass rate of the affected tests, then push. There is no branch ruleset on the repository yet; `.github/workflows/live-npc-lab.yml` is the only workflow. When the game has a test suite worth gating on, copy Sabretooth's `quality-gate.yml` and `auto-land.yml` pattern and protect `main`.
 - The repository has no local git identity. Commit with Joshua's GitHub noreply address, `132442315+Trollz1004@users.noreply.github.com`, or GitHub rejects the push.
-- Never `git add -A` in the main checkout. It holds untracked strays that are not game source: `UE_5.8/`, `hermes-worktrees/`, `claude-quickstarts/`, `prime-agent/`, an empty `server/`, a root `SKILL.md`, an old lockdown note, a spec JSON, a shortcut and a text file. The heavy and unrelated ones are gitignored; the rest are left for Joshua.
+- One root, no drift (Joshua, 2026-09-19). The main checkout holds only the game, and `git status` there prints nothing. On that date two old clones were folded in and removed (`docs/CONSOLIDATION-2026-09-19.md`), a stale duplicate of `game/server/` at the repository root was removed, and the non-game folders that had been moved into the checkout went back to `C:\DREAM`: `UE_5.8`, `hermes-worktrees` (which repaired the hermes worktree record), `claude-quickstarts`, `prime-agent`, a root `SKILL.md`, a spec JSON, an old lockdown note, a shortcut and a text file. Local material that must stay out of the public repository sits at ignored paths: `paperclip-tro/`, `opencode/`, the lab's `lore-snippets.json` and `references/_unreviewed/`. Commits still use an explicit pathspec, never `git add -A`.
 - Orca opens Claude in a worktree under the vault folder on its own branch. The installed `drift`, the health task and the skill all point at the main checkout, so a change is live only after it is merged to `main` and the main checkout is fast-forwarded.
 
 ## 7. Protected files

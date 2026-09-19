@@ -16,7 +16,7 @@ Avoid: direct competitor name drops, real-world brand names for in-game systems,
 
 ## Game architecture
 
-- Engine: Unreal Engine (premium live-world open-world MMO). On the Alienware node Unreal Engine 5.8.2 sits at `UE_5.8/` in the main checkout (gitignored, verified 2026-09-19); there is no DREAM `.uproject` yet. Node operations (the `drift` command, health probe, runbook, launch skill) live in `ops/node/` and are edited by the Claude judge lane only.
+- Engine: Unreal Engine (premium live-world open-world MMO). On the Alienware node Unreal Engine 5.8.2 is at `C:\DREAM\UE_5.8`, the path the Epic launcher registers (verified 2026-09-19); there is no DREAM `.uproject` yet. Node operations (the `drift` command, health probe, runbook, launch skill) live in `ops/node/` and are edited by the Claude judge lane only.
 - Platform: PC target, micro-transaction based. In-game currency: NEEDs (never surface as a real-money benefit — FL §496.405 compliance wall).
 - ONE shared world server — no instances, no fast travel.
 
