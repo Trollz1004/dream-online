@@ -27,5 +27,12 @@ Per directive section 47: every source gets one classification — CANON, ACTIVE
 | .gitignore | REFERENCE | Repo config |
 | .env.example | REFERENCE | Placeholder-only env template |
 | .github/ | REFERENCE | CI workflows, issue templates, funding config |
+| docs/CONSOLIDATION-2026-09-19.md | REFERENCE | Record of folding two old copies into this root |
+| docs/ALIENWARE-NODE-STATE-2026-09-19.md | REFERENCE | Signed node state record; verify its SHA-256 anchor before relying on it |
+| ops/node/ | ACTIVE_DESIGN | Alienware node operations; edited by the Claude judge lane only |
+| specs/, .specify/ | ACTIVE_DESIGN | Spec Kit specs and constitution |
+| paperclip-tro/ (ignored, local) | CANON for `projects/PROJECT-2-DREAM-ONLINE.md`, DEPRECATED for the rest | Full canon document; the other files describe the parked Paperclip setup |
+| opencode/ (ignored, local) | REFERENCE | OpenCode provider and model config |
+| references/_unreviewed/ (ignored, local) | REFERENCE, DEPRECATED for `early-gdd-2026-07-08/` | Folded in on 2026-09-19; not yet checked as public-safe |
 
 No QUARANTINED items found; no secrets encountered during this pass.

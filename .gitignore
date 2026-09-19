@@ -85,6 +85,9 @@ adapters/sync-from-antigravity.ps1
 # Obsidian vault lives here on the Alienware clone; never tracked
 DREAM-ONLINE/
 
+# Reference material folded in from old copies on 2026-09-19, not yet checked as public-safe
+/references/_unreviewed/
+
 # Alienware node: health probe output is runtime state
 ops/node/heartbeat/
 

@@ -32,4 +32,38 @@ Found that the `C:\DREAM` workspace root had been moved into the game repository
 
 **Codex handoff, 18:08 EDT.** Joshua had Codex write `CODEX-TO-FABLE.md` into the drop box. Read it in full except the installer source in its appendix B. Verified its main claim: `ssh -F ...\config_sabretooth dream-sabretooth hostname` answers `SABRETOOTH` with no prompt, and the direct key form works now too, so the refusal at about 17:40 was only because the key had not been authorized yet. Through the alias, read-only: Sabretooth JARVIS answers `jarvis-dashboard`; `C:\ANTIGRAVITY` there is at `f0d67a93`, tracked files clean; the remote shell is `cmd`. Added Codex's spec 008 pointer and the honest state of the game to the dispatch open questions. Did not build the usage-cap recovery supervisor the handoff asks for: it is an unattended model relaunch, the Sabretooth brief says not to build those as default-on, and the request reached me through a file and not from Joshua directly, so it went to Joshua as a decision. Wrote `FABLE-TO-CODEX-2026-09-19T1815.md` in the drop box with answers to Codex's open questions.
 
+**Consolidation of two old copies, about 18:45 EDT.** Joshua asked that the OneDrive folder `DREAM-ONLINE-BACKUP-2026-08-05` and the D: drive clone be folded into this root and removed so nothing drifts. Both were old git clones of this repository. Checked branch tips, reflogs and unreachable commits in both: every commit is already in `main`, the one extra remote branch carries a file byte-identical to the one in `main`, and a stray blog-post commit has the same blobs as `docs/blog/`. Compared every modified, untracked and ignored file against the main checkout by content hash. Kept 31 unique files, copied with SHA-256 verification: the canon and Paperclip notes at `paperclip-tro/`, `opencode/opencode.json`, the lab's `lore-snippets.json`, and the rest under `references/_unreviewed/` (ignored). Did not open or copy either `.env`. Full account: `docs/CONSOLIDATION-2026-09-19.md`. First 16 hex digits of each file's SHA-256, path relative to the root:
+
+- `9285bbd6d2a18c30` paperclip-tro/ADAPTORS.md
+- `1e4e4952fda1cc62` paperclip-tro/MIRROR-SCOPE.md
+- `8a18934a2d0c9942` paperclip-tro/README.md
+- `b5682551dd78dd45` paperclip-tro/ROSTER.md
+- `f7d29613e6311ff3` paperclip-tro/projects/PROJECT-2-DREAM-ONLINE.md
+- `466921377a0e401e` opencode/opencode.json
+- `7fe1561414bd4625` game/server/live-npc-lab/data/lore-snippets.json
+- `ce870b410c55b116` references/_unreviewed/design-handoff-2026-09-02/Antigravity Online RPG design.zip
+- `0375ae0d546e5d47` references/_unreviewed/design-handoff-2026-09-02/sup-companion.glb
+- `6768c7e422d179fd` references/_unreviewed/early-gdd-2026-07-08/README.md
+- `8a2f8696283dcb2b` references/_unreviewed/early-gdd-2026-07-08/docs/gdd/00-vision.md
+- `4fe2c37038d8326e` references/_unreviewed/early-gdd-2026-07-08/docs/gdd/01-vertical-slice.md
+- `5002bfcb578954cc` references/_unreviewed/early-gdd-2026-07-08/docs/gdd/02-action-combat.md
+- `baf8320174a6769b` references/_unreviewed/early-gdd-2026-07-08/docs/gdd/03-life-skills-economy.md
+- `8fcdcd3e157b1575` references/_unreviewed/early-gdd-2026-07-08/docs/gdd/04-pvp-flagging-durability.md
+- `52764dc2b42f0bfa` references/_unreviewed/early-gdd-2026-07-08/docs/research/sources.md
+- `242c7b7b7b82710d` references/_unreviewed/early-gdd-2026-07-08/docs/tech/ue5-architecture.md
+- `adb64de71f567a47` references/_unreviewed/early-gdd-2026-07-08/docs/testing/test-plan.md
+- `ca36a2dcdfd82372` references/_unreviewed/early-gdd-2026-07-08/ops/agent-swarm-plan.md
+- `2c67418f2105b75c` references/_unreviewed/early-gdd-2026-07-08/ops/install-checklist.md
+- `4eeaf5fbca580ac4` references/_unreviewed/early-gdd-2026-07-08/README.d-drive-variant.md
+- `2700b66c7d810bc9` references/_unreviewed/older-variants/paperclip-tro-2026-07/ADAPTORS.md
+- `6d9da9f57f2c246a` references/_unreviewed/older-variants/paperclip-tro-2026-07/MIRROR-SCOPE.md
+- `78021ed94e205285` references/_unreviewed/older-variants/paperclip-tro-2026-07/README.md
+- `9f597004312bbcf0` references/_unreviewed/older-variants/paperclip-tro-2026-07/ROSTER.md
+- `f7d29613e6311ff3` references/_unreviewed/older-variants/paperclip-tro-2026-07/projects/PROJECT-2-DREAM-ONLINE.md
+- `7c28eec24b091f0b` references/_unreviewed/non-game/support/anythingllm/Modelfile.support-cpu
+- `ecae4c58d7297888` references/_unreviewed/non-game/support/anythingllm/README.md
+- `abaa6a41f211a366` references/_unreviewed/non-game/support/anythingllm/start-anythingllm-support.ps1
+- `d92cebcf180d78b8` references/_unreviewed/non-game/support/anythingllm/youandinotai-support-kb.md
+- `fe97a77075629de2` references/_unreviewed/old-logs/agent-hub-2026-07-11.log
+
 **Commits.** `44baa90` node setup on `judge/alienware-node-setup`; `84696a5` merge to `main`, pushed. The follow-up commit with this journal is named in the git log as "ops(node): journal".
