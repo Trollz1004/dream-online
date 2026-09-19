@@ -1,0 +1,8 @@
+# Protected files changelog: Alienware node
+
+Ruled 2026-09-17: only Claude, reached through `drift` on this node, edits the protected paths. In this repository they are everything under `ops/node/` and `.github/CODEOWNERS`. Outside it they are the installed copies `C:\Users\joshi\.local\bin\drift.cmd` and `C:\Users\joshi\.claude\skills\alienware-node\SKILL.md`, the stack script `C:\DREAM\hermes\scripts\dream-stack.ps1`, and every file in the drop box `claude-to-claude`. Not Hermes, not a harness, not a subagent acting on its own. Every edit gets a line here: date, time, file, what changed, and the commit that landed it. Newest entries first.
+
+2026-09-19 17:55 EDT | drop box `ALIENWARE-NODE-STATE-2026-09-19.md`, `ALIENWARE-NODE-STATUS.md` | First signed node state record and the status note for the Sabretooth lane. | see journal
+2026-09-19 17:50 EDT | `C:\Users\joshi\.local\bin\drift.cmd`, `C:\Users\joshi\.claude\skills\alienware-node\SKILL.md` | Installed copies created, byte-identical with the tracked copies. | see journal
+2026-09-19 17:40 EDT | `ops/node/drift.cmd`, `ops/node/alienware-health.ps1`, `ops/node/alienware-health.Tests.ps1`, `ops/node/register-health-task.ps1`, `ops/node/skills/alienware-node/SKILL.md`, `ops/node/runbook/ALIENWARE-NODE-RUNBOOK.md`, this file, `ops/node/JOURNAL.md`, `.github/CODEOWNERS` | Created: the node's command, health probe with tests, task registration, launch skill, runbook, changelog and journal. | first commit on `judge/alienware-node-setup`
+2026-09-19 16:40 EDT | drop box `NODE-STATE-2026-09-17.md` | Countersign line appended below the anchor after the SHA-256 matched. Body untouched; hash re-checked after the edit. | not in git

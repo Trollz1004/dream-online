@@ -10,7 +10,11 @@ JOSHUAS.ENV
 
 # Local/private agent state
 .codex/
-.claude/
+# .claude is local state, except the Spec Kit skills, which travel with the repo
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/speckit-*/
 .cursor/
 .vscode/
 .idea/
@@ -80,6 +84,18 @@ adapters/sync-from-antigravity.ps1
 
 # Obsidian vault lives here on the Alienware clone; never tracked
 DREAM-ONLINE/
+
+# Alienware node: health probe output is runtime state
+ops/node/heartbeat/
+
+# Strays in the main checkout on the Alienware node that are not game source
+/UE_5.8/
+/hermes-worktrees/
+/claude-quickstarts/
+/prime-agent/
+/omnirouteonsabretoothspec.json
+/HERMES-GATE-LOCKDOWN-*.md
+*.lnk
 
 # runtime state written by DreamOps Bridge and Live NPC Lab when they run locally
 game/server/checkpoints/
