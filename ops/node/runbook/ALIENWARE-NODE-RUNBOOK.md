@@ -90,13 +90,14 @@ Recorded on 2026-09-19:
 - The health probe ran live in report-only mode and returned GREEN: all six local services and both Sabretooth services answered with their identity strings. Its 15 Pester tests pass.
 - `drift help` and an unknown subcommand behave as written. The supervisor detection line was run on its own and correctly reported that no supervisor was running at that moment, although the services were up.
 - `NODE-STATE-2026-09-17.md` and the 2026-09-18 prompt file in the drop box both matched their SHA-256 anchors. The node state record was countersigned.
+- The scheduled task `DREAM-Alienware-Health` ran twice on demand with result 0 and a GREEN log line each time. Windows refused the S4U logon type without elevation, so the task is registered as Interactive: it runs every 30 minutes while Joshua is signed in, through `conhost --headless` so no window flashes. To get the before-sign-in behaviour, run `register-health-task.ps1` once from an elevated PowerShell.
+- The installed `drift health`, run from an unrelated folder, printed the same GREEN table.
+- Both copies of `drift.cmd` and both copies of the skill have equal SHA-256 hashes.
 
 Not validated, and why:
 
 - `drift`, `drift bare`, `drift house` and `drift ue` have not been typed in Joshua's own console. Windows 11 can stop an unknown `.cmd` on first run, and the stack script must not be started from a Claude terminal. Joshua's first `drift house` in Windows Terminal is the test.
 - A reboot test has not been done. After one, `drift health` and `health.log` are the evidence.
-
-The scheduled-task result is appended to the journal (`ops/node/JOURNAL.md`) on the day it is registered.
 
 ## 9. Open work, in order
 

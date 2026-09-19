@@ -11,10 +11,11 @@ Tick a task only with evidence in `ops/node/JOURNAL.md`.
 - [x] T005 Write `drift.cmd`; test `help`, an unknown subcommand and the supervisor detection line.
 - [x] T006 Write the launch skill, the runbook, the protected-files changelog, `CODEOWNERS` and the journal.
 
+- [x] T007 Merge to `main`, push, fast-forward the main checkout, install `drift.cmd` and the skill, confirm the hashes match.
+- [x] T008 Register the `DREAM-Alienware-Health` task; run it once; record which logon type Windows accepted (Interactive; S4U needs elevation).
+
 ## Still to do
 
-- [ ] T007 Merge to `main`, push, fast-forward the main checkout, install `drift.cmd` and the skill, confirm the hashes match.
-- [ ] T008 Register the `DREAM-Alienware-Health` task; run it once; record which logon type Windows accepted.
 - [ ] T009 Write the signed `ALIENWARE-NODE-STATE` record and `ALIENWARE-NODE-STATUS.md` into the drop box.
 - [ ] T010 Joshua: type `drift house`, then `drift`, in Windows Terminal. Report anything Windows blocks.
 - [ ] T011 Fresh `ANTIGRAVITY` clone, then run `mission-control/` here on its own port with the DREAM probe targets and retire the old HUD (own spec).

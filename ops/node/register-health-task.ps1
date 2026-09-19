@@ -24,13 +24,16 @@ if ($Uninstall) {
 
 if (-not (Test-Path -LiteralPath $ScriptPath)) { throw "Health probe not found at $ScriptPath" }
 
-$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$ScriptPath`""
+$psArgs = "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$ScriptPath`""
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).Date -RepetitionInterval (New-TimeSpan -Minutes 30)
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 10) -MultipleInstances IgnoreNew
 $user = "$env:USERDOMAIN\$env:USERNAME"
 
 foreach ($logonType in 'S4U', 'Interactive') {
   try {
+    # An Interactive task runs on Joshua's desktop; conhost --headless keeps a console window from flashing up every 30 minutes.
+    $action = if ($logonType -eq 'Interactive') { New-ScheduledTaskAction -Execute 'conhost.exe' -Argument "--headless powershell.exe $psArgs" }
+              else { New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $psArgs }
     $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType $logonType -RunLevel Limited
     Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Description 'Token-free DREAM node health probe. Writes ops\node\heartbeat. Owned by Claude through drift.' -Force -ErrorAction Stop | Out-Null
     "Scheduled task '$TaskName' registered for $user, logon type $logonType, every 30 minutes."
