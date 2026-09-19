@@ -97,7 +97,13 @@ Recorded on 2026-09-19:
 Not validated, and why:
 
 - `drift`, `drift bare`, `drift house` and `drift ue` have not been typed in Joshua's own console. Windows 11 can stop an unknown `.cmd` on first run, and the stack script must not be started from a Claude terminal. Joshua's first `drift house` in Windows Terminal is the test.
-- A reboot test has not been done. After one, `drift health` and `health.log` are the evidence.
+
+Reboot test, recorded on 2026-09-19 at 19:10 EDT:
+
+- Joshua restarted the box. Windows reports the boot at 19:06:12. The "DREAM Stack" task started one supervisor at 19:06:24 (task result 267009, which means still running), and the supervisor started all six local services once each between 19:06:43 and 19:06:55.
+- The supervisor's first health pass at 19:07:04 showed all six DOWN because they were still warming up. It did not start second copies: the supervisor log holds exactly one "started" line per service. Every later pass showed them UP.
+- The health probe wrote GREEN at 19:08:12 (23:08:12Z in `health.log`), and direct identity probes of all six local services and both Sabretooth services at 19:10:12 answered UP.
+- The one DOWN line on the supervisor's table, "Fable's Sentry (Sabertooth)" on port 9140, is the dead probe named in section 9, item 1. It is expected.
 
 ## 9. Open work, in order
 
@@ -105,7 +111,8 @@ Not validated, and why:
 2. Install the obsidian-second-brain plugin against the game vault, disable the older claude-obsidian plugin (version 2.2.0 is still enabled), and register the token-free session-note hook beside the Orca hooks already in `~/.claude/settings.json`. The plugin commands prompt, so this needs Joshua's terminal.
 3. Tell the Sabretooth lane the health routes and identity strings in section 2 so God's Eye can identify Hermes, the NPC lab and the bridge. The drop-box status note carries them.
 4. Directive section 49 reconnaissance, then spec 001: the world bus and the CrossEyed slice.
-5. The workspace rulebook that belongs at `C:\DREAM\AGENTS.md` is missing there; an uncommitted copy of it sits over the game repository's `AGENTS.md` in the main checkout. The journal records how that was handled.
+5. Done on 2026-09-19: the workspace rulebook is back at `C:\DREAM\AGENTS.md`, and the game repository's own `AGENTS.md` is restored in the main checkout. The journal records how that was handled.
+6. Two Ollama servers run after a sign-in (found 2026-09-19 after the reboot test). The supervisor starts `ollama serve`, which listens on `127.0.0.1:11434`. The Startup folder shortcut `Ollama.lnk` starts the Ollama tray app, which starts a second `ollama serve` that listens on `::` port 11434, which is every network interface. `OLLAMA_HOST` is not set for the user or the machine, so the wide bind comes from the tray app's own setting. A caller that uses `127.0.0.1` reaches the supervisor's copy and a caller that uses `localhost` can reach the other one, so the same model can be loaded into the RX 6800's memory twice, and the second copy is reachable from the LAN. The clean fix is one owner: remove `Ollama.lnk` from the Startup folder and let the supervisor own Ollama. That changes what starts at sign-in, so it waits for Joshua's yes.
 
 ## 10. Remote access
 
