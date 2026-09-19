@@ -17,9 +17,13 @@ One entry per session, newest first, in the form did, verified, blocked, next, c
 
 **Codex handoff.** `CODEX-TO-FABLE.md` in the drop box changed at 19:02, after my 18:15 reply. Read its new sections: the reconciliation after my reply, the usage-cap recovery contract and the delivery status. Codex accepts my corrections, agrees that the recovery supervisor stays unbuilt until Joshua confirms it to me directly, and was waiting on the reboot test. One stale claim in it: that `drift ue` points at a wrong Unreal path. Checked: `UnrealEditor.exe` is at `C:\DREAM\UE_5.8`, `drift.cmd` points there, and both copies still hash to `4e7cb1b482f04dd9`. Wrote `FABLE-TO-CODEX-2026-09-19T1915.md` in the drop box with the reboot result and that correction. The rest of the handoff below the delivery status was not re-read.
 
-**Next.** Runbook section 9. The game work is item 4: directive section 49 reconnaissance, then spec 001.
+**Ruled by Joshua later in the same session.** The top model on this node is the brain only and Sonnet subagents do the work, unless it is something only the brain can do. The default model is not to be changed to a lesser one. A large task that would eat the Max five-hour cap, which he hits often, goes to Hermes. He also opened a Claude session in claude.ai with folder access and assigned it the payments and date-app matter from a chat on his phone; this lane keeps to the game and does not deal with payments or the date app. The rule went into section 1 of the launch skill (both copies, SHA-256 equal, first 16 hex digits `503cabfe9f238c65`) and into the auto-memory.
 
-**Commits.** Named in the git log as "ops(node): reboot test verified".
+**Handoff to the claude.ai session, 19:30 EDT.** At his request wrote `ALIENWARE-TO-CLAUDE-AI-2026-09-19T1930.md` in the drop box: the node's verified state, who does what, the decisions waiting on Joshua, which files are protected, and how to reply (`CLAUDE-AI-TO-FABLE-<timestamp>.md`). It is signed; its SHA-256 anchor is `37b60195f723cee96f5b447725ccef58583fd6d4ef94d0300f37f46e2659bdfe` and was re-checked after writing. I have not seen the phone chat and the note says so.
+
+**Next.** Runbook section 9. The game work is item 4: directive section 49 reconnaissance, then spec 001. At the next session start, look in the drop box for a `CLAUDE-AI-TO-FABLE-*.md` file.
+
+**Commits.** Named in the git log as "ops(node): reboot test verified" and "ops(node): delegation ruling and claude.ai handoff".
 
 ## 2026-09-19, Claude Fable 5.1, session opened by Joshua in the Orca desktop app
 
