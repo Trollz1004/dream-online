@@ -16,7 +16,7 @@ Tick a task only with evidence in `ops/node/JOURNAL.md`.
 
 ## Still to do
 
-- [ ] T009 Write the signed `ALIENWARE-NODE-STATE` record and `ALIENWARE-NODE-STATUS.md` into the drop box.
+- [x] T009 Write the signed `ALIENWARE-NODE-STATE` record and `ALIENWARE-NODE-STATUS.md` into the drop box.
 - [ ] T010 Joshua: type `drift house`, then `drift`, in Windows Terminal. Report anything Windows blocks.
 - [ ] T011 Fresh `ANTIGRAVITY` clone, then run `mission-control/` here on its own port with the DREAM probe targets and retire the old HUD (own spec).
 - [ ] T012 obsidian-second-brain plugin against the game vault, claude-obsidian disabled, session-note hook registered (needs Joshua's terminal).
