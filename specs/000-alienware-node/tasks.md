@@ -22,4 +22,4 @@ Tick a task only with evidence in `ops/node/JOURNAL.md`.
 - [ ] T012 obsidian-second-brain plugin against the game vault, claude-obsidian disabled, session-note hook registered (needs Joshua's terminal).
 - [ ] T013 Directive section 49 reconnaissance, then spec 001.
 - [ ] T014 Joshua: say yes or no to taking the old JARVIS HUD (9150), the Crosslisting OS (3000) and the dead Sentry probe out of `dream-stack.ps1` on this node.
-- [ ] T015 Sabretooth lane: authorize this node's SSH public key (in the drop-box session note of 2026-09-19); then re-test from here.
+- [x] T015 SSH from this node to Sabretooth: authorized by Joshua with Codex; verified 2026-09-19 18:10 EDT through the `dream-sabretooth` alias (answer `SABRETOOTH`, JARVIS identity `jarvis-dashboard`).
