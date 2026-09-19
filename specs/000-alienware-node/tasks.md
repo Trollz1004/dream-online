@@ -18,6 +18,8 @@ Tick a task only with evidence in `ops/node/JOURNAL.md`.
 
 - [x] T009 Write the signed `ALIENWARE-NODE-STATE` record and `ALIENWARE-NODE-STATUS.md` into the drop box.
 - [ ] T010 Joshua: type `drift house`, then `drift`, in Windows Terminal. Report anything Windows blocks.
-- [ ] T011 Fresh `ANTIGRAVITY` clone, then run `mission-control/` here on its own port with the DREAM probe targets and retire the old HUD (own spec).
+- [x] T011 Dropped by ruling: Joshua said on 2026-09-19 that this node is just the game, so no `mission-control/` instance and no ANTIGRAVITY clone here. Replaced by T014.
 - [ ] T012 obsidian-second-brain plugin against the game vault, claude-obsidian disabled, session-note hook registered (needs Joshua's terminal).
 - [ ] T013 Directive section 49 reconnaissance, then spec 001.
+- [ ] T014 Joshua: say yes or no to taking the old JARVIS HUD (9150), the Crosslisting OS (3000) and the dead Sentry probe out of `dream-stack.ps1` on this node.
+- [ ] T015 Sabretooth lane: authorize this node's SSH public key (in the drop-box session note of 2026-09-19); then re-test from here.
