@@ -106,3 +106,11 @@ game/server/economy_snapshot.json
 game/server/events.json
 game/server/npc_memory_queue.json
 game/server/world_state.json
+
+# Unreal test zone: rebuilt locally by game/unreal/New-DreamTestZone.ps1 from the installed engine template; Epic's licence forbids committing this content
+game/unreal/DreamOnline/Content/
+game/unreal/DreamOnline/Binaries/
+game/unreal/DreamOnline/Intermediate/
+game/unreal/DreamOnline/Saved/
+game/unreal/DreamOnline/DerivedDataCache/
+game/unreal/DreamOnline.backup-*/
