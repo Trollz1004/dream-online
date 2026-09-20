@@ -114,3 +114,6 @@ game/unreal/DreamOnline/Intermediate/
 game/unreal/DreamOnline/Saved/
 game/unreal/DreamOnline/DerivedDataCache/
 game/unreal/DreamOnline.backup-*/
+
+# Python bytecode written when Unreal runs the map scripts
+__pycache__/

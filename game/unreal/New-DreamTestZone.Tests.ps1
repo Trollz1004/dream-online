@@ -211,11 +211,13 @@ MixedCaseMarker=TP_ThirdPersonBP
             $project.EngineAssociation | Should Be '5.8'
         }
 
-        It 'carries both plugins in the uproject' {
+        It 'carries all four plugins in the uproject' {
             $project = Get-Content -LiteralPath (Join-Path $script:projectRoot 'DreamOnline.uproject') -Raw | ConvertFrom-Json
-            $project.Plugins.Count | Should Be 2
+            $project.Plugins.Count | Should Be 4
             ($project.Plugins | Where-Object { $_.Name -eq 'ModelingToolsEditorMode' }).Enabled | Should Be $true
             ($project.Plugins | Where-Object { $_.Name -eq 'GameplayStateTree' }).Enabled | Should Be $true
+            ($project.Plugins | Where-Object { $_.Name -eq 'PythonScriptPlugin' }).Enabled | Should Be $true
+            ($project.Plugins | Where-Object { $_.Name -eq 'EditorScriptingUtilities' }).Enabled | Should Be $true
         }
 
         It 'has no Modules property in the uproject' {
