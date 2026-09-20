@@ -35,6 +35,7 @@ ROTATION_TOLERANCE = 0.5
 DAY_PITCH_MIN = -15.0
 DAY_PITCH_MAX = -3.0
 MIN_STATIC_MESH_ACTORS = 60
+MIN_DAY_STATIC_MESH_ACTORS = 150
 MIN_NIGHT_POINT_OR_SPOT_LIGHTS = 6
 
 checks = []
@@ -69,6 +70,79 @@ def rotator_close(a, b, tol):
     )
 
 
+def check_mountain_cast_shadow(map_name, all_actors):
+    """Every mountain mesh must have cast_shadow disabled, so the ridge
+    cannot throw a shadow across the village between it and the sun."""
+    mountain_actors = [
+        a for a in all_actors
+        if isinstance(a, unreal.StaticMeshActor) and "Mountain" in a.get_actor_label()
+    ]
+    if not mountain_actors:
+        record(map_name, "mountain meshes have cast_shadow disabled", False, "no actor labelled 'Mountain*' found")
+        return
+    offenders = []
+    for a in mountain_actors:
+        smc = a.static_mesh_component
+        casts = smc.get_editor_property("cast_shadow")
+        if casts:
+            offenders.append(a.get_actor_label())
+    ok = len(offenders) == 0
+    detail = "count={0}".format(len(mountain_actors)) if ok else "still casting shadows: {0}".format(", ".join(offenders))
+    record(map_name, "mountain meshes have cast_shadow disabled", ok, detail)
+
+
+def check_roof_ridges(map_name, all_actors):
+    """For each cottage with a roof (two panels labelled '<tag>_roof_left'
+    and '<tag>_roof_right'), the two panels must meet at a ridge and slope
+    DOWN to the eaves - not the other way around ("butterfly wings"). For
+    each panel, the long edge (local Y = +/-50 in the cube's own space)
+    nearer the OTHER panel's centre is the ridge edge (that is where the two
+    panels meet); it must be higher than the edge farther from it."""
+    roof_actors = [
+        a for a in all_actors
+        if isinstance(a, unreal.StaticMeshActor) and "_roof_" in a.get_actor_label()
+    ]
+    pairs = {}
+    for a in roof_actors:
+        tag = a.get_actor_label().rsplit("_roof_", 1)[0]
+        pairs.setdefault(tag, []).append(a)
+
+    if not pairs:
+        record(map_name, "roof ridge check (ridge edge higher than eave edge on both panels)", False, "no roof actors found")
+        return
+
+    def dist(p, q):
+        return math.sqrt((p.x - q.x) ** 2 + (p.y - q.y) ** 2 + (p.z - q.z) ** 2)
+
+    def edge_points(actor):
+        xf = actor.get_actor_transform()
+        return xf.transform_location(unreal.Vector(0, 50, 0)), xf.transform_location(unreal.Vector(0, -50, 0))
+
+    all_ok = True
+    details = []
+    for tag, actor_pair in pairs.items():
+        if len(actor_pair) != 2:
+            all_ok = False
+            details.append("{0}: expected 2 roof panels, found {1}".format(tag, len(actor_pair)))
+            continue
+        a, b = actor_pair
+        a_center = a.get_actor_location()
+        b_center = b.get_actor_location()
+        a_p1, a_p2 = edge_points(a)
+        b_p1, b_p2 = edge_points(b)
+        a_ridge, a_eave = (a_p1, a_p2) if dist(a_p1, b_center) < dist(a_p2, b_center) else (a_p2, a_p1)
+        b_ridge, b_eave = (b_p1, b_p2) if dist(b_p1, a_center) < dist(b_p2, a_center) else (b_p2, b_p1)
+        pair_ok = (a_ridge.z > a_eave.z) and (b_ridge.z > b_eave.z)
+        details.append(
+            "{0}: a_ridge_z={1:.1f} a_eave_z={2:.1f} b_ridge_z={3:.1f} b_eave_z={4:.1f}".format(
+                tag, a_ridge.z, a_eave.z, b_ridge.z, b_eave.z
+            )
+        )
+        if not pair_ok:
+            all_ok = False
+    record(map_name, "roof ridge check (ridge edge higher than eave edge on both panels)", all_ok, "; ".join(details))
+
+
 def verify_map(map_name, map_path, is_day):
     if not unreal.EditorAssetLibrary.does_asset_exist(map_path):
         record(map_name, "map asset exists", False, "no asset at {0}".format(map_path))
@@ -80,13 +154,15 @@ def verify_map(map_name, map_path, is_day):
             "has at least one SkyLight",
             "has at least one ExponentialHeightFog",
             "has at least one PostProcessVolume",
-            "has at least {0} StaticMeshActors".format(MIN_STATIC_MESH_ACTORS),
+            "has at least {0} StaticMeshActors".format(MIN_STATIC_MESH_ACTORS if not is_day else MIN_DAY_STATIC_MESH_ACTORS),
             "game mode override is the Combat game mode",
         ):
             record(map_name, name, False, "map does not exist")
         if is_day:
             record(map_name, "DirectionalLight pitch between -15 and -3 degrees", False, "map does not exist")
             record(map_name, "no PointLight/SpotLight present", False, "map does not exist")
+            record(map_name, "mountain meshes have cast_shadow disabled", False, "map does not exist")
+            record(map_name, "roof ridge check (ridge edge higher than eave edge on both panels)", False, "map does not exist")
         else:
             record(
                 map_name,
@@ -136,10 +212,11 @@ def verify_map(map_name, map_path, is_day):
     record(map_name, "has at least one PostProcessVolume", len(ppvs) >= 1, "count={0}".format(len(ppvs)))
 
     static_mesh_actors = [a for a in all_actors if isinstance(a, unreal.StaticMeshActor)]
+    min_mesh_actors = MIN_DAY_STATIC_MESH_ACTORS if is_day else MIN_STATIC_MESH_ACTORS
     record(
         map_name,
-        "has at least {0} StaticMeshActors".format(MIN_STATIC_MESH_ACTORS),
-        len(static_mesh_actors) >= MIN_STATIC_MESH_ACTORS,
+        "has at least {0} StaticMeshActors".format(min_mesh_actors),
+        len(static_mesh_actors) >= min_mesh_actors,
         "count={0}".format(len(static_mesh_actors)),
     )
 
@@ -175,6 +252,9 @@ def verify_map(map_name, map_path, is_day):
             len(point_or_spot_lights) == 0,
             "count={0}".format(len(point_or_spot_lights)),
         )
+
+        check_mountain_cast_shadow(map_name, all_actors)
+        check_roof_ridges(map_name, all_actors)
     else:
         record(
             map_name,
