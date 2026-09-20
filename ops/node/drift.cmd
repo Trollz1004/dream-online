@@ -41,8 +41,8 @@ set "HEALTH=%ROOT%\ops\node\alienware-health.ps1"
 set "STACKTASK=DREAM Stack"
 set "STACK=C:\DREAM\hermes\scripts\dream-stack.cmd"
 set "UE=C:\DREAM\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe"
-rem Set UPROJECT to the full path of the DREAM .uproject once it exists.
-set "UPROJECT="
+rem The DREAM .uproject, created 2026-09-20. Rebuild it with game\unreal\New-DreamTestZone.ps1.
+set "UPROJECT=C:\DREAM\dream-online\game\unreal\DreamOnline\DreamOnline.uproject"
 set "HEALTHARGS=-Verbose"
 set "RC=0"
 
