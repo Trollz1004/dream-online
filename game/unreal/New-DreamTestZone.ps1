@@ -177,7 +177,9 @@ $uprojectObject = [ordered]@{
     Description       = 'DREAM ONLINE test zone'
     Plugins           = @(
         [ordered]@{ Name = 'ModelingToolsEditorMode'; Enabled = $true; TargetAllowList = @('Editor') },
-        [ordered]@{ Name = 'GameplayStateTree'; Enabled = $true }
+        [ordered]@{ Name = 'GameplayStateTree'; Enabled = $true },
+        [ordered]@{ Name = 'PythonScriptPlugin'; Enabled = $true },
+        [ordered]@{ Name = 'EditorScriptingUtilities'; Enabled = $true }
     )
 }
 $uprojectJson = $uprojectObject | ConvertTo-Json -Depth 6
