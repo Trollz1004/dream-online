@@ -2,6 +2,30 @@
 
 One entry per session, newest first, in the form did, verified, blocked, next, commits. Written by the Claude judge lane for a reader with no memory of the session.
 
+## 2026-09-20 about 16:10 EDT, Claude Fable 5.1, fourth session, opened with `drift`
+
+**Did.**
+- Session start from the launch skill: no trigger file; health file YELLOW at 20:00Z only because Crosslisting on port 3000 answers as the wrong service (optional, not game work); both required game services UP by identity; the main checkout clean and equal to `origin/main` at `9bb6626`.
+- First daily skill scout sent to a Sonnet worker (launch skill, session start, step 6). The marker file did not exist yet. Nothing is installed by the worker; the judge lane vets its report.
+- Checked the cheap open items from `C:\DREAM\recon\QUEUE.md` with one shell call each, and wrote the answers into the queue.
+
+**Verified.**
+- City Sample is downloaded: `VaultCache\CitySample_5.8` holds 104 GB, last write 04:46 EDT. It should open without a compiler: `data\CitySample.uproject` names engine 5.8, three C++ modules and seven code plugins, and every one of them ships prebuilt Win64 DLLs. Not yet proved by opening it; the project has to be made from it in the launcher first, which is Joshua's click. That copy takes about 100 GB and drive C: has 155 GB free.
+- Queue item 6 is answered. The Live NPC Lab workflow run of 2026-09-13 did not fail on code. GitHub never started the job; its annotation reads "The job was not started because your account is locked due to a billing issue." Run locally today with cloud calls off: `npm test` passes all 9 checks and `npm run test:contracts` passes (11 contracts). The workflow has not run since, because its path filter fires only on changes under `game/server/live-npc-lab/`.
+- Still no Visual Studio on this box (`vswhere` is absent). The hermes checkout is unchanged (`feat/jarvis-gods-eye` at `7ba4623`), so the Obsidian House merge still waits.
+
+**Skill scout verdict, about 16:40 EDT.** The report is `C:\DREAM\recon\skill-scout\2026-09-20.md` with the verdict at its foot; `LAST-RUN.txt` holds today's date. Nothing was installed. The one item worth having is Epic's own `EpicGames/unreal-engine-skills-for-claude-code-plugin`: checked through the GitHub API and not only on the worker's word, it is MIT, pushed 2026-09-17, three skills, and one SessionStart hook that only looks for a `.uproject` and adds a short note; no credentials. It does nothing until the engine's Unreal MCP plugin answers on `127.0.0.1:8000`, and that plugin is parked by ruling, so it is held for Joshua's yes. Not installed: a 73-skill game collection whose install is unpinned, and a UE5 knowledge skill whose repository carries no licence. Refused under the hard rule: a desktop-control server that drives a logged-in browser and installs unpinned on every launch. Cost: the worker used about 150 thousand tokens, which is too much for a daily job; tomorrow's card caps it at three candidates and fifteen tool calls.
+
+**Blocked.** The GitHub billing lock is a payments matter and is not this lane's work; Joshua was told in one line. Until it is cleared, GitHub Actions cannot confirm a merge and the local run is the only gate. The compiler install, the hermes merge and the `supabase-dream` sign-in still wait for Joshua, as before.
+
+**Not verified.** Whether the GitHub billing lock is still in force today. The only evidence is the run of 2026-09-13; no run has been triggered since, and this lane did not push a change just to find out.
+
+**Next.** Joshua looks at the Day Dream and the Night Dream (desktop shortcuts "DREAM Day Dream" and "DREAM Night Dream") and says what he wants changed first. If he wants the city: he makes a project from City Sample in the launcher, then this lane opens it, pictures it, and plans how the DREAM character comes into it. One yes or no is open with him: Epic's Claude Code plugin together with un-parking the engine's Unreal MCP plugin.
+
+**Tests.** Records only, no code changed. Run anyway: `ops/node/alienware-health.Tests.ps1` 15 of 15, `ops/node/register-drift-logon.Tests.ps1` 8 of 8, Live NPC Lab `npm test` 9 of 9 checks and the contract index. 100 percent, no failures.
+
+**Commits.** `a1de37a` and the follow-up "ops(node): skill scout verdict" on `judge/session-4-records`, merged to `main` and pushed.
+
 ## 2026-09-19 about 23:10 EDT, Claude Fable 5.1, third session, opened by Joshua with `drift`
 
 **Did.**
