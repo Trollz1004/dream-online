@@ -30,6 +30,8 @@ Two Sabretooth services are probed from here and never healed from here: OmniRou
 
 Report states as UP, DOWN, WRONG SERVICE, AUTH MISSING, AUTH REJECTED or NOT CONFIGURED.
 
+A second task of ours, "DREAM-Drift-Logon", opens Claude after a restart (Joshua asked for it on 2026-09-19 so the terminal is already up). Ninety seconds after sign-in it opens one console window on the desktop and runs the installed `drift`, which finds the supervisor already running and opens Claude with the launch skill. It is Interactive and not elevated, the same as "DREAM Stack", and it never opens a second window. Each sign-in spends one Claude session start. `ops/node/register-drift-logon.ps1` registers it, `-Uninstall` removes it, and `ops/node/register-drift-logon.Tests.ps1` holds its 8 Pester tests.
+
 Other scheduled tasks on the box that are not ours: three Hermes gateway tasks at logon, `cua-driver-serve`, OneDrive, AMD and audio driver tasks.
 
 ## 3. Commands
@@ -104,6 +106,11 @@ Reboot test, recorded on 2026-09-19 at 19:10 EDT:
 - The supervisor's first health pass at 19:07:04 showed all six DOWN because they were still warming up. It did not start second copies: the supervisor log holds exactly one "started" line per service. Every later pass showed them UP.
 - The health probe wrote GREEN at 19:08:12 (23:08:12Z in `health.log`), and direct identity probes of all six local services and both Sabretooth services at 19:10:12 answered UP.
 - The one DOWN line on the supervisor's table, "Fable's Sentry (Sabertooth)" on port 9140, is the dead probe named in section 9, item 1. It is expected.
+
+Sign-in task and status line, recorded on 2026-09-19 at about 23:40 EDT:
+
+- "DREAM-Drift-Logon" is registered and was read back: logon trigger for Joshua's user with a delay of `PT1M30S`, action `cmd.exe /k` on the installed `drift.cmd`, working folder `C:\DREAM\dream-online`, Interactive, not elevated. Its 8 Pester tests pass. Not validated: the window really opening after a restart. It was not started on demand, because that would open a second Claude lane on this node beside the running one. The next restart is the test.
+- The Supermemory status line (the purple text at the bottom of Claude, as on Sabretooth) was missing because the Orca app had put its own hook in the one `statusLine` slot of `~/.claude/settings.json`, and that hook prints nothing. The slot now runs `node ~/.claude/dream-statusline.js`, which prints the Supermemory line and still feeds Orca's hook inside an Orca pane. Fed this session's id, it printed the same text as the plugin's own script. The old settings are in `~/.claude/settings.json.bak-2026-09-19-before-statusline`. If the purple text disappears again, Orca has rewritten the slot: set it back to that command.
 
 ## 9. Open work, in order
 

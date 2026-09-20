@@ -4,27 +4,27 @@ Operational state for asynchronous coordination between Fable and Codex. The mas
 
 ## CURRENT OBJECTIVE
 
-Finish the Alienware node setup (spec 000, `specs/000-alienware-node/`), then the directive section 49 reconnaissance, then spec 001: the world bus and the CrossEyed vertical slice (directive section 43).
+Spec 001, the world bus and the CrossEyed vertical slice (directive section 43), landed as a judged draft in `specs/001-world-bus-cross-eyed-slice/`. Story 1 is the visible test zone in Unreal 5.8.2, because the founder needs to see the game before he can decide anything. It waits on his go-ahead, in his own words in the game lane, to create the DREAM project file. The event path (story 2) and the fallback proof (story 3) follow.
 
 ## CURRENT OWNER
 
-Claude judge lane on Alienware. First session ran on 2026-09-19.
+Claude judge lane on Alienware. Third session, 2026-09-19 at about 23:10 EDT.
 
 ## LAST VERIFIED STATE
 
-2026-09-19, on the Alienware node (`192.168.0.40`): the node's `drift` command, launch skill, runbook and token-free health probe are built, merged and installed. The probe reports GREEN: Live NPC Lab 9127 and DreamOps Bridge 9133 UP by identity string, as are Hermes 9119, Ollama 11434, the older JARVIS HUD 9150 and Crosslisting 3000, plus OmniRoute and JARVIS on Sabretooth. Spec Kit is installed with a constitution. No game code changed.
+2026-09-19 at about 23:45 EDT, on the Alienware node (`192.168.0.40`): health GREEN at 03:00Z, all six local services and both Sabretooth services UP by identity string. Hermes finished the section 49 reconnaissance and the three spec 001 cards; the judge accepted the inventory as written (about 85 claims checked against the code, none wrong) and accepted the spec and the event contract with changes that are written at the top of each file. Facts from the check: the Live NPC Lab serves JSON only, so nothing a person can look at exists today; the lab already appends world events to a JSONL log; no code path connects DreamOps Bridge to the lab. No game code changed.
 
 ## FILES CHANGED
 
-`ops/node/**`, `.specify/**`, `.claude/skills/speckit-*`, `specs/000-alienware-node/**`, `.github/CODEOWNERS`, `.gitignore`, `.gitattributes`, `AGENTS.md` (the Unreal line), this file.
+`specs/001-world-bus-cross-eyed-slice/**` (new), `ops/node/register-drift-logon.ps1` and its tests (new), `ops/node/runbook/**`, `ops/node/skills/**`, `ops/node/JOURNAL.md`, this file.
 
 ## SERVICES TOUCHED
 
-None stopped or restarted. One scheduled task added: `DREAM-Alienware-Health`, every 30 minutes, read-only probes unless a required service is down.
+None stopped or restarted. One scheduled task added: `DREAM-Drift-Logon`, which opens `drift` 90 seconds after sign-in. `DREAM-Alienware-Health` is unchanged.
 
 ## TEST RESULTS
 
-`ops/node/alienware-health.Tests.ps1`: 15 of 15 pass (Pester 3.4). The game suites were not affected and were not re-run.
+`ops/node/register-drift-logon.Tests.ps1`: 8 of 8 pass. `ops/node/alienware-health.Tests.ps1`: 15 of 15 pass. The game suites were not affected and were not re-run.
 
 ## KNOWN FAILURES
 
@@ -42,4 +42,4 @@ None in this work. The stack script's `sentry` probe of `192.168.0.8:9140` now f
 
 ## NEXT HANDOFF
 
-Summary: node operations landed; nothing for Codex to review in game code yet. Architectural decision worth a look: the health probe has no unattended model run and executes no command read from a file, unlike the Sabretooth pattern; the reason is in runbook section 4. Security check: no secrets read or written; the repository stays public-safe. Rollback: `git revert -m 1 84696a5`, delete `%USERPROFILE%\.local\bin\drift.cmd` and `%USERPROFILE%\.claude\skills\alienware-node\`, and run `ops/node/register-health-task.ps1 -Uninstall`. Next: open work is listed in runbook section 9.
+Summary: spec 001 is landed as a judged draft; nothing for Codex to review in game code yet. Architectural decisions worth a look, all in the rulings at the top of `spec.md` and `contracts/world-event-envelope.md`: the carrier is append-only JSONL with the Live NPC Lab as the one writer; the age mode wire value is `NIGHTMARE_13_PLUS`; none of the seven event names Codex proposed is adopted into this slice, though all seven fit the naming rule. Security check: no secrets read or written; the repository stays public-safe. Rollback: revert the merge commit named "drift at sign-in, status line, spec 001 landed" and run `ops/node/register-drift-logon.ps1 -Uninstall`. Next: the founder's go-ahead for the Unreal project, then Spec Kit plan and tasks for story 1.
