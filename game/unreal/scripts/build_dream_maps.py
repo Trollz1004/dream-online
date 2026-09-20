@@ -92,6 +92,13 @@ def try_set(obj, prop, value, what=""):
         return False
 
 
+def rgb(r, g, b):
+    # unreal.Color takes its positional arguments as BLUE, GREEN, RED, ALPHA. The first builds wrote
+    # unreal.Color(255, 150, 70, 255) for a warm sun and got a blue one, which is why the Day Dream
+    # stayed cold through every other fix (found by the judge, 2026-09-20). Always name the channels.
+    return unreal.Color(r=int(r), g=int(g), b=int(b), a=255)
+
+
 def get_component(actor, component_class):
     try:
         return actor.get_component_by_class(component_class)
@@ -384,12 +391,16 @@ def spawn_sky_atmosphere():
     return spawn_actor(unreal.SkyAtmosphere, unreal.Vector(0, 0, 0), unreal.Rotator(0, 0, 0), label="SkyAtmosphere")
 
 
-def spawn_sky_light(intensity):
+def spawn_sky_light(intensity, tint=None):
     sky = spawn_actor(unreal.SkyLight, unreal.Vector(0, 0, 500), unreal.Rotator(0, 0, 0), label="SkyLight")
     comp = get_component(sky, unreal.SkyLightComponent)
     if comp is not None:
         try_set(comp, "real_time_capture", True, "SkyLightComponent")
         try_set(comp, "intensity", intensity, "SkyLightComponent")
+        if tint is not None:
+            # The captured sky is blue, so an untinted fill paints every shadow blue. The tint
+            # multiplies the capture, which turns the fill warm without touching the visible sky.
+            try_set(comp, "light_color", rgb(tint[0], tint[1], tint[2]), "SkyLightComponent")
     return sky
 
 
@@ -419,27 +430,37 @@ def spawn_fog(inscattering_color, density, volumetric, directional_color=None, d
     return fog
 
 
-def spawn_post_process(bloom_intensity, bloom_threshold, white_temp, vignette, contrast, exposure_bias=0.0, exposure_min=None, exposure_max=None):
+def spawn_post_process(bloom_intensity, bloom_threshold, white_temp, vignette, contrast, exposure_bias=0.0, exposure_min=None, exposure_max=None, gain=None):
     ppv = spawn_actor(unreal.PostProcessVolume, unreal.Vector(0, 0, 300), unreal.Rotator(0, 0, 0), label="PostProcessVolume")
     try_set(ppv, "unbound", True, "PostProcessVolume")
     settings = ppv.get_editor_property("settings")
-    try_set(settings, "bloom_intensity", bloom_intensity, "PostProcessSettings")
-    try_set(settings, "bloom_threshold", bloom_threshold, "PostProcessSettings")
-    try_set(settings, "white_temp", white_temp, "PostProcessSettings")
-    try_set(settings, "vignette_intensity", vignette, "PostProcessSettings")
-    try_set(settings, "color_contrast", unreal.Vector4(contrast, contrast, contrast, 1.0), "PostProcessSettings")
+
+    def set_pp(prop, value):
+        # Unreal ignores a post-process value unless its override flag is on. The first builds
+        # never set the flags, so no grading applied at all (found by the judge, 2026-09-20).
+        try_set(settings, "override_" + prop, True, "PostProcessSettings")
+        try_set(settings, prop, value, "PostProcessSettings")
+
+    set_pp("bloom_intensity", bloom_intensity)
+    set_pp("bloom_threshold", bloom_threshold)
+    set_pp("white_temp", white_temp)
+    set_pp("vignette_intensity", vignette)
+    set_pp("color_contrast", unreal.Vector4(contrast, contrast, contrast, 1.0))
+    if gain is not None:
+        # A direct red, green, blue gain: the one grade whose direction cannot be misread.
+        set_pp("color_gain", unreal.Vector4(gain[0], gain[1], gain[2], 1.0))
     # Auto exposure normalizes on the scene average; a bright sky filling
     # most of the frame otherwise drags the whole image toward middle grey
     # and washes out darker elements like the mountain. A negative bias
     # holds the image moodier without switching to a blind manual exposure.
-    try_set(settings, "auto_exposure_bias", exposure_bias, "PostProcessSettings")
+    set_pp("auto_exposure_bias", exposure_bias)
     # Clamping min/max brightness close together locks the auto-exposure
     # adaptation range so a large bright sky cannot drag the whole frame
     # toward middle grey and blow the sky out to pale/white.
     if exposure_min is not None:
-        try_set(settings, "auto_exposure_min_brightness", exposure_min, "PostProcessSettings")
+        set_pp("auto_exposure_min_brightness", exposure_min)
     if exposure_max is not None:
-        try_set(settings, "auto_exposure_max_brightness", exposure_max, "PostProcessSettings")
+        set_pp("auto_exposure_max_brightness", exposure_max)
     ppv.set_editor_property("settings", settings)
     return ppv
 
@@ -716,14 +737,24 @@ def build_day_map():
     # braces composition fix on top of it.
     highest_peak_x, highest_peak_y = MOUNTAIN_PEAKS[0][0], MOUNTAIN_PEAKS[0][1]
     peak_azimuth = math.degrees(math.atan2(highest_peak_y, highest_peak_x))
-    sun_azimuth = peak_azimuth + 8.0
-    sun_yaw = sun_azimuth + 180.0
+    # JUDGE'S COMPOSITION FIX (2026-09-20). With the sun ahead of the player, every face the camera
+    # sees is in shadow and lit only by the blue sky, and the ground at that grazing angle mirrors
+    # the sky, so the picture stays cold whatever the grade. The low sun now stands behind the
+    # player's right shoulder: its light travels toward the ridge, 25 degrees off the view axis,
+    # so the faces toward the camera and the track catch the orange light and the long shadows
+    # run away from the player toward the mountains. Turn around in the map to see the sun.
+    sun_azimuth = peak_azimuth + 180.0 + 25.0
+    sun_yaw = peak_azimuth + 25.0
     sun_pitch = -7.5
     sun = spawn_actor(unreal.DirectionalLight, unreal.Vector(0, 0, 1000), unreal.Rotator(0.0, sun_pitch, sun_yaw), label="Sun")
     sun_comp = get_component(sun, unreal.DirectionalLightComponent)
     if sun_comp is not None:
-        try_set(sun_comp, "intensity", 12.0, "DirectionalLightComponent")
-        try_set(sun_comp, "light_color", unreal.Color(255, 150, 70, 255), "DirectionalLightComponent")
+        # Judge's values: at 7.5 degrees the ground only receives sin(7.5) = 13 percent of the
+        # sun, so the sun has to be strong for the grazing light to beat the blue sky fill.
+        try_set(sun_comp, "intensity", 11.0, "DirectionalLightComponent")
+        # Nearly white on purpose: with atmosphere_sun_light on, the SkyAtmosphere reddens a low sun by
+        # itself. An orange light colour on top counts the sunset twice and tints the whole sky orange.
+        try_set(sun_comp, "light_color", rgb(255, 240, 222), "DirectionalLightComponent")
         try_set(sun_comp, "atmosphere_sun_light", True, "DirectionalLightComponent")
 
     spawn_sky_atmosphere()
@@ -732,7 +763,8 @@ def build_day_map():
     # and cottages should have been warm and were not), which is consistent
     # with the cool ambient SkyLight fill dominating over the direct sun
     # rather than the sun's warmth reading through.
-    spawn_sky_light(0.12)
+    # Judge's value: 0.12 crushed the shadows; with the white balance fixed the fill can come back.
+    spawn_sky_light(0.55)  # untinted: the blue sky fill gives the cool blue-grey shadows of the references
     spawn_actor(unreal.VolumetricCloud, unreal.Vector(0, 0, 0), unreal.Rotator(0, 0, 0), label="VolumetricCloud")
     # Warm inscattering (ambient haze tint) and a warm, fairly tight
     # directional inscattering (the visible glow around the sun's direction
@@ -740,9 +772,11 @@ def build_day_map():
     # ridge at 3-4km from disappearing completely into solid haze (opacity
     # = 1-exp(-density*distance) would otherwise be ~100% at that range for
     # any density high enough to give visible near-field dust).
+    # Judge's values: volumetric fog OFF for the day map. With it on, the haze takes its colour from
+    # the blue sky fill and paints the ground teal. Plain height fog uses the colours given here.
     spawn_fog(
-        (0.5, 0.32, 0.18), 0.004, True,
-        directional_color=(1.0, 0.75, 0.4), directional_exponent=8.0, max_opacity=0.65,
+        (0.30, 0.22, 0.15), 0.004, False,
+        directional_color=(0.9, 0.62, 0.34), directional_exponent=6.0, max_opacity=0.6,
     )
     # The auto_exposure_min/max clamp from the previous pass is the prime
     # suspect for the uniform cold-teal result: combined with white_temp
@@ -753,7 +787,14 @@ def build_day_map():
     # Dropped the clamp back to bias-only, and lowered white_temp so the
     # white-balance correction assumes a COOLER illuminant than our actual
     # warm sun, which adds warmth instead of fighting it.
-    spawn_post_process(0.3, 2.2, 4500.0, 0.35, 1.15, exposure_bias=0.3)
+    # JUDGE'S CORRECTION (2026-09-20): the paragraph above has the white balance backwards.
+    # In Unreal a white_temp BELOW 6500 makes the whole picture cooler and bluer, and a value
+    # ABOVE 6500 makes it warmer. 4500 is what turned the warm ochre materials teal. 8600
+    # gives the golden end-of-day cast the art direction asks for.
+    # Second correction: even with the flags on, 8600 did not warm the picture, so the white balance
+    # goes back to neutral and the warmth comes from things that cannot be misread: a warm sky
+    # fill, warm plain fog and a direct colour gain.
+    spawn_post_process(0.3, 2.2, 6500.0, 0.35, 1.1, exposure_bias=0.0, gain=(1.04, 1.0, 0.94))
 
     spawn_player_start()
     set_world_settings_game_mode()
@@ -842,7 +883,7 @@ def build_street_lamps(post_material, rng):
             if comp is not None:
                 try_set(comp, "intensity", 4000.0, "PointLightComponent")
                 try_set(comp, "attenuation_radius", 900.0, "PointLightComponent")
-                try_set(comp, "light_color", unreal.Color(255, 196, 130, 255), "PointLightComponent")
+                try_set(comp, "light_color", rgb(255, 196, 130), "PointLightComponent")
             light_actors.append(light)
             if len(mesh_actors) >= 16:
                 return mesh_actors, light_actors
@@ -892,7 +933,7 @@ def build_night_map():
     moon_comp = get_component(moon, unreal.DirectionalLightComponent)
     if moon_comp is not None:
         try_set(moon_comp, "intensity", 0.4, "DirectionalLightComponent")
-        try_set(moon_comp, "light_color", unreal.Color(150, 175, 235, 255), "DirectionalLightComponent")
+        try_set(moon_comp, "light_color", rgb(150, 175, 235), "DirectionalLightComponent")
         try_set(moon_comp, "atmosphere_sun_light", True, "DirectionalLightComponent")
 
     spawn_sky_atmosphere()

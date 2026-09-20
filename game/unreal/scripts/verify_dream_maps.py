@@ -211,6 +211,29 @@ def verify_map(map_name, map_path, is_day):
     ppvs = [a for a in all_actors if isinstance(a, unreal.PostProcessVolume)]
     record(map_name, "has at least one PostProcessVolume", len(ppvs) >= 1, "count={0}".format(len(ppvs)))
 
+    # Unreal ignores a post-process value unless its matching override flag is on. The first builds set
+    # the values and never the flags, so no grading applied and every colour fix did nothing.
+    if ppvs:
+        settings = ppvs[0].get_editor_property("settings")
+        flags = ("override_white_temp", "override_bloom_intensity", "override_auto_exposure_bias")
+        off = [f for f in flags if not settings.get_editor_property(f)]
+        record(map_name, "post-process overrides are switched on", not off, "off={0}".format(off))
+    else:
+        record(map_name, "post-process overrides are switched on", False, "no PostProcessVolume")
+
+    # unreal.Color takes blue, green, red positionally. The first builds asked for warm lights and got
+    # blue ones. A warm light has at least as much red as blue; check the day sun and the night lamps.
+    if is_day:
+        suns = [a for a in all_actors if isinstance(a, unreal.DirectionalLight)]
+        colours = [a.get_component_by_class(unreal.DirectionalLightComponent).get_editor_property("light_color") for a in suns]
+        record(map_name, "sun colour is not blue (red >= blue)", bool(colours) and all(c.r >= c.b for c in colours),
+               "rgb={0}".format([(c.r, c.g, c.b) for c in colours]))
+    else:
+        lamps = [a for a in all_actors if isinstance(a, unreal.PointLight)]
+        colours = [a.get_component_by_class(unreal.PointLightComponent).get_editor_property("light_color") for a in lamps]
+        record(map_name, "street lamp colour is warm (red > blue)", bool(colours) and all(c.r > c.b for c in colours),
+               "lamps={0}".format(len(colours)))
+
     static_mesh_actors = [a for a in all_actors if isinstance(a, unreal.StaticMeshActor)]
     min_mesh_actors = MIN_DAY_STATIC_MESH_ACTORS if is_day else MIN_STATIC_MESH_ACTORS
     record(
