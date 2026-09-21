@@ -71,7 +71,8 @@ This is the heart of the combat and it is a ruling, not a suggestion.
 Joshua pointed at a player discussion of a long-running combo-driven action game on 2026-09-20 as the shape he wants. The page refuses an automated fetch, so these are the generic design patterns of that family, written in our own terms. No art, name or asset of any other game enters this project; only the mechanics are studied, which is the rule in the workspace rulebook.
 
 - **Every skill is a key combination first.** The combination is the real binding and the thing a player builds muscle memory for.
-- **The same skill also sits in a slot on the bar.** A player who cannot perform a combination, or who is on a controller, fires the identical skill from a slot. Nothing is combination-only. This is an accessibility requirement here, not an option.
+- **The skill bar exists to show cooldowns.** Ruled by Joshua on 2026-09-20. If a skill bar is on the screen, its job is to show what is ready and what is still cooling down. It is a readout first, not the way skills are meant to be fired.
+- **A player may bind hot keys on that bar if they want to.** Also his ruling. The combination is the intended way to play, and the bar is there for the player who prefers a hot key, who is on a controller, or who cannot perform a combination. Nothing is combination-only.
 - **Skills chain.** A skill entered during the previous skill's cancel window flows straight out of it instead of waiting for the recovery to finish. Chains, not single hits, are where damage comes from, and they are what makes the combat feel fast.
 - **Cancelling is a skill of its own.** A movement input or another skill may cut a recovery short. The cancel window per skill is already in the skill data fields below.
 - **Defence lives on the skill, not on one button.** Each skill carries a defensive tag: invulnerability frames, super armour, a forward guard, or nothing at all. Choosing the right skill is the defence.
