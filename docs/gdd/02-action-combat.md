@@ -41,13 +41,33 @@ His own examples, each one a separate skill:
 
 The rule to follow when new skills are added: never reuse a key set that is already spoken for, and never treat two sets as the same skill because they share keys. W + Shift and W + Shift + F are two skills, not one skill with a variation.
 
-### Open question for Joshua
+### Movement, ruled by Joshua on 2026-09-20
 
-W + Shift is the chord almost every game uses for sprint. If W + Shift fires a skill, sprint needs somewhere else to live. The three ways out, for him to pick:
+- Holding a direction key walks or runs in the normal way.
+- Holding Shift with a direction key sprints, for as long as both are held.
+- A double tap latches auto-sprint, so long travel needs no keys held down. The character keeps sprinting until the player stops, turns sharply or acts.
 
-1. Sprint moves to a double tap of the direction key, and W + Shift stays a skill.
-2. Sprint stays on W + Shift when it is held, and the skill fires on a quick tap of the pair.
-3. There is no sprint. Movement speed is one speed, and the gap closers are the fast travel in a fight.
+### The one clash, and how it is resolved
+
+Every W + Shift press begins as a possible sprint, so a skill on that same pair cannot fire on the press without making sprint feel late. Two rules keep both:
+
+1. Sprint starts the instant Shift and the direction key are held, with no delay at all.
+2. A skill bound to a direction and Shift alone fires on a quick release, when the pair is let go inside about 150 milliseconds. A sprint that lasted 150 milliseconds is invisible to the player, so nothing is lost.
+
+That leaves the latch. If auto-sprint were a double tap of Shift and the direction key together, each of those two quick taps would read as the skill. So auto-sprint is a double tap of the direction key on its own, with no Shift, and Shift is not needed to keep it running. This is the lane's ruling, pending one yes or no from Joshua; everything else in this section is his own wording.
+
+Skills that carry an action key, such as W + Shift + F or A + F, have no clash of any kind. They fire on the press of the action key.
+
+### Patterns taken from the combo-driven action games of this type
+
+Joshua pointed at a player discussion of a long-running combo-driven action game on 2026-09-20 as the shape he wants. The page itself refuses an automated fetch, so these are the generic design patterns of that family, written in our own terms. No art, name or asset of any other game enters this project; only the mechanics are studied, which is the rule in the workspace rulebook.
+
+- **Every skill is a key combination first.** The combination is the real binding and the thing a player builds muscle memory for. This is Joshua's ruling above.
+- **The same skill also sits in a slot on the bar.** A player who cannot perform a combination, or who is on a controller, fires the identical skill from a slot. Nothing is combination-only. This is an accessibility requirement here, not an option.
+- **Skills chain.** A skill entered during the previous skill's cancel window flows straight out of it instead of waiting for the recovery to finish. Chains, not single hits, are where damage comes from, and they are what makes the combat feel fast.
+- **Cancelling is a skill of its own.** A movement input or another skill may cut a recovery short. The cancel window per skill is already in the skill data fields below, so this costs nothing new to support.
+- **Defence lives on the skill, not on one button.** Each skill carries a defensive tag: invulnerability frames, super armour, a forward guard, or nothing at all. Choosing the right skill is the defence. The dodge on Space stays as the plain answer for a player who has not learned the tags.
+- **The usual complaint about this family is that nothing is discoverable.** Players cannot see which combinations exist or what each one does. Our answer is a combo list screen that shows every combination in plain words with its defensive tag, and a practice dummy in the test zone to try them against. That screen follows the interface direction in `docs/gdd/09-interface-style.md`: dark see-through panel, three columns, plain words.
 
 ### How this is built in Unreal
 
@@ -68,7 +88,9 @@ Enhanced Input in Unreal 5.8 has a chorded action trigger, which is exactly this
 
 Every skill needs:
 
-- Command input.
+- Command input, the key combination that fires it.
+- Slot binding, so the same skill can be fired from the bar by a player who does not use the combination.
+- Chains into: the skills this one may flow straight into during its cancel window.
 - Startup frames.
 - Active frames.
 - Recovery frames.
