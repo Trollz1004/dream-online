@@ -2,6 +2,35 @@
 
 One entry per session, newest first, in the form did, verified, blocked, next, commits. Written by the Claude judge lane for a reader with no memory of the session.
 
+## 2026-09-20 about 23:10 EDT, Claude Opus 5, seventh session
+
+**Did.**
+- Session-start checks. No trigger file. Health YELLOW at 02:30Z for one reason only: Crosslisting on port 3000 answers HTTP 200 but not with its identity string, and it is optional and not game work. Both required game services were UP by identity. OmniRoute on Sabretooth timed out from here at that moment; Sabretooth's JARVIS answered normally.
+- Found uncommitted work in the checkout from the previous session: browser-build performance changes to the Godot combat slice that had never been committed. Judged them, finished them, tested them and landed them rather than reverting anything.
+- Made the browser build cheaper in four ways. The sun casts no shadow when the build has the "web" feature, which is the single largest saving in this scene. Multisampling went from 2x to off, which buys nothing on flat untextured shapes. The HTML canvas no longer resizes with the browser window. The readout writes a label only when its text or colour actually changed, instead of setting text and a theme colour override on every line sixty times a second.
+- Added a frames-per-second line to the readout, so the cost of any later change can be read off the screen instead of guessed at.
+- Fixed a layout bug found by looking at a frame. The new frames-per-second line made the readout column one line taller, and the big event line ("HIT for 18", "PERFECT DODGE") sat at a fixed y of 300 and landed underneath it. A fixed position cannot know how tall the column above it has grown, so the event line is now the last line of the same column and the container places it.
+- Wrote the first tests for the readout, seven checks, failing first. They run without a window: the HUD builds its labels in `_ready`, the test calls `_ready` by hand, and the checks read label text and the node tree rather than pixels.
+- Closed a hole in the test runner. A GDScript error inside a test function aborts that function, returns to the runner as though nothing had happened, and the run still exits 0. Tonight that hid the whole new suite while it was red. The runner now fails when fewer checks run than expected (`MINIMUM_CHECKS`, currently 87).
+
+**Verified.**
+- Godot headless tests: 87 of 87 pass, 7 of them new. They failed first, by name, before the HUD had the accessors they read.
+- The desktop build was photographed at 4.05 seconds (`C:\DREAM\recon\hud-fixed.png`): the readout reads "60 frames per second" on its own line and "HIT for 18" sits below it with nothing covering anything. The earlier frame `web-perf-check.png` shows the bug it replaced.
+- The frame rate line was checked against the engine before it was trusted. A temporary probe printed `fps=60.0` at the same instant the screen showed what looked like a zero; the digit was the "6" of 60 with the big red event line drawn over it.
+- The browser build was re-exported and loaded in a real browser engine, headless, from `http://127.0.0.1:8099/`. It booted, drew a 1280 by 720 canvas, and ran at 60 frames per second with zero console errors and zero failed requests. Picture kept at `scratchpad\web-slice.png`; the sun casts no shadow there, which is the web path doing what it was told. Headless uses a software renderer, so 60 is a floor and not what the RX 6800 will do.
+- Checkout clean and equal to `origin/main` after the push.
+
+**Blocked.**
+- Looking at the browser build in Joshua's own Chrome. Two Chrome browsers are connected to the account, so the extension asked which one; the confirmation prompt sent to both went unanswered within its two-minute window, because he was not at the keyboard. Nothing depends on it: the headless run already answered the performance question. He opens it himself by double-clicking `game\godot\Serve-DreamSlice-Web.cmd`.
+
+**Next.**
+- Joshua looks at the slice, in the window or in a browser, and says what the fight is missing.
+- Still open from earlier sessions and unchanged tonight: the Visual Studio install (refused by Claude Code's permission classifier, his to run), the hermes `master` merge for the Obsidian House service (same refusal), and the GitHub billing lock that keeps Actions from confirming any merge.
+
+**A gap in this journal, for the next reader.** There is no entry for the session between 21:45 and 22:45 EDT on 2026-09-20, the one where Godot became the engine and the combat slice was built. Its work is in the git log and in the launch skill, not here: `c634d7c` the first playable slice, `df47d3e` the camera and facing fixes and the Gemini character-design lane, `6f24817` the light attack chain with a dummy that fights back and the perfect-dodge world event, `281dc9e` the launch skill sorted by who actually said what, `514c705` the fallback research skill and the web export preset, and `99d2d4f` the browser build. Read those commit messages for what happened; they are written in full sentences.
+
+**Commits.** `e3dfcb2` on `judge/web-perf-and-hud-layout`, merged as `aba926e`, plus the generated UID file. Pushed to `main`.
+
 ## 2026-09-20 about 21:00 EDT, Claude Fable 5.1, fifth session, continued after the five-hour cap
 
 **Did.**

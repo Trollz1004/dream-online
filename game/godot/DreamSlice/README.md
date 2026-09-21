@@ -14,6 +14,20 @@ anyone to click in an editor. Unreal stays parked, not deleted.
 Double-click `game\godot\Open-DreamSlice.cmd`, or the desktop shortcut
 "DREAM Combat Slice". Nothing else has to be running.
 
+## Or play it in a browser
+
+Double-click `game\godot\Serve-DreamSlice-Web.cmd`. It opens
+`http://localhost:8099` and serves the browser build from `build\web`, which is
+not in the repository. Leave that window open while you play and close it to
+stop. If the folder is empty, run `game\godot\Export-DreamSlice-Web.cmd` first;
+it takes about a minute.
+
+The browser build is deliberately single-threaded, so it runs on any plain
+static host with no cross-origin isolation headers, and it drops the sun's
+shadows and multisampling because a browser pays for both every frame on one
+thread. The readout says the frame rate, so any change that costs something can
+be read off the screen.
+
 ## Controls
 
 They follow the rulings in `docs/gdd/02-action-combat.md`.
@@ -38,8 +52,15 @@ is wide open.
 godot --headless --path game/godot/DreamSlice --script res://tests/run_tests.gd
 ```
 
-26 checks cover the dash frame windows, the stamina and cooldown gates, and the
-combo grammar including the rule that the Shift is part of the key set.
+87 checks cover the dash frame windows, the stamina and cooldown gates, the
+combo grammar including the rule that the Shift is part of the key set, the
+light attack chain, the world event envelope, and the readout.
+
+The runner also fails when fewer checks run than it expects. A GDScript error
+inside a test function aborts that function and returns here as though nothing
+had happened, so a whole suite can be skipped in silence and still report
+success. Raise `MINIMUM_CHECKS` in `tests/run_tests.gd` when checks are added;
+never lower it to make a run pass.
 
 ## Take a picture
 
