@@ -159,9 +159,11 @@ it returns, never by a port answering.
 - Sole authority: Joshua Coleman (`@Trollz1004` on GitHub).
 - ANTIGRAVITY is a separate repository, `Trollz1004/ANTIGRAVITY`, and it is not this
   machine's work; it belongs to the Codex lane on the Sabretooth node. The copy at
-  `C:\ANTIGRAVITY` here is simply an old pull, last fetched 2026-09-16 and sitting on
-  a feature branch, so do not read doctrine out of it. Read the current files from
-  `https://raw.githubusercontent.com/Trollz1004/ANTIGRAVITY/main/`.
+  `C:\ANTIGRAVITY` was brought current on 2026-09-21 and is safe to read from again.
+  It had been an old pull from 2026-09-16, and upstream `main` had been rewritten in
+  the meantime, so the two histories had diverged and no ordinary pull could have
+  joined them. The old local history is kept on the branch
+  `backup/pre-rewrite-local-main` rather than discarded.
 
 The older entries here named Paperclip boards on ports 3100, 3110 and 3130. Nothing
 on this machine answers on any of them, and they were removed rather than left to
