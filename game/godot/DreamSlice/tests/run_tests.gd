@@ -4,6 +4,13 @@ extends SceneTree
 #   godot --headless --path game/godot/DreamSlice --script res://tests/run_tests.gd
 # Exits 0 when every check passes and 1 when any check fails.
 
+# A GDScript error inside a test function aborts that function and returns here
+# as though nothing had happened, so a whole suite can be skipped in silence and
+# still report success. That happened on 2026-09-20. The floor below turns a
+# skipped suite into a failure. Raise it when checks are added; never lower it
+# to make a run pass.
+const MINIMUM_CHECKS := 87
+
 var passed := 0
 var failed := 0
 
@@ -24,6 +31,12 @@ func _init() -> void:
 	_test_camera_relative()
 	_test_body_does_not_spin_the_camera()
 	load("res://tests/test_attack_and_events.gd").new().run(self)
+	load("res://tests/test_hud.gd").new().run(self)
+	var ran := passed + failed
+	if ran < MINIMUM_CHECKS:
+		failed += 1
+		print("  [FAIL] %d checks ran and at least %d were expected: a suite was skipped"
+			% [ran, MINIMUM_CHECKS])
 	print("passed: %d  failed: %d" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
