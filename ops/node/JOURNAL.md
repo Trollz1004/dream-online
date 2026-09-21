@@ -2,6 +2,33 @@
 
 One entry per session, newest first, in the form did, verified, blocked, next, commits. Written by the Claude judge lane for a reader with no memory of the session.
 
+## 2026-09-21 about 15:35 EDT, Claude Opus 5, eighth session
+
+**Did.**
+- Judged the Hermes lane's engine decision record, corrected two things in it and merged it. The corrections are named inside the file rather than made quietly: it blamed the missing C++ toolchain on a founder rule that does not exist, when Joshua had approved the install and Claude Code's permission classifier refused it; and it carried a description of the founder's own use of reference material into a public repository. Verdict written back to that lane in the drop box.
+- Rewrote the originality rule section in `docs/gdd/08` after Joshua said plainly that he only wants to avoid breaking terms or copyright and wants to show reference samples to a generator to make DREAM's own character art. The rule binds the lanes, not him. Only two limits are real and worth ever raising with him: a listing whose own licence forbids AI use, and an output that comes out recognisable as someone else's.
+- Wrote `docs/tech/asset-licensing.md` after he ruled that nothing paid is used. Checking that turned up something the engine change had made true without anyone noticing.
+- Fixed the README. Its ground-truth section named Paperclip boards on three ports that nothing here serves and pointed at an ANTIGRAVITY file on this drive; every line of it sent a reader somewhere false. Replaced with what is really here and the identity string for each. Also removed his email address from a public file in favour of his GitHub handle.
+- Brought `C:\ANTIGRAVITY` current at his request, backing up the old history first.
+- Repaired the Obsidian MCP server, which had been reporting only `ConnectionRefused`.
+- Built `ops/node/dream-ground-truth.ps1` and the `dream-ground-truth` skill, wired as `drift ground` and as step 3 of the launch skill's session start. This was his instruction, and his reason is the point: he is short of time, and every session that re-derives what the last one already knew is taken from him.
+
+**Verified.**
+- City Sample is labelled on Fab as "UE-Only Content — Licensed for Use Only with Unreal Engine-based Products". The engine is Godot, so the 112 GB in the vault cache cannot ship in the game. It was never used. It stays on disk because Unreal work for cinematics and reference is still allowed.
+- The Obsidian MCP failure was three faults, not one, and none of them was the missing plugin an earlier session had assumed. The configured URL pointed at the HTTPS port 27124, whose certificate is self-signed and which the MCP client rightly refuses; the API key in `~/.claude.json` was stale, proved by a 401 that became a 404 once the live key was used; and the path was `/second-brain-mcp/` where the plugin serves `/mcp`, found by probing. It now answers an `initialize` handshake as `obsidian-local-rest-api` version 1.0.0 on protocol 2025-06-18. The key was read from the plugin's own data file and written across without ever being printed, and the drop box `.env` was not opened, which Joshua offered and which was not needed.
+- `Invoke-Pester -Path ops/node/dream-ground-truth.Tests.ps1`: 24 of 24 pass. They failed first, and twice more after that, which is the point of writing them first. Three real bugs came out of it: `[datetime]::TryParseExact` will not bind its `[ref]` parameter from Windows PowerShell script; `--date=format:yyyy-MM-dd` makes git hand back that literal string rather than a date, so `--date=short` is correct; and a function that wrote its display lines and its verdict down the same pipeline handed the caller an array where it expected a word, so the whole report vanished and only an exit code came out.
+- `drift ground` through the installed copy prints the report and exits 0, 1 or 2. Both copies of `drift.cmd` and of both skills are byte-identical, checked by hash.
+- The ANTIGRAVITY fetch printed `+ 9ea51ffb...433e450d main -> origin/main (forced update)`, so upstream history really had been rewritten. That vindicates a line this lane had removed from the README an hour earlier for being unverifiable, and the line is back with detail. The two histories had diverged 1587 against 1809, so no ordinary pull could have joined them. The working tree was clean and nothing was unpushed before anything was touched; the old history is kept on `backup/pre-rewrite-local-main`.
+
+**Blocked.**
+- Nothing new. Still his to run: the Visual Studio install and the hermes `master` merge, both refused by the permission classifier, neither blocking game work now that Godot needs no compiler. The GitHub billing lock still keeps Actions from confirming a merge.
+
+**Next.**
+- He still has not said whether mouse-look works in the browser when he clicks into the page with the window focused. Until he does, the two small web fixes wait: do not request the mouse at startup on the web path, and put a line on screen telling a browser player to click.
+- The next session runs `drift ground` first and fixes whatever it flags before anything else.
+
+**Commits.** The engine record, the originality rule, the asset licensing file, three README fixes, and the ground-truth checker with its skill. All merged to `main` and pushed.
+
 ## 2026-09-20 about 23:10 EDT, Claude Opus 5, seventh session
 
 **Did.**

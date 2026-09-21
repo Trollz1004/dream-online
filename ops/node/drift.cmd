@@ -19,6 +19,8 @@ rem    drift house    make sure the stack supervisor runs, then print the
 rem                   health table; no Claude
 rem    drift health   run the 30-minute health probe now and print the table
 rem                   (a failed required service gets one bring-up pass)
+rem    drift ground   print the true state of the work: unfinished changes,
+rem                   stale records, drifted copies, integrations by handshake
 rem    drift ue       open the Unreal Editor (UE 5.8) on the DREAM project,
 rem                   or the project browser while no .uproject exists
 rem    drift jarvis   open Mission Control on Sabretooth in the browser
@@ -38,6 +40,7 @@ title DREAM drift
 
 set "ROOT=C:\DREAM\dream-online"
 set "HEALTH=%ROOT%\ops\node\alienware-health.ps1"
+set "GROUND=%ROOT%\ops\node\dream-ground-truth.ps1"
 set "STACKTASK=DREAM Stack"
 set "STACK=C:\DREAM\hermes\scripts\dream-stack.cmd"
 set "UE=C:\DREAM\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe"
@@ -56,6 +59,7 @@ if "%~1"=="" goto :default
 if /I "%~1"=="bare"   goto :claude
 if /I "%~1"=="house"  goto :house
 if /I "%~1"=="health" goto :health
+if /I "%~1"=="ground" goto :ground
 if /I "%~1"=="ue"     goto :ue
 if /I "%~1"=="jarvis" goto :jarvis
 if /I "%~1"=="help"   goto :usage
@@ -86,6 +90,14 @@ if not exist "%HEALTH%" (
 powershell -NoProfile -ExecutionPolicy Bypass -File "%HEALTH%" %HEALTHARGS%
 exit /b %ERRORLEVEL%
 
+:ground
+if not exist "%GROUND%" (
+  echo [drift] Ground-truth checker not found at %GROUND%
+  exit /b 1
+)
+powershell -NoProfile -ExecutionPolicy Bypass -File "%GROUND%"
+exit /b %ERRORLEVEL%
+
 :ue
 if not exist "%UE%" (
   echo [drift] Unreal Editor not found at %UE%
@@ -109,6 +121,7 @@ echo   drift          stack up, then Claude with /alienware-node
 echo   drift bare     Claude only
 echo   drift house    stack up, then the health table
 echo   drift health   run the health probe now
+echo   drift ground   true state of the work (records, copies, integrations)
 echo   drift ue       open the Unreal Editor
 echo   drift jarvis   open Mission Control on Sabretooth
 echo.
