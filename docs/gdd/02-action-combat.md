@@ -39,9 +39,14 @@ The action keys are **Q, E, R, F, Z, C, the left mouse button and the right mous
 | W + Shift | Sprint forward. Movement, not a skill. |
 | S + Shift | Sprint backward. Movement, not a skill. |
 | W + Shift + F | A skill. Already in the input table above as the forward gap-close strike. |
+| W + F | A different skill. No Shift, so it is not the same skill as W + Shift + F. |
+| S + F | A different skill. |
+| S + Shift + F | A different skill again. |
 | A + F | A different skill. |
 | A + Shift + F | A different skill again. |
 | Shift + A + Q | A different skill again. |
+
+The Shift is itself part of the set. W + F and W + Shift + F are two separate skills, not one skill pressed two ways. Joshua's reason for the whole grammar, in his words on 2026-09-20: it makes gameplay fun. The breadth of distinct moves under the player's fingers, with no menu and no pause, is the point.
 
 Two rules hold when new skills are added. Never reuse a key set that is already spoken for. Never treat two sets as the same skill because they share keys: A + F and A + Shift + F are two skills, not one skill with a variation.
 
