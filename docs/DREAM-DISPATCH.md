@@ -1,6 +1,10 @@
 # DREAM Dispatch
 
+Last updated: 2026-09-21
+
 Operational state for asynchronous coordination between Fable and Codex. The master directive defines doctrine; this file defines what is happening now.
+
+Move that date whenever this file is touched. `ops/node/dream-ground-truth.ps1` reads it and calls this file stale when work landed after it, which is how a session finds out that the dispatch is lying before it acts on it rather than after.
 
 ## CURRENT OBJECTIVE
 
