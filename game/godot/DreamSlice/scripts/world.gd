@@ -97,7 +97,9 @@ func _build_sky_and_light() -> void:
 	var sun := DirectionalLight3D.new()
 	sun.light_energy = 2.2
 	sun.light_color = Color(1.0, 0.97, 0.90)
-	sun.shadow_enabled = true
+	# Shadows are the single most expensive thing in this scene and the browser
+	# build runs on WebGL 2 with one thread, so it goes without them.
+	sun.shadow_enabled = not OS.has_feature("web")
 	sun.rotation_degrees = Vector3(-46.0, 38.0, 0.0)
 	add_child(sun)
 
