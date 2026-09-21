@@ -2,6 +2,31 @@
 
 One entry per session, newest first, in the form did, verified, blocked, next, commits. Written by the Claude judge lane for a reader with no memory of the session.
 
+## 2026-09-20 about 21:00 EDT, Claude Fable 5.1, fifth session, continued after the five-hour cap
+
+**Did.**
+- Answered Joshua's Fab question. The preferred file format for every Fab download is Unreal Engine (`.uasset`), engine version 5.8 when a listing offers a choice. FBX or glTF only for a model that has to pass through Blender first, because those formats carry no Blueprints and would break a Blueprint template such as the settings menu he is waiting on. The download location `C:\ProgramData\Epic\EpicGamesLauncher\VaultCache\FabLibrary` is correct and was left alone.
+- Read the Fab library on disk and the launcher's own listing database rather than guessing at what landed.
+
+**Verified.**
+- Cached in `C:\ProgramData\Epic\EpicGamesLauncher\VaultCache`: City Sample for 5.8 at 111.9 GB, Epic's Action RPG sample for 4.27 at 0.9 GB, ArchViz Template Lite at 1.1 GB. Content Examples appears in the library record but has no cache folder yet, so it has not finished downloading. The settings-menu interface pack has not arrived.
+- Drive C: has 167 GB free. Making the City Sample project in the launcher copies about 100 GB and would leave about 67 GB.
+- The launcher database `FabLibrary\listings_v1.db` carries an `is_ai_forbidden` flag for each listing, which is Fab's "Allows usage with AI" line. Action RPG and ArchViz Template Lite are both flagged 1, meaning no. Content Examples is flagged 0. Under the originality rule nothing from the two flagged packs is ever given to ComfyUI or any other generator as an input image or a named style; they stay ordinary licensed project content. Read that column before any generator work.
+- Epic's Action RPG sample cannot be used on this box now. It is a C++ project (`Source\ActionRPG.Target.cs`) built for engine 4.27, the only engine installed is 5.8, and `vswhere` is still absent, so there is no C++ toolset. It is a reference to mine later for Gameplay Ability System structure, not a base to build on. Its art and animations could be salvaged by copying asset files across; its Blueprints and combat logic cannot come over without a compiler and a version upgrade.
+- Confirmed to Joshua, at his question, that combat is action combat and never tab target. `AGENTS.md` project language and `docs/gdd/02-action-combat.md` both say so, and queue item 2 is the dodge with invulnerability frames against one telegraphed CrossEyed beam.
+
+**Ruled by Joshua, about 21:15 EDT, the combo grammar.** Action combat is skill based and driven by key combinations, and every distinct set of keys is its own separate skill. A direction key (W, A, S or D), an optional Shift, an optional action key (F or a mouse button). His examples W + Shift, S + Shift, W + Shift + F, A + F and A + Shift + F are five different skills. The combat document already carried W + Shift + F in its input table, so this was recorded as a new "Combo Grammar" section of docs/gdd/02-action-combat.md with his five examples, the rule that no key set is ever reused, and the note that Unreal 5.8 Enhanced Input has a chorded action trigger of exactly this shape, which keeps the input layer in Blueprints and needs no C++ compiler. One short question went back to him: W + Shift is the usual sprint chord, so sprint moves to a double tap, or stays on a held W + Shift with the skill on a quick tap, or does not exist.
+
+**Blocked.** Joshua said "install what you need to". The only install this lane needs is Visual Studio Community 2022 with the C++ game workloads, and Claude Code's permission classifier refused that command earlier on 2026-09-20. Under the hard rule it stays blocked for Claude and no other route is tried. He was given the line to paste into his own session with the `!` prefix.
+
+**Ruled by Joshua, about 16:50 EDT.** Fable has 12 percent of the week left, so this lane thinks and judges only until he says the week has reset: no subagent tasks and no daily skill scout, short Hermes or FreeBuff cards instead. GitHub is unpaid, so `dream-online` stays public.
+
+**Next.** Two of his clicks stand in front of the next visible step: paste the Visual Studio line, and make the City Sample project in the launcher. Once that project exists this lane opens it, pictures it with the window-only capture, and plans how the DREAM character comes in. The Day Dream and the Night Dream maps are still waiting for him to look at them.
+
+**Tests.** Records only, no code changed. `ops/node/alienware-health.Tests.ps1` run anyway for fresh evidence.
+
+**Commits.** Named at the merge.
+
 ## 2026-09-20 about 16:10 EDT, Claude Fable 5.1, fourth session, opened with `drift`
 
 **Did.**
