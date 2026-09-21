@@ -121,3 +121,6 @@ __pycache__/
 # Godot editor cache and exports
 game/godot/*/.godot/
 game/godot/*/export/
+
+# Exported builds (web and desktop) - never committed
+/build/
