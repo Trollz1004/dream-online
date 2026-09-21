@@ -47,16 +47,26 @@ The rule to follow when new skills are added: never reuse a key set that is alre
 - Holding Shift with a direction key sprints, for as long as both are held.
 - A double tap latches auto-sprint, so long travel needs no keys held down. The character keeps sprinting until the player stops, turns sharply or acts.
 
-### The one clash, and how it is resolved
+### Defensive movement, ruled by Joshua on 2026-09-20
 
-Every W + Shift press begins as a possible sprint, so a skill on that same pair cannot fire on the press without making sprint feel late. Two rules keep both:
+This is the heart of the combat and it is a ruling, not a suggestion.
 
-1. Sprint starts the instant Shift and the direction key are held, with no delay at all.
-2. A skill bound to a direction and Shift alone fires on a quick release, when the pair is let go inside about 150 milliseconds. A sprint that lasted 150 milliseconds is invisible to the player, so nothing is lost.
+- **The dash with invulnerability frames is the real defence.** A class dashes with Shift and a direction, an animation plays, and the character cannot be hit through the middle of it. Shift + A dashes left, Shift + D dashes right, Shift + S dashes back. In player against player fighting this is what keeps you alive, and reading the enemy's wind-up so the dash lands on their active frames is the whole skill of the game.
+- **The plain dodge roll on Space is the weak fallback.** It works, and a new player or a player who cannot perform combinations can live on it, but it is deliberately worse than a dash: a shorter invulnerable window and a longer recovery. Nobody good will use it, and that is the intent.
+- **A dash is punishable when mistimed.** The frame shape is: a few startup frames where the character can still be hit, the invulnerable window through the travel, then recovery frames that are wide open. Dashing early or late loses the trade. Without that, dashing would simply be free.
+- **A dash costs stamina and cannot be chained without limit.** Stamina is the brake. A player who spends it all on dashes has nothing left for attacks and is helpless.
+- **Invulnerability is decided by the server.** The client plays the dash straight away so it feels instant, and the server decides whether the hit landed, using the same frame windows. In player against player this cannot be left to the client or the fight is decided by whoever has the better connection or the worse intentions.
 
-That leaves the latch. If auto-sprint were a double tap of Shift and the direction key together, each of those two quick taps would read as the skill. So auto-sprint is a double tap of the direction key on its own, with no Shift, and Shift is not needed to keep it running. This is the lane's ruling, pending one yes or no from Joshua; everything else in this section is his own wording.
+### The sprint clash, and how it is resolved
 
-Skills that carry an action key, such as W + Shift + F or A + F, have no clash of any kind. They fire on the press of the action key.
+A dash has to fire the instant the keys go down, because it is a defence and a defence that arrives late is no defence. Sprint also has to start the instant the keys go down. Those two only collide on one pair, and the way out is that **sprint is forward only**.
+
+- **Shift + A, Shift + S and Shift + D fire on the press, with no delay of any kind.** Nobody sprints sideways or backwards, so nothing competes for those pairs. They are the dashes.
+- **Shift + W held is sprint**, starting immediately.
+- **Shift + W is also a skill**, as Joshua listed. It is the one pair that needs a split, so it fires on a quick release: the pair let go inside about 150 milliseconds. A sprint that lasted a sixth of a second is invisible to the player. A forward skill that must be instant belongs on W + Shift + F instead, which the input table above already holds.
+- **Auto-sprint latches on a double tap of the direction key alone, with no Shift.** A double tap of Shift and a direction together would read as two quick releases, which is the skill firing twice. Shift is not needed to keep the latch running. This is the lane's ruling, with a yes or no owed from Joshua.
+
+Skills that carry an action key, such as W + Shift + F or A + F, never clash. They fire on the press of the action key.
 
 ### Patterns taken from the combo-driven action games of this type
 
@@ -114,6 +124,9 @@ Blade class:
 - `Blade.Forward.GapClose`
 - `Blade.Back.CounterSlash`
 - `Blade.Side.EvadeCut`
+- `Blade.Dash.Left` (Shift + A, i-frames)
+- `Blade.Dash.Right` (Shift + D, i-frames)
+- `Blade.Dash.Back` (Shift + S, i-frames)
 
 Guard class:
 
