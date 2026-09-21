@@ -21,6 +21,8 @@ func _init() -> void:
 	_test_dash_windows()
 	_test_dash_gating()
 	_test_combo_grammar()
+	_test_camera_relative()
+	_test_body_does_not_spin_the_camera()
 	print("passed: %d  failed: %d" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
@@ -99,3 +101,59 @@ func _test_combo_grammar() -> void:
 		and Combo.ACTION_KEYS.has("LMB") and Combo.ACTION_KEYS.has("RMB"))
 	check("a key that is not an action key does not make a skill",
 		Combo.resolve("W", true, "X") == Combo.MOVEMENT)
+
+
+# The camera decides which way "forward" is. Looking left and pressing W must
+# move the character the way the camera faces, not the way the body happens to
+# be turned.
+func _test_camera_relative() -> void:
+	print("camera relative movement")
+	var Movement := load("res://scripts/movement.gd")
+
+	var straight: Vector3 = Movement.camera_relative(Vector3(0.0, 0.0, -1.0), 0.0)
+	check("with the camera facing ahead, W goes forward", straight.is_equal_approx(Vector3(0.0, 0.0, -1.0)))
+
+	var looked_left: Vector3 = Movement.camera_relative(Vector3(0.0, 0.0, -1.0), PI / 2.0)
+	check("after looking a quarter turn left, W follows the camera",
+		looked_left.is_equal_approx(Vector3(-1.0, 0.0, 0.0)))
+
+	var strafe: Vector3 = Movement.camera_relative(Vector3(1.0, 0.0, 0.0), PI / 2.0)
+	# A quarter turn left points the camera down -X, so the camera's right hand
+	# side is -Z. Worked out from the rotation, not guessed.
+	check("strafing turns with the camera too", strafe.is_equal_approx(Vector3(0.0, 0.0, -1.0)))
+
+	var still: Vector3 = Movement.camera_relative(Vector3.ZERO, 1.0)
+	check("no keys held means no movement", still == Vector3.ZERO)
+
+	check("the result is always flat on the ground",
+		absf(Movement.camera_relative(Vector3(0.3, 0.9, -1.0), 0.7).y) < 0.0001)
+
+
+# The bug Joshua caught on 2026-09-20: the camera arm hung off the character
+# body, and the body turned to face movement, so the view swung around on its
+# own and camera-relative movement drifted. The body must never rotate.
+func _test_body_does_not_spin_the_camera() -> void:
+	print("the camera does not swing with the body")
+	var player = load("res://scripts/player.gd").new()
+	player.capture_mode = true
+	# A node built by a test runner never enters the tree, so _ready has to be
+	# called by hand or none of its parts exist.
+	player._ready()
+
+	player.velocity = Vector3(4.0, 0.0, 0.0)
+	player._face_movement(0.5)
+
+	check("the character node never rotates", absf(player.rotation.y) < 0.0001)
+	check("the visible body turns instead", absf(player._visual.rotation.y) > 0.01)
+	# The model's front is its -Z side, so facing must be worked out from that or
+	# the character walks backwards. Caught in a picture on 2026-09-20.
+	var facing: Vector3 = Basis(Vector3.UP, player._visual.rotation.y) * Vector3(0.0, 0.0, -1.0)
+	check("the body faces the way it is travelling", facing.is_equal_approx(Vector3(1.0, 0.0, 0.0)))
+
+	var before: float = player._spring.rotation.y
+	player._face_movement(0.5)
+	check("turning to face movement leaves the camera where it was",
+		absf(player._spring.rotation.y - before) < 0.0001)
+
+	player.free()
+

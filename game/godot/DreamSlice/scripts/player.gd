@@ -10,6 +10,7 @@ extends CharacterBody3D
 
 const DashState := preload("res://scripts/dash_state.gd")
 const Combo := preload("res://scripts/combo.gd")
+const Movement := preload("res://scripts/movement.gd")
 
 const WALK_SPEED := 5.5
 const SPRINT_SPEED := 9.5
@@ -29,6 +30,7 @@ var hud: Node = null
 var _yaw := 0.0
 var _pitch := -0.22
 var _spring: SpringArm3D
+var _visual: Node3D
 var _mesh: MeshInstance3D
 var _material: StandardMaterial3D
 var _auto_sprint := false
@@ -37,6 +39,8 @@ var _dash_dir := Vector3.ZERO
 var _last_event := "Ready"
 var _event_age := 0.0
 var capture_mode := false
+var demo_move := Vector3.ZERO   # a scripted input, for pictures taken without a person
+var demo_yaw := 0.0
 
 const DIRECTION_KEYS := {KEY_W: "W", KEY_A: "A", KEY_S: "S", KEY_D: "D"}
 const ACTION_KEY_NAMES := {
@@ -52,6 +56,9 @@ func _ready() -> void:
 	shape.shape = capsule
 	add_child(shape)
 
+	_visual = Node3D.new()
+	add_child(_visual)
+
 	_mesh = MeshInstance3D.new()
 	var body := CapsuleMesh.new()
 	body.radius = 0.4
@@ -60,7 +67,7 @@ func _ready() -> void:
 	_material = StandardMaterial3D.new()
 	_material.albedo_color = Color(0.30, 0.55, 0.85)
 	_mesh.material_override = _material
-	add_child(_mesh)
+	_visual.add_child(_mesh)
 
 	# A nose block, so which way the character faces is obvious at a glance.
 	var nose := MeshInstance3D.new()
@@ -71,7 +78,7 @@ func _ready() -> void:
 	var nose_mat := StandardMaterial3D.new()
 	nose_mat.albedo_color = Color(0.95, 0.85, 0.45)
 	nose.material_override = nose_mat
-	add_child(nose)
+	_visual.add_child(nose)
 
 	_spring = SpringArm3D.new()
 	_spring.spring_length = 6.0
@@ -81,7 +88,9 @@ func _ready() -> void:
 	camera.current = true
 	_spring.add_child(camera)
 
-	if not capture_mode:
+	if capture_mode:
+		_yaw = demo_yaw
+	else:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
@@ -136,6 +145,8 @@ func _held_direction_name() -> String:
 
 
 func _input_vector() -> Vector3:
+	if capture_mode and demo_move != Vector3.ZERO:
+		return demo_move.normalized()
 	var v := Vector3.ZERO
 	if Input.is_key_pressed(KEY_W):
 		v.z -= 1.0
@@ -149,8 +160,7 @@ func _input_vector() -> Vector3:
 
 
 func _camera_relative(v: Vector3) -> Vector3:
-	var basis := Basis(Vector3.UP, _yaw)
-	return (basis * v).normalized()
+	return Movement.camera_relative(v, _yaw)
 
 
 func _try_skill(action_key: String) -> void:
@@ -232,8 +242,11 @@ func _physics_process(delta: float) -> void:
 func _face_movement(delta: float) -> void:
 	var flat := Vector3(velocity.x, 0.0, velocity.z)
 	if flat.length() > 0.5:
-		var wanted := atan2(flat.x, flat.z)
-		rotation.y = lerp_angle(rotation.y, wanted, clampf(12.0 * delta, 0.0, 1.0))
+		# Only the visible body turns. The character node itself never rotates,
+		# because the camera arm hangs off it and would swing with every turn.
+		# The front of the model is its -Z side, hence the negatives.
+		var wanted := atan2(-flat.x, -flat.z)
+		_visual.rotation.y = lerp_angle(_visual.rotation.y, wanted, clampf(12.0 * delta, 0.0, 1.0))
 
 
 func _tint() -> void:

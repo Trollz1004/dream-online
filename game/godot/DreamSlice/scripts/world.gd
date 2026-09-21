@@ -15,6 +15,8 @@ const GROUND_SIZE := 120.0
 
 var _capture_path := ""
 var _capture_at := 2.0
+var _demo_move := Vector3.ZERO
+var _demo_yaw := 0.0
 
 
 func _ready() -> void:
@@ -33,6 +35,8 @@ func _ready() -> void:
 	dummy.player = player
 	add_child(dummy)
 	player.capture_mode = _capture_path != ""
+	player.demo_move = _demo_move
+	player.demo_yaw = _demo_yaw
 	if _capture_path != "":
 		_capture_after(_capture_at)
 
@@ -47,6 +51,12 @@ func _read_capture_flag() -> void:
 			_capture_path = args[i + 1]
 		if args[i] == "--at" and i + 1 < args.size():
 			_capture_at = float(args[i + 1])
+		if args[i] == "--move" and i + 1 < args.size():
+			var pair := args[i + 1].split(",")
+			if pair.size() == 2:
+				_demo_move = Vector3(float(pair[0]), 0.0, float(pair[1]))
+		if args[i] == "--yaw" and i + 1 < args.size():
+			_demo_yaw = float(args[i + 1])
 
 
 func _capture_after(seconds: float) -> void:
