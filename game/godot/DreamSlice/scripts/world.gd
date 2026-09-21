@@ -34,6 +34,7 @@ func _ready() -> void:
 	dummy.position = Vector3(0.0, 0.0, -6.0)
 	dummy.player = player
 	add_child(dummy)
+	player.target = dummy
 	player.capture_mode = _capture_path != ""
 	player.demo_move = _demo_move
 	player.demo_yaw = _demo_yaw

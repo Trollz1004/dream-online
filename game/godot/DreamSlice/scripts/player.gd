@@ -11,6 +11,9 @@ extends CharacterBody3D
 const DashState := preload("res://scripts/dash_state.gd")
 const Combo := preload("res://scripts/combo.gd")
 const Movement := preload("res://scripts/movement.gd")
+const AttackState := preload("res://scripts/attack_state.gd")
+const WorldEvent := preload("res://scripts/world_event.gd")
+const EventLog := preload("res://scripts/event_log.gd")
 
 const WALK_SPEED := 5.5
 const SPRINT_SPEED := 9.5
@@ -23,6 +26,11 @@ const DOUBLE_TAP_WINDOW := 0.30
 const HEALTH_MAX := 100.0
 
 var dash := DashState.new()
+var attack := AttackState.new()
+var target: Node3D = null          # what a swing can reach
+var events = EventLog.new()
+var event_path := "user://world-events.jsonl"
+var events_written := 0
 var stamina := STAMINA_MAX
 var health := HEALTH_MAX
 var hud: Node = null
@@ -87,6 +95,8 @@ func _ready() -> void:
 	var camera := Camera3D.new()
 	camera.current = true
 	_spring.add_child(camera)
+
+	events.open(event_path)
 
 	if capture_mode:
 		_yaw = demo_yaw
@@ -185,6 +195,13 @@ func _try_skill(action_key: String) -> void:
 		stamina -= DashState.STAMINA_COST
 		_auto_sprint = false
 		_say("Dash %s" % skill)
+	elif action_key == "LMB":
+		if attack.can_start(stamina):
+			attack.start()
+			stamina -= AttackState.STAMINA_COST
+			_say("Swing %d" % attack.step())
+		else:
+			_say("Swing not ready")
 	else:
 		_say("Skill %s" % skill)
 
@@ -196,7 +213,9 @@ func _say(text: String) -> void:
 
 func _physics_process(delta: float) -> void:
 	dash.advance(delta)
+	attack.advance(delta)
 	_event_age += delta
+	_resolve_swing()
 
 	var sprinting := false
 	if dash.is_dashing():
@@ -236,7 +255,15 @@ func _physics_process(delta: float) -> void:
 	_tint()
 	_spring.rotation = Vector3(_pitch, _yaw, 0.0)
 	if hud:
-		hud.show_state(health, HEALTH_MAX, stamina, STAMINA_MAX, dash, _last_event, _event_age, _auto_sprint)
+		hud.show_state({
+			"health": health, "health_max": HEALTH_MAX,
+			"stamina": stamina, "stamina_max": STAMINA_MAX,
+			"dash": dash, "attack": attack,
+			"target_health": target.health if target else 0.0,
+			"target_health_max": target.HEALTH_MAX if target else 0.0,
+			"event": _last_event, "event_age": _event_age,
+			"auto_sprint": _auto_sprint, "events_written": events_written,
+		})
 
 
 func _face_movement(delta: float) -> void:
@@ -259,9 +286,10 @@ func _tint() -> void:
 
 
 # Called by the dummy's beam. Returns true when the hit landed.
-func try_hit(damage: float) -> bool:
+func try_hit(damage: float, attack_name := "Focus Beam") -> bool:
 	if dash.is_invulnerable():
 		_say("PERFECT DODGE")
+		_record_perfect_dodge(attack_name)
 		return false
 	health = maxf(0.0, health - damage)
 	if health <= 0.0:
@@ -270,3 +298,29 @@ func try_hit(damage: float) -> bool:
 	else:
 		_say("HIT for %d" % int(damage))
 	return true
+
+
+func _resolve_swing() -> void:
+	if target == null or not attack.take_hit_window():
+		return
+	var facing := Movement.camera_relative(Vector3(0.0, 0.0, -1.0), _yaw)
+	var to_target := target.global_position - global_position
+	to_target.y = 0.0
+	if to_target.length() > AttackState.REACH:
+		_say("Swing %d missed" % attack.step())
+		return
+	if absf(facing.signed_angle_to(to_target.normalized(), Vector3.UP)) > AttackState.HALF_ARC:
+		_say("Swing %d missed" % attack.step())
+		return
+	var damage := attack.damage_for_step(attack.step())
+	target.take_hit(damage)
+	_say("Swing %d hit for %d" % [attack.step(), int(damage)])
+
+
+# A confirmed invulnerability-frame dodge is the P1 event of spec 001. It is
+# written to an append-only JSONL log in the envelope of the event contract.
+func _record_perfect_dodge(attack_name: String) -> void:
+	var event := WorldEvent.perfect_dodge(
+		"player-001", "cross-eyed-0001", "openaeye-001", attack_name, "first-gate")
+	if events.append(event):
+		events_written += 1

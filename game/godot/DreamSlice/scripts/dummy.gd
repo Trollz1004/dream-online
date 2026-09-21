@@ -16,6 +16,12 @@ const DAMAGE := 18.0
 
 var player: Node3D
 
+const HEALTH_MAX := 120.0
+const ATTACK_NAME := "Focus Beam"
+var health := HEALTH_MAX
+var _down_for := 0.0
+var _flinch := 0.0
+
 var _t := 0.0
 var _beam: MeshInstance3D
 var _beam_material: StandardMaterial3D
@@ -63,6 +69,18 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if player == null:
 		return
+
+	_flinch = maxf(0.0, _flinch - delta)
+	if _down_for > 0.0:
+		# Knocked down: no wind-up, no beam, back on its feet shortly.
+		_down_for -= delta
+		_beam.visible = false
+		_body_material.albedo_color = Color(0.30, 0.30, 0.32)
+		if _down_for <= 0.0:
+			health = HEALTH_MAX
+			_t = 0.0
+		return
+
 	_t = fmod(_t + delta, CYCLE)
 	var telegraph_start := CYCLE - TELEGRAPH - ACTIVE
 	var active_start := CYCLE - ACTIVE
@@ -77,7 +95,7 @@ func _process(delta: float) -> void:
 
 func _idle() -> void:
 	_beam.visible = false
-	_body_material.albedo_color = Color(0.45, 0.42, 0.40)
+	_body_material.albedo_color = Color(0.80, 0.75, 0.40) if _flinch > 0.0 else Color(0.45, 0.42, 0.40)
 	_resolved = false
 
 
@@ -106,7 +124,7 @@ func _fire() -> void:
 		return
 	_resolved = true
 	if _hits_player():
-		player.try_hit(DAMAGE)
+		player.try_hit(DAMAGE, ATTACK_NAME)
 
 
 func _point_beam() -> void:
@@ -126,3 +144,17 @@ func _hits_player() -> bool:
 		return false
 	var across := (to_player - _aim * along).length()
 	return across <= BEAM_WIDTH * 0.5
+
+
+func take_hit(damage: float) -> void:
+	if _down_for > 0.0:
+		return
+	health = maxf(0.0, health - damage)
+	_flinch = 0.18
+	if health <= 0.0:
+		_down_for = 2.5
+		_resolved = true
+
+
+func is_down() -> bool:
+	return _down_for > 0.0

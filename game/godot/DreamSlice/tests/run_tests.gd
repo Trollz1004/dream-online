@@ -23,6 +23,7 @@ func _init() -> void:
 	_test_combo_grammar()
 	_test_camera_relative()
 	_test_body_does_not_spin_the_camera()
+	load("res://tests/test_attack_and_events.gd").new().run(self)
 	print("passed: %d  failed: %d" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
