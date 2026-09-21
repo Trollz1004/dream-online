@@ -6,6 +6,10 @@ This repository is the clean project home for Dream design, prototype code, agen
 
 ## Current focus
 
+- **The combat slice, which is playable now.** A dash with invulnerability frames, a
+  light attack chain, and a training dummy that telegraphs and fires. It runs in a
+  window and in a browser, and a perfect dodge writes one world event. See
+  `game/godot/DreamSlice/README.md`.
 - First playable foundation.
 - Live NPC Lab.
 - DreamOps Bridge.
@@ -138,7 +142,25 @@ Private-first until Joshua intentionally makes it public.
   hardcoded drive letters — this drive is portable.
 
 ## Ground truth
-- PaperclipAI HQ: `http://127.0.0.1:3110` is the human-facing board and CEO cockpit.
-- Paperclip is Mission Control at `http://127.0.0.1:3100`. Verify identity with `GET /api/openapi.json` -> `.info.title` == `Paperclip API`. There is no Agent Hub on :3130.
-- Sole authority: Joshua Coleman (joshlcoleman@gmail.com).
-- Full ANTIGRAVITY doctrine: C:\antigravity\CLAUDE.md (separate repo, not this drive).
+
+Checked against the machine on 2026-09-21. Judge a service by the identity string
+it returns, never by a port answering.
+
+- **Engine: Godot 4.7.2.** The playable piece is `game/godot/DreamSlice`. Unreal is
+  parked, not deleted. The reasons and the conditions for revisiting that are in
+  `docs/tech/engine-decision-2026-09-20.md`.
+- Live NPC Lab, `http://127.0.0.1:9127/health`, identity `dream-live-npc-lab`.
+- DreamOps Bridge, `http://127.0.0.1:9133/health`, identity `dreamops-bridge`. It is
+  the only path from a proposal into the running world.
+- Mission Control is not on this machine. It is JARVIS on the Sabretooth node,
+  `http://192.168.0.8:9150/health`, identity `jarvis-dashboard`.
+- Model routing for every harness goes through OmniRoute on Sabretooth,
+  `http://192.168.0.8:20128/v1`. No provider key lives in this repository.
+- Sole authority: Joshua Coleman (`@Trollz1004` on GitHub).
+- ANTIGRAVITY is a separate repository, `Trollz1004/ANTIGRAVITY`, and is not on this
+  drive in a usable state: the local copy predates a history rewrite. Read its
+  current files from `https://raw.githubusercontent.com/Trollz1004/ANTIGRAVITY/main/`.
+
+The older entries here named Paperclip boards on ports 3100, 3110 and 3130. Nothing
+on this machine answers on any of them, and they were removed rather than left to
+send a reader to a dead end.
