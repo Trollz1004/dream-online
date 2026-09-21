@@ -157,9 +157,11 @@ it returns, never by a port answering.
 - Model routing for every harness goes through OmniRoute on Sabretooth,
   `http://192.168.0.8:20128/v1`. No provider key lives in this repository.
 - Sole authority: Joshua Coleman (`@Trollz1004` on GitHub).
-- ANTIGRAVITY is a separate repository, `Trollz1004/ANTIGRAVITY`, and is not on this
-  drive in a usable state: the local copy predates a history rewrite. Read its
-  current files from `https://raw.githubusercontent.com/Trollz1004/ANTIGRAVITY/main/`.
+- ANTIGRAVITY is a separate repository, `Trollz1004/ANTIGRAVITY`, and it is not this
+  machine's work; it belongs to the Codex lane on the Sabretooth node. The copy at
+  `C:\ANTIGRAVITY` here is simply an old pull, last fetched 2026-09-16 and sitting on
+  a feature branch, so do not read doctrine out of it. Read the current files from
+  `https://raw.githubusercontent.com/Trollz1004/ANTIGRAVITY/main/`.
 
 The older entries here named Paperclip boards on ports 3100, 3110 and 3130. Nothing
 on this machine answers on any of them, and they were removed rather than left to
