@@ -21,67 +21,60 @@ DREAM ONLINE uses directional real-time action combat. Tab-targeting is not the 
 
 ## Combo Grammar
 
-Ruled by Joshua on 2026-09-20. Action combat here is skill based and driven by key combinations. Every distinct set of keys is its own separate skill. There is no tab target and no auto-attack timer.
+Ruled by Joshua on 2026-09-20 and corrected by him the same evening. Action combat here is skill based and driven by key combinations. There is no tab target and no auto-attack timer.
 
-A combo is built from three parts:
+### Movement keys are movement, never a skill
 
-- A direction key: W, A, S or D. It may be left out.
-- A modifier: Shift. It may be left out.
-- An action key: F, the left mouse button, or the right mouse button. It may be left out when a direction and a modifier are held.
+- A direction key walks or runs: W, A, S, D.
+- Shift held with a direction sprints.
+- A double tap of Shift and the direction latches auto-sprint, so long travel needs no keys held down.
+- **A direction with Shift and nothing else is movement and nothing else.** No skill is ever bound to a bare direction and Shift.
 
-His own examples, each one a separate skill:
+### A skill is a direction, an optional Shift, and an action key
 
-| Input | Status |
+The action keys are **Q, E, R, F, Z, C, the left mouse button and the right mouse button**. A skill needs one of them. Every distinct set of keys is its own separate skill.
+
+| Input | What it is |
 |---|---|
-| W + Shift | A skill of its own |
-| S + Shift | A different skill |
-| W + Shift + F | A different skill, already in the input table above |
-| A + F | A different skill |
-| A + Shift + F | A different skill |
+| W + Shift | Sprint forward. Movement, not a skill. |
+| S + Shift | Sprint backward. Movement, not a skill. |
+| W + Shift + F | A skill. Already in the input table above as the forward gap-close strike. |
+| A + F | A different skill. |
+| A + Shift + F | A different skill again. |
+| Shift + A + Q | A different skill again. |
 
-The rule to follow when new skills are added: never reuse a key set that is already spoken for, and never treat two sets as the same skill because they share keys. W + Shift and W + Shift + F are two skills, not one skill with a variation.
+Two rules hold when new skills are added. Never reuse a key set that is already spoken for. Never treat two sets as the same skill because they share keys: A + F and A + Shift + F are two skills, not one skill with a variation.
 
-### Movement, ruled by Joshua on 2026-09-20
+### Why this grammar is the right one
 
-- Holding a direction key walks or runs in the normal way.
-- Holding Shift with a direction key sprints, for as long as both are held.
-- A double tap latches auto-sprint, so long travel needs no keys held down. The character keeps sprinting until the player stops, turns sharply or acts.
+Because every skill carries an action key, no skill competes with movement. That means **every skill fires on the press of its action key, instantly, with no delay and no tap-against-hold guessing**. An earlier version of this document proposed a quick-release rule to separate a bare Shift + W skill from sprint; Joshua's correction removes the need for it, and that rule is withdrawn.
+
+The space is large enough for any class: five direction states (W, A, S, D or none), times two for Shift, times eight action keys, is eighty distinct bindings before chains are counted.
 
 ### Defensive movement, ruled by Joshua on 2026-09-20
 
 This is the heart of the combat and it is a ruling, not a suggestion.
 
-- **The dash with invulnerability frames is the real defence.** A class dashes with Shift and a direction, an animation plays, and the character cannot be hit through the middle of it. Shift + A dashes left, Shift + D dashes right, Shift + S dashes back. In player against player fighting this is what keeps you alive, and reading the enemy's wind-up so the dash lands on their active frames is the whole skill of the game.
+- **The dash with invulnerability frames is the real defence.** A class dashes sideways or backward, an animation plays, and the character cannot be hit through the middle of it. In player against player fighting this is what keeps you alive, and reading the enemy's wind-up so the dash covers their active frames is the whole skill of the game. Its binding follows the grammar above: Shift, the direction, and an action key.
 - **The plain dodge roll on Space is the weak fallback.** It works, and a new player or a player who cannot perform combinations can live on it, but it is deliberately worse than a dash: a shorter invulnerable window and a longer recovery. Nobody good will use it, and that is the intent.
-- **A dash is punishable when mistimed.** The frame shape is: a few startup frames where the character can still be hit, the invulnerable window through the travel, then recovery frames that are wide open. Dashing early or late loses the trade. Without that, dashing would simply be free.
-- **A dash costs stamina and cannot be chained without limit.** Stamina is the brake. A player who spends it all on dashes has nothing left for attacks and is helpless.
-- **Invulnerability is decided by the server.** The client plays the dash straight away so it feels instant, and the server decides whether the hit landed, using the same frame windows. In player against player this cannot be left to the client or the fight is decided by whoever has the better connection or the worse intentions.
-
-### The sprint clash, and how it is resolved
-
-A dash has to fire the instant the keys go down, because it is a defence and a defence that arrives late is no defence. Sprint also has to start the instant the keys go down. Those two only collide on one pair, and the way out is that **sprint is forward only**.
-
-- **Shift + A, Shift + S and Shift + D fire on the press, with no delay of any kind.** Nobody sprints sideways or backwards, so nothing competes for those pairs. They are the dashes.
-- **Shift + W held is sprint**, starting immediately.
-- **Shift + W is also a skill**, as Joshua listed. It is the one pair that needs a split, so it fires on a quick release: the pair let go inside about 150 milliseconds. A sprint that lasted a sixth of a second is invisible to the player. A forward skill that must be instant belongs on W + Shift + F instead, which the input table above already holds.
-- **Auto-sprint latches on a double tap of the direction key alone, with no Shift.** A double tap of Shift and a direction together would read as two quick releases, which is the skill firing twice. Shift is not needed to keep the latch running. This is the lane's ruling, with a yes or no owed from Joshua.
-
-Skills that carry an action key, such as W + Shift + F or A + F, never clash. They fire on the press of the action key.
+- **A dash is punishable when mistimed.** The frame shape is a few startup frames where the character can still be hit, the invulnerable window through the travel, then recovery frames that are wide open. Dashing early or late loses the trade. Without that, dashing would be free.
+- **A dash costs stamina and cannot be chained without limit.** Stamina is the brake. A player who spends it all on dashes has nothing left to attack with.
+- **Invulnerability is decided by the server.** The client plays the dash straight away so it feels instant, and the server decides whether the hit landed, using the same frame windows. In player against player this cannot be left to the client, or the fight is decided by whoever has the better connection or the worse intentions.
 
 ### Patterns taken from the combo-driven action games of this type
 
-Joshua pointed at a player discussion of a long-running combo-driven action game on 2026-09-20 as the shape he wants. The page itself refuses an automated fetch, so these are the generic design patterns of that family, written in our own terms. No art, name or asset of any other game enters this project; only the mechanics are studied, which is the rule in the workspace rulebook.
+Joshua pointed at a player discussion of a long-running combo-driven action game on 2026-09-20 as the shape he wants. The page refuses an automated fetch, so these are the generic design patterns of that family, written in our own terms. No art, name or asset of any other game enters this project; only the mechanics are studied, which is the rule in the workspace rulebook.
 
-- **Every skill is a key combination first.** The combination is the real binding and the thing a player builds muscle memory for. This is Joshua's ruling above.
+- **Every skill is a key combination first.** The combination is the real binding and the thing a player builds muscle memory for.
 - **The same skill also sits in a slot on the bar.** A player who cannot perform a combination, or who is on a controller, fires the identical skill from a slot. Nothing is combination-only. This is an accessibility requirement here, not an option.
 - **Skills chain.** A skill entered during the previous skill's cancel window flows straight out of it instead of waiting for the recovery to finish. Chains, not single hits, are where damage comes from, and they are what makes the combat feel fast.
-- **Cancelling is a skill of its own.** A movement input or another skill may cut a recovery short. The cancel window per skill is already in the skill data fields below, so this costs nothing new to support.
-- **Defence lives on the skill, not on one button.** Each skill carries a defensive tag: invulnerability frames, super armour, a forward guard, or nothing at all. Choosing the right skill is the defence. The dodge on Space stays as the plain answer for a player who has not learned the tags.
+- **Cancelling is a skill of its own.** A movement input or another skill may cut a recovery short. The cancel window per skill is already in the skill data fields below.
+- **Defence lives on the skill, not on one button.** Each skill carries a defensive tag: invulnerability frames, super armour, a forward guard, or nothing at all. Choosing the right skill is the defence.
 - **The usual complaint about this family is that nothing is discoverable.** Players cannot see which combinations exist or what each one does. Our answer is a combo list screen that shows every combination in plain words with its defensive tag, and a practice dummy in the test zone to try them against. That screen follows the interface direction in `docs/gdd/09-interface-style.md`: dark see-through panel, three columns, plain words.
 
 ### How this is built in Unreal
 
-Enhanced Input in Unreal 5.8 has a chorded action trigger, which is exactly this shape: Shift and the direction key are the chord, the action key fires it. That means the input layer can be built in Blueprints without a C++ compiler. The frame data for each skill (startup, active, recovery, cancel windows) still comes from the skill data fields listed below.
+Enhanced Input in Unreal 5.8 has a chorded action trigger, which is exactly this shape: Shift and the direction key are the chord, the action key fires it. The input layer can therefore be built in Blueprints with no C++ compiler. The frame data for each skill (startup, active, recovery, cancel windows, invulnerability) still comes from the skill data fields below.
 
 ## Combat Attributes
 
@@ -124,9 +117,9 @@ Blade class:
 - `Blade.Forward.GapClose`
 - `Blade.Back.CounterSlash`
 - `Blade.Side.EvadeCut`
-- `Blade.Dash.Left` (Shift + A, i-frames)
-- `Blade.Dash.Right` (Shift + D, i-frames)
-- `Blade.Dash.Back` (Shift + S, i-frames)
+- `Blade.Dash.Left` (Shift + A + action key, i-frames)
+- `Blade.Dash.Right` (Shift + D + action key, i-frames)
+- `Blade.Dash.Back` (Shift + S + action key, i-frames)
 
 Guard class:
 
