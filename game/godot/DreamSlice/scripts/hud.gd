@@ -10,6 +10,7 @@ const HUGE := 54
 const SMALL := 22
 
 var _box: VBoxContainer
+var _hint: Label
 var _health: Label
 var _stamina: Label
 var _dash: Label
@@ -27,6 +28,15 @@ func _ready() -> void:
 	_box.position = Vector2(28.0, 18.0)
 	_box.add_theme_constant_override("separation", 8)
 	add_child(_box)
+
+	# A browser will not hand the game the mouse until the player clicks, so the
+	# first click is spent grabbing it rather than swinging. This line says so.
+	# It is the first line of the same column, and it is hidden rather than
+	# blanked, because a hidden child takes no room and an empty label still
+	# holds a line's height open.
+	_hint = _line(_box, BIG, Color(1.0, 1.0, 0.55))
+	_hint.text = "Click to look around."
+	_hint.visible = false
 
 	_health = _line(_box, BIG, Color(1.0, 0.85, 0.85))
 	_stamina = _line(_box, BIG, Color(0.85, 0.95, 1.0))
@@ -68,6 +78,10 @@ func event_label() -> Label:
 	return _event
 
 
+func hint_label() -> Label:
+	return _hint
+
+
 func _line(box: VBoxContainer, size: int, colour: Color) -> Label:
 	var label := Label.new()
 	label.add_theme_font_size_override("font_size", size)
@@ -79,6 +93,10 @@ func _line(box: VBoxContainer, size: int, colour: Color) -> Label:
 
 
 func show_state(s: Dictionary) -> void:
+	# Only the visibility is touched, never the text or a theme override, so this
+	# costs nothing on the frames where the answer has not changed.
+	_hint.visible = not bool(s.get("mouse_captured", true))
+
 	_paint(_health, "Health  %d / %d" % [int(s["health"]), int(s["health_max"])], Color(1.0, 0.85, 0.85))
 	_paint(_stamina, "Stamina  %d / %d%s" % [
 		int(s["stamina"]), int(s["stamina_max"]), "    AUTO-SPRINT" if s["auto_sprint"] else ""],

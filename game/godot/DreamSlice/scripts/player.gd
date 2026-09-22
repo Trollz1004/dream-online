@@ -100,7 +100,13 @@ func _ready() -> void:
 
 	if capture_mode:
 		_yaw = demo_yaw
-	else:
+	elif not OS.has_feature("web"):
+		# Asking here works in a window. In a browser it cannot: pointer lock is
+		# only granted from a user gesture, so the request is refused on load
+		# (measured on 2026-09-21, document.pointerLockElement was null after
+		# the page settled and became the canvas on the first click). The click
+		# in _unhandled_input does the grab on the web, and the readout tells the
+		# player to make it.
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
@@ -263,6 +269,7 @@ func _physics_process(delta: float) -> void:
 			"target_health_max": target.HEALTH_MAX if target else 0.0,
 			"event": _last_event, "event_age": _event_age,
 			"auto_sprint": _auto_sprint, "events_written": events_written,
+			"mouse_captured": Input.mouse_mode == Input.MOUSE_MODE_CAPTURED,
 		})
 
 

@@ -29,15 +29,22 @@ func _ready() -> void:
 	var player := PlayerScript.new()
 	player.position = Vector3(0.0, 1.2, 6.0)
 	player.hud = hud
+	# Everything the player reads inside _ready has to be set before it is added
+	# to the tree, because add_child is what runs _ready. These three used to be
+	# assigned after, and two things were quietly wrong for it: a capture run
+	# took the real mouse pointer, because the player saw capture_mode as false
+	# and grabbed it; and `--yaw` did nothing at all, because demo_yaw is read
+	# only at _ready and always arrived a moment too late. Found on 2026-09-21 by
+	# probing a real run after a captured frame failed to show a new line.
+	player.capture_mode = _capture_path != ""
+	player.demo_move = _demo_move
+	player.demo_yaw = _demo_yaw
 	add_child(player)
 	var dummy := DummyScript.new()
 	dummy.position = Vector3(0.0, 0.0, -6.0)
 	dummy.player = player
 	add_child(dummy)
 	player.target = dummy
-	player.capture_mode = _capture_path != ""
-	player.demo_move = _demo_move
-	player.demo_yaw = _demo_yaw
 	if _capture_path != "":
 		_capture_after(_capture_at)
 

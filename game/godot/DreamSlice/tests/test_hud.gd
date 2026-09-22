@@ -17,6 +17,7 @@ func run(r) -> void:
 	_test_nothing_in_the_readout_can_overlap()
 	_test_the_readout_reports_frames_per_second()
 	_test_the_event_line_clears_when_it_is_old()
+	_test_the_screen_says_to_click_when_the_mouse_is_loose()
 
 
 func check(label: String, condition: bool) -> void:
@@ -30,7 +31,7 @@ func _hud():
 	return hud
 
 
-func _state(event: String, event_age: float) -> Dictionary:
+func _state(event: String, event_age: float, mouse_captured := true) -> Dictionary:
 	var DashState := load("res://scripts/dash_state.gd")
 	var AttackState := load("res://scripts/attack_state.gd")
 	return {
@@ -42,6 +43,7 @@ func _state(event: String, event_age: float) -> Dictionary:
 		"target_health": 120.0, "target_health_max": 120.0,
 		"events_written": 0,
 		"event": event, "event_age": event_age,
+		"mouse_captured": mouse_captured,
 	}
 
 
@@ -81,6 +83,32 @@ func _test_the_readout_reports_frames_per_second() -> void:
 		if label.text == "Health  82 / 100":
 			health_said = true
 	check("the readout says health in plain words", health_said)
+	hud.free()
+
+
+# Measured in a real browser on 2026-09-21, not assumed. A Godot web export
+# cannot take the mouse at startup, because the browser only grants pointer lock
+# from a user gesture: document.pointerLockElement was null on load and became
+# the canvas on the first click. So in a browser the first click is spent
+# grabbing the mouse rather than swinging, and nothing on screen said so. The
+# hint is driven by whether the mouse is actually held, which also covers
+# pressing Escape in the desktop build.
+func _test_the_screen_says_to_click_when_the_mouse_is_loose() -> void:
+	print("the click hint")
+	var hud = _hud()
+
+	check("the hint is in the column, so it cannot cover another line",
+		hud.hint_label().get_parent() == hud.column())
+
+	hud.show_state(_state("", 9.0, true))
+	check("the hint stays off screen while the mouse is held",
+		not hud.hint_label().visible)
+
+	hud.show_state(_state("", 9.0, false))
+	check("the hint appears when the mouse is loose", hud.hint_label().visible)
+	check("the hint says to click, in plain words",
+		hud.hint_label().text.to_lower().contains("click"))
+
 	hud.free()
 
 

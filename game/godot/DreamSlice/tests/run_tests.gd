@@ -9,7 +9,7 @@ extends SceneTree
 # still report success. That happened on 2026-09-20. The floor below turns a
 # skipped suite into a failure. Raise it when checks are added; never lower it
 # to make a run pass.
-const MINIMUM_CHECKS := 87
+const MINIMUM_CHECKS := 94
 
 var passed := 0
 var failed := 0
@@ -30,6 +30,7 @@ func _init() -> void:
 	_test_combo_grammar()
 	_test_camera_relative()
 	_test_body_does_not_spin_the_camera()
+	_test_capture_mode_is_read_at_ready()
 	load("res://tests/test_attack_and_events.gd").new().run(self)
 	load("res://tests/test_hud.gd").new().run(self)
 	var ran := passed + failed
@@ -141,6 +142,35 @@ func _test_camera_relative() -> void:
 
 	check("the result is always flat on the ground",
 		absf(Movement.camera_relative(Vector3(0.3, 0.9, -1.0), 0.7).y) < 0.0001)
+
+
+# capture_mode and demo_yaw are read once, inside _ready, and add_child is what
+# runs _ready. The world used to set them on the line after add_child, so a
+# scripted capture behaved like a live session: it took the real mouse pointer
+# and ignored --yaw entirely. These checks pin the contract the caller has to
+# keep, which is to configure the player before adding it to the tree.
+func _test_capture_mode_is_read_at_ready() -> void:
+	print("capture mode is settled before _ready")
+	var player = load("res://scripts/player.gd").new()
+	player.capture_mode = true
+	player.demo_yaw = 1.25
+	player._ready()
+	check("a capture run honours the yaw it was given", absf(player._yaw - 1.25) < 0.0001)
+	player.free()
+
+	# The mouse itself cannot be checked here. A headless run has no display
+	# server, so Input.mouse_mode never changes whatever the code asks for, and a
+	# check on it would pass just as happily with the bug present. What can be
+	# checked is the order the world does things in, which is where the bug was.
+	var source := FileAccess.get_file_as_string("res://scripts/world.gd")
+	var added := source.find("add_child(player)")
+	var mode_set := source.find("player.capture_mode =")
+	var yaw_set := source.find("player.demo_yaw =")
+	check("the world does configure the player and add it",
+		added != -1 and mode_set != -1 and yaw_set != -1)
+	check("both settings are made before the player enters the tree",
+		added != -1 and mode_set != -1 and yaw_set != -1
+		and mode_set < added and yaw_set < added)
 
 
 # The bug Joshua caught on 2026-09-20: the camera arm hung off the character
