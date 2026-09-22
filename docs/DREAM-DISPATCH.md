@@ -10,24 +10,26 @@ Move that date whenever this file is touched. `ops/node/dream-ground-truth.ps1` 
 
 Spec 001, the world bus and the CrossEyed vertical slice (directive section 43). Story 1, something the founder can open and play, is now real and is built in **Godot 4.7.2**, not Unreal. Joshua chose Godot on 2026-09-20 after the Unreal path stalled on a missing C++ compiler and on Blueprint logic that has to be hand-wired in an editor, which the engine's own scripting cannot do (checked in the engine source: `BlueprintEditorLibrary` exposes graphs and variables but no node creation or pin connection). GDScript and scene data are text, so this lane writes, runs, tests and photographs the game with nothing for anyone to click. Unreal is parked, not deleted, and City Sample stays on disk.
 
-The playable piece is `game/godot/DreamSlice`: a dash with invulnerability frames, a light attack chain, a training dummy that telegraphs and fires, and a perfect dodge that writes one world event. It runs in a window and in a browser. The event path (story 2) and the fallback proof (story 3) follow.
+The playable piece is `game/godot/DreamSlice`: a dash with invulnerability frames, a light attack chain, a heavy attack, a guard stance, a friendly NPC, a training dummy that telegraphs and fires, and a perfect dodge that writes one world event. It runs in a window and in a browser. The event path (story 2) and the fallback proof (story 3) follow.
 
 
 ## CURRENT OWNER
 
-Claude judge lane on Alienware. Ninth session, 2026-09-22 at about 01:00 EDT.
+Claude judge lane on Alienware. Ninth session, 2026-09-22, second batch at about 01:40 EDT.
 
 
 ## LAST VERIFIED STATE
 
-2026-09-22 at about 01:00 EDT, on the Alienware node (`192.168.0.40`). `drift ground` was RED at session start: the branch `judge/web-mouse-hint` carried the two web fixes the 2026-09-21 session had queued and left uncommitted (staged but not committed), and the Obsidian MCP handshake was down because Obsidian itself was not running (a different failure from the 2026-09-21 config repair, which still holds). Both fixed this session: the mouse-hint work was reviewed, one accidental UTF-8 BOM in `run_tests.gd` was stripped, tests run, committed, merged to `main` and pushed; Obsidian was launched and the handshake answers again. `drift ground` now reports every line PASS.
+2026-09-22 at about 01:40 EDT, on the Alienware node (`192.168.0.40`), same session as the mouse-hint fix above but a second batch of work under a fresh direction: Joshua set a standing goal to stop waiting for sign-off on game work, to research what a combo-driven action-combat game's skills and hotbar should look like, and to fix that the slice was all training-dummy combat with nobody to talk to. Read `docs/gdd/02-action-combat.md` again with that in mind and found the design already answered the research question (Joshua had ruled the combo grammar and the hotbar-shows-cooldowns rule on 2026-09-20); the actual gap was that almost none of the roughly eighty combos it describes had ever been built.
 
-The combat slice: 94 of 94 headless checks pass (was 87; 7 new, covering the click hint and the player-configuration-order fix). The desktop build was captured fresh (`C:\DREAM\recon\screenshots\mouse-hint-desktop.png`) and the hint line reads cleanly at the top of the column with no overlap. The browser build was re-exported and served again at `http://127.0.0.1:8099/`, but this session's Claude in Chrome extension was not connected, so the hint's actual on-click behavior in a real browser was not re-photographed this time; the 2026-09-21 measurement of `document.pointerLockElement` behavior that the fix and its test are built on still stands. Checkout clean and equal to `origin/main`. Required game services UP by identity (Live NPC Lab 9127, DreamOps Bridge 9133).
+Built and merged in one batch: a friendly NPC (Mireth) the player can talk to with a plain E, closing the "nobody to interact with" gap; a real heavy attack on right mouse (named in the input table since it was written, never implemented); a real guard stance on Q (same story); plain depth fog everywhere plus a desktop-only bloom and ambient-occlusion pass, answering "the visuals need to be better." Wrote `docs/gdd/10-crowdfunding-readiness.md`, an honest state check against what backers of an indie RPG campaign actually look at (cited inside it), naming the next two pieces of work in priority order.
+
+One real bug found and fixed along the way, by looking at a screenshot rather than trusting the diff: the on-screen help text was at a fixed y position, and it either buried itself under the growing status column or ran off the bottom of a 720-tall canvas depending on how many lines were tried. It now lives inside the same auto-laying-out column as everything else, wraps inside the screen width, and reads one size down from the rest of the readout. 149 of 149 headless checks pass (was 94). Checkout clean and equal to `origin/main` after the merge and push.
 
 
 ## FILES CHANGED
 
-This session: `game/godot/DreamSlice/scripts/hud.gd`, `player.gd`, `world.gd`, `tests/run_tests.gd`, `tests/test_hud.gd`, this file, `ops/node/JOURNAL.md`. The browser build itself lands in `build/`, which is ignored.
+This batch: `game/godot/DreamSlice/scripts/hud.gd`, `player.gd`, `world.gd`, new `npc.gd`, `heavy_attack_state.gd`, `guard_state.gd`, their tests, `docs/gdd/10-crowdfunding-readiness.md`, this file, `ops/node/JOURNAL.md`.
 
 Earlier, still current: `game/godot/*.cmd` (open, export, serve), `docs/gdd/02-action-combat.md`, `docs/gdd/08-day-dreams-night-dreams-world.md`, `docs/gdd/09-interface-style.md`, `docs/handoffs/GEMINI-CHARACTER-DESIGN-2026-09-20.md`, `ops/node/**`.
 
@@ -39,7 +41,7 @@ None stopped or restarted. A local static server was run on port 8099 to check t
 
 ## TEST RESULTS
 
-`godot --headless --path game/godot/DreamSlice --script res://tests/run_tests.gd`: 87 of 87 pass, 7 of them new and covering the readout. The runner now also fails when fewer checks run than expected, because a GDScript error inside a test function aborts that function silently and the run still exited 0, which hid a whole red suite on 2026-09-20.
+`godot --headless --path game/godot/DreamSlice --script res://tests/run_tests.gd`: 149 of 149 pass. The runner fails when fewer checks run than expected, because a GDScript error inside a test function aborts that function silently and the run still exited 0, which hid a whole red suite on 2026-09-20; that floor caught several real mistakes this session (a missing script, a mis-typed variable, a check count off by one) before they could hide the same way.
 
 
 ## KNOWN FAILURES
@@ -63,10 +65,12 @@ Summary for Codex: **the engine changed.** Game code now exists and it is Godot 
 
 What is worth a look. The combat rules live in plain data and geometry, not in engine nodes, so the same rules can run on a server later, which is where invulnerability has to be decided: `scripts/dash_state.gd` owns the frame windows, `scripts/attack_state.gd` the swing chain, `scripts/combo.gd` the rule that a distinct set of keys is a distinct skill and that the Shift is part of the set. A perfect dodge writes one event through `scripts/world_event.gd` in the envelope of `contracts/world-event-envelope.md`, append-only JSONL, unchanged from the judged draft. The age mode wire value is still `NIGHTMARE_13_PLUS`. None of the seven event names Codex proposed is adopted into this slice, though all seven fit the naming rule.
 
-This session's addition: a browser player who has not yet clicked now sees "Click to look around." at the top of the HUD column, because a web export cannot take pointer lock until a user gesture and nothing said so before. The line is driven by whether `Input.mouse_mode` is actually captured, so it also covers Escape on desktop. Fixing it surfaced a real ordering bug in `world.gd`: `player.capture_mode`/`demo_move`/`demo_yaw` were being set one line after `add_child(player)`, too late for `_ready` to see them, which silently broke scripted `--yaw` captures and made a scripted capture run grab the real mouse. Both are now set before the player enters the tree.
+This session's first addition: a browser player who has not yet clicked now sees "Click to look around." at the top of the HUD column, because a web export cannot take pointer lock until a user gesture and nothing said so before. Fixing it surfaced a real ordering bug in `world.gd`, since fixed: `player.capture_mode`/`demo_move`/`demo_yaw` were being set one line after `add_child(player)`, too late for `_ready` to see them.
+
+This session's second addition, described above: Mireth, the heavy attack, the guard stance, the atmosphere pass, and the crowdfunding-readiness roadmap. `docs/gdd/10-crowdfunding-readiness.md` names the next two pieces in priority order: more of the combo grammar doing something (a forward gap-close strike is the obvious next one), and giving Mireth an actual reason to exist beyond one line, using the perfect-dodge world event log as the hook.
 
 Security check: no secrets read or written; the repository stays public-safe; the browser build lands in the ignored `build/` folder and is not committed.
 
-Rollback for this session's work: revert the merge commit named "click hint on the web build; player config-before-add_child bug fixed; 94 of 94".
+Rollback: revert the merge commit named "click hint on the web build; player config-before-add_child bug fixed; 94 of 94" for the first addition, or "NPC to talk to, heavy attack, guard stance, atmosphere pass, crowdfunding-readiness roadmap; 149 of 149" for the second.
 
-Next: Joshua tried the browser build and said mouse-look "seemed to work," so the hint is doing its job. Story 2, the event path into the Live NPC Lab, is the next piece of spec 001 and needs no compiler.
+Next: read `docs/gdd/10-crowdfunding-readiness.md` first. Story 2, the event path into the Live NPC Lab, is still the next piece of spec 001 proper and needs no compiler; the roadmap's two items are what the judge lane is treating as the default work between now and whenever Joshua redirects it.
