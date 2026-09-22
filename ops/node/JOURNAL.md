@@ -42,9 +42,17 @@ Joshua set a standing goal in chat: stop asking or waiting for sign-off on anyth
 
 **Drift observed, not authored by this lane.** `drift ground` flagged six untracked files at the repository root and under `memory/` (`MEMORY-GRAPH-FIXES.md`, `memory/README.md`, `memory/claude-to-claude-drop-box-guide.md`, `memory/game-state.md`, `memory/npc-memory-system.md`, `memory/supermemory-setup.md`), timestamped 01:40 to 01:43 EDT, inside this session's own working window. None were written by this lane; `git status` before this batch's own edits did not name them, and their style (checkmarks, an emoji in a status heading) is not this lane's or this repository's convention. Read, not authored: a plausible, mostly accurate summary of the Supermemory/memory-graph setup and the game's phase-C state, with one claim ("Vault Structure Wrong... Identified and backed up") not independently verified here. Left uncommitted and untouched rather than claimed as this session's work or silently deleted; whoever wrote them (a concurrent Hermes, Orca or other session in the same checkout) should commit or clear them.
 
-**Next.** `docs/gdd/10-crowdfunding-readiness.md` names two items in priority order: more of the combo grammar doing something (a forward gap-close strike is the obvious next one, since the dash currently absorbs every Shift+direction+action-key combo generically rather than the grammar's more specific bindings), and giving Mireth an actual reason to exist beyond one line, using the perfect-dodge world event log as the hook. Absent a new direction from Joshua, that is the default next work.
+**Next.** One of the roadmap's two named items is now done (see the third batch below). The remaining one: more of the combo grammar doing something, a forward gap-close strike being the obvious next one, since the dash currently absorbs every Shift+direction+action-key combo generically rather than the grammar's more specific bindings. Absent a new direction from Joshua, that is the default next work.
 
 **Commits.** `7ad23d0` (Mireth), `8ead249` (heavy attack), `0010e5a` (atmosphere pass), `8a7873e` (guard stance, HUD layout fix, roadmap doc), all on `judge/gameplay-expansion`, merged to `main` as "NPC to talk to, heavy attack, guard stance, atmosphere pass, crowdfunding-readiness roadmap; 149 of 149", pushed as `f47bd55..91bdb21`.
+
+### Third batch, same session, about 02:00 EDT: the roadmap's other item
+
+**Did.** Gave Mireth the reason to exist the roadmap named: `npc.gd` gained `after_dodge_line` and `current_line(perfect_dodges)`, and the player now passes its own `events_written` count in, so she answers with a second line once the player has actually landed a perfect dodge rather than repeating the same sentence forever. TDD throughout, RED confirmed before GREEN. 153 of 153 headless checks pass (was 149; 4 new).
+
+**Verified.** Ran the full suite on `main` after the merge, not only on the branch.
+
+**Commits.** `d474bda` on `judge/mireth-notices`, merged to `main` as "Mireth reacts to a perfect dodge; 153 of 153", pushed as `f74815e..11584de`.
 
 ## 2026-09-21 about 15:35 EDT, Claude Opus 5, eighth session
 

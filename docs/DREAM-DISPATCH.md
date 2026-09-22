@@ -73,4 +73,6 @@ Security check: no secrets read or written; the repository stays public-safe; th
 
 Rollback: revert the merge commit named "click hint on the web build; player config-before-add_child bug fixed; 94 of 94" for the first addition, or "NPC to talk to, heavy attack, guard stance, atmosphere pass, crowdfunding-readiness roadmap; 149 of 149" for the second.
 
-Next: read `docs/gdd/10-crowdfunding-readiness.md` first. Story 2, the event path into the Live NPC Lab, is still the next piece of spec 001 proper and needs no compiler; the roadmap's two items are what the judge lane is treating as the default work between now and whenever Joshua redirects it.
+Third addition, same session: Mireth now reacts to a perfect dodge (`npc.current_line(perfect_dodges)`) instead of repeating one line forever, closing one of the two items `docs/gdd/10-crowdfunding-readiness.md` named. 153 of 153. Merge commit "Mireth reacts to a perfect dodge; 153 of 153", pushed `f74815e..11584de`.
+
+Next: read `docs/gdd/10-crowdfunding-readiness.md` first. Story 2, the event path into the Live NPC Lab, is still the next piece of spec 001 proper and needs no compiler; the roadmap's one remaining item, a forward gap-close strike distinct from the dash's current catch-all, is what the judge lane is treating as the default game work between now and whenever Joshua redirects it.
