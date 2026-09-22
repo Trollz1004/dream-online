@@ -1,6 +1,6 @@
 # DREAM Dispatch
 
-Last updated: 2026-09-21
+Last updated: 2026-09-22
 
 Operational state for asynchronous coordination between Fable and Codex. The master directive defines doctrine; this file defines what is happening now.
 
@@ -15,19 +15,21 @@ The playable piece is `game/godot/DreamSlice`: a dash with invulnerability frame
 
 ## CURRENT OWNER
 
-Claude judge lane on Alienware. Seventh session, 2026-09-20 at about 23:10 EDT.
+Claude judge lane on Alienware. Ninth session, 2026-09-22 at about 01:00 EDT.
 
 
 ## LAST VERIFIED STATE
 
-2026-09-20 at about 23:10 EDT, on the Alienware node (`192.168.0.40`). Health YELLOW for one optional service only: Crosslisting on port 3000 answers HTTP 200 without its identity string, and it is not game work. Both required game services are UP by identity (Live NPC Lab on 9127, DreamOps Bridge on 9133). OmniRoute on Sabretooth timed out from here at 02:30Z; Sabretooth's JARVIS answered normally.
+2026-09-22 at about 01:00 EDT, on the Alienware node (`192.168.0.40`). `drift ground` was RED at session start: the branch `judge/web-mouse-hint` carried the two web fixes the 2026-09-21 session had queued and left uncommitted (staged but not committed), and the Obsidian MCP handshake was down because Obsidian itself was not running (a different failure from the 2026-09-21 config repair, which still holds). Both fixed this session: the mouse-hint work was reviewed, one accidental UTF-8 BOM in `run_tests.gd` was stripped, tests run, committed, merged to `main` and pushed; Obsidian was launched and the handshake answers again. `drift ground` now reports every line PASS.
 
-The combat slice: 87 of 87 headless checks pass. The desktop build was photographed and looked at (the picture is hud-fixed.png in the node recon folder). The browser build was re-exported and loaded in a real browser engine from `http://127.0.0.1:8099/`: it booted, drew a 1280 by 720 canvas and ran at 60 frames per second with no console errors and no failed requests. Headless uses a software renderer, so that 60 is a floor rather than what the RX 6800 will do. Checkout clean and equal to `origin/main`.
+The combat slice: 94 of 94 headless checks pass (was 87; 7 new, covering the click hint and the player-configuration-order fix). The desktop build was captured fresh (`C:\DREAM\recon\screenshots\mouse-hint-desktop.png`) and the hint line reads cleanly at the top of the column with no overlap. The browser build was re-exported and served again at `http://127.0.0.1:8099/`, but this session's Claude in Chrome extension was not connected, so the hint's actual on-click behavior in a real browser was not re-photographed this time; the 2026-09-21 measurement of `document.pointerLockElement` behavior that the fix and its test are built on still stands. Checkout clean and equal to `origin/main`. Required game services UP by identity (Live NPC Lab 9127, DreamOps Bridge 9133).
 
 
 ## FILES CHANGED
 
-`game/godot/DreamSlice/**` (the slice, its tests and its README), `game/godot/*.cmd` (open, export, serve), `docs/gdd/02-action-combat.md`, `docs/gdd/08-day-dreams-night-dreams-world.md`, `docs/gdd/09-interface-style.md`, `docs/handoffs/GEMINI-CHARACTER-DESIGN-2026-09-20.md`, `ops/node/**`, this file. The browser build itself lands in `build/`, which is ignored.
+This session: `game/godot/DreamSlice/scripts/hud.gd`, `player.gd`, `world.gd`, `tests/run_tests.gd`, `tests/test_hud.gd`, this file, `ops/node/JOURNAL.md`. The browser build itself lands in `build/`, which is ignored.
+
+Earlier, still current: `game/godot/*.cmd` (open, export, serve), `docs/gdd/02-action-combat.md`, `docs/gdd/08-day-dreams-night-dreams-world.md`, `docs/gdd/09-interface-style.md`, `docs/handoffs/GEMINI-CHARACTER-DESIGN-2026-09-20.md`, `ops/node/**`.
 
 
 ## SERVICES TOUCHED
@@ -61,8 +63,10 @@ Summary for Codex: **the engine changed.** Game code now exists and it is Godot 
 
 What is worth a look. The combat rules live in plain data and geometry, not in engine nodes, so the same rules can run on a server later, which is where invulnerability has to be decided: `scripts/dash_state.gd` owns the frame windows, `scripts/attack_state.gd` the swing chain, `scripts/combo.gd` the rule that a distinct set of keys is a distinct skill and that the Shift is part of the set. A perfect dodge writes one event through `scripts/world_event.gd` in the envelope of `contracts/world-event-envelope.md`, append-only JSONL, unchanged from the judged draft. The age mode wire value is still `NIGHTMARE_13_PLUS`. None of the seven event names Codex proposed is adopted into this slice, though all seven fit the naming rule.
 
+This session's addition: a browser player who has not yet clicked now sees "Click to look around." at the top of the HUD column, because a web export cannot take pointer lock until a user gesture and nothing said so before. The line is driven by whether `Input.mouse_mode` is actually captured, so it also covers Escape on desktop. Fixing it surfaced a real ordering bug in `world.gd`: `player.capture_mode`/`demo_move`/`demo_yaw` were being set one line after `add_child(player)`, too late for `_ready` to see them, which silently broke scripted `--yaw` captures and made a scripted capture run grab the real mouse. Both are now set before the player enters the tree.
+
 Security check: no secrets read or written; the repository stays public-safe; the browser build lands in the ignored `build/` folder and is not committed.
 
-Rollback for this session's work: revert the merge commit named "cheaper browser build; the readout no longer covers itself".
+Rollback for this session's work: revert the merge commit named "click hint on the web build; player config-before-add_child bug fixed; 94 of 94".
 
-Next: Joshua looks at the slice, in the window or in a browser, and says what the fight is missing. Story 2, the event path into the Live NPC Lab, is the next piece of spec 001 and needs no compiler.
+Next: Joshua still has not said whether mouse-look works for him in the browser now that the hint is there. Story 2, the event path into the Live NPC Lab, is the next piece of spec 001 and needs no compiler.

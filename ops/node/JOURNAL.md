@@ -2,6 +2,28 @@
 
 One entry per session, newest first, in the form did, verified, blocked, next, commits. Written by the Claude judge lane for a reader with no memory of the session.
 
+## 2026-09-22 about 01:00 EDT, Claude Sonnet 5, ninth session, opened with `drift`
+
+**Did.**
+- `drift ground` was RED at session start on two counts. First, the working tree carried the two web fixes the eighth session had queued and left staged but uncommitted, on a branch named for exactly that (`judge/web-mouse-hint`): skip the startup mouse grab on the web export, and put a line on screen telling a browser player to click. Read the full staged diff before touching anything. It was complete and already had its own tests; the one thing wrong with it was an accidental UTF-8 BOM at the start of `tests/run_tests.gd`, which was not there before and served no purpose, so it was stripped.
+- Ran the headless suite (94 of 94, up from 87), committed, merged to `main` with `--no-ff`, re-ran the suite on `main` (94 of 94 again), and pushed. Deleted the now-merged local branch; it had no remote copy.
+- Second RED item: the Obsidian MCP handshake was down, not because the 2026-09-21 repair had regressed but because Obsidian itself was not running (port 27123 was not listening at all). Started `C:\Program Files\Obsidian\Obsidian.exe`; the REST API came up within about 20 seconds and the MCP handshake answers again.
+- Captured a fresh desktop frame (`C:\DREAM\recon\screenshots\mouse-hint-desktop.png`) and looked at it rather than trusting the diff: the hint line sits at the top of the column, in the same yellow-on-dark style as the rest of the readout, and does not overlap anything.
+
+**Verified.**
+- `drift ground` after both fixes: every line PASS (working tree clean, equal to origin/main, drift.cmd and skill copies byte-identical, Obsidian MCP handshake ok). Overall dropped to YELLOW only because this file and the dispatch had not yet been touched today, which this entry now closes.
+- The desktop capture shows the hint visible even in a scripted `--capture` run, which is correct and not a regression: `player.gd` never set `Input.mouse_mode` to captured on the `capture_mode` path even before this session's change, since scripted captures use `--yaw` injection instead of a live mouse. The hint logic (show whenever the mouse is not actually captured) is doing exactly what it says.
+- Re-exported the browser build and served it again at `http://127.0.0.1:8099/` to re-check it in a real browser engine, the way the 2026-09-20 session did. This session's Claude in Chrome extension reported "not connected," so that particular re-check did not happen; the 2026-09-21 measurement the fix and its test are built on (`document.pointerLockElement` null on load, set on first click) was not re-taken. Static server stopped afterward; port 8099 is free again.
+
+**Blocked.**
+- Nothing new. Still his: the Visual Studio install and the hermes `master` merge, both refused by the permission classifier. The GitHub billing lock still keeps Actions from confirming a merge, so the local run stays the only gate.
+
+**Next.**
+- He still has not said whether mouse-look works for him in the browser. If he tries it and the hint or the click-to-grab still feels wrong, the fix and its reasoning are in the merge commit named below.
+- A live-browser re-check of the hint (screenshot before and after a click) is worth doing next time the Claude in Chrome extension is connected in-session.
+
+**Commits.** `f8a081d` on `judge/web-mouse-hint` (the hint and the ordering fix, 94 of 94), merged to `main` as the merge commit "click hint on the web build; player config-before-add_child bug fixed; 94 of 94", pushed as `bd0774b..6b4cf5d`.
+
 ## 2026-09-21 about 15:35 EDT, Claude Opus 5, eighth session
 
 **Did.**
