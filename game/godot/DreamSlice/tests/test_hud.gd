@@ -18,6 +18,7 @@ func run(r) -> void:
 	_test_the_readout_reports_frames_per_second()
 	_test_the_event_line_clears_when_it_is_old()
 	_test_the_screen_says_to_click_when_the_mouse_is_loose()
+	_test_the_screen_prompts_to_talk_when_a_npc_is_near()
 
 
 func check(label: String, condition: bool) -> void:
@@ -31,7 +32,7 @@ func _hud():
 	return hud
 
 
-func _state(event: String, event_age: float, mouse_captured := true) -> Dictionary:
+func _state(event: String, event_age: float, mouse_captured := true, nearby_npc_name := "") -> Dictionary:
 	var DashState := load("res://scripts/dash_state.gd")
 	var AttackState := load("res://scripts/attack_state.gd")
 	return {
@@ -44,6 +45,7 @@ func _state(event: String, event_age: float, mouse_captured := true) -> Dictiona
 		"events_written": 0,
 		"event": event, "event_age": event_age,
 		"mouse_captured": mouse_captured,
+		"nearby_npc_name": nearby_npc_name,
 	}
 
 
@@ -108,6 +110,28 @@ func _test_the_screen_says_to_click_when_the_mouse_is_loose() -> void:
 	check("the hint appears when the mouse is loose", hud.hint_label().visible)
 	check("the hint says to click, in plain words",
 		hud.hint_label().text.to_lower().contains("click"))
+
+	hud.free()
+
+
+# There was nobody in the slice to talk to before 2026-09-22, only the
+# training dummy, which is an enemy. The prompt is driven by whether a
+# friendly NPC is actually in range, the same shape as the click hint above.
+func _test_the_screen_prompts_to_talk_when_a_npc_is_near() -> void:
+	print("the talk prompt")
+	var hud = _hud()
+
+	check("the talk prompt is in the column, so it cannot cover another line",
+		hud.interact_label().get_parent() == hud.column())
+
+	hud.show_state(_state("", 9.0, true, ""))
+	check("the prompt stays off screen with no npc near",
+		not hud.interact_label().visible)
+
+	hud.show_state(_state("", 9.0, true, "Old Wren"))
+	check("the prompt appears when a named npc is near", hud.interact_label().visible)
+	check("the prompt names the npc and the key",
+		hud.interact_label().text.contains("Old Wren") and hud.interact_label().text.contains("E"))
 
 	hud.free()
 

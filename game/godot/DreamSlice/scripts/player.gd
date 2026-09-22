@@ -28,6 +28,7 @@ const HEALTH_MAX := 100.0
 var dash := DashState.new()
 var attack := AttackState.new()
 var target: Node3D = null          # what a swing can reach
+var npc: Node3D = null             # who a plain E can talk to, in range
 var events = EventLog.new()
 var event_path := "user://world-events.jsonl"
 var events_written := 0
@@ -208,6 +209,8 @@ func _try_skill(action_key: String) -> void:
 			_say("Swing %d" % attack.step())
 		else:
 			_say("Swing not ready")
+	elif skill == "E" and npc != null and npc.is_within_range(position):
+		_say("%s: %s" % [npc.npc_name, npc.dialogue_line])
 	else:
 		_say("Skill %s" % skill)
 
@@ -270,6 +273,7 @@ func _physics_process(delta: float) -> void:
 			"event": _last_event, "event_age": _event_age,
 			"auto_sprint": _auto_sprint, "events_written": events_written,
 			"mouse_captured": Input.mouse_mode == Input.MOUSE_MODE_CAPTURED,
+			"nearby_npc_name": npc.npc_name if npc != null and npc.is_within_range(position) else "",
 		})
 
 

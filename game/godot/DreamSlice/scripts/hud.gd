@@ -11,6 +11,7 @@ const SMALL := 22
 
 var _box: VBoxContainer
 var _hint: Label
+var _interact: Label
 var _health: Label
 var _stamina: Label
 var _dash: Label
@@ -37,6 +38,13 @@ func _ready() -> void:
 	_hint = _line(_box, BIG, Color(1.0, 1.0, 0.55))
 	_hint.text = "Click to look around."
 	_hint.visible = false
+
+	# Until 2026-09-22 the only other body in the slice was the training dummy,
+	# an enemy. This line says who is close enough to talk to and which key
+	# does it, the same shape as the click hint above: hidden rather than
+	# blanked, so it never changes the height of the column.
+	_interact = _line(_box, BIG, Color(0.75, 1.0, 0.80))
+	_interact.visible = false
 
 	_health = _line(_box, BIG, Color(1.0, 0.85, 0.85))
 	_stamina = _line(_box, BIG, Color(0.85, 0.95, 1.0))
@@ -82,6 +90,10 @@ func hint_label() -> Label:
 	return _hint
 
 
+func interact_label() -> Label:
+	return _interact
+
+
 func _line(box: VBoxContainer, size: int, colour: Color) -> Label:
 	var label := Label.new()
 	label.add_theme_font_size_override("font_size", size)
@@ -96,6 +108,11 @@ func show_state(s: Dictionary) -> void:
 	# Only the visibility is touched, never the text or a theme override, so this
 	# costs nothing on the frames where the answer has not changed.
 	_hint.visible = not bool(s.get("mouse_captured", true))
+
+	var nearby_npc_name: String = s.get("nearby_npc_name", "")
+	_interact.visible = nearby_npc_name != ""
+	if _interact.visible:
+		_interact.text = "Press E to talk to %s." % nearby_npc_name
 
 	_paint(_health, "Health  %d / %d" % [int(s["health"]), int(s["health_max"])], Color(1.0, 0.85, 0.85))
 	_paint(_stamina, "Stamina  %d / %d%s" % [

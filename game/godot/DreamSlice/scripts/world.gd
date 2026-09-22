@@ -8,6 +8,7 @@ extends Node3D
 
 const PlayerScript := preload("res://scripts/player.gd")
 const DummyScript := preload("res://scripts/dummy.gd")
+const NpcScript := preload("res://scripts/npc.gd")
 const HudScript := preload("res://scripts/hud.gd")
 
 const GROUND_SIZE := 120.0
@@ -45,6 +46,17 @@ func _ready() -> void:
 	dummy.player = player
 	add_child(dummy)
 	player.target = dummy
+
+	# Until 2026-09-22 the training dummy, an enemy, was the only other body in
+	# the slice. Off to the side of the fight lane so a beam or a dash never
+	# reaches her.
+	var npc := NpcScript.new()
+	npc.npc_name = "Mireth"
+	npc.dialogue_line = "Mind the dummy, stranger. It hits harder than a training post should."
+	npc.position = Vector3(-6.0, 0.0, 9.0)
+	add_child(npc)
+	player.npc = npc
+
 	if _capture_path != "":
 		_capture_after(_capture_at)
 
