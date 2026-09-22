@@ -20,6 +20,7 @@ func run(r) -> void:
 	_test_the_screen_says_to_click_when_the_mouse_is_loose()
 	_test_the_screen_prompts_to_talk_when_a_npc_is_near()
 	_test_the_readout_reports_the_heavy_swing()
+	_test_the_readout_reports_the_guard()
 
 
 func check(label: String, condition: bool) -> void:
@@ -37,6 +38,7 @@ func _state(event: String, event_age: float, mouse_captured := true, nearby_npc_
 	var DashState := load("res://scripts/dash_state.gd")
 	var AttackState := load("res://scripts/attack_state.gd")
 	var HeavyAttackState := load("res://scripts/heavy_attack_state.gd")
+	var GuardState := load("res://scripts/guard_state.gd")
 	return {
 		"health": 82.0, "health_max": 100.0,
 		"stamina": 100.0, "stamina_max": 100.0,
@@ -44,6 +46,7 @@ func _state(event: String, event_age: float, mouse_captured := true, nearby_npc_
 		"dash": DashState.new(),
 		"attack": AttackState.new(),
 		"heavy": HeavyAttackState.new(),
+		"guard": GuardState.new(),
 		"target_health": 120.0, "target_health_max": 120.0,
 		"events_written": 0,
 		"event": event, "event_age": event_age,
@@ -69,6 +72,8 @@ func _test_nothing_in_the_readout_can_overlap() -> void:
 	check("every readout line is in the column", placed_by_hand == 0)
 
 	check("the big event line is in the column too", hud.event_label().get_parent() == column)
+	check("the help text is in the column too, so a taller column cannot bury it under the event line",
+		hud.help_label().get_parent() == column)
 	hud.free()
 
 
@@ -149,6 +154,18 @@ func _test_the_readout_reports_the_heavy_swing() -> void:
 
 	hud.show_state(_state("", 9.0))
 	check("a ready heavy swing reads ready", hud.heavy_label().text.to_lower().contains("ready"))
+	hud.free()
+
+
+# Q had no readout of its own before 2026-09-22, the same gap the dash, the
+# light swing and the heavy swing already had closed.
+func _test_the_readout_reports_the_guard() -> void:
+	print("readout content: guard")
+	var hud = _hud()
+	check("the guard line is in the column", hud.guard_label().get_parent() == hud.column())
+
+	hud.show_state(_state("", 9.0))
+	check("a ready guard reads ready", hud.guard_label().text.to_lower().contains("ready"))
 	hud.free()
 
 

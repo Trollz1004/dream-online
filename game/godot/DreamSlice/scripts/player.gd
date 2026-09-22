@@ -13,6 +13,7 @@ const Combo := preload("res://scripts/combo.gd")
 const Movement := preload("res://scripts/movement.gd")
 const AttackState := preload("res://scripts/attack_state.gd")
 const HeavyAttackState := preload("res://scripts/heavy_attack_state.gd")
+const GuardState := preload("res://scripts/guard_state.gd")
 const WorldEvent := preload("res://scripts/world_event.gd")
 const EventLog := preload("res://scripts/event_log.gd")
 
@@ -29,6 +30,7 @@ const HEALTH_MAX := 100.0
 var dash := DashState.new()
 var attack := AttackState.new()
 var heavy := HeavyAttackState.new()
+var guard := GuardState.new()
 var target: Node3D = null          # what a swing can reach
 var npc: Node3D = null             # who a plain E can talk to, in range
 var events = EventLog.new()
@@ -222,6 +224,13 @@ func _try_skill(action_key: String) -> void:
 			_say("Heavy swing")
 		else:
 			_say("Heavy not ready")
+	elif skill == "Q":
+		if guard.can_start(stamina):
+			guard.start()
+			stamina -= GuardState.STAMINA_COST
+			_say("Guard up")
+		else:
+			_say("Guard not ready")
 	elif skill == "E" and npc != null and npc.is_within_range(position):
 		_say("%s: %s" % [npc.npc_name, npc.dialogue_line])
 	else:
@@ -237,6 +246,7 @@ func _physics_process(delta: float) -> void:
 	dash.advance(delta)
 	attack.advance(delta)
 	heavy.advance(delta)
+	guard.advance(delta)
 	_event_age += delta
 	_resolve_swing()
 	_resolve_heavy_swing()
@@ -282,7 +292,7 @@ func _physics_process(delta: float) -> void:
 		hud.show_state({
 			"health": health, "health_max": HEALTH_MAX,
 			"stamina": stamina, "stamina_max": STAMINA_MAX,
-			"dash": dash, "attack": attack, "heavy": heavy,
+			"dash": dash, "attack": attack, "heavy": heavy, "guard": guard,
 			"target_health": target.health if target else 0.0,
 			"target_health_max": target.HEALTH_MAX if target else 0.0,
 			"event": _last_event, "event_age": _event_age,
@@ -317,12 +327,18 @@ func try_hit(damage: float, attack_name := "Focus Beam") -> bool:
 		_say("PERFECT DODGE")
 		_record_perfect_dodge(attack_name)
 		return false
-	health = maxf(0.0, health - damage)
+	var taken := damage
+	var blocked := guard.is_active()
+	if blocked:
+		taken *= (1.0 - GuardState.BLOCK_REDUCTION)
+	health = maxf(0.0, health - taken)
 	if health <= 0.0:
 		health = HEALTH_MAX
 		_say("DOWN - health reset")
+	elif blocked:
+		_say("BLOCKED for %d" % int(taken))
 	else:
-		_say("HIT for %d" % int(damage))
+		_say("HIT for %d" % int(taken))
 	return true
 
 

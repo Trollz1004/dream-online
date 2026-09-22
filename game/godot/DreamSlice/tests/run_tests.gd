@@ -9,7 +9,7 @@ extends SceneTree
 # still report success. That happened on 2026-09-20. The floor below turns a
 # skipped suite into a failure. Raise it when checks are added; never lower it
 # to make a run pass.
-const MINIMUM_CHECKS := 128
+const MINIMUM_CHECKS := 149
 
 var passed := 0
 var failed := 0
@@ -33,10 +33,12 @@ func _init() -> void:
 	_test_capture_mode_is_read_at_ready()
 	_test_e_talks_to_a_nearby_npc()
 	_test_heavy_attack_on_right_mouse()
+	_test_guard_on_q()
 	load("res://tests/test_attack_and_events.gd").new().run(self)
 	load("res://tests/test_hud.gd").new().run(self)
 	load("res://tests/test_npc.gd").new().run(self)
 	load("res://tests/test_heavy_attack.gd").new().run(self)
+	load("res://tests/test_guard.gd").new().run(self)
 	var ran := passed + failed
 	if ran < MINIMUM_CHECKS:
 		failed += 1
@@ -228,6 +230,37 @@ func _test_heavy_attack_on_right_mouse() -> void:
 	check("a light swing starts on a fresh left mouse press", second.attack.is_attacking())
 	second._try_skill("RMB")
 	check("a heavy swing cannot start while a light swing is out", not second.heavy.is_attacking())
+	second.free()
+
+
+# Q has been named "Guard / parry stance" in the input table since the
+# document was written, and did nothing: it fell through to the unnamed-skill
+# stub like every other unbuilt combo. Guarding absorbs most of a hit rather
+# than dodging it clean the way the dash does.
+func _test_guard_on_q() -> void:
+	print("guard on q")
+	var player = load("res://scripts/player.gd").new()
+	player._ready()
+
+	var before_stamina: float = player.stamina
+	player._try_skill("Q")
+	check("a guard stance starts on a fresh Q press", player.guard.is_guarding())
+	check("raising the guard spends stamina", player.stamina < before_stamina)
+
+	player.guard.advance(player.guard.STARTUP + 0.01)
+	check("the guard is active once it is raised", player.guard.is_active())
+
+	var health_before: float = player.health
+	player.try_hit(40.0, "Test Strike")
+	var blocked_damage: float = health_before - player.health
+	check("a guarded hit does not take full damage", blocked_damage < 40.0 and blocked_damage > 0.0)
+	player.free()
+
+	var second = load("res://scripts/player.gd").new()
+	second._ready()
+	var health_before_unguarded: float = second.health
+	second.try_hit(40.0, "Test Strike")
+	check("an unguarded hit takes the full damage", health_before_unguarded - second.health == 40.0)
 	second.free()
 
 

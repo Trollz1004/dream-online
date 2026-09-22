@@ -8,6 +8,7 @@ extends CanvasLayer
 const BIG := 30
 const HUGE := 54
 const SMALL := 22
+const HELP_SIZE := 17
 
 var _box: VBoxContainer
 var _hint: Label
@@ -17,6 +18,7 @@ var _stamina: Label
 var _dash: Label
 var _swing: Label
 var _heavy: Label
+var _guard: Label
 var _target: Label
 var _events: Label
 var _event: Label
@@ -52,6 +54,7 @@ func _ready() -> void:
 	_dash = _line(_box, BIG, Color(1.0, 1.0, 0.75))
 	_swing = _line(_box, BIG, Color(0.90, 0.95, 0.85))
 	_heavy = _line(_box, BIG, Color(0.95, 0.85, 0.95))
+	_guard = _line(_box, BIG, Color(0.80, 0.90, 1.0))
 	_target = _line(_box, BIG, Color(1.0, 0.90, 0.80))
 	_events = _line(_box, SMALL, Color(0.80, 0.85, 0.95))
 	_fps = _line(_box, SMALL, Color(0.75, 0.95, 0.80))
@@ -62,18 +65,33 @@ func _ready() -> void:
 	_event = _line(_box, HUGE, Color(1.0, 1.0, 1.0))
 	_event.add_theme_constant_override("outline_size", 10)
 
+	# The help block hit the exact same bug on 2026-09-22: a fixed y of 480 was
+	# tuned for a shorter column, and adding the guard line pushed the huge
+	# event line down on top of the first two help lines. It joins the column
+	# for the same reason the event line already does.
 	_help = Label.new()
-	_help.add_theme_font_size_override("font_size", SMALL)
+	# One size down from the rest of the readout, and the one exception to
+	# "every line is large": this block already needed a smaller size to fit
+	# three sentences below the column on a 720-tall canvas, on top of a
+	# session that added four new systems needing their own line above it.
+	# The honest fix for more combos than a corner of text can hold is the
+	# combo list screen docs/gdd/02-action-combat.md and 09-interface-style.md
+	# already specify, not shrinking this again next time.
+	_help.add_theme_font_size_override("font_size", HELP_SIZE)
 	_help.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0))
 	_help.add_theme_constant_override("outline_size", 6)
-	_help.position = Vector2(28.0, 520.0)
+	# A long paragraph runs off the right edge of the canvas rather than
+	# overlapping anything, which is easy to miss in review; wrapping it inside
+	# the screen width is what a capture of a long line caught on 2026-09-22.
+	_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_help.custom_minimum_size = Vector2(1200.0, 0.0)
+	# "Talk: E" is left out on purpose: the interact prompt above already says
+	# who is close enough and which key, and says it only when it is true.
 	_help.text = ("Move: W A S D.   Sprint: hold Shift with a direction.   Auto-sprint: double tap a direction.\n"
 		+ "Dash with invulnerability frames: hold Shift and a direction, then press F (or Q E R Z C, or a mouse button).\n"
-		+ "Light attack: left mouse button. Press it again while recovering to chain a harder swing.\n"
-		+ "Heavy attack: right mouse button. Slower and harder, one swing, then a cooldown.\n"
-		+ "Talk: E, near someone who will answer.\n"
+		+ "Light attack: left mouse button. Heavy attack: right mouse, slower and harder. Guard: Q alone, blocks most of a hit but opens you up right after.\n"
 		+ "The dummy winds up for 1.4 seconds, then fires. Dash through the beam while you are yellow to take nothing.")
-	add_child(_help)
+	_box.add_child(_help)
 
 
 # The readout's own shape, so a test can prove no two lines can cover each other
@@ -83,7 +101,7 @@ func column() -> VBoxContainer:
 
 
 func readout_labels() -> Array:
-	return [_health, _stamina, _dash, _swing, _heavy, _target, _events, _fps]
+	return [_health, _stamina, _dash, _swing, _heavy, _guard, _target, _events, _fps]
 
 
 func event_label() -> Label:
@@ -92,6 +110,14 @@ func event_label() -> Label:
 
 func heavy_label() -> Label:
 	return _heavy
+
+
+func guard_label() -> Label:
+	return _guard
+
+
+func help_label() -> Label:
+	return _help
 
 
 func hint_label() -> Label:
@@ -159,6 +185,19 @@ func show_state(s: Dictionary) -> void:
 			_paint(_heavy, "Heavy  cooling down", Color(0.8, 0.8, 0.85))
 		_:
 			_paint(_heavy, "Heavy  READY", Color(0.7, 1.0, 0.75))
+
+	var guard = s["guard"]
+	match guard.phase():
+		"raising":
+			_paint(_guard, "Guard  raising", Color(0.75, 0.85, 1.0))
+		"guarding":
+			_paint(_guard, "Guard  UP", Color(0.55, 0.75, 1.0))
+		"recovering":
+			_paint(_guard, "Guard  lowering, wide open", Color(1.0, 0.5, 0.55))
+		"cooling":
+			_paint(_guard, "Guard  cooling down", Color(0.8, 0.8, 0.85))
+		_:
+			_paint(_guard, "Guard  READY", Color(0.7, 1.0, 0.75))
 
 	if s["target_health_max"] > 0.0:
 		var down: bool = s["target_health"] <= 0.0
