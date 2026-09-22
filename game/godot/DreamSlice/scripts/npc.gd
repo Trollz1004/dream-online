@@ -11,6 +11,7 @@ const INTERACT_RADIUS := 3.0
 
 var npc_name := ""
 var dialogue_line := ""
+var after_dodge_line := ""
 
 
 func _ready() -> void:
@@ -44,3 +45,12 @@ func is_within_range(from_position: Vector3) -> bool:
 	var to := position - from_position
 	to.y = 0.0
 	return to.length() <= INTERACT_RADIUS
+
+
+# One flavour line was not a reason to talk to her twice. She notices once
+# the player has actually landed a perfect dodge, using the count the world
+# event log already keeps rather than a new system of her own.
+func current_line(perfect_dodges: int) -> String:
+	if perfect_dodges > 0 and after_dodge_line != "":
+		return after_dodge_line
+	return dialogue_line
