@@ -9,7 +9,7 @@ extends SceneTree
 # still report success. That happened on 2026-09-20. The floor below turns a
 # skipped suite into a failure. Raise it when checks are added; never lower it
 # to make a run pass.
-const MINIMUM_CHECKS := 94
+const MINIMUM_CHECKS := 149
 
 var passed := 0
 var failed := 0
@@ -31,8 +31,14 @@ func _init() -> void:
 	_test_camera_relative()
 	_test_body_does_not_spin_the_camera()
 	_test_capture_mode_is_read_at_ready()
+	_test_e_talks_to_a_nearby_npc()
+	_test_heavy_attack_on_right_mouse()
+	_test_guard_on_q()
 	load("res://tests/test_attack_and_events.gd").new().run(self)
 	load("res://tests/test_hud.gd").new().run(self)
+	load("res://tests/test_npc.gd").new().run(self)
+	load("res://tests/test_heavy_attack.gd").new().run(self)
+	load("res://tests/test_guard.gd").new().run(self)
 	var ran := passed + failed
 	if ran < MINIMUM_CHECKS:
 		failed += 1
@@ -171,6 +177,91 @@ func _test_capture_mode_is_read_at_ready() -> void:
 	check("both settings are made before the player enters the tree",
 		added != -1 and mode_set != -1 and yaw_set != -1
 		and mode_set < added and yaw_set < added)
+
+
+# There was no one in the slice to talk to, only the training dummy, which is
+# an enemy. E is the grammar's contextual action key with no direction and no
+# Shift; when a friendly NPC is close enough, it answers instead of falling
+# through to the unnamed-skill stub.
+func _test_e_talks_to_a_nearby_npc() -> void:
+	print("talking to a nearby npc")
+	var player = load("res://scripts/player.gd").new()
+	player._ready()
+	var npc = load("res://scripts/npc.gd").new()
+	npc.npc_name = "Old Wren"
+	npc.dialogue_line = "The fields remember more than the fighters do."
+	player.npc = npc
+
+	player._try_skill("E")
+	check("E talks to a npc standing close enough",
+		player._last_event == "Old Wren: The fields remember more than the fighters do.")
+
+	npc.position = Vector3(50.0, 0.0, 0.0)
+	player._try_skill("E")
+	check("a distant npc does not answer", player._last_event == "Skill E")
+
+	player.free()
+	npc.free()
+
+
+# Right mouse was named "Heavy attack / class special" in the input table
+# since the document was written, and did nothing at all: it fell through to
+# the unnamed-skill stub like every other unbuilt combo. The two swings are
+# also mutually exclusive, so a player cannot hold both open at once.
+func _test_heavy_attack_on_right_mouse() -> void:
+	print("heavy attack on right mouse")
+	var player = load("res://scripts/player.gd").new()
+	player._ready()
+
+	var before_stamina: float = player.stamina
+	player._try_skill("RMB")
+	check("a heavy swing starts on a fresh right mouse press", player.heavy.is_attacking())
+	check("the heavy swing spends stamina",
+		player.stamina < before_stamina and player.stamina >= 0.0)
+
+	player._try_skill("LMB")
+	check("a light swing cannot start while the heavy swing is out", not player.attack.is_attacking())
+
+	player.free()
+
+	var second = load("res://scripts/player.gd").new()
+	second._ready()
+	second._try_skill("LMB")
+	check("a light swing starts on a fresh left mouse press", second.attack.is_attacking())
+	second._try_skill("RMB")
+	check("a heavy swing cannot start while a light swing is out", not second.heavy.is_attacking())
+	second.free()
+
+
+# Q has been named "Guard / parry stance" in the input table since the
+# document was written, and did nothing: it fell through to the unnamed-skill
+# stub like every other unbuilt combo. Guarding absorbs most of a hit rather
+# than dodging it clean the way the dash does.
+func _test_guard_on_q() -> void:
+	print("guard on q")
+	var player = load("res://scripts/player.gd").new()
+	player._ready()
+
+	var before_stamina: float = player.stamina
+	player._try_skill("Q")
+	check("a guard stance starts on a fresh Q press", player.guard.is_guarding())
+	check("raising the guard spends stamina", player.stamina < before_stamina)
+
+	player.guard.advance(player.guard.STARTUP + 0.01)
+	check("the guard is active once it is raised", player.guard.is_active())
+
+	var health_before: float = player.health
+	player.try_hit(40.0, "Test Strike")
+	var blocked_damage: float = health_before - player.health
+	check("a guarded hit does not take full damage", blocked_damage < 40.0 and blocked_damage > 0.0)
+	player.free()
+
+	var second = load("res://scripts/player.gd").new()
+	second._ready()
+	var health_before_unguarded: float = second.health
+	second.try_hit(40.0, "Test Strike")
+	check("an unguarded hit takes the full damage", health_before_unguarded - second.health == 40.0)
+	second.free()
 
 
 # The bug Joshua caught on 2026-09-20: the camera arm hung off the character

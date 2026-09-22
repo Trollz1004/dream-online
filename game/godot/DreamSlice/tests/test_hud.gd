@@ -18,6 +18,9 @@ func run(r) -> void:
 	_test_the_readout_reports_frames_per_second()
 	_test_the_event_line_clears_when_it_is_old()
 	_test_the_screen_says_to_click_when_the_mouse_is_loose()
+	_test_the_screen_prompts_to_talk_when_a_npc_is_near()
+	_test_the_readout_reports_the_heavy_swing()
+	_test_the_readout_reports_the_guard()
 
 
 func check(label: String, condition: bool) -> void:
@@ -31,19 +34,24 @@ func _hud():
 	return hud
 
 
-func _state(event: String, event_age: float, mouse_captured := true) -> Dictionary:
+func _state(event: String, event_age: float, mouse_captured := true, nearby_npc_name := "") -> Dictionary:
 	var DashState := load("res://scripts/dash_state.gd")
 	var AttackState := load("res://scripts/attack_state.gd")
+	var HeavyAttackState := load("res://scripts/heavy_attack_state.gd")
+	var GuardState := load("res://scripts/guard_state.gd")
 	return {
 		"health": 82.0, "health_max": 100.0,
 		"stamina": 100.0, "stamina_max": 100.0,
 		"auto_sprint": false,
 		"dash": DashState.new(),
 		"attack": AttackState.new(),
+		"heavy": HeavyAttackState.new(),
+		"guard": GuardState.new(),
 		"target_health": 120.0, "target_health_max": 120.0,
 		"events_written": 0,
 		"event": event, "event_age": event_age,
 		"mouse_captured": mouse_captured,
+		"nearby_npc_name": nearby_npc_name,
 	}
 
 
@@ -64,6 +72,8 @@ func _test_nothing_in_the_readout_can_overlap() -> void:
 	check("every readout line is in the column", placed_by_hand == 0)
 
 	check("the big event line is in the column too", hud.event_label().get_parent() == column)
+	check("the help text is in the column too, so a taller column cannot bury it under the event line",
+		hud.help_label().get_parent() == column)
 	hud.free()
 
 
@@ -109,6 +119,53 @@ func _test_the_screen_says_to_click_when_the_mouse_is_loose() -> void:
 	check("the hint says to click, in plain words",
 		hud.hint_label().text.to_lower().contains("click"))
 
+	hud.free()
+
+
+# There was nobody in the slice to talk to before 2026-09-22, only the
+# training dummy, which is an enemy. The prompt is driven by whether a
+# friendly NPC is actually in range, the same shape as the click hint above.
+func _test_the_screen_prompts_to_talk_when_a_npc_is_near() -> void:
+	print("the talk prompt")
+	var hud = _hud()
+
+	check("the talk prompt is in the column, so it cannot cover another line",
+		hud.interact_label().get_parent() == hud.column())
+
+	hud.show_state(_state("", 9.0, true, ""))
+	check("the prompt stays off screen with no npc near",
+		not hud.interact_label().visible)
+
+	hud.show_state(_state("", 9.0, true, "Old Wren"))
+	check("the prompt appears when a named npc is near", hud.interact_label().visible)
+	check("the prompt names the npc and the key",
+		hud.interact_label().text.contains("Old Wren") and hud.interact_label().text.contains("E"))
+
+	hud.free()
+
+
+# Right mouse had no readout of its own before 2026-09-22, the same gap the
+# dash and the light swing already had closed. The line sits in the column
+# with the others, so it is subject to the same no-overlap proof above.
+func _test_the_readout_reports_the_heavy_swing() -> void:
+	print("readout content: heavy swing")
+	var hud = _hud()
+	check("the heavy line is in the column", hud.heavy_label().get_parent() == hud.column())
+
+	hud.show_state(_state("", 9.0))
+	check("a ready heavy swing reads ready", hud.heavy_label().text.to_lower().contains("ready"))
+	hud.free()
+
+
+# Q had no readout of its own before 2026-09-22, the same gap the dash, the
+# light swing and the heavy swing already had closed.
+func _test_the_readout_reports_the_guard() -> void:
+	print("readout content: guard")
+	var hud = _hud()
+	check("the guard line is in the column", hud.guard_label().get_parent() == hud.column())
+
+	hud.show_state(_state("", 9.0))
+	check("a ready guard reads ready", hud.guard_label().text.to_lower().contains("ready"))
 	hud.free()
 
 

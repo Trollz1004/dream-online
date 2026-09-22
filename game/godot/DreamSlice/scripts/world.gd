@@ -8,6 +8,7 @@ extends Node3D
 
 const PlayerScript := preload("res://scripts/player.gd")
 const DummyScript := preload("res://scripts/dummy.gd")
+const NpcScript := preload("res://scripts/npc.gd")
 const HudScript := preload("res://scripts/hud.gd")
 
 const GROUND_SIZE := 120.0
@@ -45,6 +46,17 @@ func _ready() -> void:
 	dummy.player = player
 	add_child(dummy)
 	player.target = dummy
+
+	# Until 2026-09-22 the training dummy, an enemy, was the only other body in
+	# the slice. Off to the side of the fight lane so a beam or a dash never
+	# reaches her.
+	var npc := NpcScript.new()
+	npc.npc_name = "Mireth"
+	npc.dialogue_line = "Mind the dummy, stranger. It hits harder than a training post should."
+	npc.position = Vector3(-6.0, 0.0, 9.0)
+	add_child(npc)
+	player.npc = npc
+
 	if _capture_path != "":
 		_capture_after(_capture_at)
 
@@ -94,6 +106,24 @@ func _build_sky_and_light() -> void:
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	env.ambient_light_energy = 0.9
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+
+	# Dust in the air, per docs/gdd/08-day-dreams-night-dreams-world.md. Plain
+	# depth fog, not the volumetric kind, so it costs nothing extra on the
+	# single-threaded browser build and can stay on there too.
+	env.fog_enabled = true
+	env.fog_light_color = Color(0.82, 0.78, 0.66)
+	env.fog_density = 0.010
+	env.fog_sky_affect = 0.15
+
+	if not OS.has_feature("web"):
+		# Screen-space effects the browser build cannot afford, the same reason
+		# shadows are gated below: a soft bloom on the dummy's beam and the
+		# sun's edge, and contact shadow where the scenery meets the ground.
+		env.glow_enabled = true
+		env.glow_intensity = 0.6
+		env.glow_bloom = 0.05
+		env.ssao_enabled = true
+
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
