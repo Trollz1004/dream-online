@@ -19,8 +19,8 @@ One entry per session, newest first, in the form did, verified, blocked, next, c
 - Nothing new. Still his: the Visual Studio install and the hermes `master` merge, both refused by the permission classifier. The GitHub billing lock still keeps Actions from confirming a merge, so the local run stays the only gate.
 
 **Next.**
-- He still has not said whether mouse-look works for him in the browser. If he tries it and the hint or the click-to-grab still feels wrong, the fix and its reasoning are in the merge commit named below.
-- A live-browser re-check of the hint (screenshot before and after a click) is worth doing next time the Claude in Chrome extension is connected in-session.
+- Joshua tried it and said, in chat, "seemed to work yes" — a quick confirmation, not a detailed report, but it closes the open question: mouse-look in the browser is working for him with the hint in place. If something about it starts feeling wrong later, the fix and its reasoning are in the merge commit named below.
+- A live-browser re-check of the hint (screenshot before and after a click) is still worth doing next time the Claude in Chrome extension is connected in-session, since this session's own re-check of that measurement did not happen.
 
 **Commits.** `f8a081d` on `judge/web-mouse-hint` (the hint and the ordering fix, 94 of 94), merged to `main` as the merge commit "click hint on the web build; player config-before-add_child bug fixed; 94 of 94", pushed as `bd0774b..6b4cf5d`.
 

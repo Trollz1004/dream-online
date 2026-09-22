@@ -69,4 +69,4 @@ Security check: no secrets read or written; the repository stays public-safe; th
 
 Rollback for this session's work: revert the merge commit named "click hint on the web build; player config-before-add_child bug fixed; 94 of 94".
 
-Next: Joshua still has not said whether mouse-look works for him in the browser now that the hint is there. Story 2, the event path into the Live NPC Lab, is the next piece of spec 001 and needs no compiler.
+Next: Joshua tried the browser build and said mouse-look "seemed to work," so the hint is doing its job. Story 2, the event path into the Live NPC Lab, is the next piece of spec 001 and needs no compiler.
