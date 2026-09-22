@@ -232,7 +232,7 @@ func _try_skill(action_key: String) -> void:
 		else:
 			_say("Guard not ready")
 	elif skill == "E" and npc != null and npc.is_within_range(position):
-		_say("%s: %s" % [npc.npc_name, npc.dialogue_line])
+		_say("%s: %s" % [npc.npc_name, npc.current_line(events_written)])
 	else:
 		_say("Skill %s" % skill)
 

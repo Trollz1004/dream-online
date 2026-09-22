@@ -53,6 +53,7 @@ func _ready() -> void:
 	var npc := NpcScript.new()
 	npc.npc_name = "Mireth"
 	npc.dialogue_line = "Mind the dummy, stranger. It hits harder than a training post should."
+	npc.after_dodge_line = "You danced clean through its beam. I have not seen that done in a long while."
 	npc.position = Vector3(-6.0, 0.0, 9.0)
 	add_child(npc)
 	player.npc = npc

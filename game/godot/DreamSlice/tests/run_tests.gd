@@ -9,7 +9,7 @@ extends SceneTree
 # still report success. That happened on 2026-09-20. The floor below turns a
 # skipped suite into a failure. Raise it when checks are added; never lower it
 # to make a run pass.
-const MINIMUM_CHECKS := 149
+const MINIMUM_CHECKS := 153
 
 var passed := 0
 var failed := 0
@@ -190,11 +190,18 @@ func _test_e_talks_to_a_nearby_npc() -> void:
 	var npc = load("res://scripts/npc.gd").new()
 	npc.npc_name = "Old Wren"
 	npc.dialogue_line = "The fields remember more than the fighters do."
+	npc.after_dodge_line = "You danced right through it!"
 	player.npc = npc
 
 	player._try_skill("E")
 	check("E talks to a npc standing close enough",
 		player._last_event == "Old Wren: The fields remember more than the fighters do.")
+
+	player.events_written = 1
+	player._try_skill("E")
+	check("she notices once the player has landed a perfect dodge",
+		player._last_event == "Old Wren: You danced right through it!")
+	player.events_written = 0
 
 	npc.position = Vector3(50.0, 0.0, 0.0)
 	player._try_skill("E")
