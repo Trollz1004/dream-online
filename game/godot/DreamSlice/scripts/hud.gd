@@ -16,6 +16,7 @@ var _health: Label
 var _stamina: Label
 var _dash: Label
 var _swing: Label
+var _heavy: Label
 var _target: Label
 var _events: Label
 var _event: Label
@@ -50,6 +51,7 @@ func _ready() -> void:
 	_stamina = _line(_box, BIG, Color(0.85, 0.95, 1.0))
 	_dash = _line(_box, BIG, Color(1.0, 1.0, 0.75))
 	_swing = _line(_box, BIG, Color(0.90, 0.95, 0.85))
+	_heavy = _line(_box, BIG, Color(0.95, 0.85, 0.95))
 	_target = _line(_box, BIG, Color(1.0, 0.90, 0.80))
 	_events = _line(_box, SMALL, Color(0.80, 0.85, 0.95))
 	_fps = _line(_box, SMALL, Color(0.75, 0.95, 0.80))
@@ -64,10 +66,12 @@ func _ready() -> void:
 	_help.add_theme_font_size_override("font_size", SMALL)
 	_help.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0))
 	_help.add_theme_constant_override("outline_size", 6)
-	_help.position = Vector2(28.0, 560.0)
+	_help.position = Vector2(28.0, 520.0)
 	_help.text = ("Move: W A S D.   Sprint: hold Shift with a direction.   Auto-sprint: double tap a direction.\n"
 		+ "Dash with invulnerability frames: hold Shift and a direction, then press F (or Q E R Z C, or a mouse button).\n"
-		+ "Attack: left mouse button. Press it again while recovering to chain a harder swing.\n"
+		+ "Light attack: left mouse button. Press it again while recovering to chain a harder swing.\n"
+		+ "Heavy attack: right mouse button. Slower and harder, one swing, then a cooldown.\n"
+		+ "Talk: E, near someone who will answer.\n"
 		+ "The dummy winds up for 1.4 seconds, then fires. Dash through the beam while you are yellow to take nothing.")
 	add_child(_help)
 
@@ -79,11 +83,15 @@ func column() -> VBoxContainer:
 
 
 func readout_labels() -> Array:
-	return [_health, _stamina, _dash, _swing, _target, _events, _fps]
+	return [_health, _stamina, _dash, _swing, _heavy, _target, _events, _fps]
 
 
 func event_label() -> Label:
 	return _event
+
+
+func heavy_label() -> Label:
+	return _heavy
 
 
 func hint_label() -> Label:
@@ -138,6 +146,19 @@ func show_state(s: Dictionary) -> void:
 			"   chain now" if attack.can_chain() else ""], Color(1.0, 0.95, 0.7))
 	else:
 		_paint(_swing, "Swing  READY", Color(0.7, 1.0, 0.75))
+
+	var heavy = s["heavy"]
+	match heavy.phase():
+		"winding up":
+			_paint(_heavy, "Heavy  winding up", Color(1.0, 0.8, 1.0))
+		"striking":
+			_paint(_heavy, "Heavy  STRIKING", Color(1.0, 0.6, 1.0))
+		"recovering":
+			_paint(_heavy, "Heavy  recovering, wide open", Color(1.0, 0.5, 0.55))
+		"cooling":
+			_paint(_heavy, "Heavy  cooling down", Color(0.8, 0.8, 0.85))
+		_:
+			_paint(_heavy, "Heavy  READY", Color(0.7, 1.0, 0.75))
 
 	if s["target_health_max"] > 0.0:
 		var down: bool = s["target_health"] <= 0.0

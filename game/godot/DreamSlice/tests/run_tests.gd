@@ -9,7 +9,7 @@ extends SceneTree
 # still report success. That happened on 2026-09-20. The floor below turns a
 # skipped suite into a failure. Raise it when checks are added; never lower it
 # to make a run pass.
-const MINIMUM_CHECKS := 103
+const MINIMUM_CHECKS := 128
 
 var passed := 0
 var failed := 0
@@ -32,9 +32,11 @@ func _init() -> void:
 	_test_body_does_not_spin_the_camera()
 	_test_capture_mode_is_read_at_ready()
 	_test_e_talks_to_a_nearby_npc()
+	_test_heavy_attack_on_right_mouse()
 	load("res://tests/test_attack_and_events.gd").new().run(self)
 	load("res://tests/test_hud.gd").new().run(self)
 	load("res://tests/test_npc.gd").new().run(self)
+	load("res://tests/test_heavy_attack.gd").new().run(self)
 	var ran := passed + failed
 	if ran < MINIMUM_CHECKS:
 		failed += 1
@@ -198,6 +200,35 @@ func _test_e_talks_to_a_nearby_npc() -> void:
 
 	player.free()
 	npc.free()
+
+
+# Right mouse was named "Heavy attack / class special" in the input table
+# since the document was written, and did nothing at all: it fell through to
+# the unnamed-skill stub like every other unbuilt combo. The two swings are
+# also mutually exclusive, so a player cannot hold both open at once.
+func _test_heavy_attack_on_right_mouse() -> void:
+	print("heavy attack on right mouse")
+	var player = load("res://scripts/player.gd").new()
+	player._ready()
+
+	var before_stamina: float = player.stamina
+	player._try_skill("RMB")
+	check("a heavy swing starts on a fresh right mouse press", player.heavy.is_attacking())
+	check("the heavy swing spends stamina",
+		player.stamina < before_stamina and player.stamina >= 0.0)
+
+	player._try_skill("LMB")
+	check("a light swing cannot start while the heavy swing is out", not player.attack.is_attacking())
+
+	player.free()
+
+	var second = load("res://scripts/player.gd").new()
+	second._ready()
+	second._try_skill("LMB")
+	check("a light swing starts on a fresh left mouse press", second.attack.is_attacking())
+	second._try_skill("RMB")
+	check("a heavy swing cannot start while a light swing is out", not second.heavy.is_attacking())
+	second.free()
 
 
 # The bug Joshua caught on 2026-09-20: the camera arm hung off the character

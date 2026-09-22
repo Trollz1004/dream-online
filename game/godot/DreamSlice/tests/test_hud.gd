@@ -19,6 +19,7 @@ func run(r) -> void:
 	_test_the_event_line_clears_when_it_is_old()
 	_test_the_screen_says_to_click_when_the_mouse_is_loose()
 	_test_the_screen_prompts_to_talk_when_a_npc_is_near()
+	_test_the_readout_reports_the_heavy_swing()
 
 
 func check(label: String, condition: bool) -> void:
@@ -35,12 +36,14 @@ func _hud():
 func _state(event: String, event_age: float, mouse_captured := true, nearby_npc_name := "") -> Dictionary:
 	var DashState := load("res://scripts/dash_state.gd")
 	var AttackState := load("res://scripts/attack_state.gd")
+	var HeavyAttackState := load("res://scripts/heavy_attack_state.gd")
 	return {
 		"health": 82.0, "health_max": 100.0,
 		"stamina": 100.0, "stamina_max": 100.0,
 		"auto_sprint": false,
 		"dash": DashState.new(),
 		"attack": AttackState.new(),
+		"heavy": HeavyAttackState.new(),
 		"target_health": 120.0, "target_health_max": 120.0,
 		"events_written": 0,
 		"event": event, "event_age": event_age,
@@ -133,6 +136,19 @@ func _test_the_screen_prompts_to_talk_when_a_npc_is_near() -> void:
 	check("the prompt names the npc and the key",
 		hud.interact_label().text.contains("Old Wren") and hud.interact_label().text.contains("E"))
 
+	hud.free()
+
+
+# Right mouse had no readout of its own before 2026-09-22, the same gap the
+# dash and the light swing already had closed. The line sits in the column
+# with the others, so it is subject to the same no-overlap proof above.
+func _test_the_readout_reports_the_heavy_swing() -> void:
+	print("readout content: heavy swing")
+	var hud = _hud()
+	check("the heavy line is in the column", hud.heavy_label().get_parent() == hud.column())
+
+	hud.show_state(_state("", 9.0))
+	check("a ready heavy swing reads ready", hud.heavy_label().text.to_lower().contains("ready"))
 	hud.free()
 
 

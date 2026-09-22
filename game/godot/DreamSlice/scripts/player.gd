@@ -12,6 +12,7 @@ const DashState := preload("res://scripts/dash_state.gd")
 const Combo := preload("res://scripts/combo.gd")
 const Movement := preload("res://scripts/movement.gd")
 const AttackState := preload("res://scripts/attack_state.gd")
+const HeavyAttackState := preload("res://scripts/heavy_attack_state.gd")
 const WorldEvent := preload("res://scripts/world_event.gd")
 const EventLog := preload("res://scripts/event_log.gd")
 
@@ -27,6 +28,7 @@ const HEALTH_MAX := 100.0
 
 var dash := DashState.new()
 var attack := AttackState.new()
+var heavy := HeavyAttackState.new()
 var target: Node3D = null          # what a swing can reach
 var npc: Node3D = null             # who a plain E can talk to, in range
 var events = EventLog.new()
@@ -203,12 +205,23 @@ func _try_skill(action_key: String) -> void:
 		_auto_sprint = false
 		_say("Dash %s" % skill)
 	elif action_key == "LMB":
-		if attack.can_start(stamina):
+		if heavy.is_attacking():
+			_say("Swing not ready")
+		elif attack.can_start(stamina):
 			attack.start()
 			stamina -= AttackState.STAMINA_COST
 			_say("Swing %d" % attack.step())
 		else:
 			_say("Swing not ready")
+	elif action_key == "RMB":
+		if attack.is_attacking():
+			_say("Heavy not ready")
+		elif heavy.can_start(stamina):
+			heavy.start()
+			stamina -= HeavyAttackState.STAMINA_COST
+			_say("Heavy swing")
+		else:
+			_say("Heavy not ready")
 	elif skill == "E" and npc != null and npc.is_within_range(position):
 		_say("%s: %s" % [npc.npc_name, npc.dialogue_line])
 	else:
@@ -223,8 +236,10 @@ func _say(text: String) -> void:
 func _physics_process(delta: float) -> void:
 	dash.advance(delta)
 	attack.advance(delta)
+	heavy.advance(delta)
 	_event_age += delta
 	_resolve_swing()
+	_resolve_heavy_swing()
 
 	var sprinting := false
 	if dash.is_dashing():
@@ -267,7 +282,7 @@ func _physics_process(delta: float) -> void:
 		hud.show_state({
 			"health": health, "health_max": HEALTH_MAX,
 			"stamina": stamina, "stamina_max": STAMINA_MAX,
-			"dash": dash, "attack": attack,
+			"dash": dash, "attack": attack, "heavy": heavy,
 			"target_health": target.health if target else 0.0,
 			"target_health_max": target.HEALTH_MAX if target else 0.0,
 			"event": _last_event, "event_age": _event_age,
@@ -326,6 +341,22 @@ func _resolve_swing() -> void:
 	var damage := attack.damage_for_step(attack.step())
 	target.take_hit(damage)
 	_say("Swing %d hit for %d" % [attack.step(), int(damage)])
+
+
+func _resolve_heavy_swing() -> void:
+	if target == null or not heavy.take_hit_window():
+		return
+	var facing := Movement.camera_relative(Vector3(0.0, 0.0, -1.0), _yaw)
+	var to_target := target.global_position - global_position
+	to_target.y = 0.0
+	if to_target.length() > HeavyAttackState.REACH:
+		_say("Heavy swing missed")
+		return
+	if absf(facing.signed_angle_to(to_target.normalized(), Vector3.UP)) > HeavyAttackState.HALF_ARC:
+		_say("Heavy swing missed")
+		return
+	target.take_hit(HeavyAttackState.DAMAGE)
+	_say("Heavy swing hit for %d" % int(HeavyAttackState.DAMAGE))
 
 
 # A confirmed invulnerability-frame dodge is the P1 event of spec 001. It is
