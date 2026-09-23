@@ -50,7 +50,7 @@ const UNSAFE_REPLY_PATTERNS = [
   /combat power for cash/i,
   /private accounting/i
 ];
-const MEMORY_SCOPES = new Set(["player", "npc", "zone", "global_event"]);
+const MEMORY_SCOPES = new Set(["player", "npc", "zone", "global_event", "world_event"]);
 
 export function nowIso() {
   return new Date().toISOString();
@@ -583,6 +583,32 @@ function eventScopeMatches(row, query) {
   return matches;
 }
 
+// A world event has no top-level playerId or npcId of its own (see
+// handleWorldEvent below): the actor posting it is `actorId`, and who
+// witnessed it lives inside `payload.witness`. This scope is what lets an
+// NPC memory client (game/godot/DreamSlice/scripts/npc_memory.gd) read back,
+// for one player and one witness, exactly the events it posted to
+// /npc/event — the gap that made GET /npc/memory unable to answer that
+// question before this scope existed.
+function worldEventScopeMatches(row, query) {
+  const matches = [];
+
+  if (!query.scopes.includes("world_event")) return matches;
+
+  const rowPlayerId = row.actorId || row.payload?.playerId;
+  const rowWitness = row.payload?.witness;
+  const playerMatches = !query.playerId || rowPlayerId === query.playerId;
+  const npcMatches = !query.npcId || rowWitness === query.npcId;
+  const zoneMatches = !query.zone || row.zone === query.zone;
+  const eventMatches = !query.eventType || row.eventType === query.eventType;
+
+  if (playerMatches && npcMatches && zoneMatches && eventMatches) {
+    matches.push({ scope: "world_event", subjectId: rowWitness || rowPlayerId || "unknown" });
+  }
+
+  return matches;
+}
+
 function summaryScopeMatches(row, query) {
   const matches = [];
 
@@ -720,10 +746,11 @@ export async function readMemory(queryInput) {
     }
   }
 
-  if (!query.compatibilityMode && (query.scopes.includes("zone") || query.scopes.includes("global_event"))) {
+  if (!query.compatibilityMode && (query.scopes.includes("zone") || query.scopes.includes("global_event")
+      || query.scopes.includes("world_event"))) {
     const eventRows = await readJsonl(EVENT_LOG);
     for (const row of eventRows) {
-      const scopeMatches = eventScopeMatches(row, query);
+      const scopeMatches = [...eventScopeMatches(row, query), ...worldEventScopeMatches(row, query)];
       if (scopeMatches.length) {
         rows.push({
           ...row,
