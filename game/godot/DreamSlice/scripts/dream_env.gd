@@ -35,6 +35,12 @@ const MIRETH_CLEAR_RADIUS := 2.0
 const PLAYER_SPAWN := Vector3(0.0, 0.0, 6.0)
 const ENEMY_SPOT := Vector3(0.0, 0.0, -6.0)
 
+# The day sun sits at yaw 62 degrees (see _build_day_environment); this is
+# that direction in the XZ plane, shared by anything that fakes a lit side
+# and a shadow side without relying on real-time lighting -- the mountain and
+# the cottage walls both do.
+const SUN_REF := Vector3(0.883, 0.0, 0.469)
+
 var mode := "day"
 
 var _environment: Environment = null
@@ -228,6 +234,21 @@ func _place_box(pos: Vector3, size: Vector3, yaw_deg: float, mat: Material) -> M
 	return mesh
 
 
+# A box with no collision at all: trim bands, door and window frames, roofs --
+# anything purely decorative that would otherwise register a second,
+# redundant StaticBody3D on top of the structural piece it decorates.
+func _place_visual_box(pos: Vector3, size: Vector3, yaw_deg: float, mat: Material) -> MeshInstance3D:
+	var mesh := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = size
+	mesh.mesh = box
+	mesh.position = pos
+	mesh.rotation_degrees = Vector3(0.0, yaw_deg, 0.0)
+	mesh.material_override = mat
+	add_child(mesh)
+	return mesh
+
+
 func _place_collision_cylinder(pos: Vector3, radius: float, height: float) -> void:
 	if not _is_clear_pos(pos, radius):
 		return
@@ -273,25 +294,78 @@ func _rotate_y(v: Vector3, yaw_deg: float) -> Vector3:
 # Two quads crossed at 90 degrees, base at local y=0 rising to y=h: a cheap
 # cross-billboard with real volume from any viewing angle, for grass tufts
 # that need to read as scrub rather than a single flat card.
-func _cross_quad_mesh(w: float, h: float) -> ArrayMesh:
+# A tuft of narrow, tapered blade triangles fanning out from a shared root
+# point, each leaning slightly outward, with a vertex-colour gradient from a
+# dark base to a lighter tip. Replaces an earlier cross-billboard (two crossed
+# flat quads), which still read as hundreds of pale cardboard boxes rather
+# than a grass field in a judge review of day.png on 2026-09-23: a wide flat
+# quad presents one continuous bright face to the sun, where a thin blade
+# does not.
+func _grass_tuft_mesh(blade_count: int, height: float, base_color: Color, tip_color: Color) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var hw := w * 0.5
-	var quads := [
-		[Vector3(-hw, 0.0, 0.0), Vector3(hw, 0.0, 0.0), Vector3(hw, h, 0.0), Vector3(-hw, h, 0.0)],
-		[Vector3(0.0, 0.0, -hw), Vector3(0.0, 0.0, hw), Vector3(0.0, h, hw), Vector3(0.0, h, -hw)],
-	]
-	for quad: Array in quads:
-		var a: Vector3 = quad[0]
-		var b: Vector3 = quad[1]
-		var c: Vector3 = quad[2]
-		var d: Vector3 = quad[3]
-		st.add_vertex(a)
-		st.add_vertex(b)
-		st.add_vertex(c)
-		st.add_vertex(a)
-		st.add_vertex(c)
-		st.add_vertex(d)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4242
+	for i in range(blade_count):
+		var ang := (float(i) / float(blade_count)) * TAU + rng.randf_range(-0.35, 0.35)
+		var out := Vector3(sin(ang), 0.0, cos(ang))
+		var side := Vector3(out.z, 0.0, -out.x)
+		var lean_deg := rng.randf_range(12.0, 24.0)
+		var tip_dir := Vector3.UP.rotated(side, deg_to_rad(lean_deg)).normalized()
+		var h := height * rng.randf_range(0.75, 1.15)
+		var base_w := 0.05 * rng.randf_range(0.75, 1.3)
+		# Blade roots sit within a small jitter of the shared origin, not
+		# exactly on top of one another, so the fan reads as a clump of
+		# individual blades rather than a single paper fan.
+		var root := out * rng.randf_range(0.0, 0.04)
+		var p0 := root - side * (base_w * 0.5)
+		var p1 := root + side * (base_w * 0.5)
+		var p2 := root + tip_dir * h
+		st.set_color(base_color)
+		st.add_vertex(p0)
+		st.set_color(base_color)
+		st.add_vertex(p1)
+		st.set_color(tip_color)
+		st.add_vertex(p2)
+	st.generate_normals()
+	return st.commit()
+
+
+# A cone built face by face, each side facet given one of two flat, baked-in
+# vertex colours depending on whether that facet's outward direction leans
+# toward `sun_ref` (lit) or away from it (shadow) -- a judge review of
+# day.png on 2026-09-23 asked for the mountain's near-flat pastel triangles
+# to read as rock under a low sun, with a lit side and a shadow side. Kept
+# unshaded and coloured this way on purpose rather than shaded: real-time
+# lighting at the day scene's own exposure bleached an earlier shaded attempt
+# toward white regardless of distance, so the two tones are art-directed and
+# fixed, immune to that.
+func _faceted_cone_mesh(bottom_radius: float, top_radius: float, height: float, segments: int,
+		lit_color: Color, shadow_color: Color, sun_ref: Vector3) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in range(segments):
+		var a0 := (float(i) / float(segments)) * TAU
+		var a1 := (float(i + 1) / float(segments)) * TAU
+		var b0 := Vector3(sin(a0) * bottom_radius, 0.0, cos(a0) * bottom_radius)
+		var b1 := Vector3(sin(a1) * bottom_radius, 0.0, cos(a1) * bottom_radius)
+		var t0 := Vector3(sin(a0) * top_radius, height, cos(a0) * top_radius)
+		var t1 := Vector3(sin(a1) * top_radius, height, cos(a1) * top_radius)
+		var mid_ang := (a0 + a1) * 0.5
+		var face_normal := Vector3(sin(mid_ang), 0.15, cos(mid_ang)).normalized()
+		var tone := lit_color if face_normal.dot(sun_ref) > 0.15 else shadow_color
+		st.set_color(tone)
+		st.add_vertex(b0)
+		st.set_color(tone)
+		st.add_vertex(b1)
+		st.set_color(tone)
+		st.add_vertex(t1)
+		st.set_color(tone)
+		st.add_vertex(b0)
+		st.set_color(tone)
+		st.add_vertex(t1)
+		st.set_color(tone)
+		st.add_vertex(t0)
 	st.generate_normals()
 	return st.commit()
 
@@ -435,56 +509,86 @@ func _build_day_track() -> void:
 
 
 func _build_cottages() -> void:
-	# Warm grey-ochre, not the pale near-white a judge review of day.png on
-	# 2026-09-23 flagged. Four cottages, two with a slate roof, placed 15 to
-	# 35 m ahead of the game camera (which sits at spawn.z + 6, looking down
-	# -Z) and on both sides of the lane -- the previous layout put two of the
-	# three cottages behind that camera entirely, which is why the village
-	# read as one pale slab far off to one side.
-	# Distinctly grey-ochre stone, not the ground's own warm ochre -- the two
-	# were close enough in hue that the cottages barely separated from the
-	# dirt in a judge review of day.png on 2026-09-23.
-	var stone := _flat_mat(Color(0.40, 0.34, 0.28), 0.92)
+	# Two stone tones (one for walls facing the sun, one for walls facing
+	# away, chosen per wall against SUN_REF) instead of one flat colour, plus
+	# a darker trim band and window/door framing -- a judge review of
+	# day.png on 2026-09-23 said the cottages read as dark boxes. Four
+	# cottages, two with a slate roof, one roofless with a jagged broken
+	# wall top, placed 15 to 35 m ahead of the game camera and on both sides
+	# of the lane.
+	var stone_lit := _flat_mat(Color(0.58, 0.46, 0.32), 0.85)
+	var stone_shadow := _flat_mat(Color(0.26, 0.22, 0.18), 0.92)
+	var trim_mat := _flat_mat(Color(0.20, 0.17, 0.15), 0.88)
 	var roof_mat := _flat_mat(Color(0.18, 0.19, 0.25), 0.7)
-	_build_cottage(Vector3(-16.0, 0.0, -10.0), 18.0, stone, roof_mat, false)
-	_build_cottage(Vector3(16.0, 0.0, -14.0), -22.0, stone, roof_mat, true)
-	_build_cottage(Vector3(-14.0, 0.0, -23.0), 205.0, stone, roof_mat, false)
-	_build_cottage(Vector3(14.0, 0.0, -24.0), 160.0, stone, roof_mat, true)
+	_build_cottage(Vector3(-16.0, 0.0, -10.0), 18.0, stone_lit, stone_shadow, trim_mat, roof_mat,
+		false, true)
+	_build_cottage(Vector3(16.0, 0.0, -14.0), -22.0, stone_lit, stone_shadow, trim_mat, roof_mat,
+		true, false)
+	_build_cottage(Vector3(-14.0, 0.0, -23.0), 205.0, stone_lit, stone_shadow, trim_mat, roof_mat,
+		false, false)
+	_build_cottage(Vector3(14.0, 0.0, -24.0), 160.0, stone_lit, stone_shadow, trim_mat, roof_mat,
+		true, false)
 
 
 # A rectangular cottage, w (local X) by d (local Z), rotated by yaw_deg around
 # `base`. `intact` gives it full-height walls all round and a pitched roof;
-# otherwise the back wall is a low ruined stub and there is no roof, open to
-# the sky. wall_h 3.2 m sits inside the "3 to 4 m tall" range a judge review
-# of day.png on 2026-09-23 asked for (was 2.6 m).
-func _build_cottage(base: Vector3, yaw_deg: float, stone: Material, roof_mat: Material,
-		intact: bool) -> void:
+# otherwise the back wall is a ruined stub and there is no roof, open to the
+# sky. `jagged` replaces the front and back walls with several short, stepped
+# segments of varying height for a broken silhouette, rather than one clean
+# uniform edge. wall_h 3.2 m sits inside the "3 to 4 m tall" range a judge
+# review of day.png on 2026-09-23 asked for (was 2.6 m).
+func _build_cottage(base: Vector3, yaw_deg: float, stone_lit: Material, stone_shadow: Material,
+		trim_mat: Material, roof_mat: Material, intact: bool, jagged: bool) -> void:
 	var w := 5.4
 	var d := 4.6
 	var wall_h := 3.2
 	var t := 0.35
 	var door_w := 1.1
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(base.x * 1000.0 + base.z)
 
-	# Front wall, split around an empty doorway.
+	# Front wall, split around an empty doorway, with a darker frame either
+	# side of the gap.
 	var side_w := (w - door_w) * 0.5
-	_wall_piece(base, yaw_deg, Vector3(-(door_w * 0.5 + side_w * 0.5), 0.0, -d * 0.5),
-		Vector3(side_w, wall_h, t), stone)
-	_wall_piece(base, yaw_deg, Vector3(door_w * 0.5 + side_w * 0.5, 0.0, -d * 0.5),
-		Vector3(side_w, wall_h, t), stone)
-
-	# Back wall: full height when the cottage still stands, a low stub when
-	# it does not.
-	if intact:
-		_wall_piece(base, yaw_deg, Vector3(0.0, 0.0, d * 0.5), Vector3(w, wall_h, t), stone)
+	var front_n := Vector3(0.0, 0.0, -1.0)
+	if jagged:
+		_jagged_wall_run(base, yaw_deg, Vector3(-w * 0.5, 0.0, -d * 0.5), side_w, Vector3.RIGHT,
+			t, wall_h * 0.5, wall_h, front_n, stone_lit, stone_shadow, rng, 3)
+		_jagged_wall_run(base, yaw_deg, Vector3(door_w * 0.5, 0.0, -d * 0.5), side_w, Vector3.RIGHT,
+			t, wall_h * 0.5, wall_h, front_n, stone_lit, stone_shadow, rng, 3)
 	else:
-		_wall_piece(base, yaw_deg, Vector3(0.0, 0.0, d * 0.5), Vector3(w, wall_h * 0.4, t), stone)
+		_wall_piece(base, yaw_deg, Vector3(-(door_w * 0.5 + side_w * 0.5), 0.0, -d * 0.5),
+			Vector3(side_w, wall_h, t), front_n, stone_lit, stone_shadow)
+		_wall_piece(base, yaw_deg, Vector3(door_w * 0.5 + side_w * 0.5, 0.0, -d * 0.5),
+			Vector3(side_w, wall_h, t), front_n, stone_lit, stone_shadow)
+	var jamb_h := wall_h * (0.5 if jagged else 1.0)
+	_place_visual_box(base + _rotate_y(Vector3(-door_w * 0.5, jamb_h * 0.5, -d * 0.5), yaw_deg),
+		Vector3(0.14, jamb_h, t + 0.06), yaw_deg, trim_mat)
+	_place_visual_box(base + _rotate_y(Vector3(door_w * 0.5, jamb_h * 0.5, -d * 0.5), yaw_deg),
+		Vector3(0.14, jamb_h, t + 0.06), yaw_deg, trim_mat)
 
-	# Left wall, with a real window hole in the middle of it.
-	_wall_with_window(base, yaw_deg, -w * 0.5, d, wall_h, t, stone)
+	# Back wall: full height when the cottage still stands, a jagged run of
+	# broken steps or a plain low stub when it does not.
+	var back_n := Vector3(0.0, 0.0, 1.0)
+	if intact:
+		_wall_piece(base, yaw_deg, Vector3(0.0, 0.0, d * 0.5), Vector3(w, wall_h, t), back_n,
+			stone_lit, stone_shadow)
+	elif jagged:
+		_jagged_wall_run(base, yaw_deg, Vector3(-w * 0.5, 0.0, d * 0.5), w, Vector3.RIGHT, t,
+			wall_h * 0.2, wall_h * 0.65, back_n, stone_lit, stone_shadow, rng, 5)
+	else:
+		_wall_piece(base, yaw_deg, Vector3(0.0, 0.0, d * 0.5), Vector3(w, wall_h * 0.4, t), back_n,
+			stone_lit, stone_shadow)
+
+	# Left wall, with a real window hole framed in the trim colour.
+	_wall_with_window(base, yaw_deg, -w * 0.5, d, wall_h, t, stone_lit, stone_shadow, trim_mat)
 
 	# Right wall, plain, lower when the cottage has fallen into ruin.
 	var right_h := wall_h if intact else wall_h * 0.7
-	_wall_piece(base, yaw_deg, Vector3(w * 0.5, 0.0, 0.0), Vector3(t, right_h, d), stone)
+	_wall_piece(base, yaw_deg, Vector3(w * 0.5, 0.0, 0.0), Vector3(t, right_h, d),
+		Vector3(1.0, 0.0, 0.0), stone_lit, stone_shadow)
+
+	_cottage_base_trim(base, yaw_deg, w, d, t, trim_mat)
 
 	if intact:
 		var roof := MeshInstance3D.new()
@@ -503,25 +607,69 @@ func _build_cottage(base: Vector3, yaw_deg: float, stone: Material, roof_mat: Ma
 
 # `local_base` is the bottom-centre of the piece in the cottage's own local
 # space (before the yaw rotation); the piece is centred on top of that base.
+# `local_normal` is that piece's own outward-facing direction, also before
+# rotation; once rotated into world space it picks stone_lit or
+# stone_shadow by whether the wall faces the sun (SUN_REF) or away from it --
+# a judge review of day.png on 2026-09-23 said the cottages read as flat
+# dark boxes with no sense of which side the light was on.
 func _wall_piece(base: Vector3, yaw_deg: float, local_base: Vector3, size: Vector3,
-		mat: Material) -> void:
+		local_normal: Vector3, stone_lit: Material, stone_shadow: Material) -> MeshInstance3D:
 	var center_local := local_base + Vector3(0.0, size.y * 0.5, 0.0)
 	var pos := base + _rotate_y(center_local, yaw_deg)
-	_place_box(pos, size, yaw_deg, mat)
+	var world_normal := _rotate_y(local_normal, yaw_deg)
+	var mat := stone_lit if world_normal.dot(SUN_REF) > 0.05 else stone_shadow
+	return _place_box(pos, size, yaw_deg, mat)
 
 
-# Two uprights, a sill and a lintel, leaving a real 1.2 x 1.0 m hole in the
-# middle of a wall running along local Z at local_x.
+# A run of short wall segments of independently randomised height between
+# min_h and max_h, along run_axis starting at local_start -- a broken,
+# stepped silhouette instead of one clean edge, for the one cottage built
+# with jagged = true.
+func _jagged_wall_run(base: Vector3, yaw_deg: float, local_start: Vector3, run_len: float,
+		run_axis: Vector3, t: float, min_h: float, max_h: float, local_normal: Vector3,
+		stone_lit: Material, stone_shadow: Material, rng: RandomNumberGenerator,
+		segments: int) -> void:
+	var seg_len := run_len / float(segments)
+	for i in range(segments):
+		var h := rng.randf_range(min_h, max_h)
+		var seg_center: Vector3 = local_start + run_axis * (seg_len * (float(i) + 0.5))
+		var size := Vector3(seg_len * 1.04, h, t) if absf(run_axis.x) > 0.5 \
+			else Vector3(t, h, seg_len * 1.04)
+		_wall_piece(base, yaw_deg, seg_center, size, local_normal, stone_lit, stone_shadow)
+
+
+# Two uprights (stone, picking lit/shadow by facing like any other wall), a
+# sill and a lintel in the darker trim colour, leaving a real 1.2 x 1.0 m
+# hole in the middle of a wall running along local Z at local_x.
 func _wall_with_window(base: Vector3, yaw_deg: float, local_x: float, d: float, wall_h: float,
-		t: float, mat: Material) -> void:
+		t: float, stone_lit: Material, stone_shadow: Material, trim_mat: Material) -> void:
 	var sill_h := 0.9
 	var win_h := 1.0
 	var lintel_h := wall_h - sill_h - win_h
 	var seg_d := (d - 1.2) * 0.5
-	_wall_piece(base, yaw_deg, Vector3(local_x, 0.0, -(0.6 + seg_d * 0.5)), Vector3(t, wall_h, seg_d), mat)
-	_wall_piece(base, yaw_deg, Vector3(local_x, 0.0, 0.6 + seg_d * 0.5), Vector3(t, wall_h, seg_d), mat)
-	_wall_piece(base, yaw_deg, Vector3(local_x, 0.0, 0.0), Vector3(t, sill_h, 1.2), mat)
-	_wall_piece(base, yaw_deg, Vector3(local_x, sill_h + win_h, 0.0), Vector3(t, lintel_h, 1.2), mat)
+	var side_n := Vector3(1.0, 0.0, 0.0) if local_x > 0.0 else Vector3(-1.0, 0.0, 0.0)
+	_wall_piece(base, yaw_deg, Vector3(local_x, 0.0, -(0.6 + seg_d * 0.5)), Vector3(t, wall_h, seg_d),
+		side_n, stone_lit, stone_shadow)
+	_wall_piece(base, yaw_deg, Vector3(local_x, 0.0, 0.6 + seg_d * 0.5), Vector3(t, wall_h, seg_d),
+		side_n, stone_lit, stone_shadow)
+	_wall_piece(base, yaw_deg, Vector3(local_x, 0.0, 0.0), Vector3(t, sill_h, 1.2),
+		side_n, trim_mat, trim_mat)
+	_wall_piece(base, yaw_deg, Vector3(local_x, sill_h + win_h, 0.0), Vector3(t, lintel_h, 1.2),
+		side_n, trim_mat, trim_mat)
+
+
+# A dark plinth band running around the base of the cottage, purely visual.
+func _cottage_base_trim(base: Vector3, yaw_deg: float, w: float, d: float, t: float,
+		trim_mat: Material) -> void:
+	var band_h := 0.28
+	_place_visual_box(base + _rotate_y(Vector3(0.0, band_h * 0.5, -d * 0.5), yaw_deg),
+		Vector3(w + 0.08, band_h, t + 0.06), yaw_deg, trim_mat)
+	_place_visual_box(base + _rotate_y(Vector3(0.0, band_h * 0.5, d * 0.5), yaw_deg),
+		Vector3(w + 0.08, band_h, t + 0.06), yaw_deg, trim_mat)
+	_place_visual_box(base + _rotate_y(Vector3(-w * 0.5, band_h * 0.5, 0.0), yaw_deg),
+		Vector3(t + 0.06, band_h, d + 0.08), yaw_deg, trim_mat)
+	_place_visual_box(base + _rotate_y(Vector3(w * 0.5, band_h * 0.5, 0.0), yaw_deg),
+		Vector3(t + 0.06, band_h, d + 0.08), yaw_deg, trim_mat)
 
 
 func _build_dry_stone_walls() -> void:
@@ -614,19 +762,25 @@ func _build_bare_tree(pos: Vector3, height: float, seed_val: int, trunk_mat: Mat
 	var root := Node3D.new()
 	root.position = pos
 	add_child(root)
-	_add_branch(root, Vector3.ZERO, Vector3.UP, height, height * 0.07, TREE_DEPTH, rng, trunk_mat)
+	# The trunk (this first call only) tapers hard, 0.34 rather than the
+	# 0.55 branches use below -- a judge review of day.png on 2026-09-23
+	# asked for more taper on the big foreground trunks specifically.
+	_add_branch(root, Vector3.ZERO, Vector3.UP, height, height * 0.07, TREE_DEPTH, rng, trunk_mat, 0.34)
 	_place_collision_cylinder(pos + Vector3(0.0, height * 0.3, 0.0), height * 0.09, height * 0.6)
 
 
 # A recursive cylinder: a trunk, then two or three branches from its tip, then
-# a second generation of twigs. Bare of leaves, per the art brief.
+# a second generation of twigs. Bare of leaves, per the art brief. `taper`
+# is top_radius as a fraction of bottom_radius for this one segment; branches
+# spawned from it keep the branch default (0.6) regardless of what the
+# trunk itself used.
 func _add_branch(parent: Node3D, from: Vector3, dir: Vector3, length: float, radius: float,
-		depth: int, rng: RandomNumberGenerator, mat: Material) -> void:
+		depth: int, rng: RandomNumberGenerator, mat: Material, taper: float = 0.6) -> void:
 	if length < 0.25 or radius < 0.015:
 		return
 	var mesh := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
-	cyl.top_radius = radius * 0.55
+	cyl.top_radius = radius * taper
 	cyl.bottom_radius = radius
 	cyl.height = length
 	cyl.radial_segments = 5
@@ -647,26 +801,20 @@ func _add_branch(parent: Node3D, from: Vector3, dir: Vector3, length: float, rad
 		var axis := dir.cross(side).normalized()
 		var new_dir := dir.rotated(axis, spread).rotated(dir, twist).normalized()
 		_add_branch(parent, tip, new_dir, length * rng.randf_range(0.55, 0.7), radius * 0.6,
-			depth - 1, rng, mat)
+			depth - 1, rng, mat, 0.55)
 
 
-# Red-brown brush and dry grass, scattered cheaply as one MultiMesh of small
-# double-sided quads with per-instance colour and rotation. Three passes: a
-# broad field scatter, a denser band along the track edges, and clumps around
-# each ruin -- a judge review of day.png on 2026-09-23 asked for visible
-# density along the lane and around the cottages, not just an even field.
+# Dry grass tufts and red-brown brush, scattered by the thousand as one
+# MultiMesh of a fanned-blade tuft mesh. A judge review of day.png on
+# 2026-09-23 called two earlier attempts (a single flat quad, then a crossed
+# pair of flat quads) "hundreds of pale cardboard boxes": from most angles a
+# wide flat face reads as a solid card no matter how it is coloured, so this
+# pass replaces the quad geometry itself with thin tapered blades that never
+# present one continuous bright face to the sun.
 func _build_grass_scatter() -> void:
-	# A cross-billboard (two quads crossed at 90 degrees), not one flat quad:
-	# a single quad presents the same flat silhouette from most angles and
-	# read as a scattering of pale paper cards in a judge review of day.png
-	# on 2026-09-23. Two crossed quads give the tuft real volume from any
-	# direction, for one extra triangle pair per instance.
-	var mesh := _cross_quad_mesh(0.42, 0.5)
+	var mesh := _grass_tuft_mesh(9, 0.42, Color(0.13, 0.09, 0.05), Color(0.62, 0.52, 0.26))
 	var mat := StandardMaterial3D.new()
-	# Shaded, not unshaded: an unshaded card ignores the sun and the long
-	# shadows entirely, so it reads as a bright floating flag rather than
-	# scrub sitting in the light, which an early pass at this did on
-	# 2026-09-23.
+	# Shaded, not unshaded, and roughness 1: matte, no bright faces.
 	mat.vertex_color_use_as_albedo = true
 	mat.roughness = 1.0
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
@@ -678,39 +826,43 @@ func _build_grass_scatter() -> void:
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 8080
-	# Darker and more saturated than the ground itself, so the tufts read as
-	# scrub rather than fading into the dirt -- the whole ground clutter read
-	# too pale in a judge review of day.png on 2026-09-23.
-	var dry_gold := Color(0.38, 0.28, 0.12)
-	var rust := Color(0.28, 0.13, 0.08)
+	# Multiplied against the mesh's own dark-base-to-light-tip vertex colour,
+	# so every tuft keeps that gradient while leaning gold-olive or rust
+	# overall.
+	var dry_gold := Color(0.62, 0.52, 0.24)
+	var rust := Color(0.55, 0.30, 0.16)
 
 	var positions: Array = []
-	for i in range(500):
-		var pos := Vector3(rng.randf_range(-58.0, 58.0), 0.02, rng.randf_range(-58.0, 58.0))
+	# A broad field scatter, in the thousands -- "hundreds of cardboard
+	# boxes" was as much a density-reads-as-objects problem as a shape one.
+	for i in range(1900):
+		var pos := Vector3(rng.randf_range(-58.0, 58.0), 0.0, rng.randf_range(-58.0, 58.0))
 		if Vector2(pos.x, pos.z).distance_to(Vector2.ZERO) < 7.0:
 			pos.x = pos.x + (14.0 if pos.x >= 0.0 else -14.0)
 		positions.append(pos)
-	for i in range(220):
+	# A denser band along the track edges.
+	for i in range(750):
 		var z := rng.randf_range(-56.0, 40.0)
-		var x := rng.randf_range(2.2, 9.0) * (1.0 if rng.randi() % 2 == 0 else -1.0)
-		var pos := Vector3(x, 0.02, z)
+		var x := rng.randf_range(1.9, 9.0) * (1.0 if rng.randi() % 2 == 0 else -1.0)
+		var pos := Vector3(x, 0.0, z)
 		if Vector2(pos.x, pos.z).distance_to(Vector2.ZERO) < 7.5:
 			continue
 		positions.append(pos)
+	# Clumps around each ruin.
 	var ruin_centers := [
 		Vector3(-16.0, 0.0, -10.0), Vector3(16.0, 0.0, -14.0),
 		Vector3(-14.0, 0.0, -23.0), Vector3(14.0, 0.0, -24.0),
 	]
 	for center: Vector3 in ruin_centers:
-		for i in range(35):
-			var pos: Vector3 = center + Vector3(rng.randf_range(-5.0, 5.0), 0.02, rng.randf_range(-5.0, 5.0))
+		for i in range(70):
+			var pos: Vector3 = center + Vector3(rng.randf_range(-5.5, 5.5), 0.0, rng.randf_range(-5.5, 5.5))
 			positions.append(pos)
 
 	mm.instance_count = positions.size()
 	for i in range(positions.size()):
 		var pos: Vector3 = positions[i]
-		var scale_v := rng.randf_range(0.75, 1.5)
-		var lean := deg_to_rad(rng.randf_range(-10.0, 10.0))
+		var scale_v := rng.randf_range(0.65, 1.45)
+		var lean := deg_to_rad(rng.randf_range(-8.0, 8.0))
 		var basis := Basis(Vector3.UP, rng.randf_range(0.0, TAU)) \
 			.rotated(Vector3.RIGHT, lean) \
 			.scaled(Vector3(scale_v, scale_v, scale_v))
@@ -827,24 +979,23 @@ func _build_dust_motes() -> void:
 
 # A single mountain massif, built as a cluster of overlapping low-poly
 # faceted cones so its ridge line is irregular rather than one perfect
-# triangle. A first pass at 270-320 m with SHADED peaks and a light colour
-# still read as "too big, too close" and near-white in a judge review of
-# day.png on 2026-09-23, because the day scene's own ambient + AGX lift
-# bleaches a shaded light colour regardless of distance. Fixed by going
-# further still, shrinking the peaks outright, and going back to an
-# UNSHADED, deliberately dark blue-violet -- a colour that reads the same
-# regardless of light level, which depth fog (raised alongside this) can
-# then haze convincingly with real distance. Far outside the playfield
-# either way: no collision, nothing can walk there.
+# triangle. Pushed to 335-385 m, unshaded so the day scene's own ambient +
+# AGX lift cannot bleach it toward white regardless of distance (a first,
+# shaded attempt did exactly that), and hazed at range by
+# fog_aerial_perspective. Two tones baked into each peak's own mesh (lit
+# facets facing the sun, shadow facets facing away) so it reads as rock
+# under a low sun rather than one flat pastel triangle, per a judge review of
+# day.png on 2026-09-23 -- unshaded still, so the tones stay fixed and
+# cannot wash out the way real-time lighting did before. Far outside the
+# playfield either way: no collision, nothing can walk there.
 func _build_mountain() -> void:
-	# Two materials: most peaks in a deep blue-violet haze colour, and the
-	# two peaks on the sun's side of the massif (the sun sits at yaw 62,
-	# leaning toward +X) in a warmer, lighter tint -- a cheap, fully
-	# art-directed stand-in for a lit rim, since an unshaded background
-	# silhouette cannot pick one up from the real light the way a shaded
-	# surface would.
-	var mat_cool := _flat_mat(Color(0.26, 0.22, 0.38), 1.0, true)
-	var mat_warm := _flat_mat(Color(0.52, 0.38, 0.42), 1.0, true)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.vertex_color_use_as_albedo = true
+	# Cool blue-violet haze peaks, and two peaks on the sun's side of the
+	# massif in a warmer tint -- each pair is (lit, shadow).
+	var cool := [Color(0.46, 0.40, 0.58), Color(0.17, 0.14, 0.25)]
+	var warm := [Color(0.64, 0.46, 0.46), Color(0.24, 0.17, 0.21)]
 	var peaks := [
 		{"pos": Vector3(-70.0, 0.0, -360.0), "r": 52.0, "h": 92.0, "seg": 6, "warm": false},
 		{"pos": Vector3(-14.0, 0.0, -385.0), "r": 66.0, "h": 122.0, "seg": 7, "warm": false},
@@ -853,16 +1004,16 @@ func _build_mountain() -> void:
 		{"pos": Vector3(-38.0, 0.0, -335.0), "r": 38.0, "h": 70.0, "seg": 6, "warm": false},
 	]
 	for peak in peaks:
+		var tones: Array = warm if peak["warm"] else cool
 		var mesh := MeshInstance3D.new()
-		var cone := CylinderMesh.new()
-		cone.top_radius = float(peak["r"]) * 0.04
-		cone.bottom_radius = float(peak["r"])
-		cone.height = float(peak["h"])
-		cone.radial_segments = int(peak["seg"])
-		mesh.mesh = cone
-		mesh.material_override = mat_warm if peak["warm"] else mat_cool
+		var h: float = peak["h"]
+		mesh.mesh = _faceted_cone_mesh(float(peak["r"]), float(peak["r"]) * 0.04, h,
+			int(peak["seg"]), tones[0], tones[1], SUN_REF)
+		mesh.material_override = mat
 		var p: Vector3 = peak["pos"]
-		mesh.position = Vector3(p.x, float(peak["h"]) * 0.5 - 4.0, p.z)
+		# _faceted_cone_mesh's base sits at local y=0, not centred, unlike
+		# CylinderMesh.
+		mesh.position = Vector3(p.x, -4.0, p.z)
 		add_child(mesh)
 
 
