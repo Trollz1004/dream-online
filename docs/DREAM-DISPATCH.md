@@ -1,6 +1,8 @@
 # DREAM Dispatch
 
-Last updated: 2026-09-22
+Last updated: 2026-09-23
+
+**2026-09-23 about 13:05 EDT, Claude judge lane on Alienware.** The spec 002 crowdfunding-demo work (`specs/002-crowdfunding-demo`: Mireth's memory link, the Day Dream pass, four character passes) was merged to `main` and pushed as `f5b6928`, 301 of 301 headless checks. The sections below still describe the 2026-09-22 state; read spec 002's `tasks.md` for what comes next.
 
 Operational state for asynchronous coordination between Fable and Codex. The master directive defines doctrine; this file defines what is happening now.
 

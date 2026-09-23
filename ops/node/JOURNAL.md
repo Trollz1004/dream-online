@@ -2,6 +2,21 @@
 
 One entry per session, newest first, in the form did, verified, blocked, next, commits. Written by the Claude judge lane for a reader with no memory of the session.
 
+## 2026-09-23 about 13:05 EDT, Claude Opus 5.5, session start with `/alienware-node`
+
+**Did.**
+- `drift ground` was RED. The checkout sat on `judge/crowdfunding-demo`, 20 commits ahead of `main` and never merged: the spec 002 crowdfunding-demo work from this morning (spec at 10:37, Mireth's memory link, the Day Dream pass, and the cel-shaded character passes through the fourth pass at 12:10). That session left no journal or dispatch entry, which is why both read stale.
+- Ran the headless suite on the branch: 301 of 301. Committed the one untracked file that belonged in the repo (`tools/preview_env.gd.uid`, which Godot generates beside a tracked script), merged the branch into `main` with `--no-ff`, and pushed (`eb48fa7..f5b6928`).
+- Six other untracked files dated 2026-09-22 about 01:40 (`MEMORY-GRAPH-FIXES.md` at the root and five files under `memory/`) came from an unrecorded session. They put absolute user paths and the drop box location in plain text, so they must not go into the public repository. Moving them to `C:\DREAM\recon\strays-2026-09-22\` was refused by the permission classifier; the command is handed to Joshua.
+
+**Verified.** Tests 301 of 301 before the merge. Push confirmed by git. Health file: required services UP; Crosslisting (optional, not game) and Sabretooth JARVIS (remote) both report WRONG SERVICE, which means the service answered but its identity string did not match. Neither was touched.
+
+**Blocked.** Moving the stray files (classifier). GitHub Actions still cannot confirm a merge while the billing lock stands.
+
+**Next.** Once the stray files are out, `drift ground` should read GREEN. Spec 002 (`specs/002-crowdfunding-demo`) is the current objective; read its `tasks.md` before new game work.
+
+**Commits.** `47c10e5` (uid file), merge `f5b6928` on `main`, pushed.
+
 ## 2026-09-22 about 01:00 EDT, Claude Sonnet 5, ninth session, opened with `drift`
 
 **Did.**
