@@ -5,6 +5,12 @@ extends CanvasLayer
 # violet accent line docs/gdd/09-interface-style.md allows: a thin rule
 # under a thin light title, the same shape as the settings screen it
 # describes, just narrower and parked on the right instead of full-screen.
+#
+# Parked at mid-height on the right, not the top-right corner: the
+# integration ruling for spec 002's demo (2026-09-23) requires captions
+# (lower third, centre) and this panel never overlap, and a corner anchor
+# left no headroom once the demo director's captions moved to the bottom
+# third of a 1920x1080 frame.
 
 const TITLE_SIZE := 22
 const BULLET_SIZE := 17
@@ -30,8 +36,11 @@ func _ready() -> void:
 	layer = 5
 
 	_panel = PanelContainer.new()
-	_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_panel.position = Vector2(-(PANEL_WIDTH + 28.0), 28.0)
+	_panel.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+	# Anchored to the vertical centre of the viewport, then nudged up a
+	# little so its own height sits mostly above mid-screen rather than
+	# straddling it -- "at mid-height" per the ruling above.
+	_panel.position = Vector2(-(PANEL_WIDTH + 28.0), -160.0)
 	_panel.custom_minimum_size = Vector2(PANEL_WIDTH, 0.0)
 
 	var style := StyleBoxFlat.new()
@@ -139,6 +148,11 @@ func _fill_bullets(lines: Array) -> void:
 
 func _present() -> void:
 	visible = true
-	modulate = Color(1.0, 1.0, 1.0, 1.0)
+	# CanvasLayer (this script's own base) carries no modulate property --
+	# only a CanvasItem does, and _panel (a PanelContainer) is the one here.
+	# This line pointed at self and never actually compiled once anything
+	# tried to preload this script; nothing in the test suite did until
+	# world.gd wired memory_panel.gd in for spec 002.
+	_panel.modulate = Color(1.0, 1.0, 1.0, 1.0)
 	if auto_hide_seconds > 0.0 and is_inside_tree():
 		_hide_timer.start(auto_hide_seconds)

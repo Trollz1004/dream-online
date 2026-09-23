@@ -17,6 +17,9 @@ func run(r) -> void:
 	_test_burst_radius()
 	_test_burst_cooldown()
 	_test_vfx_smoke()
+	_test_player_wires_lunge()
+	_test_player_wires_burst()
+	_test_player_w_alone_is_not_a_skill()
 
 
 func check(label: String, condition: bool) -> void:
@@ -198,3 +201,63 @@ func _test_vfx_smoke() -> void:
 		stage.get_child_count() == 9)
 
 	stage.free()
+
+
+# scripts/SKILLS_WIRING.md: player.gd wires "W+F" to lunge and "R" to burst,
+# through the exact same combo-resolution code a real key press uses. Built
+# with no parent at all, the same shape as every other player.gd test in
+# run_tests.gd (_test_heavy_attack_on_right_mouse, _test_guard_on_q, ...):
+# player.gd itself guards its one immediate (not _physics_process-deferred)
+# vfx call, Dream Lunge's streak, behind is_inside_tree() for exactly this
+# reason.
+func _test_player_wires_lunge() -> void:
+	print("player wires Dream Lunge on W+F")
+	var LungeState := load("res://scripts/lunge_state.gd")
+	var player = load("res://scripts/player.gd").new()
+	player._ready()
+
+	var before_stamina: float = player.stamina
+	player.demo_skill("W", false, "F")
+	check("W+F starts the lunge state", player.lunge.is_lunging())
+	check("the lunge spends its stamina cost",
+		absf(before_stamina - player.stamina - LungeState.STAMINA_COST) < 0.001)
+	check("a second W+F cannot start while the lunge is running",
+		not player.lunge.can_start(999.0))
+
+	player.free()
+
+
+func _test_player_wires_burst() -> void:
+	print("player wires Nightveil Burst on R")
+	var BurstState := load("res://scripts/burst_state.gd")
+	var player = load("res://scripts/player.gd").new()
+	player._ready()
+
+	var before_stamina: float = player.stamina
+	player.demo_skill("", false, "R")
+	check("R starts the burst state", player.burst.is_bursting())
+	check("the burst spends its stamina cost",
+		absf(before_stamina - player.stamina - BurstState.STAMINA_COST) < 0.001)
+	check("a second R cannot start while the burst is running",
+		not player.burst.can_start(999.0))
+
+	player.free()
+
+
+# The combo grammar's own rule (scripts/combo.gd, proven directly in
+# run_tests.gd's _test_combo_grammar): W alone, with no action key, is
+# movement, never a skill. Exercised here through the player's own combo
+# resolution rather than Combo.resolve directly, so a future regression in
+# how player.gd wires the grammar is caught here too.
+func _test_player_w_alone_is_not_a_skill() -> void:
+	print("W alone is movement, not the lunge, through the player")
+	var player = load("res://scripts/player.gd").new()
+	player._ready()
+
+	var before_stamina: float = player.stamina
+	player.demo_skill("W", false, "")
+	check("a bare direction with no action key spends no stamina", player.stamina == before_stamina)
+	check("a bare direction with no action key does not start the lunge",
+		not player.lunge.is_lunging())
+
+	player.free()

@@ -9,6 +9,7 @@ const BIG := 30
 const HUGE := 54
 const SMALL := 22
 const HELP_SIZE := 17
+const CINEMATIC_MARGIN := 210.0
 
 var _box: VBoxContainer
 var _hint: Label
@@ -19,12 +20,15 @@ var _dash: Label
 var _swing: Label
 var _heavy: Label
 var _guard: Label
+var _lunge: Label
+var _burst: Label
 var _target: Label
 var _events: Label
 var _event: Label
 var _help: Label
 var _fps: Label
 var _last := {}
+var _cinematic := false
 
 
 func _ready() -> void:
@@ -55,6 +59,8 @@ func _ready() -> void:
 	_swing = _line(_box, BIG, Color(0.90, 0.95, 0.85))
 	_heavy = _line(_box, BIG, Color(0.95, 0.85, 0.95))
 	_guard = _line(_box, BIG, Color(0.80, 0.90, 1.0))
+	_lunge = _line(_box, BIG, Color(0.85, 0.80, 1.0))
+	_burst = _line(_box, BIG, Color(0.95, 0.80, 1.0))
 	_target = _line(_box, BIG, Color(1.0, 0.90, 0.80))
 	_events = _line(_box, SMALL, Color(0.80, 0.85, 0.95))
 	_fps = _line(_box, SMALL, Color(0.75, 0.95, 0.80))
@@ -90,7 +96,8 @@ func _ready() -> void:
 	_help.text = ("Move: W A S D.   Sprint: hold Shift with a direction.   Auto-sprint: double tap a direction.\n"
 		+ "Dash with invulnerability frames: hold Shift and a direction, then press F (or Q E R Z C, or a mouse button).\n"
 		+ "Light attack: left mouse button. Heavy attack: right mouse, slower and harder. Guard: Q alone, blocks most of a hit but opens you up right after.\n"
-		+ "The dummy winds up for 1.4 seconds, then fires. Dash through the beam while you are yellow to take nothing.")
+		+ "Dream Lunge: hold W and press F. Nightveil Burst: press R. Nightfall: press N.\n"
+		+ "The Sentinel winds up for 1.4 seconds, then fires. Dash through the beam while you are yellow to take nothing.")
 	_box.add_child(_help)
 
 
@@ -101,7 +108,7 @@ func column() -> VBoxContainer:
 
 
 func readout_labels() -> Array:
-	return [_health, _stamina, _dash, _swing, _heavy, _guard, _target, _events, _fps]
+	return [_health, _stamina, _dash, _swing, _heavy, _guard, _lunge, _burst, _target, _events, _fps]
 
 
 func event_label() -> Label:
@@ -114,6 +121,14 @@ func heavy_label() -> Label:
 
 func guard_label() -> Label:
 	return _guard
+
+
+func lunge_label() -> Label:
+	return _lunge
+
+
+func burst_label() -> Label:
+	return _burst
 
 
 func help_label() -> Label:
@@ -138,15 +153,42 @@ func _line(box: VBoxContainer, size: int, colour: Color) -> Label:
 	return label
 
 
+# Trims the readout down for the recorded demo: the help paragraph, the
+# target's health, the world-event counter and the frame counter all say
+# things a viewer of a trailer does not need, so they go away. Health,
+# stamina, the whole hotbar (dash through burst) and the big event line stay,
+# moved to a small strip near the bottom so nothing sits mid-frame during a
+# framed shot. Toggling it off restores the ordinary top-left readout.
+func set_cinematic(enabled: bool) -> void:
+	_cinematic = enabled
+	_help.visible = not enabled
+	_target.visible = not enabled
+	_events.visible = not enabled
+	_fps.visible = not enabled
+	if enabled:
+		_hint.visible = false
+		_interact.visible = false
+	if enabled and is_inside_tree():
+		var vp_h: float = get_viewport().get_visible_rect().size.y
+		_box.position = Vector2(28.0, maxf(18.0, vp_h - CINEMATIC_MARGIN))
+	elif not enabled:
+		_box.position = Vector2(28.0, 18.0)
+
+
+func is_cinematic() -> bool:
+	return _cinematic
+
+
 func show_state(s: Dictionary) -> void:
 	# Only the visibility is touched, never the text or a theme override, so this
 	# costs nothing on the frames where the answer has not changed.
-	_hint.visible = not bool(s.get("mouse_captured", true))
+	if not _cinematic:
+		_hint.visible = not bool(s.get("mouse_captured", true))
 
-	var nearby_npc_name: String = s.get("nearby_npc_name", "")
-	_interact.visible = nearby_npc_name != ""
-	if _interact.visible:
-		_interact.text = "Press E to talk to %s." % nearby_npc_name
+		var nearby_npc_name: String = s.get("nearby_npc_name", "")
+		_interact.visible = nearby_npc_name != ""
+		if _interact.visible:
+			_interact.text = "Press E to talk to %s." % nearby_npc_name
 
 	_paint(_health, "Health  %d / %d" % [int(s["health"]), int(s["health_max"])], Color(1.0, 0.85, 0.85))
 	_paint(_stamina, "Stamina  %d / %d%s" % [
@@ -199,9 +241,39 @@ func show_state(s: Dictionary) -> void:
 		_:
 			_paint(_guard, "Guard  READY", Color(0.7, 1.0, 0.75))
 
+	if s.has("lunge"):
+		var lunge = s["lunge"]
+		match lunge.phase():
+			"startup":
+				_paint(_lunge, "Dream Lunge  starting", Color(0.85, 0.75, 1.0))
+			"travel":
+				_paint(_lunge, "Dream Lunge  TRAVELLING", Color(0.75, 0.60, 1.0))
+			"recovery":
+				_paint(_lunge, "Dream Lunge  recovering, wide open", Color(1.0, 0.5, 0.55))
+			"cooling":
+				_paint(_lunge, "Dream Lunge  cooling down  %.1fs" % lunge.cooldown_left(), Color(0.8, 0.8, 0.85))
+			_:
+				_paint(_lunge, "Dream Lunge  READY", Color(0.7, 1.0, 0.75))
+
+	if s.has("burst"):
+		var burst = s["burst"]
+		match burst.phase():
+			"windup":
+				_paint(_burst, "Nightveil Burst  winding up", Color(0.95, 0.75, 1.0))
+			"burst":
+				_paint(_burst, "Nightveil Burst  SHOCKWAVE", Color(0.85, 0.55, 1.0))
+			"recovery":
+				_paint(_burst, "Nightveil Burst  recovering, wide open", Color(1.0, 0.5, 0.55))
+			"cooling":
+				_paint(_burst, "Nightveil Burst  cooling down  %.1fs" % burst.cooldown_left(), Color(0.8, 0.8, 0.85))
+			_:
+				_paint(_burst, "Nightveil Burst  READY", Color(0.7, 1.0, 0.75))
+
 	if s["target_health_max"] > 0.0:
 		var down: bool = s["target_health"] <= 0.0
-		_paint(_target, "Dummy  %d / %d%s" % [int(s["target_health"]), int(s["target_health_max"]),
+		var target_name: String = s.get("target_name", "")
+		_paint(_target, "%s  %d / %d%s" % [target_name if target_name != "" else "Target",
+			int(s["target_health"]), int(s["target_health_max"]),
 			"   DOWN" if down else ""], Color(1.0, 0.75, 0.70) if down else Color(1.0, 0.90, 0.80))
 
 	_paint(_events, "Perfect dodges recorded to the world event log: %d" % int(s["events_written"]),
