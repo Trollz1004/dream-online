@@ -9,7 +9,7 @@ extends SceneTree
 # still report success. That happened on 2026-09-20. The floor below turns a
 # skipped suite into a failure. Raise it when checks are added; never lower it
 # to make a run pass.
-const MINIMUM_CHECKS := 153
+const MINIMUM_CHECKS := 177
 
 var passed := 0
 var failed := 0
@@ -39,6 +39,7 @@ func _init() -> void:
 	load("res://tests/test_npc.gd").new().run(self)
 	load("res://tests/test_heavy_attack.gd").new().run(self)
 	load("res://tests/test_guard.gd").new().run(self)
+	load("res://tests/test_dream_env.gd").new().run(self)
 	var ran := passed + failed
 	if ran < MINIMUM_CHECKS:
 		failed += 1
