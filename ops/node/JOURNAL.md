@@ -15,6 +15,8 @@ One entry per session, newest first, in the form did, verified, blocked, next, c
 
 **Next.** Once the stray files are out, `drift ground` should read GREEN. Spec 002 (`specs/002-crowdfunding-demo`) is the current objective; read its `tasks.md` before new game work.
 
+**Later, same session.** At Joshua's request the six stray notes went into the Obsidian vault instead (`DREAM-ONLINE/memory-graph/`, each with an "unverified" header, plus a new `Memory hub` note linked from `00 HOME`). The claude-obsidian plugin's writer could not do it: it refuses native Windows, and through WSL it applied and then rolled itself back, because it checks file modes on `/mnt/c` and Obsidian was adding empty notes to new folders at the same time. The empty leftovers it caused were removed. Deleting the repo originals was refused by the classifier; the command is with Joshua.
+
 **Commits.** `47c10e5` (uid file), merge `f5b6928` on `main`, pushed.
 
 ## 2026-09-22 about 01:00 EDT, Claude Sonnet 5, ninth session, opened with `drift`
