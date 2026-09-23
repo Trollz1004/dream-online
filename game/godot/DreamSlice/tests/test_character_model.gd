@@ -157,9 +157,9 @@ func _test_sentinel_eye_differs_day_and_night() -> void:
 	print("the sentinel eye changes colour with time of day")
 	var m = CharacterModelScript.build("sentinel")
 	m.set_time_of_day("day")
-	var day_color: Color = m._eye_material.albedo_color
+	var day_color: Color = m._eye_material.get_shader_parameter("base_color")
 	m.set_time_of_day("night")
-	var night_color: Color = m._eye_material.albedo_color
+	var night_color: Color = m._eye_material.get_shader_parameter("base_color")
 	check("the eye is amber by day", day_color.is_equal_approx(Color(1.0, 0.60, 0.14)))
 	check("the eye is violet by night", night_color.is_equal_approx(Color(0.56, 0.24, 0.96)))
 	check("day and night are genuinely different colours", not day_color.is_equal_approx(night_color))
@@ -170,9 +170,9 @@ func _test_blade_glow_is_a_safe_noop_off_the_dreamwalker() -> void:
 	print("set_blade_glow only touches the dreamwalker's blade")
 	var walker = CharacterModelScript.build("dreamwalker")
 	walker.set_blade_glow(0.0)
-	var low: float = walker._fuller_material.emission_energy_multiplier
+	var low: float = walker._fuller_material.get_shader_parameter("emission_energy")
 	walker.set_blade_glow(1.0)
-	var high: float = walker._fuller_material.emission_energy_multiplier
+	var high: float = walker._fuller_material.get_shader_parameter("emission_energy")
 	check("blade glow amount changes the fuller's emission", high > low)
 
 	var keeper = CharacterModelScript.build("keeper")
@@ -192,9 +192,9 @@ func _test_night_brightens_accents() -> void:
 	check("the dreamwalker has at least one accent light registered",
 		walker._accent_lights.size() > 0)
 	walker.set_time_of_day("day")
-	var day_energy: float = walker._accent_lights[0]["material"].emission_energy_multiplier
+	var day_energy: float = walker._accent_lights[0]["material"].get_shader_parameter("emission_energy")
 	walker.set_time_of_day("night")
-	var night_energy: float = walker._accent_lights[0]["material"].emission_energy_multiplier
+	var night_energy: float = walker._accent_lights[0]["material"].get_shader_parameter("emission_energy")
 	check("an accent light runs brighter at night than by day", night_energy > day_energy)
 	walker.free()
 
