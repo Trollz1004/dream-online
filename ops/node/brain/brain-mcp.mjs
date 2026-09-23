@@ -81,6 +81,7 @@ function handle(msg) {
 
 const rl = readline.createInterface({ input: process.stdin });
 rl.on('line', (line) => {
+  line = line.replace(/^﻿/, '');
   if (!line.trim()) return;
   let msg;
   try { msg = JSON.parse(line); } catch {

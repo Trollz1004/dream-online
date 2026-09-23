@@ -24,14 +24,16 @@ function start(input) {
 
 function end(input) {
   const id = input.session_id || 'unknown';
-  let began = {};
-  try { began = JSON.parse(fs.readFileSync(brain.sessionStatePath(id), 'utf8')); } catch { /* no start record */ }
+  let began;
+  // No start record means no real session: `claude mcp ...` and other CLI
+  // subcommands fire SessionEnd without SessionStart. Record nothing for them.
+  try { began = JSON.parse(fs.readFileSync(brain.sessionStatePath(id), 'utf8')); } catch { return; }
   const facts = brain.repoFacts();
   const commits = brain.commitsSince(began.head);
   brain.appendSession({
     title: `session ${id} ended (${input.reason || 'unknown'})`,
     lines: [
-      began.started ? `started ${began.started} (${began.source || '?'}) in ${began.cwd || '?'}` : 'start not recorded',
+      `started ${began.started} (${began.source || '?'}) in ${began.cwd || '?'}`,
       facts.branch === null ? 'game repo not readable' : `game repo on ${facts.branch} at ${facts.head}, ${facts.dirty} uncommitted`,
       commits.length ? `commits this session: ${commits.join('; ')}` : 'no commits this session',
     ],

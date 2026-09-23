@@ -111,6 +111,24 @@ test('start hook accepts input that begins with a byte-order mark', async () => 
   assert.ok(fs.existsSync(path.join(s.state, 'sessions', 'bom.json')));
 });
 
+test('end hook ignores a session that never started (claude CLI subcommands)', async () => {
+  const s = sandbox();
+  const r = await runHook(s.env, 'end', JSON.stringify({ session_id: 'cli-only', reason: 'other' }));
+  assert.equal(r.code, 0);
+  assert.ok(!fs.existsSync(path.join(s.graph, 'Session memory.md')));
+});
+
+test('MCP server accepts a line that begins with a byte-order mark', async () => {
+  const s = sandbox();
+  const p = spawn(process.execPath, [path.join(here, 'brain-mcp.mjs')], { env: { ...process.env, ...s.env } });
+  let out = '';
+  p.stdout.on('data', (d) => (out += d));
+  const done = new Promise((r) => p.on('close', r));
+  p.stdin.end('﻿' + JSON.stringify({ jsonrpc: '2.0', id: 7, method: 'ping' }) + '\n');
+  await done;
+  assert.equal(JSON.parse(out.trim()).id, 7);
+});
+
 test('end hook never fails the session, even on bad input', async () => {
   const s = sandbox();
   const r = await runHook(s.env, 'end', 'not json');
