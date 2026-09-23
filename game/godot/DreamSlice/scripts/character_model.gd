@@ -47,15 +47,17 @@ const KIND_SENTINEL := "sentinel"
 # ---------------------------------------------------------------------------
 
 # Dreamwalker
-const DW_COAT := Color(0.13, 0.22, 0.23)
+const DW_COAT := Color(0.18, 0.28, 0.29)
 const DW_COAT_TRIM := Color(0.07, 0.13, 0.15)
+const DW_TROUSER := Color(0.36, 0.24, 0.15)
+const DW_TUNIC := Color(0.78, 0.68, 0.52)
 const DW_PAULDRON := Color(0.58, 0.43, 0.17)
 const DW_MANTLE := Color(0.38, 0.22, 0.60)
 const DW_THREAD := Color(0.62, 0.40, 0.94)
 const DW_LEATHER := Color(0.22, 0.14, 0.09)
 const DW_LANTERN := Color(1.0, 0.62, 0.22)
 const DW_SKIN := Color(0.83, 0.60, 0.51)
-const DW_HAIR := Color(0.10, 0.09, 0.08)
+const DW_HAIR := Color(0.075, 0.058, 0.048)
 const DW_CIRCLET := Color(0.74, 0.74, 0.82)
 const DW_STEEL := Color(0.72, 0.74, 0.78)
 const DW_FULLER := Color(0.58, 0.30, 0.97)
@@ -755,10 +757,12 @@ func _build_dreamwalker() -> void:
 	var coat_mat := _toon_mat(DW_COAT, WARM_TINT, COOL_TINT, 0.8, 0.0, 0.3)
 	var coat_trim_mat := _toon_mat(DW_COAT_TRIM, WARM_TINT, COOL_TINT, 0.8, 0.0, 0.25)
 	var leather_mat := _toon_mat(DW_LEATHER, WARM_TINT, COOL_TINT, 0.75, 0.05, 0.25)
+	var trouser_mat := _toon_mat(DW_TROUSER, WARM_TINT, COOL_TINT, 0.8, 0.0, 0.25)
+	var tunic_mat := _toon_mat(DW_TUNIC, WARM_TINT, COOL_TINT, 0.75, 0.0, 0.3)
 	var skin_mat := _toon_mat(DW_SKIN, WARM_TINT, COOL_TINT, 0.7, 0.0, 0.3)
 	var hair_mat := _toon_mat(DW_HAIR, WARM_TINT, COOL_TINT, 0.55, 0.0, 0.18)
-	var pauldron_mat := _toon_mat(DW_PAULDRON, Color(1.0, 0.97, 0.85), Color(0.35, 0.30, 0.20),
-		0.3, 0.85, 0.55)
+	var pauldron_mat := _toon_mat(DW_PAULDRON, Color(1.0, 0.97, 0.85), Color(0.48, 0.40, 0.26),
+		0.3, 0.85, 0.85)
 	var pauldron_rim_mat := _toon_mat(DW_PAULDRON * Color(0.62, 0.62, 0.62, 1.0),
 		Color(0.85, 0.78, 0.55), Color(0.22, 0.18, 0.11), 0.35, 0.8, 0.45)
 	var circlet_mat := _toon_mat(DW_CIRCLET, Color(1.0, 1.0, 1.0), Color(0.4, 0.4, 0.5), 0.25, 0.7, 0.5)
@@ -785,6 +789,11 @@ func _build_dreamwalker() -> void:
 	# A high collar flares out from the neck base.
 	var collar_profile := [Vector3(0.0, 0.09, 0.08), Vector3(0.09, 0.115, 0.105)]
 	_mi(_neck, _lathe_mesh(collar_profile, 12, false, false), coat_mat, Vector3(0.0, -0.03, 0.0))
+	# A tan tunic shows through the open V of the coat at the chest.
+	var tunic_line := [
+		Vector3(0.0, 0.08, -0.175), Vector3(0.0, -0.02, -0.185), Vector3(0.0, -0.12, -0.17),
+	]
+	_mi(_chest, _thick_ribbon_mesh(tunic_line, [0.055, 0.10, 0.065], 0.012, true), tunic_mat, Vector3.ZERO)
 
 	# Coat tails: curved cloth panels with real thickness, flaring out then
 	# closing to a pointed hem at the knee, split at the small of the back.
@@ -838,33 +847,39 @@ func _build_dreamwalker() -> void:
 		eye.scale = Vector3(1.7, 0.55, 0.75)
 		var glint := _mi(_head, _sph(0.003), eye_glint_mat, Vector3(0.032 * side + 0.004, 0.018, -0.092))
 		_mi(_head, _sph(0.016, 0.5), skin_mat, Vector3(0.098 * side, -0.012, 0.0))
-	# Hair: a short, swept-back cut lying along the skull, not a spiky
-	# crown — a flat cap of coverage over the top and back (so it never
-	# reads as bald) plus a few clumps swept toward the back and down for
-	# texture, none of it pointing straight up.
-	_mi(_head, _sph(DW_HEAD_R * 0.97, 0.62), hair_mat, Vector3(0.0, 0.028, 0.025))
-	_mi(_head, _swept_tube_mesh(0.12, 0.06, 0.018, -15.0, 8, 5), hair_mat,
-		Vector3(0.0, 0.085, -0.01), Vector3(165.0, 0.0, 0.0))
+	# Hair: full coverage with real volume, not a thin cap — a base mass
+	# sitting proud of the skull plus several thick clumps swept back, and
+	# a fringe row at the hairline above the forehead. The circlet stays
+	# at the forehead, below the fringe.
+	_mi(_head, _sph(DW_HEAD_R * 1.14, 0.68), hair_mat, Vector3(0.0, 0.048, 0.02))
 	var hair_clumps := [
-		{"pos": Vector3(0.05, 0.08, 0.0), "rot": Vector3(-115.0, 20.0, 5.0), "len": 0.095},
-		{"pos": Vector3(-0.05, 0.08, 0.0), "rot": Vector3(-115.0, -20.0, -5.0), "len": 0.095},
-		{"pos": Vector3(0.035, 0.06, 0.08), "rot": Vector3(-90.0, 15.0, 0.0), "len": 0.08},
-		{"pos": Vector3(-0.035, 0.06, 0.08), "rot": Vector3(-90.0, -15.0, 0.0), "len": 0.08},
+		{"pos": Vector3(0.0, 0.11, -0.02), "rot": Vector3(-140.0, 0.0, 0.0), "len": 0.13, "r": 0.034},
+		{"pos": Vector3(0.06, 0.10, -0.01), "rot": Vector3(-135.0, 18.0, 6.0), "len": 0.12, "r": 0.032},
+		{"pos": Vector3(-0.06, 0.10, -0.01), "rot": Vector3(-135.0, -18.0, -6.0), "len": 0.12, "r": 0.032},
+		{"pos": Vector3(0.085, 0.065, 0.03), "rot": Vector3(-105.0, 25.0, 0.0), "len": 0.115, "r": 0.03},
+		{"pos": Vector3(-0.085, 0.065, 0.03), "rot": Vector3(-105.0, -25.0, 0.0), "len": 0.115, "r": 0.03},
+		{"pos": Vector3(0.045, 0.05, 0.10), "rot": Vector3(-80.0, 15.0, 0.0), "len": 0.10, "r": 0.028},
+		{"pos": Vector3(-0.045, 0.05, 0.10), "rot": Vector3(-80.0, -15.0, 0.0), "len": 0.10, "r": 0.028},
 	]
 	for c in hair_clumps:
-		_mi(_head, _swept_tube_mesh(c["len"], 0.026, 0.006, -15.0, 7, 4), hair_mat, c["pos"], c["rot"])
+		_mi(_head, _swept_tube_mesh(c["len"], c["r"], c["r"] * 0.25, -15.0, 7, 4), hair_mat, c["pos"], c["rot"])
+	# Fringe: a low row of short clumps right above the forehead.
+	for fi in range(5):
+		var fside := float(fi) - 2.0
+		_mi(_head, _swept_tube_mesh(0.045, 0.018, 0.006, 12.0, 6, 3), hair_mat,
+			Vector3(fside * 0.022, 0.078, -0.088), Vector3(-155.0, fside * 6.0, 0.0))
 	# Circlet: a thin band at the forehead, not a crown at the crown.
 	_mi(_head, _ring(0.005, 0.116), circlet_mat, Vector3(0.0, -0.005, 0.0), Vector3(90.0, 0.0, 0.0))
 
-	# The one asymmetric pauldron: a flat, layered shell of three curved
-	# plates stepping down the shoulder, each with a slightly darker rim —
-	# not a round dome.
-	_mi(_shoulder_l, _sph(0.16, 0.28), pauldron_mat, Vector3(0.0, 0.045, -0.015))
-	_mi(_shoulder_l, _ring(0.01, 0.155), pauldron_rim_mat, Vector3(0.0, 0.005, -0.015), Vector3(90.0, 0.0, 0.0))
-	_mi(_shoulder_l, _sph(0.125, 0.28), pauldron_mat, Vector3(0.008, 0.015, 0.035))
-	_mi(_shoulder_l, _ring(0.008, 0.12), pauldron_rim_mat, Vector3(0.008, -0.015, 0.035), Vector3(90.0, 0.0, 0.0))
-	_mi(_shoulder_l, _sph(0.09, 0.28), pauldron_mat, Vector3(0.016, -0.01, 0.07))
-	_mi(_shoulder_l, _ring(0.006, 0.086), pauldron_rim_mat, Vector3(0.016, -0.033, 0.07), Vector3(90.0, 0.0, 0.0))
+	# The one asymmetric pauldron: a domed shell (a half-ellipsoid, about
+	# 0.22 m wide and 0.12 m tall) capping the shoulder, with two layered
+	# lames hanging below it, each with a darker rim.
+	_mi(_shoulder_l, _sph(0.11, 0.55), pauldron_mat, Vector3(0.0, 0.05, -0.01))
+	_mi(_shoulder_l, _ring(0.01, 0.105), pauldron_rim_mat, Vector3(0.0, 0.005, -0.01), Vector3(90.0, 0.0, 0.0))
+	_mi(_shoulder_l, _sph(0.095, 0.32), pauldron_mat, Vector3(0.0, -0.015, 0.05))
+	_mi(_shoulder_l, _ring(0.008, 0.09), pauldron_rim_mat, Vector3(0.0, -0.038, 0.05), Vector3(90.0, 0.0, 0.0))
+	_mi(_shoulder_l, _sph(0.075, 0.28), pauldron_mat, Vector3(0.0, -0.055, 0.085))
+	_mi(_shoulder_l, _ring(0.006, 0.07), pauldron_rim_mat, Vector3(0.0, -0.075, 0.085), Vector3(90.0, 0.0, 0.0))
 
 	# Shoulder balls, tapered limbs and rounded joints — no gaps at the
 	# elbows, no boxes for arms.
@@ -887,10 +902,10 @@ func _build_dreamwalker() -> void:
 		var thigh: Node3D = pair[0]
 		var shin: Node3D = pair[1]
 		var foot: Node3D = pair[2]
-		_joint(thigh, 0.105, coat_mat)
-		_mi(thigh, _limb_mesh(DW_THIGH, 0.10, 0.093, 0.075, 16), coat_mat, Vector3.ZERO)
-		_joint(shin, 0.075, leather_mat)
-		_mi(shin, _limb_mesh(DW_SHIN, 0.075, 0.068, 0.058, 16), leather_mat, Vector3.ZERO)
+		_joint(thigh, 0.105, trouser_mat)
+		_mi(thigh, _limb_mesh(DW_THIGH, 0.10, 0.093, 0.075, 16), trouser_mat, Vector3.ZERO)
+		_joint(shin, 0.075, trouser_mat)
+		_mi(shin, _limb_mesh(DW_SHIN, 0.075, 0.068, 0.058, 16), trouser_mat, Vector3.ZERO)
 		_mi(foot, _sph(0.07, 0.65), leather_mat, Vector3(0.0, 0.0, -0.03))
 		_mi(foot, _cyl(0.04, 0.06, 0.14, 10), leather_mat, Vector3(0.0, -0.02, -0.09), Vector3(90.0, 0.0, 0.0))
 
