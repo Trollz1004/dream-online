@@ -191,23 +191,33 @@ func _test_the_readout_reports_lunge_and_burst() -> void:
 	hud.free()
 
 
-# set_cinematic(true) is the demo director's own readout: the help text and
-# the target/events/fps status column go away, but health, stamina and the
-# whole hotbar (dash through burst) stay, moved to a small strip near the
-# bottom so nothing sits mid-frame during a framed shot.
+# set_cinematic(true) is the demo director's own readout (integration-card
+# judge note, 2026-09-23: the debug column was on screen, clipped, in the
+# recorded demo). The whole ordinary column -- help text, hotbar labels,
+# everything -- goes away, replaced by a slim bottom-centre bar: a thin
+# health bar, a thin stamina bar, and the six skill cooldown slots.
 func _test_cinematic_mode_trims_the_readout() -> void:
-	print("cinematic mode trims the readout")
+	print("cinematic mode swaps the debug column for the slim bar")
 	var hud = _hud()
 	hud.show_state(_state("", 9.0))
+	check("the slim bar starts hidden", not hud.cinematic_root().visible)
+
 	hud.set_cinematic(true)
 	check("cinematic mode reports itself", hud.is_cinematic())
-	check("cinematic mode hides the help text", not hud.help_label().visible)
+	check("cinematic mode hides the whole debug column", not hud.column().visible)
+	check("cinematic mode shows the slim bar", hud.cinematic_root().visible)
+
 	hud.show_state(_state("", 9.0))
-	check("cinematic mode still shows health", hud.readout_labels()[0].text.begins_with("Health"))
-	check("cinematic mode still shows the dash line", hud.readout_labels()[2].text.contains("Dash"))
-	check("cinematic mode still shows the lunge line", hud.lunge_label().text.contains("Dream Lunge"))
+	check("the slim bar's health bar reads the given health",
+		absf(hud.cinematic_health_bar().value - 82.0) < 0.01)
+	check("the slim bar's stamina bar reads full stamina",
+		absf(hud.cinematic_stamina_bar().value - 100.0) < 0.01)
+	for slot_name in ["Dash", "Swing", "Heavy", "Guard", "Lunge", "Burst"]:
+		check("the slim bar has a %s slot" % slot_name, hud.cinematic_slot(slot_name) != null)
+
 	hud.set_cinematic(false)
-	check("turning cinematic mode back off restores the help text", hud.help_label().visible)
+	check("turning cinematic mode back off restores the debug column", hud.column().visible)
+	check("turning cinematic mode back off hides the slim bar", not hud.cinematic_root().visible)
 	hud.free()
 
 

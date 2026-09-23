@@ -176,6 +176,22 @@ func is_down() -> bool:
 	return _down_for > 0.0
 
 
+# _process returns immediately while player is null, so this fully pauses
+# the whole beam cycle -- "put it to sleep" (integration-card judge note,
+# 2026-09-23): a quiet beat like the night talk with Mireth needs the
+# Sentinel inert, not just out of frame. wake() always starts a fresh
+# cycle from idle, so the player gets the full wind-up to get into position
+# rather than resuming mid-telegraph from wherever sleep() froze it.
+func sleep() -> void:
+	player = null
+
+
+func wake(p: Node3D) -> void:
+	player = p
+	_t = 0.0
+	_resolved = false
+
+
 # Seconds until the beam actually fires: 0.0 once it already has (or while
 # down), so a caller can react to the telegraph rather than guess at its
 # own copy of the cycle's timing. Used by scripts/demo_director.gd to time

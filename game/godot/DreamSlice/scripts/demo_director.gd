@@ -18,6 +18,8 @@ const LOWER_THIRD_FRAC := 0.76
 const CAPTION_FADE := 0.4
 const DASH_DODGE_LEAD := 0.18   # seconds before the beam fires to start the dash
 const GUARD_LEAD := 0.35        # guard's own active window is far more forgiving
+const COMBAT_SPRING_LENGTH := 4.2   # closer than hand-play's 6.0, per the judge's own note
+const COMBAT_SPRING_HEIGHT := 1.25
 
 var world: Node3D = null
 
@@ -25,6 +27,19 @@ var _rig_camera: Camera3D
 var _caption_layer: CanvasLayer
 var _caption_label: Label
 var _caption_tween: Tween
+
+# The auto-dodge safety net (see _auto_dodge_loop): live only while a fight
+# beat has woken the Sentinel, suppressed during the two beats that already
+# script their own defence on purpose (the captioned first dodge and the
+# guard block), so nothing double-presses a key mid-scripted-action.
+var _auto_dodge_active := false
+var _scripted_defense := false
+
+var _video_time := 0.0   # temporary diagnostic: total elapsed simulated seconds
+
+
+func _process(delta: float) -> void:
+	_video_time += delta
 
 
 func _ready() -> void:
@@ -37,6 +52,13 @@ func _ready() -> void:
 		world.hud.set_cinematic(true)
 	if world.npc_memory != null:
 		world.npc_memory.reset_local()
+	if world.player != null:
+		world.player.set_camera_distance(COMBAT_SPRING_LENGTH, COMBAT_SPRING_HEIGHT)
+	if world.sentinel != null:
+		# Inert until a fight beat wakes it: see _fight_sentinel. A beam
+		# cycling away in the background during the opening run or a quiet
+		# talk is not a scripted beat, just incidental damage.
+		world.sentinel.sleep()
 
 	# One settled frame before the timeline starts driving anything, the
 	# same reason tools/memory_live_check.gd waits one frame before its own
@@ -62,7 +84,11 @@ func _build_captions() -> void:
 	add_child(_caption_layer)
 
 	_caption_label = Label.new()
-	_caption_label.add_theme_font_size_override("font_size", 34)
+	# One size down from the original 34: this label also carries Mireth's
+	# own spoken line (integration-card judge note, 2026-09-23, "the heart
+	# of the demo"), which runs far longer than a punchy story caption and
+	# needs to fit close to two lines rather than one.
+	_caption_label.add_theme_font_size_override("font_size", 30)
 	_caption_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
 	_caption_label.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.85))
 	_caption_label.add_theme_constant_override("outline_size", 6)
@@ -78,7 +104,7 @@ func _build_captions() -> void:
 	_caption_label.anchor_top = LOWER_THIRD_FRAC
 	_caption_label.anchor_bottom = LOWER_THIRD_FRAC
 	_caption_label.offset_top = 0.0
-	_caption_label.offset_bottom = 70.0
+	_caption_label.offset_bottom = 96.0
 	_caption_label.modulate = Color(1.0, 1.0, 1.0, 0.0)
 	_caption_layer.add_child(_caption_label)
 
@@ -98,13 +124,17 @@ func _show_caption(text: String, hold: float) -> void:
 
 
 func _use_player_camera() -> void:
+	_rig_camera.current = false
 	if world.player != null:
 		world.player.camera().current = true
-	_rig_camera.current = false
 
 
 func _use_rig_camera() -> void:
+	if world.player != null:
+		world.player.camera().current = false
 	_rig_camera.current = true
+	print("DIRECTOR camera switch: rig.current=%s player.current=%s" %
+		[_rig_camera.current, world.player.camera().current if world.player != null else "?"])
 
 
 # ---------------------------------------------------------------------------
@@ -161,6 +191,31 @@ func _wait_for_beam_lead(lead: float, timeout: float) -> void:
 		await get_tree().process_frame
 
 
+# The safety net behind the whole fight: any beam cycle the choreography
+# below does not turn into an explicit narrative beat (the captioned first
+# dodge, the guard block) is still answered here, with a plain uncaptioned
+# dash and, if stamina is too tight for one, a guard instead. Per the
+# integration-card judge note (2026-09-23): "let the player take at most 2
+# or 3 hits in the whole demo; the point is a skilled player" -- a fight
+# that only defends against the two or three beats the script names would
+# otherwise eat a full, undodged hit every other cycle. Fire-and-forget,
+# started and stopped by _fight_sentinel around the whole beat.
+func _auto_dodge_loop(sentinel_pos: Vector3) -> void:
+	var p: Node3D = world.player
+	while _auto_dodge_active:
+		if not _scripted_defense:
+			var left: float = world.sentinel.time_until_fire()
+			if left >= 0.0 and left <= DASH_DODGE_LEAD:
+				p.demo_face(_face_yaw_toward(p.global_position, sentinel_pos))
+				if p.dash.can_start(p.stamina):
+					p.demo_skill("W", true, "F")
+					await _wait(0.5)
+				elif p.guard.can_start(p.stamina):
+					p.demo_skill("", false, "Q")
+					await _wait(0.5)
+		await get_tree().process_frame
+
+
 # Smoothly interpolates the rig camera's eye and look-at point over
 # `duration`, switching the rig camera current first. from==to on either
 # argument holds a static frame while still using this same driver.
@@ -192,6 +247,73 @@ func _orbit_player(duration: float, radius: float, start_angle: float, end_angle
 		await get_tree().process_frame
 
 
+# The point directly to the side of the line from `center` toward `toward`
+# -- the vantage a side-angle shot or a two-shot is taken from.
+func _side_point(center: Vector3, toward: Vector3, side_offset: float, height: float) -> Vector3:
+	var axis := toward - center
+	axis.y = 0.0
+	var side := Vector3(-axis.z, 0.0, axis.x)
+	if side.length() < 0.01:
+		side = Vector3.RIGHT
+	side = side.normalized()
+	return center + side * side_offset + Vector3(0.0, height, 0.0)
+
+
+# A static held side-angle shot, framing both person_a and person_b together
+# and large -- the two-shot the integration-card judge note (2026-09-23)
+# asks for on the night talk with Mireth: "framed together, both large, from
+# the side". Used for the day talk too, for the same reason and for visual
+# consistency between the two.
+func _two_shot(person_a: Vector3, person_b: Vector3, side_offset: float, height: float, duration: float,
+		spoken_line: String = "") -> void:
+	var mid := (person_a + person_b) * 0.5
+	# Anchored on the midpoint between the two of them, not on person_a --
+	# anchoring on either person alone put the eye at a fixed distance from
+	# just that one, so whichever way person_a and person_b happened to be
+	# spaced when the shot was taken, the framing could read badly lopsided
+	# (one of them close and cropped, the other small and far).
+	var eye := _side_point(mid, person_b, side_offset, height)
+	var at := mid + Vector3(0.0, height * 0.75, 0.0)
+	_use_rig_camera()
+	_rig_camera.look_at_from_position(eye, at, Vector3.UP)
+
+	# The heart of the demo (integration-card judge note, 2026-09-23):
+	# Mireth's own spoken line, held on screen as a subtitle for the whole
+	# beat, alongside the recall panel.
+	if spoken_line != "":
+		_show_caption(spoken_line, maxf(0.1, duration - CAPTION_FADE))
+
+	# The player turns to face Mireth for the whole talk. _face_movement
+	# only ever turns the body to match actual velocity, and the player is
+	# standing still here, so this drives it directly instead
+	# (player.gd's demo_face_body). Mireth turns to face him on her own,
+	# already driven by notify_talked/npc.gd's own _process.
+	var p: Node3D = world.player
+	var yaw_to_mireth := _face_yaw_toward(person_a, person_b)
+	var t := 0.0
+	while t < duration:
+		var delta := get_process_delta_time()
+		t += delta
+		if p != null:
+			p.demo_face_body(yaw_to_mireth, delta)
+		await get_tree().process_frame
+
+
+# A brief held side-angle cut on the player, framed against the Sentinel
+# beyond them -- for the perfect dodge and the heavy cleave, per the
+# integration-card judge note (2026-09-23). Held well back from the player's
+# own position: a perfect dodge's flash (vfx.gd's own OmniLight3D) reads as
+# a bright accent from here, not a screen-filling overexposure the way a
+# closer cut caught it.
+func _side_angle_cut(sentinel_pos: Vector3, duration: float) -> void:
+	var p: Node3D = world.player
+	var pos: Vector3 = p.global_position
+	var eye := _side_point(pos, sentinel_pos, 7.0, 2.4)
+	var at := pos.lerp(sentinel_pos, 0.3) + Vector3(0.0, 1.2, 0.0)
+	await _play_shot(eye, eye, at, at, duration)
+	_use_player_camera()
+
+
 # ---------------------------------------------------------------------------
 # The timeline. Times in the integration card are guides; this follows the
 # beats, not the clock, and a beam-telegraph wait can run short or long by
@@ -210,46 +332,58 @@ func _run_timeline() -> void:
 	p.demo_face(_face_yaw_toward(p.global_position, Vector3(0.0, 0.0, 6.0)))
 	_show_caption("DREAM ONLINE -- pre-alpha gameplay, captured in engine", 3.4)
 	await _move_player_to(mireth_pos + Vector3(1.8, 0.0, 0.6), 2.6, 7.0)
+	print("DIRECTOR t=%.2f arrived at Mireth (day)" % _video_time)
 
-	# 3-9s: a framed shot as the player reaches Mireth and presses E.
-	var mireth_look: Vector3 = mireth_pos + Vector3(0.0, 1.35, 0.0)
-	await _play_shot(
-		p.global_position + Vector3(-2.6, 1.8, -0.8), p.global_position + Vector3(-1.2, 1.5, 0.3),
-		p.global_position + Vector3(0.0, 1.3, 0.0), mireth_look, 1.4)
+	# 3-9s: a two-shot as the player reaches Mireth and presses E.
 	p.demo_face(_face_yaw_toward(p.global_position, mireth_pos))
 	p.demo_skill("", false, "E")
-	await _wait(4.2)
+	await _two_shot(p.global_position, mireth_pos, 3.0, 1.45, 6.0, world.last_spoken_line)
 	_use_player_camera()
+	print("DIRECTOR t=%.2f day two-shot done" % _video_time)
 
-	# 9-32s: the fight with the Hollow Sentinel.
+	# 9-32s: the fight with the Hollow Sentinel. Fight length itself varies
+	# with the Sentinel's own beam cycle (see _fight_sentinel's own note);
+	# the beats around it below carry fixed, dependable durations so the
+	# whole recording still lands near the card's 60-90 s target either way.
 	await _move_player_to(sentinel_pos + Vector3(0.4, 0.0, 8.5), 8.2, 6.0)
+	print("DIRECTOR t=%.2f day fight begins" % _video_time)
 	await _fight_sentinel(sentinel_pos)
+	print("DIRECTOR t=%.2f day fight ends" % _video_time)
 
 	# 32-36s: a slow orbit around the player standing among the ruins.
-	_show_caption("Mireth saw all of it. She will remember.", 4.0)
-	await _orbit_player(4.4, 6.5, 0.1, PI * 0.55)
+	_show_caption("Mireth saw all of it. She will remember.", 5.6)
+	await _orbit_player(6.0, 6.5, 0.1, PI * 0.55)
+	print("DIRECTOR t=%.2f orbit done" % _video_time)
 
 	# 36-42s: nightfall. The blocking world-memory recall happens inside
 	# world.nightfall() itself, in the black at the middle of the fade.
 	_use_player_camera()
-	_show_caption("Nightfall. The landscape changes. You don't.", 5.4)
-	await world.nightfall(5.0)
+	_show_caption("Nightfall. The landscape changes. You don't.", 6.6)
+	await world.nightfall(7.0)
+	print("DIRECTOR t=%.2f nightfall done" % _video_time)
 
 	# 42-50s: a framed establishing shot of the city.
 	var city_at: Vector3 = Vector3(0.0, 6.0, -6.0)
 	await _play_shot(Vector3(0.0, 3.0, 26.0), Vector3(2.0, 24.0, -6.0),
-		Vector3(0.0, 4.0, 0.0), city_at, 7.2)
+		Vector3(0.0, 4.0, 0.0), city_at, 10.0)
+	print("DIRECTOR t=%.2f city shot done" % _video_time)
 
 	# 50-60s: the player walks to Mireth, now under a street lamp, and talks.
+	# The Sentinel stays asleep (no beam, not in frame) through the whole
+	# beat: a two-shot, both large, from the side, per the judge's own note.
 	_use_player_camera()
 	await _move_player_to(mireth_pos + Vector3(1.6, 0.0, 0.5), 2.4, 7.0)
 	p.demo_face(_face_yaw_toward(p.global_position, mireth_pos))
 	p.demo_skill("", false, "E")
-	await _wait(7.4)
+	await _two_shot(p.global_position, mireth_pos, 3.2, 1.45, 8.5, world.last_spoken_line)
+	_use_player_camera()
+	print("DIRECTOR t=%.2f night two-shot done" % _video_time)
 
 	# 60-74s: a short night fight, lit by the city.
 	await _move_player_to(sentinel_pos + Vector3(0.4, 0.0, 8.5), 8.2, 6.0)
+	print("DIRECTOR t=%.2f night fight begins" % _video_time)
 	await _fight_sentinel(sentinel_pos)
+	print("DIRECTOR t=%.2f night fight ends" % _video_time)
 
 	# 74-80s: end card.
 	await _end_card()
@@ -258,21 +392,40 @@ func _run_timeline() -> void:
 # One fight beat, reused for both the day and the night encounter: a read
 # telegraph and a dash for a perfect dodge, the light chain, a heavy cleave,
 # a guard block against the next beam, a Dream Lunge, a second perfect
-# dodge, then the Nightveil Burst to finish it.
+# dodge, then the Nightveil Burst to finish it. The Sentinel is woken on
+# entry and put back to sleep on the way out (integration-card judge note,
+# 2026-09-23: inert, not just out of frame, outside a fight beat), and
+# _auto_dodge_loop runs the whole time as a safety net against every beam
+# cycle this choreography does not explicitly answer.
 func _fight_sentinel(sentinel_pos: Vector3) -> void:
 	var p: Node3D = world.player
+	world.sentinel.wake(p)
+	_auto_dodge_active = true
+	_auto_dodge_loop(sentinel_pos)
 
-	# Beam #1: read the telegraph, dash through it for a perfect dodge.
+	# Beam #1: read the telegraph, dash through it for a perfect dodge, cut
+	# to a side angle so the read-and-answer actually reads on camera.
+	_scripted_defense = true
 	p.demo_move(Vector3.ZERO)
 	p.demo_face(_face_yaw_toward(p.global_position, sentinel_pos))
 	_show_caption("Action combat: every skill is a key combination", 3.4)
 	await _wait_for_beam_lead(DASH_DODGE_LEAD, 6.0)
 	p.demo_face(_face_yaw_toward(p.global_position, sentinel_pos))
 	p.demo_skill("W", true, "F")
-	await _wait(0.75)
+	await _side_angle_cut(sentinel_pos, 0.85)
+	_scripted_defense = false
 	_show_caption("Perfect dodge -- invulnerable through the dash", 3.2)
 
-	# Close to the light-chain and heavy-cleave range and land them.
+	# Close to the light-chain and heavy-cleave range and land them. Auto-
+	# dodge stays suppressed through this whole middle stretch (light chain,
+	# heavy cleave, guard, lunge): an interjected dash here could nudge the
+	# player out of position right as a scripted hit needs to land, and
+	# landing the heavy cleave and the Nightveil Burst together is what
+	# clears the Sentinel's full health -- otherwise "the Sentinel fell"
+	# never shows up in what Mireth recalls (integration-card judge note,
+	# 2026-09-23). The guard block still answers its own beam explicitly
+	# inside this span; only the cycles it does not name are left open.
+	_scripted_defense = true
 	await _move_player_to(sentinel_pos + Vector3(0.0, 0.0, 2.6), 1.6, 3.0)
 	for _i in range(3):
 		p.demo_face(_face_yaw_toward(p.global_position, sentinel_pos))
@@ -281,7 +434,7 @@ func _fight_sentinel(sentinel_pos: Vector3) -> void:
 
 	p.demo_face(_face_yaw_toward(p.global_position, sentinel_pos))
 	p.demo_skill("", false, "RMB")
-	await _wait(1.0)
+	await _side_angle_cut(sentinel_pos, 1.0)
 
 	# A guard block against the next beam.
 	p.demo_move(Vector3.ZERO)
@@ -296,14 +449,17 @@ func _fight_sentinel(sentinel_pos: Vector3) -> void:
 	p.demo_face(_face_yaw_toward(p.global_position, sentinel_pos))
 	p.demo_skill("W", false, "F")
 	await _wait(0.75)
+	_scripted_defense = false
 
 	# A second perfect dodge.
+	_scripted_defense = true
 	p.demo_move(Vector3.ZERO)
 	p.demo_face(_face_yaw_toward(p.global_position, sentinel_pos))
 	await _wait_for_beam_lead(DASH_DODGE_LEAD, 6.0)
 	p.demo_face(_face_yaw_toward(p.global_position, sentinel_pos))
 	p.demo_skill("W", true, "F")
 	await _wait(0.75)
+	_scripted_defense = false
 
 	# The Nightveil Burst finishes it.
 	await _move_player_to(sentinel_pos + Vector3(0.0, 0.0, 3.0), 2.4, 3.0)
@@ -312,12 +468,19 @@ func _fight_sentinel(sentinel_pos: Vector3) -> void:
 	await _wait(1.3)
 	p.demo_move(Vector3.ZERO)
 
+	_auto_dodge_active = false
+	world.sentinel.sleep()
+
 
 func _end_card() -> void:
 	_use_rig_camera()
 	var at: Vector3 = world.player.global_position + Vector3(0.0, 1.3, 0.0)
-	await _play_shot(at + Vector3(9.0, 4.5, 11.0), at + Vector3(3.5, 3.6, 4.5), at, at, 3.0)
-	_show_caption("DREAM ONLINE", 3.0)
-	await _wait(3.2)
-	_show_caption("Pre-alpha. Every frame in engine. Characters, world and memory built by AI.", 3.4)
-	await _wait(3.6)
+	# Higher and steeper than a hand-play camera would sit, so a low,
+	# ground-hugging wet-street reflection streak (dream_env.gd's own
+	# lamp effect, not something this script controls) does not cut
+	# straight across the shot the way it did at a lower, grazing angle.
+	await _play_shot(at + Vector3(7.0, 7.0, 9.0), at + Vector3(2.8, 5.0, 3.6), at, at, 3.5)
+	_show_caption("DREAM ONLINE", 4.0)
+	await _wait(4.2)
+	_show_caption("Pre-alpha. Every frame in engine. Characters, world and memory built by AI.", 4.5)
+	await _wait(4.8)

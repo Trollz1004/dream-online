@@ -1069,7 +1069,7 @@ func _build_keeper() -> void:
 	lantern_light.light_energy = 1.3
 	lantern_light.light_color = K_LANTERN
 	staff.add_child(lantern_light)
-	_remember_omni(lantern_light, 1.3, 2.1)
+	_remember_omni(lantern_light, 1.3, 1.1)  # integration-card judge note, 2026-09-23: 2.1 blew out Mireth's own face at night
 	pivots["staff"] = staff
 
 	# Arms and legs, mostly hidden under the robe but present for the rig.

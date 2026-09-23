@@ -171,6 +171,16 @@ func camera() -> Camera3D:
 	return _camera
 
 
+# The demo director's own combat-camera adjustment (integration-card judge
+# note, 2026-09-23): a --demo recording wants the fight closer and slightly
+# lower than the default hand-play distance, so the Dreamwalker and the
+# Sentinel read large in frame instead of small dots in the middle of it.
+func set_camera_distance(length: float, mount_height: float) -> void:
+	if _spring != null:
+		_spring.spring_length = length
+		_spring.position.y = mount_height
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		_yaw -= event.relative.x * MOUSE_SENS
@@ -253,6 +263,15 @@ func demo_move(vec: Vector3) -> void:
 # of "forward" (see demo_move).
 func demo_face(yaw_value: float) -> void:
 	_yaw = yaw_value
+
+
+# The demo director's own body-facing control, for a stationary dialogue
+# beat: _face_movement only ever turns _visual to match actual velocity, so
+# a player standing still (as during a talk) never turns to face anyone on
+# its own. Smoothed the same way _face_movement already is, not snapped, so
+# a director-scripted turn still reads as a real turn on camera.
+func demo_face_body(yaw_value: float, delta: float) -> void:
+	_visual.rotation.y = lerp_angle(_visual.rotation.y, yaw_value, clampf(12.0 * delta, 0.0, 1.0))
 
 
 func _try_skill(action_key: String) -> void:

@@ -21,7 +21,7 @@ const NpcMemoryScript := preload("res://scripts/npc_memory.gd")
 const MemoryPanelScript := preload("res://scripts/memory_panel.gd")
 const DemoDirectorScript := preload("res://scripts/demo_director.gd")
 
-const MIRETH_WITNESS_RADIUS := 25.0
+const MIRETH_WITNESS_RADIUS := 40.0
 const DEFAULT_LAB_URL := "http://127.0.0.1:9127"
 
 var player: Node3D = null
@@ -46,6 +46,13 @@ var _fade_rect: ColorRect
 var _night_recall_facts: Array = []
 var _night_recall_source := ""
 var _night_recall_ready := false
+
+## The line Mireth just spoke, day or night -- the demo director reads this
+## right after driving an E press, to show it as a subtitle. Set inside
+## _on_talked, which fires synchronously off player.gd's own talked signal,
+## so it is already current by the time a caller's own demo_skill() call
+## returns (signals in Godot fire synchronously, not on a later frame).
+var last_spoken_line := ""
 
 
 func _ready() -> void:
@@ -287,9 +294,12 @@ func _on_talked(npc_name: String, line: String) -> void:
 		var summary: Dictionary = NpcMemoryScript.summarize(_night_recall_facts)
 		var night_line: String = NpcMemoryScript.compose_line(npc_name, summary, "night")
 		player.say(night_line)
+		last_spoken_line = night_line
 		memory_panel.show_recalled(_recall_bullets(summary), _night_recall_source)
-	elif _mireth_witnessing():
-		memory_panel.show_stored("you spoke with her")
+	else:
+		last_spoken_line = "%s: %s" % [npc_name, line]
+		if _mireth_witnessing():
+			memory_panel.show_stored("you spoke with her")
 
 
 # One bullet per notable fact, the shape memory_panel.show_recalled wants --

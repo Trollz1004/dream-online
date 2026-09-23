@@ -122,5 +122,9 @@ __pycache__/
 game/godot/*/.godot/
 game/godot/*/export/
 
+# Recorded crowdfunding-demo video (game/godot/Record-Demo.cmd is the recipe;
+# the MP4/AVI it produces is never committed)
+game/godot/*/demo/
+
 # Exported builds (web and desktop) - never committed
 /build/
