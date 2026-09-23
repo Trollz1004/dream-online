@@ -117,8 +117,11 @@ func _build_stage() -> void:
 	_camera.fov = 55.0
 	_wide_eye = Vector3(0.0, 1.55, -3.3)
 	_wide_at = Vector3(0.0, 1.15, 0.0)
-	_close_eye = Vector3(CAST_X[0], 1.55, -1.7)
-	_close_at = Vector3(CAST_X[0], 1.25, 0.0)
+	# Centred on the keeper (index 1), not the dreamwalker, so she faces the
+	# camera squarely instead of being seen from an oblique angle off to
+	# the side of a shot framed on her neighbour.
+	_close_eye = Vector3(CAST_X[1], 1.55, -1.7)
+	_close_at = Vector3(CAST_X[1], 1.25, 0.0)
 	_camera.look_at_from_position(_wide_eye, _wide_at, Vector3.UP)
 	_camera.current = true
 	root.add_child(_camera)
