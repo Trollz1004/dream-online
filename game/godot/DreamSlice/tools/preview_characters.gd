@@ -5,8 +5,11 @@ extends SceneTree
 # (rendering the framebuffer needs one; --headless never fills it):
 #   godot --path game/godot/DreamSlice --script res://tools/preview_characters.gd -- --out <abs.png>
 #
-# Saves a wide shot to the given path, and a second, closer shot next to it
-# (".png" -> "_close.png") so gear and face detail can be checked too.
+# Saves a wide shot to the given path, a second, closer shot next to it
+# (".png" -> "_close.png") so gear and face detail can be checked, and a
+# third, "_action.png", replacing the cast with mid-motion poses (a swing,
+# a heavy cleave, a lunge, a burst, and the sentinel casting its beam) so
+# the arcs read as arcs and not just as a rest pose.
 
 const CharacterModelScript := preload("res://scripts/character_model.gd")
 
@@ -14,14 +17,33 @@ const CharacterModelScript := preload("res://scripts/character_model.gd")
 # tight enough that the whole cast still fits a close camera.
 const CAST_X := [-2.6, -1.3, 0.0, 1.3, 2.6]
 const CAST_KINDS := ["dreamwalker", "keeper", "sentinel", "dreamwalker", "dreamwalker"]
+const CAST_POSES := [
+	{"speed": 0.0, "sprint": false, "action": "", "progress": 0.0},
+	{"speed": 0.0, "sprint": false, "action": "talk", "progress": 0.25},
+	{"speed": 0.0, "sprint": false, "action": "", "progress": 0.0},
+	{"speed": 0.0, "sprint": false, "action": "heavy", "progress": 0.55},
+	{"speed": 0.0, "sprint": false, "action": "guard", "progress": 0.6},
+]
+
+const ACTION_X := [-2.6, -1.3, 0.0, 1.3, 2.6]
+const ACTION_KINDS := ["dreamwalker", "dreamwalker", "dreamwalker", "dreamwalker", "sentinel"]
+const ACTION_POSES := [
+	{"speed": 0.0, "sprint": false, "action": "swing2", "progress": 0.5},
+	{"speed": 0.0, "sprint": false, "action": "heavy", "progress": 0.5},
+	{"speed": 0.0, "sprint": false, "action": "lunge", "progress": 0.6},
+	{"speed": 0.0, "sprint": false, "action": "burst", "progress": 0.4},
+	{"speed": 0.0, "sprint": false, "action": "cast_beam", "progress": 0.35},
+]
 
 var _out_path := ""
 var _out_close_path := ""
+var _out_action_path := ""
 var _frame := 0
-var _stage := 0   # 0: waiting to take the wide shot, 1: waiting on the close-up, 2: done
+var _stage := 0   # 0: wide shot, 1: close-up, 2: action shot, 3: done
 
 var _root3d: Node3D
 var _camera: Camera3D
+var _cast_nodes: Array = []
 var _wide_eye := Vector3.ZERO
 var _wide_at := Vector3.ZERO
 var _close_eye := Vector3.ZERO
@@ -31,6 +53,7 @@ var _close_at := Vector3.ZERO
 func _initialize() -> void:
 	_read_args()
 	_build_stage()
+	_build_cast(CAST_X, CAST_KINDS, CAST_POSES)
 
 
 # Rendering a real frame takes a beat even in a window, and the models here
@@ -45,8 +68,15 @@ func _process(_delta: float) -> bool:
 		_frame = 0
 	elif _stage == 1 and _frame >= 8:
 		_save(_out_close_path)
+		_camera.look_at_from_position(_wide_eye, _wide_at, Vector3.UP)
+		_clear_cast()
+		_build_cast(ACTION_X, ACTION_KINDS, ACTION_POSES)
 		_stage = 2
-	return _stage == 2
+		_frame = 0
+	elif _stage == 2 and _frame >= 10:
+		_save(_out_action_path)
+		_stage = 3
+	return _stage == 3
 
 
 func _read_args() -> void:
@@ -57,9 +87,12 @@ func _read_args() -> void:
 	if _out_path == "":
 		_out_path = "user://chars.png"
 	if _out_path.ends_with(".png"):
-		_out_close_path = _out_path.substr(0, _out_path.length() - 4) + "_close.png"
+		var stem := _out_path.substr(0, _out_path.length() - 4)
+		_out_close_path = stem + "_close.png"
+		_out_action_path = stem + "_action.png"
 	else:
 		_out_close_path = _out_path + "_close.png"
+		_out_action_path = _out_path + "_action.png"
 
 
 func _save(path: String) -> void:
@@ -75,7 +108,6 @@ func _build_stage() -> void:
 	_build_environment()
 	_build_ground()
 	_build_lights()
-	_build_cast()
 
 	_camera = Camera3D.new()
 	# The rig faces -Z (see player.gd's nose block), so a camera has to sit on
@@ -104,7 +136,7 @@ func _build_environment() -> void:
 	sky.sky_material = mat
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_energy = 0.55
+	env.ambient_light_energy = 0.85
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	# Bloom is for the atmosphere of the real game, not a technical review
 	# render: it was blowing a modest specular highlight on the dark hair
@@ -147,20 +179,21 @@ func _build_lights() -> void:
 	rim.look_at_from_position(Vector3(-2.5, 2.2, 3.2), Vector3.ZERO, Vector3.UP)
 
 
-# The three kinds side by side, plus a dreamwalker mid-heavy and a third on
-# guard, per the brief.
-func _build_cast() -> void:
-	var poses := [
-		{"speed": 0.0, "sprint": false, "action": "", "progress": 0.0},
-		{"speed": 0.0, "sprint": false, "action": "talk", "progress": 0.25},
-		{"speed": 0.0, "sprint": false, "action": "", "progress": 0.0},
-		{"speed": 0.0, "sprint": false, "action": "heavy", "progress": 0.55},
-		{"speed": 0.0, "sprint": false, "action": "guard", "progress": 0.6},
-	]
-	for i in CAST_KINDS.size():
-		var model = CharacterModelScript.build(CAST_KINDS[i])
-		model.position = Vector3(CAST_X[i], 0.0, 0.0)
+# Builds one row of characters from parallel arrays, so the same function
+# serves the hero cast and the mid-action cast.
+func _build_cast(xs: Array, kinds: Array, poses: Array) -> void:
+	for i in kinds.size():
+		var model = CharacterModelScript.build(kinds[i])
+		model.position = Vector3(xs[i], 0.0, 0.0)
 		model.set_time_of_day("day")
 		model.set_blade_glow(0.7)
 		model.update_pose(1.0 / 60.0, poses[i])
 		_root3d.add_child(model)
+		_cast_nodes.append(model)
+
+
+func _clear_cast() -> void:
+	for n in _cast_nodes:
+		_root3d.remove_child(n)
+		n.free()
+	_cast_nodes.clear()
