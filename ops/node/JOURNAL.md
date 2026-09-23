@@ -19,6 +19,14 @@ One entry per session, newest first, in the form did, verified, blocked, next, c
 
 **Commits.** `47c10e5` (uid file), merge `f5b6928` on `main`, pushed.
 
+### Same session, about 14:10 EDT: the DREAM brain
+
+- Joshua turned auto mode off so the cleanup could finish; the stray files are gone from the repo and `drift ground` read GREEN. The claude-obsidian plugin now works on the vault: its writes run in WSL, and the `folder-notes` Obsidian plugin's auto-create settings, which had made its first attempt roll back, are off (backup beside its `data.json`).
+- At his request, built `ops/node/brain/`: a zero-dependency MCP server (`dream-brain`, user scope, reports Connected) with recall, remember, session-end and boot tools, plus SessionStart and SessionEnd hooks. The start hook injects a short boot card (skill map including research, find-skills, skill-creator, game development, superpowers, Obsidian and ComfyUI; health; last sessions). Skills are armed by that card, not bulk-loaded, to protect his usage cap. The end hook records branch and commits in `DREAM-ONLINE/memory-graph/Session memory.md`.
+- `drift` now starts Obsidian before Claude, because MCP servers connect only at start. `MCP_TIMEOUT=90000` in user settings, so the ComfyUI MCP (started through npx) no longer times out; it reports Connected.
+- Verified: brain tests 8 of 8; game suite 301 of 301; installed copies hash-equal. Not verified yet: a real reboot. The next session opened by `DREAM-Drift-Logon` should show the boot card; if it does not, see the `dream-brain` skill.
+- Left for Joshua: the duplicate claude.ai connector "Cloudflare Developer Platform (2)" answers 410 and can be removed in claude.ai connector settings; the `definite` MCP from the data plugin points at a dead endpoint.
+
 ## 2026-09-22 about 01:00 EDT, Claude Sonnet 5, ninth session, opened with `drift`
 
 **Did.**

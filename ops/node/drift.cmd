@@ -69,7 +69,18 @@ goto :usage
 
 :default
 call :stackup
+call :obsidian
 goto :claude
+
+rem Obsidian serves the vault MCP on 27123; Claude connects MCP servers only
+rem at start, so Obsidian must be up first. Added 2026-09-23 (dream-brain).
+:obsidian
+tasklist /FI "IMAGENAME eq Obsidian.exe" 2>nul | find /I "Obsidian.exe" >nul && exit /b 0
+if not exist "C:\Program Files\Obsidian\Obsidian.exe" exit /b 0
+echo [drift] Starting Obsidian for the vault MCP, 15 seconds...
+start "" "C:\Program Files\Obsidian\Obsidian.exe"
+timeout /t 15 /nobreak >nul
+exit /b 0
 
 :house
 call :stackup
