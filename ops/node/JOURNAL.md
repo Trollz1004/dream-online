@@ -2,6 +2,22 @@
 
 One entry per session, newest first, in the form did, verified, blocked, next, commits. Written by the Claude judge lane for a reader with no memory of the session.
 
+## 2026-09-23 about 16:20 EDT, Claude Opus 5.5, session start with `/alienware-node`
+
+**Did.**
+- `drift ground` first read RED only because Obsidian was still starting (its process began the same second); a re-run a minute later was GREEN.
+- The dispatch pointed at spec 002's `tasks.md`, which does not exist; the spec has `spec.md` and `integration-card.md`. The integration card (demo director plus recording) had been worked by a Sonnet worker in `.claude/worktrees/agent-a8bbf6b1e69828ad5` that stopped without handing back: 3 commits not in `main` and 12 files uncommitted, plus a finished recording. `drift ground` does not look inside agent worktrees, so it could not see this.
+- Committed the stopped worker's changes on its own branch (`c5c6fbb`), branched `judge/demo-director` from it, merged into `main` with `--no-ff` (`6570bdd`), pushed.
+- Copied the recording to `game/godot/DreamSlice/demo/dream-demo.mp4` in the main checkout (ignored by git) and opened it on Joshua's screen.
+
+**Verified.** Headless suite 327 of 327 on the branch and again on `main` after the merge. The MP4 is 88.4 s, recorded at 12:49, after the last code edit at 12:44. Looked at nine frames (2, 6, 15, 25, 38, 46, 55, 70, 82 s): golden-hour ruins with the title caption, Mireth greeted, the Sentinel fight with a stored perfect dodge, the nightfall caption over the city, a crane shot, Mireth's night line recalling two perfect dodges, Dream Lunge and Nightveil Burst with the source shown as "world memory (Live NPC Lab)", the night fight, and the end card.
+
+**Flaws seen, not yet fixed.** From 24.0 to 25.5 s, right after the Dream Lunge, the whole frame washes out to pale orange (average brightness about 200 against about 100 around it); something bright sits in front of the camera for 1.5 s. A smaller spike at 20.5 s. Brightness holds at exactly 96.48 from 22.0 to 23.5 s, which may be a frozen hold. At 6 s the Mireth greeting caption and the "you spoke with her" panel were not on screen in that frame.
+
+**Next.** Ask Joshua what he thinks of the video, then a worker card: find and fix the lunge washout, re-record, re-check frames. Teach `dream-ground-truth.ps1` to report agent worktrees with unmerged commits or uncommitted files. Remove the six finished agent worktrees under `.claude/worktrees/` once the branch is confirmed merged.
+
+**Commits.** `c5c6fbb` worker changes saved; `6570bdd` merge to `main`, pushed; this journal in "ops(node): journal for the demo director merge".
+
 ## 2026-09-23 about 13:05 EDT, Claude Opus 5.5, session start with `/alienware-node`
 
 **Did.**

@@ -2,6 +2,8 @@
 
 Last updated: 2026-09-23
 
+**2026-09-23 about 16:20 EDT, Claude judge lane on Alienware.** The spec 002 integration card (the demo director and its recording) is merged to `main` as `6570bdd`, 327 of 327 headless checks. The 88-second recording is at `game/godot/DreamSlice/demo/dream-demo.mp4` (ignored by git; rebuild with `game/godot/Record-Demo.cmd`). Known flaw: a 1.5 s pale-orange washout right after the Dream Lunge at about 24 s. Spec 002 has no `tasks.md`; its work list is `integration-card.md`. Waiting on Joshua's view of the video.
+
 **2026-09-23 about 13:05 EDT, Claude judge lane on Alienware.** The spec 002 crowdfunding-demo work (`specs/002-crowdfunding-demo`: Mireth's memory link, the Day Dream pass, four character passes) was merged to `main` and pushed as `f5b6928`, 301 of 301 headless checks. The sections below still describe the 2026-09-22 state; read spec 002's `tasks.md` for what comes next.
 
 Operational state for asynchronous coordination between Fable and Codex. The master directive defines doctrine; this file defines what is happening now.
