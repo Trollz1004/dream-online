@@ -72,6 +72,14 @@ func phase() -> String:
 	return "recovery"
 
 
+# 0..1 through the burst's own timeline, for character_model.gd's pose
+# functions. 0.0 when idle or cooling.
+func progress() -> float:
+	if _t < 0.0:
+		return 0.0
+	return clampf(_t / total_length(), 0.0, 1.0)
+
+
 # Flat-distance check: height is ignored, since the shockwave is a ring
 # spreading across the ground rather than a sphere, the same way the swings
 # resolve on flat facing rather than a full 3D cone.

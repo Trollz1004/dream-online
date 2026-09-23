@@ -96,3 +96,12 @@ func phase() -> String:
 	if _t < STARTUP + ACTIVE:
 		return "striking"
 	return "recovering"
+
+
+# 0..1 through the swing's own timeline, for character_model.gd's pose
+# functions. 0.0 when idle, so a caller never has to branch on is_attacking()
+# first just to get a safe value.
+func progress() -> float:
+	if _t < 0.0:
+		return 0.0
+	return clampf(_t / total_length(), 0.0, 1.0)

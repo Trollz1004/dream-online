@@ -11,8 +11,14 @@ config/features=PackedStringArray("4.7", "Forward Plus")
 
 [display]
 
-window/size/viewport_width=1280
-window/size/viewport_height=720
+; 1920x1080: Godot's own Movie Maker mode (--write-movie) always renders at
+; the project's configured viewport size and ignores a --resolution flag on
+; the command line (documented behaviour, confirmed 2026-09-23 rendering
+; 1280x720 despite --resolution 1920x1080 for the crowdfunding demo's
+; recording); any launcher that wants a smaller interactive window already
+; passes its own --resolution (Open-DreamSlice.cmd: 1600x900).
+window/size/viewport_width=1920
+window/size/viewport_height=1080
 
 [physics]
 

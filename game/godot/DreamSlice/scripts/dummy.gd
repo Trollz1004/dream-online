@@ -1,11 +1,25 @@
 extends Node3D
 
-# The training dummy. It fires one telegraphed beam on a cycle, which is what
-# gives the dash something to be timed against. Directive section 43: the slice
-# is a player perfect-dodging a telegraphed signature beam.
+# The Hollow Sentinel (spec 002, specs/002-crowdfunding-demo/spec.md,
+# "The character"; replaces the plain training dummy of spec 001). It fires
+# one telegraphed beam on a cycle, which is what gives the dash, the guard
+# and Dream Lunge's own reach something to be timed against. Directive
+# section 43: the slice is a player reading and answering a telegraphed
+# signature beam.
 #
-# The wind-up is long and obvious on purpose. Reading it and dashing through the
-# beam is the whole lesson.
+# The body is scripts/character_model.gd, kind "sentinel". This script keeps
+# the beam/health rules character_model.gd knows nothing about, and drives
+# the model's pose and its eye colour once a day; the beam's own colour
+# (amber by day, violet by night, docs/gdd/08-day-dreams-night-dreams-world.md)
+# is read from the model's own day/night eye constants rather than
+# duplicated here, per the note at the bottom of SKILLS_WIRING.md: never
+# hard-code the sentinel's colour in this file.
+#
+# The wind-up is long and obvious on purpose. Reading it and dashing (or
+# guarding, or lunging past it) is the whole lesson.
+
+const CharacterModelScript := preload("res://scripts/character_model.gd")
+const Vfx := preload("res://scripts/vfx.gd")
 
 const CYCLE := 4.2
 const TELEGRAPH := 1.4
@@ -13,34 +27,35 @@ const ACTIVE := 0.30
 const BEAM_LENGTH := 26.0
 const BEAM_WIDTH := 2.2
 const DAMAGE := 18.0
+# Spec 002: "rises again after 4 s at full health" (spec 001's plain dummy
+# used 2.5 s; the Sentinel is a bigger beat in the crowdfunding demo and
+# gets a slower, more readable recovery).
+const DOWN_DURATION := 4.0
+const DISPLAY_NAME := "Hollow Sentinel"
+const ATTACK_NAME := "Focus Beam"
+const HEALTH_MAX := 120.0
+
+## Emitted once, the instant its health reaches zero. World memory records
+## sentinel_defeated from here; nothing else in this file knows about memory.
+signal defeated
 
 var player: Node3D
-
-const HEALTH_MAX := 120.0
-const ATTACK_NAME := "Focus Beam"
+var display_name := DISPLAY_NAME
 var health := HEALTH_MAX
+var time_of_day := "day"   # set by world.gd, alongside dream_env's own mode
+var model: Node3D = null
+
 var _down_for := 0.0
 var _flinch := 0.0
-
 var _t := 0.0
-var _beam: MeshInstance3D
-var _beam_material: StandardMaterial3D
-var _body_material: StandardMaterial3D
 var _aim := Vector3.FORWARD
 var _resolved := false
 
 
 func _ready() -> void:
-	var mesh := MeshInstance3D.new()
-	var body := CapsuleMesh.new()
-	body.radius = 0.6
-	body.height = 2.6
-	mesh.mesh = body
-	_body_material = StandardMaterial3D.new()
-	_body_material.albedo_color = Color(0.45, 0.42, 0.40)
-	mesh.material_override = _body_material
-	mesh.position = Vector3(0.0, 1.3, 0.0)
-	add_child(mesh)
+	model = CharacterModelScript.build(CharacterModelScript.KIND_SENTINEL)
+	model.set_time_of_day(time_of_day)
+	add_child(model)
 
 	var post := StaticBody3D.new()
 	var shape := CollisionShape3D.new()
@@ -52,18 +67,17 @@ func _ready() -> void:
 	post.add_child(shape)
 	add_child(post)
 
-	_beam = MeshInstance3D.new()
-	var beam_mesh := BoxMesh.new()
-	beam_mesh.size = Vector3(BEAM_WIDTH, 0.5, BEAM_LENGTH)
-	_beam.mesh = beam_mesh
-	_beam_material = StandardMaterial3D.new()
-	_beam_material.albedo_color = Color(1.0, 0.55, 0.15)
-	_beam_material.emission_enabled = true
-	_beam_material.emission = Color(1.0, 0.45, 0.10)
-	_beam_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	_beam.material_override = _beam_material
-	_beam.visible = false
-	add_child(_beam)
+
+func set_time_of_day(t: String) -> void:
+	time_of_day = t
+	if model != null:
+		model.set_time_of_day(t)
+
+
+# amber by day, violet by night -- reusing character_model.gd's own eye
+# colours (already public consts) rather than a second copy that could drift.
+func _beam_colour() -> Color:
+	return CharacterModelScript.S_EYE_NIGHT if time_of_day == "night" else CharacterModelScript.S_EYE_DAY
 
 
 func _process(delta: float) -> void:
@@ -71,14 +85,15 @@ func _process(delta: float) -> void:
 		return
 
 	_flinch = maxf(0.0, _flinch - delta)
+
 	if _down_for > 0.0:
-		# Knocked down: no wind-up, no beam, back on its feet shortly.
 		_down_for -= delta
-		_beam.visible = false
-		_body_material.albedo_color = Color(0.30, 0.30, 0.32)
+		if model != null:
+			model.update_pose(delta, {"action": "down", "progress": 1.0})
 		if _down_for <= 0.0:
 			health = HEALTH_MAX
 			_t = 0.0
+			_resolved = false
 		return
 
 	_t = fmod(_t + delta, CYCLE)
@@ -86,56 +101,56 @@ func _process(delta: float) -> void:
 	var active_start := CYCLE - ACTIVE
 
 	if _t < telegraph_start:
-		_idle()
+		_idle(delta)
 	elif _t < active_start:
-		_wind_up((_t - telegraph_start) / TELEGRAPH)
+		_wind_up(delta, (_t - telegraph_start) / TELEGRAPH)
 	else:
-		_fire()
+		_fire(delta)
 
 
-func _idle() -> void:
-	_beam.visible = false
-	_body_material.albedo_color = Color(0.80, 0.75, 0.40) if _flinch > 0.0 else Color(0.45, 0.42, 0.40)
+func _idle(delta: float) -> void:
 	_resolved = false
+	if model != null:
+		model.update_pose(delta, {"action": "hit" if _flinch > 0.0 else "", "progress": 0.2})
 
 
-func _wind_up(progress: float) -> void:
+func _eye_position() -> Vector3:
+	return global_position + Vector3(0.0, 2.15, 0.0)
+
+
+func _wind_up(delta: float, progress: float) -> void:
 	if progress < 0.05:
-		# Aim is locked at the start of the wind-up, so moving or dashing out of
-		# the line after it starts is a real answer, not luck.
+		# Aim is locked at the start of the wind-up, so moving or dashing out
+		# of the line after it starts is a real answer, not luck.
 		var to_player := player.global_position - global_position
 		to_player.y = 0.0
 		if to_player.length() > 0.01:
 			_aim = to_player.normalized()
-		_point_beam()
-	_beam.visible = true
-	_body_material.albedo_color = Color(0.45 + 0.5 * progress, 0.42 - 0.2 * progress, 0.40 - 0.2 * progress)
-	_beam_material.albedo_color = Color(1.0, 0.65, 0.20, 0.18 + 0.3 * progress)
-	var width: float = 0.25 + 0.75 * progress
-	_beam.scale = Vector3(width, 0.4, 1.0)
+	if model != null:
+		model.update_pose(delta, {"action": "cast_beam", "progress": progress})
+
+	# Redrawn every frame of the wind-up so the line visibly thickens as
+	# `progress` rises, per the note at the bottom of SKILLS_WIRING.md. No
+	# colour argument: the telegraph is a universal warning, the same amber
+	# regardless of which sentinel is casting it.
+	var eye := _eye_position()
+	Vfx.beam_telegraph(get_parent(), eye, eye + _aim * BEAM_LENGTH, progress)
 
 
-func _fire() -> void:
-	_beam.visible = true
-	_beam.scale = Vector3(1.0, 1.0, 1.0)
-	_beam_material.albedo_color = Color(1.0, 0.25, 0.15, 0.85)
-	_body_material.albedo_color = Color(0.95, 0.30, 0.25)
+func _fire(delta: float) -> void:
+	if model != null:
+		model.update_pose(delta, {"action": "cast_beam", "progress": 1.0})
 	if _resolved:
 		return
 	_resolved = true
+	var eye := _eye_position()
+	Vfx.beam_fire(get_parent(), eye, eye + _aim * BEAM_LENGTH, _beam_colour())
 	if _hits_player():
 		player.try_hit(DAMAGE, ATTACK_NAME)
 
 
-func _point_beam() -> void:
-	var yaw := atan2(_aim.x, _aim.z)
-	_beam.rotation = Vector3(0.0, yaw, 0.0)
-	# The height is added, never multiplied into the aim, or the beam flies away.
-	_beam.position = _aim * (BEAM_LENGTH * 0.5) + Vector3(0.0, 1.0, 0.0)
-
-
-# Plain geometry rather than a physics query, so the same test can run headless
-# and, later, on the server.
+# Plain geometry rather than a physics query, so the same test can run
+# headless and, later, on the server.
 func _hits_player() -> bool:
 	var to_player := player.global_position - global_position
 	to_player.y = 0.0
@@ -152,9 +167,40 @@ func take_hit(damage: float) -> void:
 	health = maxf(0.0, health - damage)
 	_flinch = 0.18
 	if health <= 0.0:
-		_down_for = 2.5
+		_down_for = DOWN_DURATION
 		_resolved = true
+		defeated.emit()
 
 
 func is_down() -> bool:
 	return _down_for > 0.0
+
+
+# _process returns immediately while player is null, so this fully pauses
+# the whole beam cycle -- "put it to sleep" (integration-card judge note,
+# 2026-09-23): a quiet beat like the night talk with Mireth needs the
+# Sentinel inert, not just out of frame. wake() always starts a fresh
+# cycle from idle, so the player gets the full wind-up to get into position
+# rather than resuming mid-telegraph from wherever sleep() froze it.
+func sleep() -> void:
+	player = null
+
+
+func wake(p: Node3D) -> void:
+	player = p
+	_t = 0.0
+	_resolved = false
+
+
+# Seconds until the beam actually fires: 0.0 once it already has (or while
+# down), so a caller can react to the telegraph rather than guess at its
+# own copy of the cycle's timing. Used by scripts/demo_director.gd to time
+# a dash so its invulnerable window lands on the fire moment -- the reward
+# for reading the telegraph, not a scripted coincidence.
+func time_until_fire() -> float:
+	if _down_for > 0.0:
+		return -1.0
+	var active_start := CYCLE - ACTIVE
+	if _t >= active_start:
+		return 0.0
+	return active_start - _t

@@ -9,6 +9,7 @@ const BIG := 30
 const HUGE := 54
 const SMALL := 22
 const HELP_SIZE := 17
+const CINE_SLOT_ORDER := ["Dash", "Swing", "Heavy", "Guard", "Lunge", "Burst"]
 
 var _box: VBoxContainer
 var _hint: Label
@@ -19,12 +20,25 @@ var _dash: Label
 var _swing: Label
 var _heavy: Label
 var _guard: Label
+var _lunge: Label
+var _burst: Label
 var _target: Label
 var _events: Label
 var _event: Label
 var _help: Label
 var _fps: Label
 var _last := {}
+var _cinematic := false
+
+# A slim bottom-centre bar for the recorded demo (integration-card judge
+# note, 2026-09-23): a thin health bar, a thin stamina bar, and the six
+# skill cooldown slots, nothing clipped, no debug text. Built once and kept
+# in sync by show_state() the same as the ordinary readout above; only its
+# visibility is toggled by set_cinematic().
+var _cine_root: Control
+var _cine_health: ProgressBar
+var _cine_stamina: ProgressBar
+var _cine_slots: Dictionary = {}
 
 
 func _ready() -> void:
@@ -55,6 +69,8 @@ func _ready() -> void:
 	_swing = _line(_box, BIG, Color(0.90, 0.95, 0.85))
 	_heavy = _line(_box, BIG, Color(0.95, 0.85, 0.95))
 	_guard = _line(_box, BIG, Color(0.80, 0.90, 1.0))
+	_lunge = _line(_box, BIG, Color(0.85, 0.80, 1.0))
+	_burst = _line(_box, BIG, Color(0.95, 0.80, 1.0))
 	_target = _line(_box, BIG, Color(1.0, 0.90, 0.80))
 	_events = _line(_box, SMALL, Color(0.80, 0.85, 0.95))
 	_fps = _line(_box, SMALL, Color(0.75, 0.95, 0.80))
@@ -90,8 +106,87 @@ func _ready() -> void:
 	_help.text = ("Move: W A S D.   Sprint: hold Shift with a direction.   Auto-sprint: double tap a direction.\n"
 		+ "Dash with invulnerability frames: hold Shift and a direction, then press F (or Q E R Z C, or a mouse button).\n"
 		+ "Light attack: left mouse button. Heavy attack: right mouse, slower and harder. Guard: Q alone, blocks most of a hit but opens you up right after.\n"
-		+ "The dummy winds up for 1.4 seconds, then fires. Dash through the beam while you are yellow to take nothing.")
+		+ "Dream Lunge: hold W and press F. Nightveil Burst: press R. Nightfall: press N.\n"
+		+ "The Sentinel winds up for 1.4 seconds, then fires. Dash through the beam while you are yellow to take nothing.")
 	_box.add_child(_help)
+
+	_build_cinematic_bar()
+
+
+# A thin health bar, a thin stamina bar, and the six skill cooldown slots,
+# anchored to the bottom centre of the viewport so it reads the same at any
+# resolution. Hidden until set_cinematic(true).
+func _build_cinematic_bar() -> void:
+	_cine_root = Control.new()
+	_cine_root.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	_cine_root.offset_top = -92.0
+	_cine_root.offset_bottom = -16.0
+	_cine_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_cine_root.visible = false
+	add_child(_cine_root)
+
+	var col := VBoxContainer.new()
+	col.set_anchors_preset(Control.PRESET_FULL_RECT)
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_theme_constant_override("separation", 8)
+	_cine_root.add_child(col)
+
+	var bars := HBoxContainer.new()
+	bars.add_theme_constant_override("separation", 16)
+	bars.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_child(bars)
+	_cine_health = _cine_bar(bars, Color(0.85, 0.35, 0.35))
+	_cine_stamina = _cine_bar(bars, Color(0.45, 0.68, 1.0))
+
+	var hotbar := HBoxContainer.new()
+	hotbar.add_theme_constant_override("separation", 12)
+	hotbar.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_child(hotbar)
+	for slot_name in CINE_SLOT_ORDER:
+		var slot := Label.new()
+		slot.text = slot_name
+		slot.add_theme_font_size_override("font_size", 17)
+		slot.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.9))
+		slot.add_theme_constant_override("outline_size", 5)
+		slot.custom_minimum_size = Vector2(96.0, 0.0)
+		slot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		hotbar.add_child(slot)
+		_cine_slots[slot_name] = slot
+
+
+func _cine_bar(parent: HBoxContainer, colour: Color) -> ProgressBar:
+	var bar := ProgressBar.new()
+	bar.custom_minimum_size = Vector2(240.0, 14.0)
+	bar.show_percentage = false
+	bar.min_value = 0.0
+	bar.max_value = 100.0
+	bar.value = 100.0
+	var fg := StyleBoxFlat.new()
+	fg.bg_color = colour
+	fg.set_corner_radius_all(5)
+	bar.add_theme_stylebox_override("fill", fg)
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(0.0, 0.0, 0.0, 0.55)
+	bg.set_corner_radius_all(5)
+	bar.add_theme_stylebox_override("background", bg)
+	parent.add_child(bar)
+	return bar
+
+
+func cinematic_root() -> Control:
+	return _cine_root
+
+
+func cinematic_health_bar() -> ProgressBar:
+	return _cine_health
+
+
+func cinematic_stamina_bar() -> ProgressBar:
+	return _cine_stamina
+
+
+func cinematic_slot(slot_name: String) -> Label:
+	return _cine_slots.get(slot_name)
 
 
 # The readout's own shape, so a test can prove no two lines can cover each other
@@ -101,7 +196,7 @@ func column() -> VBoxContainer:
 
 
 func readout_labels() -> Array:
-	return [_health, _stamina, _dash, _swing, _heavy, _guard, _target, _events, _fps]
+	return [_health, _stamina, _dash, _swing, _heavy, _guard, _lunge, _burst, _target, _events, _fps]
 
 
 func event_label() -> Label:
@@ -114,6 +209,14 @@ func heavy_label() -> Label:
 
 func guard_label() -> Label:
 	return _guard
+
+
+func lunge_label() -> Label:
+	return _lunge
+
+
+func burst_label() -> Label:
+	return _burst
 
 
 func help_label() -> Label:
@@ -138,15 +241,33 @@ func _line(box: VBoxContainer, size: int, colour: Color) -> Label:
 	return label
 
 
+# Swaps the whole debug readout column for the slim bottom-centre bar
+# (integration-card judge note, 2026-09-23: the debug column showed on
+# screen, clipped, in the recorded demo). The ordinary readout keeps
+# updating underneath -- show_state() below never stops painting its
+# labels -- so toggling this back off mid-session restores it exactly as
+# it was, and a test can still read the ordinary labels' text either way.
+func set_cinematic(enabled: bool) -> void:
+	_cinematic = enabled
+	_box.visible = not enabled
+	if _cine_root != null:
+		_cine_root.visible = enabled
+
+
+func is_cinematic() -> bool:
+	return _cinematic
+
+
 func show_state(s: Dictionary) -> void:
 	# Only the visibility is touched, never the text or a theme override, so this
 	# costs nothing on the frames where the answer has not changed.
-	_hint.visible = not bool(s.get("mouse_captured", true))
+	if not _cinematic:
+		_hint.visible = not bool(s.get("mouse_captured", true))
 
-	var nearby_npc_name: String = s.get("nearby_npc_name", "")
-	_interact.visible = nearby_npc_name != ""
-	if _interact.visible:
-		_interact.text = "Press E to talk to %s." % nearby_npc_name
+		var nearby_npc_name: String = s.get("nearby_npc_name", "")
+		_interact.visible = nearby_npc_name != ""
+		if _interact.visible:
+			_interact.text = "Press E to talk to %s." % nearby_npc_name
 
 	_paint(_health, "Health  %d / %d" % [int(s["health"]), int(s["health_max"])], Color(1.0, 0.85, 0.85))
 	_paint(_stamina, "Stamina  %d / %d%s" % [
@@ -199,9 +320,39 @@ func show_state(s: Dictionary) -> void:
 		_:
 			_paint(_guard, "Guard  READY", Color(0.7, 1.0, 0.75))
 
+	if s.has("lunge"):
+		var lunge = s["lunge"]
+		match lunge.phase():
+			"startup":
+				_paint(_lunge, "Dream Lunge  starting", Color(0.85, 0.75, 1.0))
+			"travel":
+				_paint(_lunge, "Dream Lunge  TRAVELLING", Color(0.75, 0.60, 1.0))
+			"recovery":
+				_paint(_lunge, "Dream Lunge  recovering, wide open", Color(1.0, 0.5, 0.55))
+			"cooling":
+				_paint(_lunge, "Dream Lunge  cooling down  %.1fs" % lunge.cooldown_left(), Color(0.8, 0.8, 0.85))
+			_:
+				_paint(_lunge, "Dream Lunge  READY", Color(0.7, 1.0, 0.75))
+
+	if s.has("burst"):
+		var burst = s["burst"]
+		match burst.phase():
+			"windup":
+				_paint(_burst, "Nightveil Burst  winding up", Color(0.95, 0.75, 1.0))
+			"burst":
+				_paint(_burst, "Nightveil Burst  SHOCKWAVE", Color(0.85, 0.55, 1.0))
+			"recovery":
+				_paint(_burst, "Nightveil Burst  recovering, wide open", Color(1.0, 0.5, 0.55))
+			"cooling":
+				_paint(_burst, "Nightveil Burst  cooling down  %.1fs" % burst.cooldown_left(), Color(0.8, 0.8, 0.85))
+			_:
+				_paint(_burst, "Nightveil Burst  READY", Color(0.7, 1.0, 0.75))
+
 	if s["target_health_max"] > 0.0:
 		var down: bool = s["target_health"] <= 0.0
-		_paint(_target, "Dummy  %d / %d%s" % [int(s["target_health"]), int(s["target_health_max"]),
+		var target_name: String = s.get("target_name", "")
+		_paint(_target, "%s  %d / %d%s" % [target_name if target_name != "" else "Target",
+			int(s["target_health"]), int(s["target_health_max"]),
 			"   DOWN" if down else ""], Color(1.0, 0.75, 0.70) if down else Color(1.0, 0.90, 0.80))
 
 	_paint(_events, "Perfect dodges recorded to the world event log: %d" % int(s["events_written"]),
@@ -225,6 +376,38 @@ func show_state(s: Dictionary) -> void:
 		_event.add_theme_color_override("font_color", colour)
 	else:
 		_event.text = ""
+
+	if _cine_health != null:
+		_cine_health.value = clampf(float(s["health"]) / maxf(1.0, float(s["health_max"])) * 100.0, 0.0, 100.0)
+		_cine_stamina.value = clampf(float(s["stamina"]) / maxf(1.0, float(s["stamina_max"])) * 100.0, 0.0, 100.0)
+		_update_cine_slot("Dash", dash)
+		_update_cine_slot("Swing", s["attack"])
+		_update_cine_slot("Heavy", s["heavy"])
+		_update_cine_slot("Guard", guard)
+		if s.has("lunge"):
+			_update_cine_slot("Lunge", s["lunge"])
+		if s.has("burst"):
+			_update_cine_slot("Burst", s["burst"])
+
+
+# One colour rule for every skill's cooldown slot: bright while it is
+# actively doing something, dim grey while cooling, green once ready again.
+# Each state script exposes a different "is busy" query (is_dashing(),
+# is_attacking(), ...), so this reads phase() instead, the one name every
+# one of them shares.
+func _update_cine_slot(slot_name: String, state) -> void:
+	var label: Label = _cine_slots.get(slot_name)
+	if label == null:
+		return
+	var phase: String = state.phase()
+	var colour: Color
+	if phase == "ready":
+		colour = Color(0.65, 1.0, 0.70)
+	elif phase == "cooling":
+		colour = Color(0.55, 0.55, 0.62)
+	else:
+		colour = Color(1.0, 0.85, 0.35)
+	label.add_theme_color_override("font_color", colour)
 
 
 # Named _paint, not _set: Object._set is a Godot virtual and shadowing it

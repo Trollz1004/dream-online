@@ -21,6 +21,8 @@ func run(r) -> void:
 	_test_the_screen_prompts_to_talk_when_a_npc_is_near()
 	_test_the_readout_reports_the_heavy_swing()
 	_test_the_readout_reports_the_guard()
+	_test_the_readout_reports_lunge_and_burst()
+	_test_cinematic_mode_trims_the_readout()
 
 
 func check(label: String, condition: bool) -> void:
@@ -39,6 +41,8 @@ func _state(event: String, event_age: float, mouse_captured := true, nearby_npc_
 	var AttackState := load("res://scripts/attack_state.gd")
 	var HeavyAttackState := load("res://scripts/heavy_attack_state.gd")
 	var GuardState := load("res://scripts/guard_state.gd")
+	var LungeState := load("res://scripts/lunge_state.gd")
+	var BurstState := load("res://scripts/burst_state.gd")
 	return {
 		"health": 82.0, "health_max": 100.0,
 		"stamina": 100.0, "stamina_max": 100.0,
@@ -47,7 +51,10 @@ func _state(event: String, event_age: float, mouse_captured := true, nearby_npc_
 		"attack": AttackState.new(),
 		"heavy": HeavyAttackState.new(),
 		"guard": GuardState.new(),
+		"lunge": LungeState.new(),
+		"burst": BurstState.new(),
 		"target_health": 120.0, "target_health_max": 120.0,
+		"target_name": "Hollow Sentinel",
 		"events_written": 0,
 		"event": event, "event_age": event_age,
 		"mouse_captured": mouse_captured,
@@ -166,6 +173,51 @@ func _test_the_readout_reports_the_guard() -> void:
 
 	hud.show_state(_state("", 9.0))
 	check("a ready guard reads ready", hud.guard_label().text.to_lower().contains("ready"))
+	hud.free()
+
+
+# Dream Lunge and Nightveil Burst (spec 002) had no readout of their own
+# until 2026-09-23, the same gap the dash, the light swing, the heavy swing
+# and the guard already had closed.
+func _test_the_readout_reports_lunge_and_burst() -> void:
+	print("readout content: lunge and burst")
+	var hud = _hud()
+	check("the lunge line is in the column", hud.lunge_label().get_parent() == hud.column())
+	check("the burst line is in the column", hud.burst_label().get_parent() == hud.column())
+
+	hud.show_state(_state("", 9.0))
+	check("a ready lunge reads ready", hud.lunge_label().text.to_lower().contains("ready"))
+	check("a ready burst reads ready", hud.burst_label().text.to_lower().contains("ready"))
+	hud.free()
+
+
+# set_cinematic(true) is the demo director's own readout (integration-card
+# judge note, 2026-09-23: the debug column was on screen, clipped, in the
+# recorded demo). The whole ordinary column -- help text, hotbar labels,
+# everything -- goes away, replaced by a slim bottom-centre bar: a thin
+# health bar, a thin stamina bar, and the six skill cooldown slots.
+func _test_cinematic_mode_trims_the_readout() -> void:
+	print("cinematic mode swaps the debug column for the slim bar")
+	var hud = _hud()
+	hud.show_state(_state("", 9.0))
+	check("the slim bar starts hidden", not hud.cinematic_root().visible)
+
+	hud.set_cinematic(true)
+	check("cinematic mode reports itself", hud.is_cinematic())
+	check("cinematic mode hides the whole debug column", not hud.column().visible)
+	check("cinematic mode shows the slim bar", hud.cinematic_root().visible)
+
+	hud.show_state(_state("", 9.0))
+	check("the slim bar's health bar reads the given health",
+		absf(hud.cinematic_health_bar().value - 82.0) < 0.01)
+	check("the slim bar's stamina bar reads full stamina",
+		absf(hud.cinematic_stamina_bar().value - 100.0) < 0.01)
+	for slot_name in ["Dash", "Swing", "Heavy", "Guard", "Lunge", "Burst"]:
+		check("the slim bar has a %s slot" % slot_name, hud.cinematic_slot(slot_name) != null)
+
+	hud.set_cinematic(false)
+	check("turning cinematic mode back off restores the debug column", hud.column().visible)
+	check("turning cinematic mode back off hides the slim bar", not hud.cinematic_root().visible)
 	hud.free()
 
 

@@ -60,3 +60,11 @@ func phase() -> String:
 	if _t < STARTUP + INVULNERABLE:
 		return "invulnerable"
 	return "recovery"
+
+
+# 0..1 through the dash's own timeline, for character_model.gd's pose
+# functions. 0.0 when idle or cooling.
+func progress() -> float:
+	if _t < 0.0:
+		return 0.0
+	return clampf(_t / total_length(), 0.0, 1.0)
