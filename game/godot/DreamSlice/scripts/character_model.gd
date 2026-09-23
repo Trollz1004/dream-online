@@ -54,7 +54,7 @@ const DW_MANTLE := Color(0.38, 0.22, 0.60)
 const DW_THREAD := Color(0.62, 0.40, 0.94)
 const DW_LEATHER := Color(0.22, 0.14, 0.09)
 const DW_LANTERN := Color(1.0, 0.62, 0.22)
-const DW_SKIN := Color(0.80, 0.63, 0.52)
+const DW_SKIN := Color(0.83, 0.60, 0.51)
 const DW_HAIR := Color(0.10, 0.09, 0.08)
 const DW_CIRCLET := Color(0.74, 0.74, 0.82)
 const DW_STEEL := Color(0.72, 0.74, 0.78)
@@ -64,7 +64,7 @@ const DW_FULLER := Color(0.58, 0.30, 0.97)
 const K_ROBE := Color(0.57, 0.41, 0.17)
 const K_TRIM := Color(0.42, 0.20, 0.10)
 const K_HAIR := Color(0.74, 0.73, 0.70)
-const K_SKIN := Color(0.75, 0.60, 0.51)
+const K_SKIN := Color(0.78, 0.57, 0.50)
 const K_STAFF := Color(0.27, 0.18, 0.11)
 const K_LANTERN := Color(1.0, 0.72, 0.34)
 
@@ -512,6 +512,38 @@ func _lathe_mesh(profile: Array, radial_segments: int = 14, cap_bottom: bool = t
 	return st.commit()
 
 
+# An open arc of a solid of revolution — the same Vector3(y, radius_x,
+# radius_z) profile as _lathe_mesh, but swept only from angle_start to
+# angle_end (radians; 0 = local +X, increasing toward +Z) instead of a
+# full circle. This is a real 3D hood or cowl that wraps around the head
+# and is genuinely open at the face, not a flat panel standing in for one.
+func _partial_lathe_mesh(profile: Array, angle_start: float, angle_end: float,
+		segments: int = 10) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var rings: Array = []
+	for p in profile:
+		var y: float = p.x
+		var rx: float = p.y
+		var rz: float = p.z
+		var ring: Array = []
+		for s in range(segments + 1):
+			var a: float = lerp(angle_start, angle_end, float(s) / float(segments))
+			ring.append(Vector3(cos(a) * rx, y, sin(a) * rz))
+		rings.append(ring)
+	var rising: bool = profile[profile.size() - 1].x >= profile[0].x
+	for i in range(rings.size() - 1):
+		var a: Array = rings[i]
+		var b: Array = rings[i + 1]
+		for s in range(segments):
+			if rising:
+				_st_quad(st, a[s], a[s + 1], b[s + 1], b[s])
+			else:
+				_st_quad(st, a[s + 1], a[s], b[s], b[s + 1])
+	st.generate_normals()
+	return st.commit()
+
+
 # A tapered limb segment, near radius to far radius through a middle
 # waypoint, with enough radial segments that it reads as round. Both ends
 # are left open: a joint sphere (added separately, at the pivot) or the
@@ -692,8 +724,10 @@ func _build_humanoid_rig(hip_y: float, thigh_len: float, shin_len: float,
 	_shin_r = _pivot(_thigh_r, "shin_r", Vector3(0.0, -thigh_len, 0.0))
 	_foot_r = _pivot(_shin_r, "foot_r", Vector3(0.0, -shin_len, 0.0))
 
-	_coat_l = _pivot(_hips, "coat_l", Vector3(-hip_half_w * 1.15, -0.06, -0.09))
-	_coat_r = _pivot(_hips, "coat_r", Vector3(hip_half_w * 1.15, -0.06, -0.09))
+	# +Z is the character's own back (it faces -Z), so the coat tails hang
+	# from the waist at the back and sides, not out in front of the legs.
+	_coat_l = _pivot(_hips, "coat_l", Vector3(-hip_half_w * 1.05, -0.02, 0.08))
+	_coat_r = _pivot(_hips, "coat_r", Vector3(hip_half_w * 1.05, -0.02, 0.08))
 
 
 # ---------------------------------------------------------------------------
@@ -725,6 +759,8 @@ func _build_dreamwalker() -> void:
 	var hair_mat := _toon_mat(DW_HAIR, WARM_TINT, COOL_TINT, 0.55, 0.0, 0.18)
 	var pauldron_mat := _toon_mat(DW_PAULDRON, Color(1.0, 0.97, 0.85), Color(0.35, 0.30, 0.20),
 		0.3, 0.85, 0.55)
+	var pauldron_rim_mat := _toon_mat(DW_PAULDRON * Color(0.62, 0.62, 0.62, 1.0),
+		Color(0.85, 0.78, 0.55), Color(0.22, 0.18, 0.11), 0.35, 0.8, 0.45)
 	var circlet_mat := _toon_mat(DW_CIRCLET, Color(1.0, 1.0, 1.0), Color(0.4, 0.4, 0.5), 0.25, 0.7, 0.5)
 	var mantle_mat := _toon_mat(DW_MANTLE, Color(0.85, 0.65, 1.0), Color(0.22, 0.15, 0.40), 0.7, 0.0, 0.4)
 	var steel_mat := _toon_mat(DW_STEEL, Color(1.0, 1.0, 1.0), Color(0.3, 0.32, 0.4), 0.25, 0.9, 0.6)
@@ -754,10 +790,10 @@ func _build_dreamwalker() -> void:
 	# closing to a pointed hem at the knee, split at the small of the back.
 	var tail_len := DW_HIP_Y - DW_THIGH - 0.02
 	var tail_line := [
-		Vector3(0.0, 0.05, -0.02), Vector3(0.0, -tail_len * 0.30, -0.12),
-		Vector3(0.0, -tail_len * 0.70, -0.17), Vector3(0.0, -tail_len, -0.11),
+		Vector3(0.0, 0.03, 0.0), Vector3(0.0, -tail_len * 0.30, 0.05),
+		Vector3(0.0, -tail_len * 0.70, 0.08), Vector3(0.0, -tail_len, 0.04),
 	]
-	var tail_widths := [0.125, 0.145, 0.10, 0.015]
+	var tail_widths := [0.11, 0.13, 0.095, 0.015]
 	var tail_mesh := _thick_ribbon_mesh(tail_line, tail_widths, 0.03, true)
 	_mi(_coat_l, tail_mesh, coat_trim_mat, Vector3.ZERO)
 	_mi(_coat_r, tail_mesh, coat_trim_mat, Vector3.ZERO)
@@ -767,19 +803,19 @@ func _build_dreamwalker() -> void:
 	_mi(_hips, _sph(0.035, 0.85), lantern_mat, Vector3(0.13, -0.08, 0.05))
 	_mi(_hips, _cyl(0.006, 0.006, 0.05, 6), leather_mat, Vector3(0.13, -0.03, 0.05))
 
-	# Mantle: fastened at the throat, narrow there, then it drapes over the
-	# shoulders and trails behind — not a front-filling vest, so it starts
-	# well back of the collar line and only widens once it is past it.
+	# Mantle: a scarf-like wrap around the neck and shoulders (a torus, not
+	# a flat panel on the chest), with a single tail falling down the back.
+	_mi(_neck, _ring(0.05, 0.14), mantle_mat, Vector3(0.0, -0.015, 0.01), Vector3(75.0, 0.0, 0.0))
 	var mantle_line := [
-		Vector3(0.0, 0.12, 0.07), Vector3(0.0, -0.03, 0.13),
-		Vector3(0.0, -0.20, 0.18), Vector3(0.0, -0.34, 0.20),
+		Vector3(0.0, 0.02, 0.11), Vector3(0.0, -0.15, 0.16),
+		Vector3(0.0, -0.30, 0.19), Vector3(0.0, -0.42, 0.15),
 	]
-	var mantle_widths := [0.18, 0.40, 0.36, 0.28]
-	_mi(_chest, _thick_ribbon_mesh(mantle_line, mantle_widths, 0.02, false), mantle_mat,
-		Vector3(0.0, 0.06, 0.02))
-	var thread_line := [Vector3(0.0, -0.315, 0.16), Vector3(0.0, -0.335, 0.17)]
-	_mi(_chest, _thick_ribbon_mesh(thread_line, [0.28, 0.25], 0.006, false), thread_mat,
-		Vector3(0.0, 0.06, 0.02))
+	var mantle_widths := [0.15, 0.19, 0.15, 0.08]
+	_mi(_chest, _thick_ribbon_mesh(mantle_line, mantle_widths, 0.02, true), mantle_mat,
+		Vector3(0.0, 0.06, 0.05))
+	var thread_line := [Vector3(0.0, -0.38, 0.16), Vector3(0.0, -0.41, 0.145)]
+	_mi(_chest, _thick_ribbon_mesh(thread_line, [0.13, 0.06], 0.006, false), thread_mat,
+		Vector3(0.0, 0.06, 0.05))
 
 	# Head: an egg-shaped lathe, softly modelled brow and nose, small dark
 	# eyes with a highlight, and ears — a face, not a box with stickers.
@@ -789,41 +825,46 @@ func _build_dreamwalker() -> void:
 		Vector3(0.10, 0.075, 0.08), Vector3(0.145, 0.03, 0.035),
 	]
 	_mi(_head, _lathe_mesh(head_profile, 14, true, true), skin_mat, Vector3.ZERO)
-	# Brow ridge: a smooth horizontal pill across the eye line.
-	var brow := _mi(_head, _cap(0.017, 0.125), skin_mat, Vector3(0.0, 0.025, -0.095))
+	# Brow: a thin, subtle line, not a thick bar.
+	var brow := _mi(_head, _cap(0.008, 0.105), skin_mat, Vector3(0.0, 0.022, -0.094))
 	brow.rotation_degrees = Vector3(0.0, 0.0, 90.0)
-	# Nose: a small soft bridge and tip.
-	_mi(_head, _cyl(0.011, 0.019, 0.035, 8), skin_mat, Vector3(0.0, -0.005, -0.108), Vector3(78.0, 0.0, 0.0))
-	_mi(_head, _sph(0.016, 0.85), skin_mat, Vector3(0.0, -0.028, -0.122))
-	# Eyes: dark with a tiny bright highlight, and small ears.
+	# Nose: small and straight, not a bulb.
+	_mi(_head, _cyl(0.007, 0.011, 0.028, 8), skin_mat, Vector3(0.0, -0.002, -0.100), Vector3(80.0, 0.0, 0.0))
+	_mi(_head, _sph(0.009, 0.8), skin_mat, Vector3(0.0, -0.020, -0.108))
+	# Eyes: small dark almonds set slightly into the skull, a tiny
+	# highlight, and small ears.
 	for side in [-1.0, 1.0]:
-		_mi(_head, _sph(0.013, 0.75), eye_dark_mat, Vector3(0.034 * side, 0.018, -0.098))
-		_mi(_head, _sph(0.004), eye_glint_mat, Vector3(0.034 * side + 0.005, 0.024, -0.104))
-		_mi(_head, _sph(0.018, 0.55), skin_mat, Vector3(0.10 * side, -0.01, 0.0))
-	_mi(_head, _swept_tube_mesh(0.10, 0.05, 0.012, -25.0, 8, 4), hair_mat,
-		Vector3(0.0, 0.075, 0.05), Vector3(180.0, 0.0, 0.0))
+		var eye := _mi(_head, _sph(0.012), eye_dark_mat, Vector3(0.032 * side, 0.014, -0.086))
+		eye.scale = Vector3(1.7, 0.55, 0.75)
+		var glint := _mi(_head, _sph(0.003), eye_glint_mat, Vector3(0.032 * side + 0.004, 0.018, -0.092))
+		_mi(_head, _sph(0.016, 0.5), skin_mat, Vector3(0.098 * side, -0.012, 0.0))
+	# Hair: a short, swept-back cut lying along the skull, not a spiky
+	# crown — a flat cap of coverage over the top and back (so it never
+	# reads as bald) plus a few clumps swept toward the back and down for
+	# texture, none of it pointing straight up.
+	_mi(_head, _sph(DW_HEAD_R * 0.97, 0.62), hair_mat, Vector3(0.0, 0.028, 0.025))
+	_mi(_head, _swept_tube_mesh(0.12, 0.06, 0.018, -15.0, 8, 5), hair_mat,
+		Vector3(0.0, 0.085, -0.01), Vector3(165.0, 0.0, 0.0))
 	var hair_clumps := [
-		{"pos": Vector3(0.0, 0.10, 0.02), "rot": Vector3(-165.0, 0.0, 0.0), "len": 0.11},
-		{"pos": Vector3(0.05, 0.09, -0.01), "rot": Vector3(-150.0, 20.0, 10.0), "len": 0.095},
-		{"pos": Vector3(-0.05, 0.09, -0.01), "rot": Vector3(-150.0, -20.0, -10.0), "len": 0.095},
-		{"pos": Vector3(0.075, 0.05, 0.04), "rot": Vector3(-140.0, 45.0, 0.0), "len": 0.08},
-		{"pos": Vector3(-0.075, 0.05, 0.04), "rot": Vector3(-140.0, -45.0, 0.0), "len": 0.08},
-		{"pos": Vector3(0.0, 0.06, 0.10), "rot": Vector3(-100.0, 0.0, 0.0), "len": 0.075},
-		{"pos": Vector3(0.0, 0.115, -0.055), "rot": Vector3(30.0, 0.0, 0.0), "len": 0.055},
-		{"pos": Vector3(0.035, 0.108, -0.05), "rot": Vector3(30.0, 25.0, 0.0), "len": 0.05},
-		{"pos": Vector3(-0.035, 0.108, -0.05), "rot": Vector3(30.0, -25.0, 0.0), "len": 0.05},
+		{"pos": Vector3(0.05, 0.08, 0.0), "rot": Vector3(-115.0, 20.0, 5.0), "len": 0.095},
+		{"pos": Vector3(-0.05, 0.08, 0.0), "rot": Vector3(-115.0, -20.0, -5.0), "len": 0.095},
+		{"pos": Vector3(0.035, 0.06, 0.08), "rot": Vector3(-90.0, 15.0, 0.0), "len": 0.08},
+		{"pos": Vector3(-0.035, 0.06, 0.08), "rot": Vector3(-90.0, -15.0, 0.0), "len": 0.08},
 	]
 	for c in hair_clumps:
-		_mi(_head, _swept_tube_mesh(c["len"], 0.028, 0.006, -20.0, 7, 4), hair_mat, c["pos"], c["rot"])
-	_mi(_head, _ring(0.006, DW_HEAD_R * 0.98), circlet_mat, Vector3(0.0, 0.05, 0.0), Vector3(90.0, 0.0, 0.0))
+		_mi(_head, _swept_tube_mesh(c["len"], 0.026, 0.006, -15.0, 7, 4), hair_mat, c["pos"], c["rot"])
+	# Circlet: a thin band at the forehead, not a crown at the crown.
+	_mi(_head, _ring(0.005, 0.116), circlet_mat, Vector3(0.0, -0.005, 0.0), Vector3(90.0, 0.0, 0.0))
 
-	# The one asymmetric pauldron: a layered dome of three overlapping
-	# bronze-gold plates, each rimmed with an engraved line.
-	_mi(_shoulder_l, _sph(0.155, 0.58), pauldron_mat, Vector3(0.0, 0.01, 0.0))
-	_mi(_shoulder_l, _ring(0.009, 0.15), pauldron_mat, Vector3(0.0, -0.03, 0.0), Vector3(90.0, 0.0, 0.0))
-	_mi(_shoulder_l, _sph(0.115, 0.58), pauldron_mat, Vector3(0.0, 0.05, 0.035))
-	_mi(_shoulder_l, _ring(0.007, 0.112), pauldron_mat, Vector3(0.0, 0.02, 0.035), Vector3(90.0, 0.0, 0.0))
-	_mi(_shoulder_l, _sph(0.075, 0.58), pauldron_mat, Vector3(0.02, 0.09, 0.06))
+	# The one asymmetric pauldron: a flat, layered shell of three curved
+	# plates stepping down the shoulder, each with a slightly darker rim —
+	# not a round dome.
+	_mi(_shoulder_l, _sph(0.16, 0.28), pauldron_mat, Vector3(0.0, 0.045, -0.015))
+	_mi(_shoulder_l, _ring(0.01, 0.155), pauldron_rim_mat, Vector3(0.0, 0.005, -0.015), Vector3(90.0, 0.0, 0.0))
+	_mi(_shoulder_l, _sph(0.125, 0.28), pauldron_mat, Vector3(0.008, 0.015, 0.035))
+	_mi(_shoulder_l, _ring(0.008, 0.12), pauldron_rim_mat, Vector3(0.008, -0.015, 0.035), Vector3(90.0, 0.0, 0.0))
+	_mi(_shoulder_l, _sph(0.09, 0.28), pauldron_mat, Vector3(0.016, -0.01, 0.07))
+	_mi(_shoulder_l, _ring(0.006, 0.086), pauldron_rim_mat, Vector3(0.016, -0.033, 0.07), Vector3(90.0, 0.0, 0.0))
 
 	# Shoulder balls, tapered limbs and rounded joints — no gaps at the
 	# elbows, no boxes for arms.
@@ -834,7 +875,7 @@ func _build_dreamwalker() -> void:
 		var up: Node3D = side["up"]
 		var fo: Node3D = side["fo"]
 		var ha: Node3D = side["ha"]
-		_joint(sh, 0.065, skin_mat)
+		_joint(sh, 0.065, coat_mat)
 		_mi(up, _limb_mesh(DW_UPPER_ARM, 0.062, 0.058, 0.05, 16), coat_mat, Vector3.ZERO)
 		_joint(fo, 0.05, leather_mat)
 		_mi(fo, _limb_mesh(DW_FOREARM, 0.05, 0.047, 0.038, 16), leather_mat, Vector3.ZERO)
@@ -942,14 +983,15 @@ func _build_keeper() -> void:
 	var hem_line := [Vector3(0.0, 0.02, 0.02), Vector3(0.0, -skirt_h * 0.7, 0.20), Vector3(0.0, -skirt_h, 0.27)]
 	_mi(_hips, _thick_ribbon_mesh(hem_line, [0.22, 0.27, 0.30], 0.016, false), trim_mat, Vector3(0.0, -0.02, -0.02))
 
-	# Hood: a rounded, soft-pointed shape framing the face, with real
-	# thickness so it reads from the side and the back, not just face-on.
-	var hood_line := [
-		Vector3(0.0, 0.09, 0.09), Vector3(0.0, 0.15, 0.02),
-		Vector3(0.0, 0.18, -0.09), Vector3(0.0, 0.09, -0.18), Vector3(0.0, -0.10, -0.14),
+	# Hood: a rounded cowl that actually wraps around the head — a partial
+	# solid of revolution, open across a 120-degree arc at the face — not a
+	# flat panel standing in for one.
+	var hood_profile := [
+		Vector3(-0.17, 0.155, 0.155), Vector3(-0.05, 0.15, 0.15),
+		Vector3(0.07, 0.135, 0.135), Vector3(0.15, 0.075, 0.075),
 	]
-	var hood_widths := [0.24, 0.30, 0.30, 0.24, 0.19]
-	_mi(_head, _thick_ribbon_mesh(hood_line, hood_widths, 0.018, false), trim_mat, Vector3.ZERO)
+	_mi(_head, _partial_lathe_mesh(hood_profile, deg_to_rad(330.0), deg_to_rad(570.0), 14),
+		trim_mat, Vector3.ZERO)
 
 	# Face: an egg-shaped lathe like the dreamwalker's, older and framed by
 	# the hood rather than hair.
@@ -959,13 +1001,14 @@ func _build_keeper() -> void:
 		Vector3(0.09, 0.06, 0.065), Vector3(0.12, 0.025, 0.03),
 	]
 	_mi(_head, _lathe_mesh(head_profile, 14, true, true), skin_mat, Vector3.ZERO)
-	var brow := _mi(_head, _cap(0.015, 0.105), skin_mat, Vector3(0.0, 0.018, -0.082))
+	var brow := _mi(_head, _cap(0.007, 0.09), skin_mat, Vector3(0.0, 0.016, -0.080))
 	brow.rotation_degrees = Vector3(0.0, 0.0, 90.0)
-	_mi(_head, _cyl(0.01, 0.017, 0.03, 8), skin_mat, Vector3(0.0, -0.006, -0.092), Vector3(78.0, 0.0, 0.0))
-	_mi(_head, _sph(0.014, 0.85), skin_mat, Vector3(0.0, -0.026, -0.104))
+	_mi(_head, _cyl(0.006, 0.009, 0.024, 8), skin_mat, Vector3(0.0, -0.004, -0.086), Vector3(80.0, 0.0, 0.0))
+	_mi(_head, _sph(0.008, 0.8), skin_mat, Vector3(0.0, -0.018, -0.092))
 	for side in [-1.0, 1.0]:
-		_mi(_head, _sph(0.011, 0.75), eye_dark_mat, Vector3(0.028 * side, 0.014, -0.084))
-		_mi(_head, _sph(0.017, 0.55), skin_mat, Vector3(0.085 * side, -0.01, 0.0))
+		var eye := _mi(_head, _sph(0.010), eye_dark_mat, Vector3(0.026 * side, 0.012, -0.073))
+		eye.scale = Vector3(1.6, 0.55, 0.75)
+		_mi(_head, _sph(0.015, 0.5), skin_mat, Vector3(0.078 * side, -0.01, 0.0))
 
 	# A grey braid, swept from the back of the head over one shoulder and
 	# down the front of the chest.
