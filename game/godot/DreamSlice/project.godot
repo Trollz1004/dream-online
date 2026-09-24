@@ -26,4 +26,10 @@ window/size/viewport_height=1080
 
 [rendering]
 
-anti_aliasing/quality/msaa_3d=0
+; 2x MSAA as the interactive baseline (both --demo and hand-play): a light,
+; always-safe edge-quality bump on the RX 6800 at 1080p, cheap enough to stay
+; on for the playable slice. The genuinely expensive anti-aliasing tier (4x
+; MSAA plus TAA) is reserved for the --demo recording path (spec 003 lever 3)
+; and is set at runtime in scripts/demo_director.gd's own _apply_demo_quality,
+; never here, so it never taxes the interactive frame budget.
+anti_aliasing/quality/msaa_3d=1

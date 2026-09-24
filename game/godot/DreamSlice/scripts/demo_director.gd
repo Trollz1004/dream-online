@@ -48,6 +48,7 @@ func _ready() -> void:
 		return
 	_build_rig_camera()
 	_build_captions()
+	_apply_demo_quality()
 	if world.hud != null:
 		world.hud.set_cinematic(true)
 	if world.npc_memory != null:
@@ -75,7 +76,67 @@ func _ready() -> void:
 func _build_rig_camera() -> void:
 	_rig_camera = Camera3D.new()
 	_rig_camera.fov = 60.0
+	# Depth of field lives on the camera, not the Environment, so it is set up
+	# here once and just toggled on and off by _set_dof as shots change --
+	# spec 003 lever 3: "depth of field on camera moves." A held two-shot
+	# needs both faces sharp, so DOF is off for those; a moving shot (the
+	# opening push, the orbit, the city establishing shot, the end card) gets
+	# it on, softening the background behind whatever the shot is pushing
+	# toward.
+	var attributes := CameraAttributesPractical.new()
+	attributes.dof_blur_far_enabled = false
+	# Sharp through the subject a moving shot is actually about (the field,
+	# the ruins the opening push closes on, the city the establishing shot
+	# frames) and only softening the deep background beyond it -- caught by
+	# capturing the opening push and finding the ruins themselves going soft
+	# while the near grass stayed sharp, backwards from what "push toward the
+	# ruins" should read as.
+	attributes.dof_blur_far_distance = 35.0
+	attributes.dof_blur_far_transition = 18.0
+	attributes.dof_blur_near_enabled = false
+	attributes.dof_blur_amount = 0.12
+	_rig_camera.attributes = attributes
 	add_child(_rig_camera)
+
+
+func _set_dof(enabled: bool) -> void:
+	var attributes: CameraAttributesPractical = _rig_camera.attributes
+	if attributes != null:
+		attributes.dof_blur_far_enabled = enabled
+
+
+# The demo-only expensive half of spec 003 lever 3: screen-space indirect
+# lighting, a denser volumetric fog, and sharper shadows and edges than the
+# interactive slice can afford to run on the RX 6800 every frame. This node
+# only ever exists when --demo was passed (world.gd only builds one then),
+# so everything set here is already gated behind the demo path with no
+# separate flag needed. Called again after nightfall, which swaps world's
+# own Environment resource for a fresh one that has none of this applied yet.
+#
+# SDFGI was tried first and dropped: real-time global illumination recomputed
+# every frame, on top of a high directional shadow filter quality and eight
+# shadow-casting lamps, pushed a single frame's GPU time so high (measured:
+# 240 ms/frame average) that the first full recording attempt could not
+# finish the ~80 s timeline inside the recording window at all. Cutting
+# SDFGI and the lamp count (dream_env.gd's own _build_lamps, now two
+# shadow-casting lamps instead of eight) were the two biggest wins; the
+# remaining settings below still noticeably outclass the interactive
+# baseline (project.godot's own 2x MSAA, no TAA, no SSIL, default shadow
+# filter quality).
+func _apply_demo_quality() -> void:
+	var env: Environment = world.current_environment()
+	if env != null:
+		env.ssil_enabled = true
+		env.volumetric_fog_density *= 1.3
+	var vp := get_viewport()
+	if vp != null:
+		vp.msaa_3d = Viewport.MSAA_4X
+		vp.use_taa = true
+		vp.positional_shadow_atlas_size = 2048
+	RenderingServer.directional_soft_shadow_filter_set_quality(
+		RenderingServer.SHADOW_QUALITY_SOFT_HIGH)
+	RenderingServer.positional_soft_shadow_filter_set_quality(
+		RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM)
 
 
 func _build_captions() -> void:
@@ -216,9 +277,23 @@ func _auto_dodge_loop(sentinel_pos: Vector3) -> void:
 		await get_tree().process_frame
 
 
+# Smoothstep: 0 and 1 held exactly, symmetric about the midpoint, first
+# derivative zero at both ends -- the standard "ease in, ease out" curve.
+# Static and pure (no `self`, no node, no tree) so it is exactly as cheap to
+# call from a plain lerp as f itself, and so tests/test_demo_director.gd can
+# check it with no camera, no world and no live SceneTree at all.
+static func ease_in_out(f: float) -> float:
+	var c: float = clampf(f, 0.0, 1.0)
+	return c * c * (3.0 - 2.0 * c)
+
+
 # Smoothly interpolates the rig camera's eye and look-at point over
 # `duration`, switching the rig camera current first. from==to on either
-# argument holds a static frame while still using this same driver.
+# argument holds a static frame while still using this same driver. The
+# progress fraction is run through ease_in_out before it ever reaches a lerp
+# (spec 003 lever 5: "weight the camera moves") -- a plain linear f reads as
+# a robotic constant-speed glide; easing it gives every push, pull and pan in
+# the demo a camera-operator's slow start and slow settle instead.
 func _play_shot(from_eye: Vector3, to_eye: Vector3, from_at: Vector3, to_at: Vector3, duration: float) -> void:
 	_use_rig_camera()
 	if duration <= 0.0:
@@ -227,7 +302,7 @@ func _play_shot(from_eye: Vector3, to_eye: Vector3, from_at: Vector3, to_at: Vec
 	var t := 0.0
 	while t < duration:
 		t += get_process_delta_time()
-		var f: float = clampf(t / duration, 0.0, 1.0)
+		var f: float = ease_in_out(clampf(t / duration, 0.0, 1.0))
 		var eye: Vector3 = from_eye.lerp(to_eye, f)
 		var at: Vector3 = from_at.lerp(to_at, f)
 		_rig_camera.look_at_from_position(eye, at, Vector3.UP)
@@ -236,11 +311,12 @@ func _play_shot(from_eye: Vector3, to_eye: Vector3, from_at: Vector3, to_at: Vec
 
 func _orbit_player(duration: float, radius: float, start_angle: float, end_angle: float) -> void:
 	_use_rig_camera()
+	_set_dof(true)
 	var center: Vector3 = world.player.global_position
 	var t := 0.0
 	while t < duration:
 		t += get_process_delta_time()
-		var f: float = clampf(t / duration, 0.0, 1.0)
+		var f: float = ease_in_out(clampf(t / duration, 0.0, 1.0))
 		var ang: float = lerpf(start_angle, end_angle, f)
 		var eye: Vector3 = center + Vector3(sin(ang), 0.0, cos(ang)) * radius + Vector3(0.0, 2.2, 0.0)
 		_rig_camera.look_at_from_position(eye, center + Vector3(0.0, 1.3, 0.0), Vector3.UP)
@@ -275,6 +351,7 @@ func _two_shot(person_a: Vector3, person_b: Vector3, side_offset: float, height:
 	var eye := _side_point(mid, person_b, side_offset, height)
 	var at := mid + Vector3(0.0, height * 0.75, 0.0)
 	_use_rig_camera()
+	_set_dof(false)  # both faces need to stay sharp through a held conversation
 	_rig_camera.look_at_from_position(eye, at, Vector3.UP)
 
 	# The heart of the demo (integration-card judge note, 2026-09-23):
@@ -310,6 +387,7 @@ func _side_angle_cut(sentinel_pos: Vector3, duration: float) -> void:
 	var pos: Vector3 = p.global_position
 	var eye := _side_point(pos, sentinel_pos, 7.0, 2.4)
 	var at := pos.lerp(sentinel_pos, 0.3) + Vector3(0.0, 1.2, 0.0)
+	_set_dof(false)  # a held cut, not a move -- the read-and-answer needs to stay crisp
 	await _play_shot(eye, eye, at, at, duration)
 	_use_player_camera()
 
@@ -325,12 +403,25 @@ func _run_timeline() -> void:
 	var mireth_pos: Vector3 = world.npc.position
 	var sentinel_pos: Vector3 = world.sentinel.position
 
-	# 0-3s: the player camera is already moving. The Dreamwalker runs up the
-	# cart track through the ruins at golden hour.
-	_use_player_camera()
+	# 0-3s: the opening shot, and per the integration card's own rule the
+	# strongest one -- a viewer decides whether to keep watching inside the
+	# first three seconds (spec 003 lever 5). A slow, low push across the
+	# golden field, drifting forward through the grass as the ruined
+	# cottages resolve out of the haze ahead, eased in and settled rather
+	# than gliding at one constant speed (_play_shot's own ease_in_out).
+	# Not the player's own over-the-shoulder run: that reads as ordinary
+	# gameplay footage, not a shot anyone composed, and it still gets its
+	# turn right after this one.
 	p.global_position = Vector3(1.6, 1.2, 24.0)
 	p.demo_face(_face_yaw_toward(p.global_position, Vector3(0.0, 0.0, 6.0)))
 	_show_caption("DREAM ONLINE -- pre-alpha gameplay, captured in engine", 3.4)
+	_set_dof(true)
+	await _play_shot(Vector3(5.0, 0.75, 46.0), Vector3(0.4, 1.2, 25.0),
+		Vector3(-3.0, 1.0, 6.0), Vector3(-11.0, 2.2, -13.0), 3.0)
+	print("DIRECTOR t=%.2f opening push done" % _video_time)
+
+	# 3-9s: the Dreamwalker runs up the cart track through the ruins.
+	_use_player_camera()
 	await _move_player_to(mireth_pos + Vector3(1.8, 0.0, 0.6), 2.6, 7.0)
 	print("DIRECTOR t=%.2f arrived at Mireth (day)" % _video_time)
 
@@ -360,10 +451,17 @@ func _run_timeline() -> void:
 	_use_player_camera()
 	_show_caption("Nightfall. The landscape changes. You don't.", 6.6)
 	await world.nightfall(7.0)
+	# nightfall() swaps world's own Environment for a freshly built one (Day's
+	# torn down, Night's built in its place); the demo-quality bump applied at
+	# _ready() lived on the old resource and is gone with it, so it is
+	# reapplied here. The viewport/RenderingServer settings from the first
+	# call are untouched by the swap and do not need repeating.
+	_apply_demo_quality()
 	print("DIRECTOR t=%.2f nightfall done" % _video_time)
 
 	# 42-50s: a framed establishing shot of the city.
 	var city_at: Vector3 = Vector3(0.0, 6.0, -6.0)
+	_set_dof(true)
 	await _play_shot(Vector3(0.0, 3.0, 26.0), Vector3(2.0, 24.0, -6.0),
 		Vector3(0.0, 4.0, 0.0), city_at, 10.0)
 	print("DIRECTOR t=%.2f city shot done" % _video_time)
@@ -474,6 +572,7 @@ func _fight_sentinel(sentinel_pos: Vector3) -> void:
 
 func _end_card() -> void:
 	_use_rig_camera()
+	_set_dof(true)
 	var at: Vector3 = world.player.global_position + Vector3(0.0, 1.3, 0.0)
 	# Higher and steeper than a hand-play camera would sit, so a low,
 	# ground-hugging wet-street reflection streak (dream_env.gd's own
@@ -484,3 +583,8 @@ func _end_card() -> void:
 	await _wait(4.2)
 	_show_caption("Pre-alpha. Every frame in engine. Characters, world and memory built by AI.", 4.5)
 	await _wait(4.8)
+	# Spec 003: "the recording credits third-party assets on the end card."
+	# Every texture and the sky HDRI are CC0 from Poly Haven -- no credit is
+	# legally required, but one is given anyway (assets/third_party/LICENSES.md).
+	_show_caption("Environment textures and sky: Poly Haven (CC0, polyhaven.com)", 3.6)
+	await _wait(3.8)

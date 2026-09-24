@@ -61,6 +61,7 @@ func _ready() -> void:
 
 	_env = DreamEnvScript.new()
 	_env.mode = _dream_mode
+	_env.demo_quality = _demo_mode
 	add_child(_env)
 
 	hud = HudScript.new()
@@ -127,6 +128,15 @@ func _ready() -> void:
 
 	if _capture_path != "":
 		_capture_after(_capture_at)
+
+
+# The demo director's own reach for the live Environment resource (spec 003
+# lever 3, the demo-only expensive rendering: SDFGI, SSIL, boosted
+# volumetric fog). `_env` is rebuilt from scratch by nightfall() partway
+# through the timeline, so the director re-reads this after nightfall
+# rather than caching the Environment it got at _ready.
+func current_environment() -> Environment:
+	return _env.env() if _env != null else null
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -230,6 +240,7 @@ func nightfall(duration: float) -> void:
 
 	_env = DreamEnvScript.new()
 	_env.mode = "night"
+	_env.demo_quality = _demo_mode
 	add_child(_env)
 
 	npc_memory.recalled.connect(_on_recalled_for_night, CONNECT_ONE_SHOT)

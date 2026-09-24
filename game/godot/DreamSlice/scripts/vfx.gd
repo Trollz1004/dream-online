@@ -67,7 +67,21 @@ static func _timed_root(parent: Node3D, origin: Vector3, life: float) -> Node3D:
 	return root
 
 
-static func _emissive_material(colour: Color, additive: bool = true) -> StandardMaterial3D:
+## `double_sided` disables culling (visible from both faces), the right
+## choice for a thin one-sided ribbon or card like slash_arc or a spark's
+## quad. It is the wrong choice for a long, thick solid the camera can end up
+## inside -- the Hollow Sentinel's beam, both its telegraph and its fire, are
+## a box up to 26 m long that the chase camera can and does end up embedded
+## in right after a Dream Lunge or a close approach (spec 003 lever 4: the
+## pale-orange washout after the lunge, found by capturing frames and reading
+## them). With culling disabled, a camera inside the box renders every one of
+## its inward-facing surfaces and the screen washes out solid; with normal
+## back-face culling every face of a box is a back face as seen from inside
+## it, so none of them draw and the camera simply sees through the beam
+## instead -- while it still reads as a solid glowing shaft from any exterior
+## angle, which is the only place it is meant to be seen from.
+static func _emissive_material(colour: Color, additive: bool = true,
+		double_sided: bool = true) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.albedo_color = colour
@@ -75,7 +89,8 @@ static func _emissive_material(colour: Color, additive: bool = true) -> Standard
 	m.emission = colour
 	m.emission_energy_multiplier = 2.5
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	if double_sided:
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	if additive:
 		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	return m
@@ -434,7 +449,7 @@ static func beam_telegraph(parent: Node3D, from: Vector3, to: Vector3, t: float)
 	line.mesh = box
 	line.position = diff * 0.5 + Vector3(0.0, 1.0, 0.0)
 	line.rotation = Vector3(0.0, yaw, 0.0)
-	var material := _emissive_material(TELEGRAPH_WARNING)
+	var material := _emissive_material(TELEGRAPH_WARNING, true, false)
 	material.emission_energy_multiplier = 4.0
 	var start_colour: Color = TELEGRAPH_WARNING
 	start_colour.a = 0.3 + 0.5 * progress
@@ -465,7 +480,7 @@ static func beam_fire(parent: Node3D, from: Vector3, to: Vector3, colour: Color)
 	beam.mesh = box
 	beam.position = diff * 0.5 + Vector3(0.0, 1.0, 0.0)
 	beam.rotation = Vector3(0.0, yaw, 0.0)
-	var material := _emissive_material(colour)
+	var material := _emissive_material(colour, true, false)
 	beam.material_override = material
 	root.add_child(beam)
 

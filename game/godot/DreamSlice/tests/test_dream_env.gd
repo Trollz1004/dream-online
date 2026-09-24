@@ -17,6 +17,13 @@ func run(r) -> void:
 	_test_night_reads_darker_than_day()
 	_test_night_has_thousands_of_emissive_windows()
 	_test_day_has_no_city_windows()
+	_test_day_ground_is_pbr_textured()
+	_test_night_facade_is_pbr_textured()
+	_test_night_street_is_pbr_textured()
+	_test_terrain_is_flat_across_the_playable_field()
+	_test_terrain_rises_in_the_outer_band()
+	_test_terrain_stays_bounded()
+	_test_colour_grade_differs_per_world()
 
 
 func check(label: String, condition: bool) -> void:
@@ -118,3 +125,120 @@ func _test_day_has_no_city_windows() -> void:
 	var e = _build("day")
 	check("day has no window instances", e.window_instance_count() == 0)
 	e.free()
+
+
+# Spec 003 lever 2: "PBR ground materials" for the Day Dream field, sourced
+# from Poly Haven (assets/third_party/LICENSES.md) rather than the flat
+# StandardMaterial3D colour the field shipped with. day_ground_material() is
+# a small getter, the same shape as env()/ground_body()/windows_node()
+# above, so a test can look at the material without reaching into the ground
+# mesh's own child structure.
+func _test_day_ground_is_pbr_textured() -> void:
+	print("day ground carries a real PBR texture, not a flat colour")
+	var day = _build("day")
+	var mat = day.day_ground_material()
+	check("day exposes its own ground material", mat != null)
+	check("the ground material has an albedo texture", mat.albedo_texture != null)
+	check("the ground material has a normal map", mat.normal_enabled and mat.normal_texture != null)
+	day.free()
+
+	var night = _build("night")
+	check("night never builds a day ground material", night.day_ground_material() == null)
+	night.free()
+
+
+# Spec 003 lever 4: "facade detail ... instead of bare boxes." The concrete
+# facade texture alone (before frames, ledges or signage) is the single
+# biggest step away from a flat-coloured box.
+func _test_night_facade_is_pbr_textured() -> void:
+	print("night facades carry a real PBR texture, not a flat colour")
+	var night = _build("night")
+	var mat = night.night_facade_material()
+	check("night exposes its own facade material", mat != null)
+	check("the facade material has an albedo texture", mat.albedo_texture != null)
+	night.free()
+
+	var day = _build("day")
+	check("day never builds a night facade material", day.night_facade_material() == null)
+	day.free()
+
+
+# Spec 003 lever 4: "reflective wet street." A real asphalt texture under a
+# low roughness value is what SSR (already enabled at night) has an actual
+# surface to reflect off of.
+func _test_night_street_is_pbr_textured() -> void:
+	print("the night street carries a real wet-asphalt texture")
+	var night = _build("night")
+	var mat = night.night_street_material()
+	check("night exposes its own street material", mat != null)
+	check("the street material has an albedo texture", mat.albedo_texture != null)
+	check("the street reads wet: low roughness so SSR has something to reflect",
+		mat.roughness <= 0.3)
+	night.free()
+
+
+# Spec 003 lever 2: "shaped rolling terrain instead of a flat plane." The
+# whole existing cast of hand-placed scenery (cottages, walls, trees, the
+# cart track) assumes an exactly flat y=0 field, so the terrain stays flat
+# under all of it and only rolls in a band right at the field's outer edge,
+# toward the mountain backdrop -- plus the cart track's own corridor is kept
+# flat even out there, since nothing else holds its far end down to y=0.
+# hill_height(x, z) is a pure static function precisely so this can be
+# checked with no mesh, no environment and no live tree at all.
+func _test_terrain_is_flat_across_the_playable_field() -> void:
+	print("terrain stays flat under the playable field and its scenery")
+	var DreamEnv := load("res://scripts/dream_env.gd")
+	check("dead flat at the origin", DreamEnv.hill_height(0.0, 0.0) == 0.0)
+	check("dead flat where the cottages and walls stand", DreamEnv.hill_height(14.0, -23.0) == 0.0)
+	check("still flat right at the inner edge of the outer band",
+		DreamEnv.hill_height(DreamEnv.TERRAIN_BAND_START, 0.0) == 0.0)
+	check("the cart track's own corridor stays flat all the way to the field's far edge",
+		DreamEnv.hill_height(1.0, 59.0) == 0.0)
+
+
+func _test_terrain_rises_in_the_outer_band() -> void:
+	print("terrain actually rolls in the outer band")
+	var DreamEnv := load("res://scripts/dream_env.gd")
+	var peak := 0.0
+	# Off the track corridor and past the band's outer edge, where the blend
+	# factor is pinned at 1.0: sweeping z through a full period guarantees,
+	# by the intermediate value theorem, that some sample clears half the
+	# terrain's own amplitude, regardless of the wave's exact phase.
+	var z := 0.0
+	while z < 300.0:
+		peak = maxf(peak, absf(DreamEnv.hill_height(20.0, z)))
+		z += 3.0
+	check("some point in the outer band rises past half the terrain's amplitude",
+		peak > DreamEnv.TERRAIN_AMPLITUDE * 0.5)
+
+
+func _test_terrain_stays_bounded() -> void:
+	print("terrain height never exceeds its own amplitude")
+	var DreamEnv := load("res://scripts/dream_env.gd")
+	var x := -70.0
+	var over := false
+	while x <= 70.0:
+		var z := -70.0
+		while z <= 70.0:
+			if absf(DreamEnv.hill_height(x, z)) > DreamEnv.TERRAIN_AMPLITUDE + 0.01:
+				over = true
+			z += 11.0
+		x += 11.0
+	check("no sampled point exceeds the terrain's own amplitude", not over)
+
+
+# Spec 003 lever 3: "AgX or filmic tone mapping with a colour grade per
+# world." AGX was already unconditional; the grade itself (Environment's own
+# brightness/contrast/saturation adjustment) is new and must actually differ
+# day to night, not just be switched on identically in both.
+func _test_colour_grade_differs_per_world() -> void:
+	print("day and night carry their own distinct colour grade")
+	var day = _build("day")
+	var night = _build("night")
+	check("day has its colour grade turned on", day.env().adjustment_enabled)
+	check("night has its colour grade turned on", night.env().adjustment_enabled)
+	check("the two worlds' grades are not identical",
+		day.env().adjustment_saturation != night.env().adjustment_saturation
+		or day.env().adjustment_contrast != night.env().adjustment_contrast)
+	day.free()
+	night.free()

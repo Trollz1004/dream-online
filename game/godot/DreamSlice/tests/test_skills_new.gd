@@ -192,10 +192,28 @@ func _test_vfx_smoke() -> void:
 	var telegraph = Vfx.beam_telegraph(stage, Vector3.ZERO, Vector3(0.0, 0.0, -20.0), 0.5)
 	check("beam_telegraph returns a Node3D", telegraph is Node3D)
 	check("beam_telegraph's effect has children", telegraph.get_child_count() > 0)
+	# Spec 003 lever 4: right after the Dream Lunge, the beam's own box (fixed
+	# at 26 m long, aimed through wherever the player stood when the wind-up
+	# locked) ends up with the chase camera embedded inside it -- a lunge or a
+	# tight approach can easily land the camera within a box that long. With
+	# culling disabled (the pre-003 default for every emissive effect, so a
+	# thin one-sided ribbon like slash_arc reads from both sides) a camera
+	# inside the box renders its inward-facing surfaces and the whole frame
+	# washes out in the beam's own flat colour for as long as the camera
+	# stays inside it. Normal back-face culling fixes this for free: from
+	# inside a culled box every face is a back face and none of them draw, so
+	# the camera sees through it instead of being swallowed, while the beam
+	# still reads correctly as solid from any exterior viewing angle.
+	var telegraph_mesh: MeshInstance3D = telegraph.get_child(0)
+	check("the telegraph's material is not double-sided, so an enclosed camera sees through it",
+		telegraph_mesh.material_override.cull_mode == BaseMaterial3D.CULL_BACK)
 
 	var fire = Vfx.beam_fire(stage, Vector3.ZERO, Vector3(0.0, 0.0, -20.0), Color(1.0, 0.25, 0.15))
 	check("beam_fire returns a Node3D", fire is Node3D)
 	check("beam_fire's effect has children", fire.get_child_count() > 0)
+	var fire_mesh: MeshInstance3D = fire.get_child(0)
+	check("the fired beam's material is not double-sided either, for the same reason",
+		fire_mesh.material_override.cull_mode == BaseMaterial3D.CULL_BACK)
 
 	check("all nine effects landed under the stage with no error raised",
 		stage.get_child_count() == 9)

@@ -12,3 +12,7 @@
 # Windows scripts: batch files break on LF-only endings
 *.cmd text eol=crlf
 *.ps1 text eol=crlf
+
+# Small third-party game assets are stored as plain git objects, not LFS:
+# the free LFS allowance on this repository ran out on 2026-09-24.
+game/godot/DreamSlice/assets/third_party/** -filter -diff -merge

@@ -32,6 +32,19 @@ From the founder's reference pictures, described in words:
 
 Realistic proportions and ornate, readable high-fantasy gear: layered leathers, engraved plate, large signature weapons and shields. The same outfit must read well against warm ruins by day and against city light by night.
 
+### One outfit, both worlds (founder, 2026-09-24)
+
+A costume must never look out of era in either world. The style is a timeless fusion: medieval silhouettes made from sleek, modern-feeling materials, such as fine dark chainmail, matte fitted plate, clean leather and thin subtle light seams. The sword rides sheathed on the back outside combat and is drawn when a fight starts. A mage's orb floats near the shoulder. Round, big-headed, toy-like proportions are out.
+
+## Same place, same people, dreamed twice (founder, 2026-09-24)
+
+Every location exists in both worlds at the same spot, with the same NPCs doing the same job. Only the surroundings change to match the world. Examples in the founder's words:
+
+- A fruit-stand merchant by day is the same merchant behind a convenience-store counter by night.
+- A boss fought in an open field by day is fought in a stadium arena, a city park or a parking lot by night.
+
+For level design this means one layout with two dressings. The positions of NPCs, quest givers, vendors, spawn points and boss arenas are shared, and each location has a Day Dream dressing and a Night Dream dressing. Designers author the pair together, so the player recognises the place and the person across the change.
+
 ## First thing to build
 
 "The same place, dreamed twice." Two small maps with the same spawn point and the same playable character:
