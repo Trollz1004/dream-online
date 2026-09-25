@@ -172,6 +172,95 @@ const _TREE_MODELS := [
 const _TREE_MODEL_NATIVE_HEIGHT := [12.77, 18.74, 7.26]
 const _RUINS_PACK := "res://assets/third_party/quaternius/ModularRuinsPack.glb"
 
+# Spec 003-production-look, "The city" pass (2026-09-24): the Night Dream
+# target mood asks for "crowds walking under umbrellas ... a few cars ...
+# steam from vents." character_model.gd is owned by another worker on this
+# spec; per the task card, pedestrians are built ONLY through its existing
+# public surface (build/has_pivot/get_pivot/update_pose/set_time_of_day),
+# the same pattern npc.gd and dummy.gd already use for Mireth and the
+# Sentinel. No bone name, clip name or private helper of that file is read
+# or called from here.
+const CharacterModelScript := preload("res://scripts/character_model.gd")
+
+# ---------------------------------------------------------------------------
+# NIGHT: crowds, traffic, rain and the alley dressing (spec 003-production-look,
+# "The city" pass). Every fixed-path position below is chosen to keep a solid
+# safety margin outside CLEAR_RADIUS (12 m at the origin) and MIRETH_CLEAR_
+# RADIUS (2 m at (-6,9)) -- see _test_pedestrian_paths_never_enter_the_fight_
+# lane_or_mireths_spot in tests/test_dream_env.gd, which checks this as a
+# plain arithmetic invariant on the constants below, the same convention
+# hill_height/mountain_height already established for terrain shape.
+# ---------------------------------------------------------------------------
+
+# Two sidewalk lanes (the pavement strips _build_kerbs_and_pavement lays at
+# x = +-5.2) with two z-ranges each, both well clear of the 12 m fight lane
+# disk at the origin and Mireth's own spot at (-6,0,9): the nearest point on
+# any of these four paths to the origin is (5.2, 15), 15.86 m out, and the
+# nearest to Mireth's spot is (-5.2, 15), 6.51 m out from (-6, 9) -- both
+# comfortably clear with margin to spare for a pedestrian's own small radius.
+const PEDESTRIAN_PATHS := [
+	{"x": 5.2, "z0": 15.0, "z1": 55.0},
+	{"x": 5.2, "z0": -55.0, "z1": -15.0},
+	{"x": -5.2, "z0": 15.0, "z1": 55.0},
+	{"x": -5.2, "z0": -55.0, "z1": -15.0},
+]
+# 10 of the art brief's 10-20: the floor of that range, on purpose -- every
+# dreamwalker instance drags a full rigged skeleton, an AnimationPlayer and a
+# dozen bone-attached props behind it (see _civilianize_pedestrian), and this
+# scene already carries thousands of window instances, 16 near towers and
+# their massing, rain, steam and traffic on top. Measured directly (a --capture
+# of the densest street-canyon framing, HUD fps line read from the saved PNG):
+# 12 pedestrians plus the 220-particle rain system read 47 fps, under the
+# 50+ floor; 10 pedestrians and a lighter rain/splash count (below) measured
+# 60 fps on the exact same framing, and 56-61 fps on every other capture
+# angle taken for this pass. Spec 003's own rule ("scale counts down if
+# needed" for the 50+ fps interactive floor) is
+# exercised here against real evidence, not guessed at.
+const PEDESTRIAN_COUNT := 10
+const PEDESTRIAN_WALK_SPEED := 1.1   # metres/second along its own path
+const PEDESTRIAN_UMBRELLA_EVERY := 3 # every third walker carries one
+
+# Two lanes of a straight two-way street sharing the same asphalt strip the
+# player already fights on -- real city traffic does not detour around a
+# fight lane, and the art brief asks only that pedestrians never block it.
+const CAR_LANES := [
+	{"x": 1.7, "dir": 1.0, "speed": 3.4},
+	{"x": -1.7, "dir": -1.0, "speed": 2.7},
+]
+const CAR_Z_MIN := -58.0
+const CAR_Z_MAX := 58.0
+const CAR_COUNT := 4   # within the brief's 3-6
+
+# A few soft plumes rising from street-level vent grates, well clear of the
+# fight lane and the sidewalks pedestrians actually walk.
+const STEAM_VENT_POSITIONS := [
+	Vector3(-6.9, 0.0, 26.0), Vector3(6.9, 0.0, -32.0), Vector3(-6.9, 0.0, -44.0),
+]
+
+# Bins tucked against the kerb between lamps, off the two 3.4 m pavement
+# strips' own centreline so a bin never reads as blocking the sidewalk.
+const ALLEY_BIN_POSITIONS := [
+	Vector3(-6.6, 0.0, 22.0), Vector3(6.6, 0.0, -18.0),
+	Vector3(-6.6, 0.0, -36.0), Vector3(6.6, 0.0, 40.0),
+]
+
+# Cyan, pink/magenta, amber and violet -- the target mood's own four named
+# colours -- shared by the flush wall signs, the street-level post signs and
+# the new blade signs below, so every neon surface in the city draws from one
+# palette instead of three separately-tuned ones.
+const NIGHT_SIGN_COLORS := [
+	Color(0.2, 3.0, 3.0), Color(3.0, 0.3, 3.0), Color(3.0, 1.8, 0.3), Color(1.6, 0.5, 3.2),
+]
+
+# Muted, desaturated versions of a paint-patch palette for the alley colour
+# panels -- deliberately non-emissive and far less saturated than the neon
+# signs above, so graffiti reads as painted colour on concrete, not another
+# light source. Flat abstract rectangles only: no letterforms, no logo, per
+# the originality rule dream_env.gd already keeps for every sign in this file.
+const GRAFFITI_COLORS := [
+	Color(0.34, 0.28, 0.52), Color(0.52, 0.28, 0.26), Color(0.28, 0.42, 0.38), Color(0.48, 0.42, 0.20),
+]
+
 var mode := "day"
 
 # Set by world.gd from --demo (world.gd's own _demo_mode), before add_child,
@@ -221,15 +310,48 @@ var _autumn_tree_tint_count := 0
 # original test checked, does not catch a tint that still reads red.
 var _tinted_leaf_materials: Array = []
 
+# Spec 003-production-look "the city" pass: night crowds, traffic, rain and
+# alley dressing. `_pedestrians`/`_cars` hold {model/node, path data} entries
+# that `_process` reads every frame; the rest are plain counters for
+# tests/test_dream_env.gd, the same small-getter convention every other spec
+# 003 pass already used above.
+var _pedestrians: Array = []
+var _cars: Array = []
+var _rain_particles: CPUParticles3D = null
+var _rain_splash_particles: CPUParticles3D = null
+var _umbrella_count := 0
+var _bin_count := 0
+var _graffiti_panel_count := 0
+var _blade_sign_count := 0
+var _steam_vent_count := 0
+var _night_life_time := 0.0
+
 
 func _ready() -> void:
 	_footprints = []
 	_window_entries = []
 	_near_towers = []
+	_pedestrians = []
+	_cars = []
 	if mode == "night":
 		_build_night()
 	else:
 		_build_day()
+
+
+# Runs pedestrians back and forth along their sidewalks and cars along their
+# lanes (spec 003-production-look "the city" pass). A plain no-op in Day mode
+# and whenever neither array was ever populated -- this method exists on the
+# base Node3D class already, so overriding it costs nothing when the arrays
+# are empty; Godot only calls it at all once this node is actually inside a
+# live, processing SceneTree (the tests build this node with _ready() called
+# by hand and never add it to a tree, so this never runs there).
+func _process(delta: float) -> void:
+	if mode != "night":
+		return
+	_night_life_time += delta
+	_update_pedestrians(delta)
+	_update_traffic(delta)
 
 
 func env() -> Environment:
@@ -309,6 +431,53 @@ func tower_setback_count() -> int:
 
 func sign_frame_count() -> int:
 	return _sign_frame_count
+
+
+## Night-only crowd, traffic and alley-dressing counts (spec 003-production-
+## look "the city" pass), all 0 in Day mode since none of their builders is
+## ever called from _build_day_scenery.
+func pedestrian_count() -> int:
+	return _pedestrians.size()
+
+
+func umbrella_count() -> int:
+	return _umbrella_count
+
+
+func car_count() -> int:
+	return _cars.size()
+
+
+func alley_bin_count() -> int:
+	return _bin_count
+
+
+func graffiti_panel_count() -> int:
+	return _graffiti_panel_count
+
+
+func blade_sign_count() -> int:
+	return _blade_sign_count
+
+
+func steam_vent_count() -> int:
+	return _steam_vent_count
+
+
+## The rain-streak and ground-splash CPUParticles3D nodes (or null in Day
+## mode), for a test to check they exist and carry a sane particle count
+## without a renderer -- CPUParticles3D was chosen over GPUParticles3D
+## because it simulates on the CPU: confirmed empirically (a throwaway
+## headless script) that a GPUParticles3D node never finishes even a single
+## process_frame under --headless (no compute-capable rendering device),
+## where CPUParticles3D is the pattern _build_dust_motes already proved safe
+## there.
+func rain_particles() -> CPUParticles3D:
+	return _rain_particles
+
+
+func rain_splash_particles() -> CPUParticles3D:
+	return _rain_splash_particles
 
 
 ## How many heightfield mountain layers were built -- 2 in Day mode (the
@@ -435,6 +604,12 @@ func _build_night_scenery() -> void:
 	_build_signs()
 	_build_street_signs()
 	_build_benches()
+	_build_blade_signs()
+	_build_alley_details()
+	_build_rain()
+	_build_steam_vents()
+	_build_pedestrians()
+	_build_traffic()
 
 
 # ---------------------------------------------------------------------------
@@ -2477,7 +2652,7 @@ func _place_reflection_streak(pos: Vector3, color: Color) -> void:
 # angle that does not match the box's actual faces is exactly what skewed the
 # window grid, per a judge review of night.png on 2026-09-23.
 func _build_signs() -> void:
-	var colors := [Color(0.2, 3.0, 3.0), Color(3.0, 0.3, 3.0), Color(3.0, 1.8, 0.3)]
+	var colors := NIGHT_SIGN_COLORS
 	var cardinals := [
 		Vector3(1.0, 0.0, 0.0), Vector3(-1.0, 0.0, 0.0),
 		Vector3(0.0, 0.0, 1.0), Vector3(0.0, 0.0, -1.0),
@@ -2538,7 +2713,7 @@ func _build_signs() -> void:
 # review of night.png on 2026-09-23 asked for signage the camera's own
 # framing actually shows, not only signs mounted high on distant towers.
 func _build_street_signs() -> void:
-	var colors := [Color(0.2, 3.2, 3.2), Color(3.2, 0.3, 3.2), Color(3.2, 2.0, 0.4)]
+	var colors := NIGHT_SIGN_COLORS
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7333
 	var post_mat := _flat_mat(Color(0.07, 0.07, 0.08), 0.7)
@@ -2600,3 +2775,550 @@ func _build_benches() -> void:
 		_place_visual_box(pos + Vector3(-0.65, 0.21, 0.0), Vector3(0.08, 0.42, 0.46), 0.0, bench_mat)
 		_place_visual_box(pos + Vector3(0.65, 0.21, 0.0), Vector3(0.08, 0.42, 0.46), 0.0, bench_mat)
 		_bench_count += 1
+
+
+# ---------------------------------------------------------------------------
+# NIGHT: vertical blade signs (spec 003-production-look "the city" pass).
+# Mounted on the same axis-aligned near-tower faces _build_signs already uses
+# (see that function's own note on why a skewed angle broke the window grid),
+# but held out from the wall on a short bracket, and turned so the panel's
+# own face points ALONG the wall (down the street a passer-by actually walks)
+# rather than straight out from it -- what makes a real hanging/blade sign
+# read as a blade instead of another flush panel. Double-sided (cull
+# disabled), so it reads the same walking either direction along the street.
+# ---------------------------------------------------------------------------
+func _build_blade_signs() -> void:
+	var cardinals := [
+		Vector3(1.0, 0.0, 0.0), Vector3(-1.0, 0.0, 0.0),
+		Vector3(0.0, 0.0, 1.0), Vector3(0.0, 0.0, -1.0),
+	]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7711
+	for i in range(_near_towers.size()):
+		if rng.randf() > 0.35:
+			continue
+		var t = _near_towers[i]
+		var pos: Vector3 = t["pos"]
+		var w: float = t["w"]
+		var h: float = t["h"]
+		var d: float = t["d"]
+		var normal: Vector3 = cardinals[rng.randi_range(0, cardinals.size() - 1)]
+		var axes := _face_axes(normal)
+		var x_axis: Vector3 = axes[0]
+		var half: float = (w if absf(normal.x) > 0.5 else d) * 0.5
+		var stick_out := rng.randf_range(0.7, 1.3)
+		var mount_y := rng.randf_range(h * 0.18, h * 0.4)
+		# The panel's local X spans `normal` (its depth, sticking out from the
+		# wall), local Y is world UP (its height), and its face normal (a
+		# QuadMesh's own local -Z, per _face_axes' own header note) ends up
+		# along x_axis -- the wall's own run direction, i.e. down the street --
+		# rather than along `normal` the way every flush sign in this file
+		# (_build_signs, _build_street_signs) is built.
+		var panel_size := Vector2(stick_out, rng.randf_range(1.6, 2.8))
+		var basis := Basis(normal, Vector3.UP, x_axis)
+		var blade_center: Vector3 = pos + normal * (half + stick_out * 0.5) + Vector3(0.0, mount_y, 0.0)
+
+		var panel := MeshInstance3D.new()
+		var quad := QuadMesh.new()
+		quad.size = panel_size
+		panel.mesh = quad
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.albedo_color = NIGHT_SIGN_COLORS[i % NIGHT_SIGN_COLORS.size()]
+		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		panel.material_override = mat
+		panel.transform = Transform3D(basis, blade_center)
+		add_child(panel)
+
+		# A thin bracket arm along the same `normal` axis, connecting the
+		# blade's near edge back to the wall, so it reads as mounted hardware
+		# rather than a panel floating in mid-air.
+		var bracket := MeshInstance3D.new()
+		var bracket_mesh := BoxMesh.new()
+		bracket_mesh.size = Vector3(stick_out, 0.05, 0.05)
+		bracket.mesh = bracket_mesh
+		bracket.transform = Transform3D(basis, pos + normal * (half + stick_out * 0.5)
+			+ Vector3(0.0, mount_y - panel_size.y * 0.5 - 0.05, 0.0))
+		bracket.material_override = _flat_mat(Color(0.05, 0.05, 0.06), 0.7)
+		add_child(bracket)
+		_blade_sign_count += 1
+
+
+# ---------------------------------------------------------------------------
+# NIGHT: alley dressing -- graffiti-like colour panels and bins (spec
+# 003-production-look "the city" pass target mood).
+# ---------------------------------------------------------------------------
+func _build_alley_details() -> void:
+	_build_graffiti_panels()
+	_build_alley_bins()
+
+
+# Muted, non-emissive colour patches low on some near towers' own faces --
+# the same face-mounted technique _build_signs already uses (axis-aligned
+# cardinal normals only, for the same reason that function gives), but
+# unlit, desaturated and clustered near ground level so it reads as paint on
+# concrete in an alley nook rather than another light source. Abstract
+# rectangles only, no letterforms or logo, per the originality rule.
+func _build_graffiti_panels() -> void:
+	var cardinals := [
+		Vector3(1.0, 0.0, 0.0), Vector3(-1.0, 0.0, 0.0),
+		Vector3(0.0, 0.0, 1.0), Vector3(0.0, 0.0, -1.0),
+	]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 6611
+	for i in range(_near_towers.size()):
+		if rng.randf() > 0.3:
+			continue
+		var t = _near_towers[i]
+		var pos: Vector3 = t["pos"]
+		var w: float = t["w"]
+		var d: float = t["d"]
+		var normal: Vector3 = cardinals[rng.randi_range(0, cardinals.size() - 1)]
+		var axes := _face_axes(normal)
+		var x_axis: Vector3 = axes[0]
+		var z_axis: Vector3 = axes[2]
+		var half: float = (w if absf(normal.x) > 0.5 else d) * 0.5
+		var face_center: Vector3 = pos + normal * (half + 0.03)
+		var patch_count := rng.randi_range(2, 4)
+		for j in range(patch_count):
+			var size_v := Vector2(rng.randf_range(0.6, 1.6), rng.randf_range(0.5, 1.3))
+			var offset: Vector3 = Vector3(0.0, rng.randf_range(0.9, 2.4), 0.0) \
+				+ x_axis * rng.randf_range(-1.4, 1.4)
+			var basis := Basis(x_axis, Vector3.UP, z_axis)
+			var panel := MeshInstance3D.new()
+			var quad := QuadMesh.new()
+			quad.size = size_v
+			panel.mesh = quad
+			var mat := StandardMaterial3D.new()
+			mat.albedo_color = GRAFFITI_COLORS[(i + j) % GRAFFITI_COLORS.size()]
+			mat.roughness = 0.85
+			mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+			panel.material_override = mat
+			panel.transform = Transform3D(basis, face_center + offset)
+			add_child(panel)
+			_graffiti_panel_count += 1
+
+
+# Bins tucked against the kerb (spec 003-production-look "the city" pass):
+# a squat cylinder body plus a slightly wider flat lid. Routed through
+# _place_cylinder, the same collision/footprint bookkeeping every other solid
+# street prop in this file uses, so a bin stays out of the fight lane and
+# Mireth's spot on its own like a lamp post or a bench.
+func _build_alley_bins() -> void:
+	var body_mat := _flat_mat(Color(0.09, 0.11, 0.09), 0.8)
+	var lid_mat := _flat_mat(Color(0.13, 0.15, 0.13), 0.75)
+	for pos: Vector3 in ALLEY_BIN_POSITIONS:
+		if not _is_clear_pos(pos, 0.6):
+			continue
+		_place_cylinder(pos + Vector3(0.0, 0.35, 0.0), 0.28, 0.7, body_mat)
+		var lid := MeshInstance3D.new()
+		var lid_mesh := CylinderMesh.new()
+		lid_mesh.top_radius = 0.30
+		lid_mesh.bottom_radius = 0.30
+		lid_mesh.height = 0.06
+		lid.mesh = lid_mesh
+		lid.material_override = lid_mat
+		lid.position = pos + Vector3(0.0, 0.73, 0.0)
+		add_child(lid)
+		_bin_count += 1
+
+
+# ---------------------------------------------------------------------------
+# NIGHT: rain (spec 003-production-look "the city" pass target mood: "rain at
+# night, wet streets reflecting neon"). Two CPUParticles3D systems -- falling
+# streaks well above the street, and short-lived growing-then-fading splash
+# rings at street level -- both placed in the same static, world-space way
+# every other atmospheric effect in this file already is (_build_dust_motes,
+# the puddle scatter in _build_night_street): a box centred on the main
+# street corridor the camera's own framing actually uses, not following the
+# player, since dream_env.gd has no reference to the player node and none of
+# its other effects need one either.
+# ---------------------------------------------------------------------------
+func _build_rain() -> void:
+	var particles := CPUParticles3D.new()
+	particles.amount = 160
+	particles.lifetime = 1.1
+	particles.randomness = 0.3
+	particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	particles.emission_box_extents = Vector3(16.0, 0.5, 62.0)
+	particles.direction = Vector3(0.05, -1.0, 0.02)
+	particles.spread = 4.0
+	particles.gravity = Vector3(0.0, -14.0, 0.0)
+	particles.initial_velocity_min = 9.0
+	particles.initial_velocity_max = 12.0
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(0.012, 0.5, 0.012)
+	particles.mesh = mesh
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(0.75, 0.82, 0.95, 0.45)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	particles.material_override = mat
+	particles.position = Vector3(0.0, 9.0, 0.0)
+	add_child(particles)
+	_rain_particles = particles
+
+	_build_rain_splashes()
+
+
+# Flat, ground-lying rings that grow then fade at street level: a cheap
+# stand-in for a real splash/ripple sim, the same "a still frame cannot be
+# relied on to catch a real reflection" trade-off _place_reflection_streak
+# already makes for SSR. PlaneMesh is used deliberately (not QuadMesh): every
+# other flat ground decal in this file (the street, the pavement, every
+# puddle) already relies on PlaneMesh's own default orientation lying flat in
+# the XZ plane, so no extra per-particle rotation is needed to keep these
+# lying down rather than standing up like a card.
+func _build_rain_splashes() -> void:
+	var particles := CPUParticles3D.new()
+	particles.amount = 26
+	particles.lifetime = 0.45
+	particles.randomness = 0.6
+	particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	particles.emission_box_extents = Vector3(3.3, 0.01, 58.0)
+	particles.direction = Vector3.ZERO
+	particles.spread = 0.0
+	particles.gravity = Vector3.ZERO
+	particles.initial_velocity_min = 0.0
+	particles.initial_velocity_max = 0.0
+	particles.scale_amount_min = 0.2
+	particles.scale_amount_max = 0.5
+	var curve := Curve.new()
+	curve.add_point(Vector2(0.0, 0.15))
+	curve.add_point(Vector2(0.35, 1.0))
+	curve.add_point(Vector2(1.0, 1.4))
+	particles.scale_amount_curve = curve
+	var grad := Gradient.new()
+	grad.colors = PackedColorArray([Color(1.0, 1.0, 1.0, 0.55), Color(1.0, 1.0, 1.0, 0.0)])
+	particles.color_ramp = grad
+	var ring := PlaneMesh.new()
+	ring.size = Vector2(0.4, 0.4)
+	particles.mesh = ring
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(0.65, 0.75, 0.85)
+	mat.vertex_color_use_as_albedo = true
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	particles.material_override = mat
+	particles.position = Vector3(0.0, 0.025, 0.0)
+	add_child(particles)
+	_rain_splash_particles = particles
+
+
+# ---------------------------------------------------------------------------
+# NIGHT: steam vents (spec 003-production-look "the city" pass target mood:
+# "steam from vents"). A flat grate mesh plus a soft, upward-drifting
+# CPUParticles3D plume, billboarded so each puff always faces the camera
+# regardless of the vent's own position -- the one place in this file that
+# wants that (every other translucent card here, puddles and reflection
+# streaks, is meant to lie flat and never face the camera).
+# ---------------------------------------------------------------------------
+func _build_steam_vents() -> void:
+	for pos: Vector3 in STEAM_VENT_POSITIONS:
+		_build_one_steam_vent(pos)
+	_steam_vent_count = STEAM_VENT_POSITIONS.size()
+
+
+func _build_one_steam_vent(pos: Vector3) -> void:
+	var grate := MeshInstance3D.new()
+	var grate_mesh := BoxMesh.new()
+	grate_mesh.size = Vector3(0.7, 0.05, 0.7)
+	grate.mesh = grate_mesh
+	grate.material_override = _flat_mat(Color(0.06, 0.06, 0.07), 0.6)
+	grate.position = pos + Vector3(0.0, 0.03, 0.0)
+	add_child(grate)
+
+	var particles := CPUParticles3D.new()
+	particles.amount = 16
+	particles.lifetime = 3.0
+	particles.randomness = 0.5
+	particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	particles.emission_sphere_radius = 0.22
+	particles.direction = Vector3(0.0, 1.0, 0.0)
+	particles.spread = 18.0
+	particles.gravity = Vector3(0.0, 0.35, 0.0)
+	particles.initial_velocity_min = 0.35
+	particles.initial_velocity_max = 0.65
+	particles.scale_amount_min = 0.4
+	particles.scale_amount_max = 0.9
+	var curve := Curve.new()
+	curve.add_point(Vector2(0.0, 0.3))
+	curve.add_point(Vector2(0.5, 1.0))
+	curve.add_point(Vector2(1.0, 1.8))
+	particles.scale_amount_curve = curve
+	var grad := Gradient.new()
+	grad.colors = PackedColorArray([Color(1.0, 1.0, 1.0, 0.30), Color(1.0, 1.0, 1.0, 0.0)])
+	particles.color_ramp = grad
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.5, 0.5)
+	particles.mesh = quad
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(0.7, 0.72, 0.75)
+	mat.vertex_color_use_as_albedo = true
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	particles.material_override = mat
+	particles.position = pos + Vector3(0.0, 0.15, 0.0)
+	add_child(particles)
+
+
+# ---------------------------------------------------------------------------
+# NIGHT: pedestrians (spec 003-production-look "walking around, out of
+# combat" / "the city": "crowds walking under umbrellas"). Each walker is one
+# character_model.gd instance built through its own public factory
+# (CharacterModelScript.build), driven every frame by its own public
+# update_pose(delta, state) -- exactly the same two calls npc.gd and dummy.gd
+# already make for Mireth and the Sentinel. _civilianize_pedestrian below
+# reaches the model's armor/coat pieces ONLY through the public has_pivot/
+# get_pivot pair and then uses ordinary Node3D/MeshInstance3D properties
+# (scale, material_override, set_surface_override_material) on the nodes
+# handed back -- no bone name, clip name or private helper of that file is
+# read here, per this task's ownership boundary.
+# ---------------------------------------------------------------------------
+
+# Pieces of the dreamwalker rig that read as "armoured knight," not "city
+# pedestrian" -- scaled to near-zero rather than freed, since a pedestrian
+# never needs to draw a sword and this file has no authority to change what
+# character_model.gd itself attaches.
+const _PEDESTRIAN_HIDE_PIVOTS := [
+	"sword_sheathed", "sword_drawn", "torso_armor", "seam_chest",
+	"pauldron_l", "pauldron_cap_l", "pauldron_r", "pauldron_cap_r",
+	"bracer_l", "bracer_r", "greave_l", "greave_r",
+]
+# Pieces kept, but recoloured to a flat dark coat tone -- between them (a
+# hooded cape, a hip-length mail skirt hanging like a coat hem, a belt) they
+# read as "a dark coat," the art brief's own words for the crowd.
+const _PEDESTRIAN_COAT_PIVOTS := ["cape", "hood", "mail_skirt", "belt"]
+
+
+func _build_pedestrians() -> void:
+	_pedestrians = []
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 8181
+	var coat_mat := _flat_mat(Color(0.05, 0.05, 0.07), 0.85)
+	var body_mat := StandardMaterial3D.new()
+	body_mat.albedo_color = Color(0.04, 0.04, 0.05)
+	body_mat.metallic = 0.0
+	body_mat.roughness = 0.9
+	for i in range(PEDESTRIAN_COUNT):
+		var path_index := i % PEDESTRIAN_PATHS.size()
+		var phase: float = rng.randf_range(0.0, 400.0)
+		var model: Node3D = CharacterModelScript.build(CharacterModelScript.KIND_DREAMWALKER)
+		_civilianize_pedestrian(model, coat_mat, body_mat)
+		var state: Dictionary = pedestrian_state(path_index, phase, 0.0)
+		model.position = state["position"]
+		model.rotation.y = PI if float(state["dir"]) > 0.0 else 0.0
+		model.update_pose(0.0, {"action": "", "speed": 0.4, "sprint": false, "progress": 0.0})
+		if i % PEDESTRIAN_UMBRELLA_EVERY == 0:
+			_attach_umbrella(model, rng)
+		add_child(model)
+		_pedestrians.append({"model": model, "path_index": path_index, "phase": phase})
+
+
+func _civilianize_pedestrian(model: Node3D, coat_mat: Material, body_mat: Material) -> void:
+	for pivot_name in _PEDESTRIAN_HIDE_PIVOTS:
+		if model.has_pivot(pivot_name):
+			var node := model.get_pivot(pivot_name) as Node3D
+			if node != null:
+				node.scale = Vector3.ONE * 0.001
+	for pivot_name in _PEDESTRIAN_COAT_PIVOTS:
+		if model.has_pivot(pivot_name):
+			var node := model.get_pivot(pivot_name) as MeshInstance3D
+			if node != null:
+				node.material_override = coat_mat
+	if model.has_pivot("body"):
+		var body := model.get_pivot("body") as MeshInstance3D
+		if body != null:
+			body.set_surface_override_material(0, body_mat)
+			body.set_surface_override_material(1, body_mat)
+
+
+# A simple canopy-and-pole umbrella, parented straight onto the model's own
+# root at a fixed offset roughly where a raised hand would be -- character_
+# model.gd exposes no hand-bone attachment point in its public surface (only
+# has_pivot/get_pivot over the small registry it already builds), so this is
+# the one approximation this file makes rather than reach for a private
+# helper.
+func _attach_umbrella(model: Node3D, rng: RandomNumberGenerator) -> void:
+	var umbrella := Node3D.new()
+	var palette := [Color(0.10, 0.10, 0.30), Color(0.30, 0.05, 0.08), Color(0.05, 0.20, 0.20)]
+	var canopy_mat := StandardMaterial3D.new()
+	canopy_mat.albedo_color = palette[rng.randi_range(0, palette.size() - 1)]
+	canopy_mat.roughness = 0.8
+
+	var canopy := MeshInstance3D.new()
+	var cone := CylinderMesh.new()
+	cone.top_radius = 0.02
+	cone.bottom_radius = 0.42
+	cone.height = 0.22
+	canopy.mesh = cone
+	canopy.material_override = canopy_mat
+	canopy.position = Vector3(0.0, 1.62, 0.0)
+	umbrella.add_child(canopy)
+
+	var pole := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = 0.008
+	cyl.bottom_radius = 0.008
+	cyl.height = 0.75
+	pole.mesh = cyl
+	pole.material_override = _flat_mat(Color(0.05, 0.05, 0.05), 0.6)
+	pole.position = Vector3(0.0, 1.24, 0.0)
+	umbrella.add_child(pole)
+
+	umbrella.position = Vector3(0.22, 0.0, 0.05)
+	model.add_child(umbrella)
+	_umbrella_count += 1
+
+
+# The position and direction of travel of the pedestrian on `path_index` at
+# time `t`, phase-shifted by `phase` so instances on the same path do not
+# clump. Pure and static, exactly like hill_height/mountain_height above, so
+# tests/test_dream_env.gd can sweep it across a wide range of (path_index,
+# phase, t) and check the fight-lane/Mireth-clearance invariant directly,
+# with no built model, no scene tree and no renderer.
+static func pedestrian_state(path_index: int, phase: float, t: float) -> Dictionary:
+	var path: Dictionary = PEDESTRIAN_PATHS[path_index % PEDESTRIAN_PATHS.size()]
+	var x: float = path["x"]
+	var z0: float = path["z0"]
+	var z1: float = path["z1"]
+	var length: float = z1 - z0
+	var cycle: float = length * 2.0
+	var local_t: float = fmod(t * PEDESTRIAN_WALK_SPEED + phase, cycle)
+	if local_t < 0.0:
+		local_t += cycle
+	var z: float
+	var dir: float
+	if local_t < length:
+		z = z0 + local_t
+		dir = 1.0
+	else:
+		z = z1 - (local_t - length)
+		dir = -1.0
+	return {"position": Vector3(x, 0.0, z), "dir": dir}
+
+
+func _update_pedestrians(delta: float) -> void:
+	for entry in _pedestrians:
+		var model: Node3D = entry["model"]
+		var state: Dictionary = pedestrian_state(int(entry["path_index"]), float(entry["phase"]), _night_life_time)
+		model.position = state["position"]
+		model.rotation.y = PI if float(state["dir"]) > 0.0 else 0.0
+		model.update_pose(delta, {"action": "", "speed": 0.4, "sprint": false, "progress": 0.0})
+
+
+# ---------------------------------------------------------------------------
+# NIGHT: traffic (spec 003-production-look "the city": "a few cars ... with
+# headlights and tail lights"). Simple primitive car bodies -- no rig, no
+# animation -- moving along the same street the fight lane sits on, per the
+# art brief's own wording ("must never block the fight lane") naming only
+# pedestrians, not traffic.
+# ---------------------------------------------------------------------------
+func _build_traffic() -> void:
+	_cars = []
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 9191
+	var body_colors := [
+		Color(0.12, 0.12, 0.15), Color(0.22, 0.05, 0.05), Color(0.08, 0.10, 0.16), Color(0.15, 0.15, 0.10),
+	]
+	for i in range(CAR_COUNT):
+		var lane_index := i % CAR_LANES.size()
+		var lane: Dictionary = CAR_LANES[lane_index]
+		var phase: float = rng.randf_range(0.0, CAR_Z_MAX - CAR_Z_MIN)
+		var speed: float = lane["speed"]
+		var dir: float = lane["dir"]
+		var car := _build_car_mesh(body_colors[i % body_colors.size()])
+		car.position = car_position(lane_index, speed, phase, 0.0)
+		car.rotation.y = 0.0 if dir > 0.0 else PI
+		add_child(car)
+		_cars.append({"node": car, "lane_index": lane_index, "speed": speed, "phase": phase})
+
+
+# A boxy body and cabin, four wheels, white-hot headlights at local +Z and
+# red tail lights at local -Z -- `_build_traffic` orients the whole node so
+# local +Z always points the way the car is actually travelling.
+func _build_car_mesh(color: Color) -> Node3D:
+	var car := Node3D.new()
+	var body_mat := _flat_mat(color, 0.35)
+
+	var body := MeshInstance3D.new()
+	var body_mesh := BoxMesh.new()
+	body_mesh.size = Vector3(1.7, 0.55, 4.0)
+	body.mesh = body_mesh
+	body.material_override = body_mat
+	car.add_child(body)
+
+	var cabin := MeshInstance3D.new()
+	var cabin_mesh := BoxMesh.new()
+	cabin_mesh.size = Vector3(1.4, 0.42, 2.0)
+	cabin.mesh = cabin_mesh
+	cabin.position = Vector3(0.0, 0.46, -0.3)
+	cabin.material_override = body_mat
+	car.add_child(cabin)
+
+	var headlight_mat := StandardMaterial3D.new()
+	headlight_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	headlight_mat.albedo_color = Color(3.2, 3.2, 2.8)
+	for x_off in [-0.6, 0.6]:
+		var hl := MeshInstance3D.new()
+		var hl_mesh := BoxMesh.new()
+		hl_mesh.size = Vector3(0.18, 0.14, 0.06)
+		hl.mesh = hl_mesh
+		hl.position = Vector3(x_off, -0.02, 2.0)
+		hl.material_override = headlight_mat
+		car.add_child(hl)
+
+	var taillight_mat := StandardMaterial3D.new()
+	taillight_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	taillight_mat.albedo_color = Color(3.0, 0.15, 0.12)
+	for x_off in [-0.6, 0.6]:
+		var tl := MeshInstance3D.new()
+		var tl_mesh := BoxMesh.new()
+		tl_mesh.size = Vector3(0.18, 0.14, 0.06)
+		tl.mesh = tl_mesh
+		tl.position = Vector3(x_off, -0.02, -2.0)
+		tl.material_override = taillight_mat
+		car.add_child(tl)
+
+	var wheel_mat := _flat_mat(Color(0.03, 0.03, 0.03), 0.9)
+	for x_off in [-0.85, 0.85]:
+		for z_off in [1.3, -1.3]:
+			var wheel := MeshInstance3D.new()
+			var wheel_mesh := CylinderMesh.new()
+			wheel_mesh.top_radius = 0.32
+			wheel_mesh.bottom_radius = 0.32
+			wheel_mesh.height = 0.24
+			wheel.mesh = wheel_mesh
+			wheel.rotation_degrees = Vector3(0.0, 0.0, 90.0)
+			wheel.position = Vector3(x_off, -0.28, z_off)
+			wheel.material_override = wheel_mat
+			car.add_child(wheel)
+
+	return car
+
+
+# The position of the car on `lane_index` at time `t`, looping the length of
+# the street (CAR_Z_MIN..CAR_Z_MAX) forever. Pure and static, same convention
+# as pedestrian_state above.
+static func car_position(lane_index: int, speed: float, phase: float, t: float) -> Vector3:
+	var lane: Dictionary = CAR_LANES[lane_index % CAR_LANES.size()]
+	var span: float = CAR_Z_MAX - CAR_Z_MIN
+	var local_t: float = fmod(t * speed + phase, span)
+	if local_t < 0.0:
+		local_t += span
+	var z: float
+	if float(lane["dir"]) > 0.0:
+		z = CAR_Z_MIN + local_t
+	else:
+		z = CAR_Z_MAX - local_t
+	return Vector3(lane["x"], 0.35, z)
+
+
+func _update_traffic(_delta: float) -> void:
+	for entry in _cars:
+		var node: Node3D = entry["node"]
+		node.position = car_position(int(entry["lane_index"]), float(entry["speed"]), float(entry["phase"]), _night_life_time)
