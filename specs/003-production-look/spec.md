@@ -47,6 +47,14 @@ production. Stylised is fine; cheap is not. The gameplay, systems and timeline o
   chainmail, matte fitted plates, clean leather and thin subtle light seams.
 - The sword rides sheathed on the back outside combat and is drawn when combat starts.
 - A mage's orb floats and orbits near the shoulder.
+- **Four starting class looks** (Joshua's own Gemini image from his text, 2026-09-24, kept
+  outside the repo at `C:\DREAM\recon\concepts\2026-09-24\joshua-class-examples-gemini.jpg`; it is
+  pixel art, so it guides class, silhouette, palette and gear, not rendering style):
+  1. Knight: silver plate with gold trim, winged helm, sword and a lion-crest shield.
+  2. Elf archer: leather armour, green hooded cloak, longbow, light and quick.
+  3. Mage: dark flowing robes with glowing violet and blue runes, staff, spell light at the hand.
+  4. Dark knight: jagged black and red plate, glowing red polearm, red cape, a dragon motif.
+  Each is redrawn in the both-worlds fusion style before it is modelled.
 - Concept art is generated locally in ComfyUI (Z-Image Turbo, Apache 2.0) from generic words
   only. Reference pictures Joshua shares are read for mood, materials and proportion, and are
   never given to a generator or copied.
