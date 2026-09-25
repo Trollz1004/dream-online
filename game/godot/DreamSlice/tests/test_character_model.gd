@@ -43,7 +43,11 @@ func run(r) -> void:
 	_test_sentinel_eye_differs_day_and_night()
 	_test_keeper_orb_differs_day_and_night_and_orbits()
 	_test_sentinel_dwarfs_the_others()
-	_test_dreamwalker_wears_armor_and_a_cape()
+	_test_dreamwalker_wears_ornate_dark_plate_with_gold_trim()
+	_test_dreamwalker_wears_an_olive_drab_tactical_vest()
+	_test_dreamwalker_wears_a_steel_helmet_with_goggles()
+	_test_dreamwalker_carries_sword_and_shield_on_the_back()
+	_test_shield_has_a_gold_lion_crest()
 	_test_keeper_wears_a_rust_red_coat()
 	_test_sentinel_wears_stone_and_iron_plating()
 	_test_metal_plate_pieces_actually_read_as_metal()
@@ -144,11 +148,15 @@ func _test_build_sets_kind_and_key_pivots() -> void:
 	check("dreamwalker carries a sheathed sword", dw.has_pivot("sword_sheathed") and dw.get_pivot("sword_sheathed") != null)
 	check("dreamwalker carries a drawn sword", dw.has_pivot("sword_drawn") and dw.get_pivot("sword_drawn") != null)
 	check("the sword starts sheathed", dw.get_pivot("sword_sheathed").visible and not dw.get_pivot("sword_drawn").visible)
+	check("dreamwalker carries a sheathed shield", dw.has_pivot("shield_sheathed") and dw.get_pivot("shield_sheathed") != null)
+	check("dreamwalker carries a drawn shield", dw.has_pivot("shield_drawn") and dw.get_pivot("shield_drawn") != null)
+	check("the shield starts on the back", dw.get_pivot("shield_sheathed").visible and not dw.get_pivot("shield_drawn").visible)
 	dw.free()
 
 	var keeper = CharacterModelScript.build("keeper")
 	check("keeper reports its own kind", keeper.kind == "keeper")
 	check("keeper carries no sword", not keeper.has_pivot("sword_drawn"))
+	check("keeper carries no shield", not keeper.has_pivot("shield_drawn"))
 	check("keeper's light orbits on its own pivot", keeper.has_pivot("orbit_pivot") and keeper.get_pivot("orbit_pivot") != null)
 	keeper.free()
 
@@ -156,6 +164,7 @@ func _test_build_sets_kind_and_key_pivots() -> void:
 	check("sentinel reports its own kind", sentinel.kind == "sentinel")
 	check("sentinel has a day/night eye accent", sentinel.has_pivot("accent_bead") and sentinel.get_pivot("accent_bead") != null)
 	check("sentinel carries no sword", not sentinel.has_pivot("sword_drawn"))
+	check("sentinel carries no shield", not sentinel.has_pivot("shield_drawn"))
 	sentinel.free()
 
 
@@ -348,32 +357,119 @@ func _test_sentinel_dwarfs_the_others() -> void:
 # mannequin three times over.
 # ---------------------------------------------------------------------------
 
-func _test_dreamwalker_wears_armor_and_a_cape() -> void:
-	print("the dreamwalker wears plate armor, a mail skirt, a belt and a short violet cape")
+# Rewritten 2026-09-24 for the "Knight look chosen" pass (spec 003k, worker
+# judge/prod-knight): the old test named a short violet cape and hood that
+# no longer exist -- neither reference image for the chosen look shows one,
+# and the back is now spoken for by the sword AND the shield together (see
+# _test_dreamwalker_carries_sword_and_shield_on_the_back below). This checks
+# the plate/mail/belt/pauldron/bracer/greave pieces that do carry over, plus
+# the gold trim lines that replace the old violet seam.
+func _test_dreamwalker_wears_ornate_dark_plate_with_gold_trim() -> void:
+	print("the dreamwalker wears ornate dark plate -- pauldrons, vambraces, greaves, a breastplate -- with thin gold trim lines")
 	var dw = CharacterModelScript.build("dreamwalker")
 	for piece in ["torso_armor", "mail_skirt", "belt", "pauldron_l", "pauldron_r", "bracer_l",
-			"bracer_r", "greave_l", "greave_r", "cape", "hood", "seam_chest"]:
+			"bracer_r", "greave_l", "greave_r", "seam_chest", "trim_collar", "trim_waist"]:
 		check("dreamwalker has a %s" % piece, dw.has_pivot(piece) and dw.get_pivot(piece) != null)
 
 	var torso: MeshInstance3D = dw.get_pivot("torso_armor")
-	var torso_mat: Material = torso.material_override
+	var torso_mat: ORMMaterial3D = torso.material_override
 	check("the torso plate reads the worn-steel texture, not a flat colour",
-		torso_mat is ORMMaterial3D and (torso_mat as ORMMaterial3D).albedo_texture != null)
+		torso_mat is ORMMaterial3D and torso_mat.albedo_texture != null)
+	check("the plate is dark (\"ornate dark plate\"), not the old mid-grey",
+		torso_mat.albedo_color.r + torso_mat.albedo_color.g + torso_mat.albedo_color.b < 0.6)
+	check("the plate is not pure black either -- there is still a colour to light",
+		torso_mat.albedo_color.r + torso_mat.albedo_color.g + torso_mat.albedo_color.b > 0.05)
 
-	var cape: MeshInstance3D = dw.get_pivot("cape")
-	check("the cape is real cloth geometry, not a flat placeholder",
-		cape.mesh != null and cape.mesh.get_surface_count() > 0)
+	for piece in ["seam_chest", "trim_collar", "trim_waist"]:
+		var trim: MeshInstance3D = dw.get_pivot(piece)
+		var trim_mat: StandardMaterial3D = trim.material_override
+		check("%s reads gold, not the old violet seam" % piece,
+			trim_mat.emission.is_equal_approx(CharacterModelScript.DW_GOLD))
+		check("%s's gold is not the sword's own violet Dreamedge accent" % piece,
+			not trim_mat.emission.is_equal_approx(CharacterModelScript.DW_ACCENT))
+	dw.free()
 
-	# Judge finding, round 4 (2026-09-24): the player read as a flat black
-	# silhouette, "armour detail invisible." One real cause, found alongside
-	# the missing camera fill light: _pbr_material() never set `metallic` on
-	# its ORMMaterial3D, which defaults to 0.0 -- so every "worn-steel plate"
-	# piece rendered fully non-metal (the ORM texture's own metallic channel
-	# multiplied by a zero scalar) regardless of how metallic the actual
-	# baked texture was, with no specular response to catch any light at all.
-	var cape_mat: StandardMaterial3D = cape.material_override
-	check("the cape reads as visibly violet cloth, not a near-black placeholder",
-		cape_mat.albedo_color.r + cape_mat.albedo_color.g + cape_mat.albedo_color.b > 0.7)
+
+func _test_dreamwalker_wears_an_olive_drab_tactical_vest() -> void:
+	print("the dreamwalker wears an olive-drab tactical vest with pouches and a strap under the plate")
+	var dw = CharacterModelScript.build("dreamwalker")
+	for piece in ["vest_torso", "chest_strap", "pouch_1", "pouch_2", "pouch_3"]:
+		check("dreamwalker has a %s" % piece, dw.has_pivot(piece) and dw.get_pivot(piece) != null)
+
+	var vest: MeshInstance3D = dw.get_pivot("vest_torso")
+	var vest_mat: ORMMaterial3D = vest.material_override
+	check("the vest reads a real texture, not a flat colour",
+		vest_mat is ORMMaterial3D and vest_mat.albedo_texture != null)
+	check("the vest tints olive-drab (green reads higher than blue), not brown leather or grey steel",
+		vest_mat.albedo_color.g > vest_mat.albedo_color.b and vest_mat.albedo_color.g > vest_mat.albedo_color.r * 0.9)
+	dw.free()
+
+
+func _test_dreamwalker_wears_a_steel_helmet_with_goggles() -> void:
+	print("the dreamwalker wears a steel helmet with dark visor goggles, down while walking")
+	var dw = CharacterModelScript.build("dreamwalker")
+	for piece in ["helmet", "goggles_down", "goggles_up"]:
+		check("dreamwalker has a %s" % piece, dw.has_pivot(piece) and dw.get_pivot(piece) != null)
+
+	var helmet: MeshInstance3D = dw.get_pivot("helmet")
+	var helmet_mat: ORMMaterial3D = helmet.material_override
+	check("the helmet is the same steel plate as the rest of the armor",
+		helmet_mat is ORMMaterial3D and helmet_mat.metallic > 0.5)
+
+	check("walking (out of combat) starts with the goggles down over the eyes",
+		dw.get_pivot("goggles_down").visible and not dw.get_pivot("goggles_up").visible)
+
+	var down: Node3D = dw.get_pivot("goggles_down")
+	check("the goggles are real lens geometry, not a flat placeholder",
+		_collect_mesh_instances(down).size() >= 2)
+	dw.free()
+
+
+func _test_dreamwalker_carries_sword_and_shield_on_the_back() -> void:
+	print("out of combat, the sword and shield ride the back; in combat, shield to the forearm, sword to the hand")
+	var dw = CharacterModelScript.build("dreamwalker")
+	check("it starts with the sword sheathed and the shield on the back",
+		dw.get_pivot("sword_sheathed").visible and not dw.get_pivot("sword_drawn").visible
+		and dw.get_pivot("shield_sheathed").visible and not dw.get_pivot("shield_drawn").visible)
+	check("and the goggles down over the eyes",
+		dw.get_pivot("goggles_down").visible and not dw.get_pivot("goggles_up").visible)
+
+	dw.update_pose(0.016, {"speed": 0.0, "action": "swing1", "progress": 0.3})
+	check("combat draws the sword and moves the shield to the forearm together",
+		dw.get_pivot("sword_drawn").visible and not dw.get_pivot("sword_sheathed").visible
+		and dw.get_pivot("shield_drawn").visible and not dw.get_pivot("shield_sheathed").visible)
+	check("and pushes the goggles up onto the helmet",
+		dw.get_pivot("goggles_up").visible and not dw.get_pivot("goggles_down").visible)
+
+	dw.update_pose(CharacterModelScript.SWORD_SHEATHE_DELAY, {"speed": 0.0, "action": "", "progress": 0.0})
+	check("once combat ends and the idle timeout passes, the sword and shield return to the back",
+		dw.get_pivot("sword_sheathed").visible and not dw.get_pivot("sword_drawn").visible
+		and dw.get_pivot("shield_sheathed").visible and not dw.get_pivot("shield_drawn").visible)
+	check("and the goggles come back down",
+		dw.get_pivot("goggles_down").visible and not dw.get_pivot("goggles_up").visible)
+	dw.free()
+
+
+func _test_shield_has_a_gold_lion_crest() -> void:
+	print("the heater shield carries a raised gold lion crest, a rounded emblem with mane ridges")
+	var dw = CharacterModelScript.build("dreamwalker")
+	check("the drawn shield's crest is recorded", dw.has_pivot("shield_crest") and dw.get_pivot("shield_crest") != null)
+	check("the crest's emblem mesh is recorded", dw.has_pivot("shield_crest_emblem") and dw.get_pivot("shield_crest_emblem") != null)
+
+	var crest: Node3D = dw.get_pivot("shield_crest")
+	check("the crest is more than a bare emblem -- it has mane ridges around it",
+		crest.get_child_count() >= 5)
+
+	var emblem: MeshInstance3D = dw.get_pivot("shield_crest_emblem")
+	var emblem_mat: StandardMaterial3D = emblem.material_override
+	check("the crest reads gold, distinct from the shield's own dark steel board",
+		emblem_mat.albedo_color.is_equal_approx(CharacterModelScript.DW_GOLD))
+	check("the crest is a raised metal relief, not flat paint",
+		emblem_mat.metallic > 0.5)
+
+	var board: MeshInstance3D = dw.get_pivot("shield_sheathed").get_child(0)
+	check("the shield's board is real panel geometry, not a flat placeholder",
+		board.mesh != null and board.mesh.get_surface_count() > 0)
 	dw.free()
 
 
@@ -461,13 +557,43 @@ func _test_sentinel_wears_stone_and_iron_plating() -> void:
 # the cape/the coat lathe all build), so walking up from the mesh to the
 # nearest BoneAttachment3D ancestor, composing every local transform found
 # along the way, always recovers the piece's true placement.
-func _piece_world_corners(model, mi: MeshInstance3D) -> Array:
-	# Walk from the mesh up to (not including) its owning BoneAttachment3D,
-	# composing every local transform in between -- the unscale wrapper
-	# _bone_attachment() now inserts (character_model.gd's own fix for this
-	# same finding) included, whatever its depth.
+#
+# Generalised 2026-09-24 (spec 003k, "Knight look chosen") to also accept a
+# composite Node3D pivot (the shield, the goggles) rather than only a bare
+# MeshInstance3D: those pieces are a whole small assembly of meshes (a board
+# plus a boss plus a lion crest; two lenses plus a strap), the same shape
+# _build_sword_mesh's own sword assembly already was, and they hang off a
+# BoneAttachment3D exactly the same way -- so the same stray-100x-bone-basis
+# bug this whole check exists to catch is just as real for them. A bare
+# MeshInstance3D pivot still works unchanged: _collect_mesh_instances(node)
+# returns `[node]` and _local_transform_within(node, node) is the identity,
+# which is exactly the single-mesh case this function always handled.
+func _collect_mesh_instances(node: Node) -> Array:
+	var found: Array = []
+	if node is MeshInstance3D and (node as MeshInstance3D).mesh != null:
+		found.append(node)
+	for child in node.get_children():
+		found.append_array(_collect_mesh_instances(child))
+	return found
+
+
+func _local_transform_within(root: Node, target: Node) -> Transform3D:
+	var t := Transform3D.IDENTITY
+	var n: Node = target
+	while n != null and n != root:
+		if n is Node3D:
+			t = (n as Node3D).transform * t
+		n = n.get_parent()
+	return t
+
+
+func _piece_world_corners(model, piece_root: Node3D) -> Array:
+	# Walk from the piece's own root up to (not including) its owning
+	# BoneAttachment3D, composing every local transform in between -- the
+	# unscale wrapper _bone_attachment() now inserts (character_model.gd's
+	# own fix for this same finding) included, whatever its depth.
 	var local_chain := Transform3D.IDENTITY
-	var n: Node = mi
+	var n: Node = piece_root
 	while n != null and not (n is BoneAttachment3D):
 		if n is Node3D:
 			local_chain = (n as Node3D).transform * local_chain
@@ -477,17 +603,19 @@ func _piece_world_corners(model, mi: MeshInstance3D) -> Array:
 	var bone_t: Transform3D = model._node_world_transform(model._skeleton) \
 		* model._bone_chain_transform(model._skeleton, bone_idx)
 	var xform: Transform3D = bone_t * local_chain
-	var aabb: AABB = mi.mesh.get_aabb()
 	var minv := Vector3.INF
 	var maxv := -Vector3.INF
-	for i in 8:
-		var corner := aabb.position + Vector3(
-			aabb.size.x if (i & 1) else 0.0,
-			aabb.size.y if (i & 2) else 0.0,
-			aabb.size.z if (i & 4) else 0.0)
-		var world: Vector3 = xform * corner
-		minv = minv.min(world)
-		maxv = maxv.max(world)
+	for mi in _collect_mesh_instances(piece_root):
+		var mesh_local: Transform3D = _local_transform_within(piece_root, mi)
+		var aabb: AABB = (mi as MeshInstance3D).mesh.get_aabb()
+		for i in 8:
+			var corner := aabb.position + Vector3(
+				aabb.size.x if (i & 1) else 0.0,
+				aabb.size.y if (i & 2) else 0.0,
+				aabb.size.z if (i & 4) else 0.0)
+			var world: Vector3 = xform * (mesh_local * corner)
+			minv = minv.min(world)
+			maxv = maxv.max(world)
 	return [minv, maxv]
 
 
@@ -495,7 +623,7 @@ func _check_outfit_sizes(kind: String, pieces: Array, max_size: float, max_offse
 	var model = CharacterModelScript.build(kind)
 	var root_origin: Vector3 = model._node_world_transform(model._skeleton).origin
 	for piece in pieces:
-		var mi: MeshInstance3D = model.get_pivot(piece)
+		var mi: Node3D = model.get_pivot(piece)
 		var corners: Array = _piece_world_corners(model, mi)
 		var minv: Vector3 = corners[0]
 		var maxv: Vector3 = corners[1]
@@ -512,7 +640,8 @@ func _check_outfit_sizes(kind: String, pieces: Array, max_size: float, max_offse
 func _test_outfit_pieces_are_reasonably_sized() -> void:
 	print("no outfit piece is oversized enough to swallow the camera")
 	_check_outfit_sizes("dreamwalker", ["torso_armor", "mail_skirt", "belt", "pauldron_l",
-			"bracer_l", "greave_l", "cape", "hood"], 3.0, 2.5)
+			"bracer_l", "greave_l", "vest_torso", "chest_strap", "pouch_1", "helmet",
+			"goggles_down", "goggles_up", "shield_sheathed", "shield_drawn"], 3.0, 2.5)
 	_check_outfit_sizes("keeper", ["robe", "collar", "clasp_l", "shoulder_cape_l", "cuff_l",
 			"belt"], 3.0, 2.5)
 	_check_outfit_sizes("sentinel", ["chest_plate", "waist_band", "belt_buckle", "harness_l",
@@ -535,7 +664,7 @@ func _test_outfit_pieces_are_reasonably_sized() -> void:
 # check above to every emissive mesh/orb in the file, not just armor.
 func _test_emissive_pieces_are_reasonably_sized() -> void:
 	print("no glowing accent (sword edge, orbiting orb, eye) is 100x oversized either")
-	_check_outfit_sizes("dreamwalker", ["blade_edge"], 3.0, 2.5)
+	_check_outfit_sizes("dreamwalker", ["blade_edge", "seam_chest", "trim_collar", "trim_waist"], 3.0, 2.5)
 	_check_outfit_sizes("keeper", ["accent_bead"], 3.0, 2.5)
 	_check_outfit_sizes("sentinel", ["accent_bead"], 6.0, 5.0)
 
@@ -580,12 +709,18 @@ func _test_armor_does_not_leak_between_kinds() -> void:
 	var dw = CharacterModelScript.build("dreamwalker")
 	var keeper = CharacterModelScript.build("keeper")
 	var sentinel = CharacterModelScript.build("sentinel")
-	check("only the dreamwalker wears a cape",
-		not keeper.has_pivot("cape") and not sentinel.has_pivot("cape"))
 	check("only the keeper wears a coat",
 		not dw.has_pivot("robe") and not sentinel.has_pivot("robe"))
 	check("only the sentinel wears a helm",
 		not dw.has_pivot("helm") and not keeper.has_pivot("helm"))
+	check("only the dreamwalker wears the knight's steel helmet",
+		not keeper.has_pivot("helmet") and not sentinel.has_pivot("helmet"))
+	check("only the dreamwalker wears goggles",
+		not keeper.has_pivot("goggles_down") and not sentinel.has_pivot("goggles_down"))
+	check("only the dreamwalker carries a shield",
+		not keeper.has_pivot("shield_sheathed") and not sentinel.has_pivot("shield_sheathed"))
+	check("only the dreamwalker wears the tactical vest",
+		not keeper.has_pivot("vest_torso") and not sentinel.has_pivot("vest_torso"))
 	dw.free()
 	keeper.free()
 	sentinel.free()

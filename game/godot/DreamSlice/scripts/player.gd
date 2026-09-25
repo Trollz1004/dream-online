@@ -32,6 +32,10 @@ const SPRINT_DRAIN := 10.0
 const DOUBLE_TAP_WINDOW := 0.30
 const HEALTH_MAX := 100.0
 const HIT_FLASH_DURATION := 0.28
+const FORCE_COMBAT_ARG := "--force-combat"   # capture-only, see _ready()
+const CLOSE_CAPTURE_ARG := "--close-up"      # capture-only, see _ready()
+const CLOSE_CAPTURE_LENGTH := 2.6
+const CLOSE_CAPTURE_HEIGHT := 1.5
 
 ## Emitted once a perfect dodge is confirmed: an i-frame dodge of a
 ## telegraphed attack. World memory records perfect_dodge from here; this
@@ -94,6 +98,18 @@ const ACTION_KEY_NAMES := {
 }
 
 
+# Pure and static so it is unit-testable with no OS boundary in the way
+# (the same "pure function first" shape character_model.gd's own
+# plan_for_state uses): _ready() below supplies the real
+# OS.get_cmdline_user_args() only; this just checks the array.
+static func _should_force_combat_pose(cmdline_args: PackedStringArray) -> bool:
+	return cmdline_args.has(FORCE_COMBAT_ARG)
+
+
+static func _should_use_close_capture(cmdline_args: PackedStringArray) -> bool:
+	return cmdline_args.has(CLOSE_CAPTURE_ARG)
+
+
 func _ready() -> void:
 	var capsule := CapsuleShape3D.new()
 	capsule.radius = 0.4
@@ -124,6 +140,25 @@ func _ready() -> void:
 	_camera.add_child(_fill_light)
 
 	events.open(event_path)
+
+	# A capture-only convenience for judging the knight look's combat gear
+	# (spec 003k) without needing the full --demo timeline to land on an
+	# attack beat: world.gd owns --capture/--at/--move/--yaw/--dream/--demo
+	# and is another worker's file, but a plain engine-global cmdline read
+	# needs no change there at all. --at should land shortly after this so
+	# the light swing itself has finished and the character reads as
+	# standing ready with the sword and shield still drawn (COMBAT_ACTIONS'
+	# own grace window, character_model.gd's SWORD_SHEATHE_DELAY), not
+	# mid-swing motion blur.
+	if capture_mode and _should_force_combat_pose(OS.get_cmdline_user_args()):
+		attack.start()
+
+	# The default hand-play chase distance (6 m) reads the knight's gold trim,
+	# goggles and shield crest as a few pixels each -- fine for a gameplay
+	# shot, not for judging the new gear's own detail. Same capture-only,
+	# no-world.gd-change shape as _should_force_combat_pose above.
+	if capture_mode and _should_use_close_capture(OS.get_cmdline_user_args()):
+		set_camera_distance(CLOSE_CAPTURE_LENGTH, CLOSE_CAPTURE_HEIGHT)
 
 	if capture_mode:
 		_yaw = demo_yaw

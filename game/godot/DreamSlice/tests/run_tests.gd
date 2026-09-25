@@ -31,7 +31,21 @@ extends SceneTree
 # and graffiti panels, blade signs and the four-colour neon palette, plus one
 # consolidated "day world stays untouched" regression check -- 33 checks on
 # top of 555.
-const MINIMUM_CHECKS := 588
+# Separately, from the same 555 base, raised to 612 for the "Knight look chosen" pass (spec 003k, worker
+# judge/prod-knight): the dreamwalker's plate/vest/helmet/goggles/shield
+# rework replaced the old cape-and-hood test (~15 checks removed) with new
+# checks for ornate dark plate with gold trim, the olive-drab tactical vest,
+# the steel helmet and its goggles, the shield riding the back with the
+# sword and coming to the forearm in combat, and the shield's own gold lion
+# crest -- plus extending the outfit-size and emissive-size sweeps and the
+# per-kind armor-leak check to the new pieces. Raised again to 617 for the
+# --force-combat capture flag (5 checks) that makes the in-combat capture
+# deterministic instead of a guess at the --demo timeline. Raised again to
+# 622 for the matching --close-up capture flag (5 checks), for judging the
+# new gear's own detail at something closer than hand-play distance.
+# The city pass and the knight pass landed in parallel, so the merged floor is
+# 555 + 33 (city) + 67 (knight) = 655.
+const MINIMUM_CHECKS := 655
 
 var passed := 0
 var failed := 0
@@ -54,6 +68,8 @@ func _init() -> void:
 	_test_body_does_not_spin_the_camera()
 	_test_player_has_a_subtle_camera_following_fill_light()
 	_test_capture_mode_is_read_at_ready()
+	_test_force_combat_pose_flag_for_captures()
+	_test_close_capture_flag_shortens_the_camera_distance()
 	_test_e_talks_to_a_nearby_npc()
 	_test_heavy_attack_on_right_mouse()
 	_test_guard_on_q()
@@ -206,6 +222,61 @@ func _test_capture_mode_is_read_at_ready() -> void:
 	check("both settings are made before the player enters the tree",
 		added != -1 and mode_set != -1 and yaw_set != -1
 		and mode_set < added and yaw_set < added)
+
+
+# spec 003k ("Knight look chosen"): judging the shield-to-forearm/sword-to-
+# hand/goggles-up combat pose needed a deterministic capture, not a guess at
+# which second of the full --demo timeline lands on an attack. The actual
+# dispatch (_ready() reading OS.get_cmdline_user_args()) cannot be driven
+# from a test without changing the test runner's own real cmdline -- the
+# same OS-boundary limit _test_capture_mode_is_read_at_ready's own comment
+# already names for Input.mouse_mode -- so the decision is pulled out as a
+# pure, static function (_should_force_combat_pose) and checked directly,
+# the same "pure function first" split character_model.gd's plan_for_state
+# already uses; the wiring itself is pinned by a source check, same
+# technique as the capture-order check just above.
+func _test_force_combat_pose_flag_for_captures() -> void:
+	print("a --force-combat cmdline flag starts an attack immediately, for a deterministic in-combat capture")
+	var PlayerScript := load("res://scripts/player.gd")
+	check("no flags at all does not force combat pose",
+		not PlayerScript._should_force_combat_pose(PackedStringArray([])))
+	check("an unrelated flag does not force combat pose",
+		not PlayerScript._should_force_combat_pose(PackedStringArray(["--dream", "night"])))
+	check("--force-combat forces combat pose",
+		PlayerScript._should_force_combat_pose(PackedStringArray(["--force-combat"])))
+	check("--force-combat is recognised alongside other flags",
+		PlayerScript._should_force_combat_pose(PackedStringArray(["--capture", "shot.png", "--force-combat"])))
+
+	var source := FileAccess.get_file_as_string("res://scripts/player.gd")
+	check("the flag only ever fires during a capture run, gated on capture_mode",
+		source.find("if capture_mode and _should_force_combat_pose(OS.get_cmdline_user_args()):") != -1)
+
+
+# Same shape and same reason as the force-combat flag just above: the
+# default 6 m hand-play chase distance reads new gear detail (gold trim,
+# goggles, the shield's own lion crest) as a handful of pixels, so a capture
+# meant to judge that detail needs to stand closer than a live player ever
+# would.
+func _test_close_capture_flag_shortens_the_camera_distance() -> void:
+	print("a --close-up cmdline flag pulls the chase camera in, for judging gear detail")
+	var PlayerScript := load("res://scripts/player.gd")
+	check("no flags at all does not request a close capture",
+		not PlayerScript._should_use_close_capture(PackedStringArray([])))
+	check("an unrelated flag does not request a close capture",
+		not PlayerScript._should_use_close_capture(PackedStringArray(["--force-combat"])))
+	check("--close-up requests a close capture",
+		PlayerScript._should_use_close_capture(PackedStringArray(["--close-up"])))
+
+	var source := FileAccess.get_file_as_string("res://scripts/player.gd")
+	check("the close-up flag only ever fires during a capture run, gated on capture_mode",
+		source.find("if capture_mode and _should_use_close_capture(OS.get_cmdline_user_args()):") != -1)
+
+	var player = load("res://scripts/player.gd").new()
+	player.capture_mode = true
+	player._ready()
+	check("the close distance is genuinely closer than the default hand-play spring length",
+		PlayerScript.CLOSE_CAPTURE_LENGTH < 6.0)
+	player.free()
 
 
 # There was no one in the slice to talk to, only the training dummy, which is
