@@ -46,8 +46,11 @@ func run(r) -> void:
 	_test_dreamwalker_wears_armor_and_a_cape()
 	_test_keeper_wears_a_rust_red_coat()
 	_test_sentinel_wears_stone_and_iron_plating()
+	_test_metal_plate_pieces_actually_read_as_metal()
 	_test_outfit_pieces_are_reasonably_sized()
+	_test_emissive_pieces_are_reasonably_sized()
 	_test_armor_does_not_leak_between_kinds()
+	_test_model_faces_forward_along_minus_z()
 
 
 func check(label: String, condition: bool) -> void:
@@ -360,6 +363,17 @@ func _test_dreamwalker_wears_armor_and_a_cape() -> void:
 	var cape: MeshInstance3D = dw.get_pivot("cape")
 	check("the cape is real cloth geometry, not a flat placeholder",
 		cape.mesh != null and cape.mesh.get_surface_count() > 0)
+
+	# Judge finding, round 4 (2026-09-24): the player read as a flat black
+	# silhouette, "armour detail invisible." One real cause, found alongside
+	# the missing camera fill light: _pbr_material() never set `metallic` on
+	# its ORMMaterial3D, which defaults to 0.0 -- so every "worn-steel plate"
+	# piece rendered fully non-metal (the ORM texture's own metallic channel
+	# multiplied by a zero scalar) regardless of how metallic the actual
+	# baked texture was, with no specular response to catch any light at all.
+	var cape_mat: StandardMaterial3D = cape.material_override
+	check("the cape reads as visibly violet cloth, not a near-black placeholder",
+		cape_mat.albedo_color.r + cape_mat.albedo_color.g + cape_mat.albedo_color.b > 0.7)
 	dw.free()
 
 
@@ -377,6 +391,28 @@ func _test_keeper_wears_a_rust_red_coat() -> void:
 	check("the coat is tinted rust-red, not the old rig's purple robe",
 		(robe_mat as ORMMaterial3D).albedo_color.r > (robe_mat as ORMMaterial3D).albedo_color.b)
 	keeper.free()
+
+
+# Judge finding, round 4 (2026-09-24): "armour detail invisible" -- the
+# player read as a flat black silhouette. _pbr_material() built every plate/
+# iron/leather/coat piece as an ORMMaterial3D but never set `metallic`,
+# which defaults to 0.0 and multiplies straight through the ORM texture's
+# own metallic channel (the same way albedo_color multiplies albedo_texture),
+# so every "worn-steel plate" piece rendered fully non-metal -- no specular
+# highlight to catch any light at all, however bright.
+func _test_metal_plate_pieces_actually_read_as_metal() -> void:
+	print("worn-steel/iron plate pieces let their own ORM texture's metallic channel through")
+	var dw = CharacterModelScript.build("dreamwalker")
+	var torso: ORMMaterial3D = dw.get_pivot("torso_armor").material_override
+	check("the dreamwalker's torso plate is not forced flat non-metal",
+		torso.metallic > 0.5)
+	dw.free()
+
+	var sentinel = CharacterModelScript.build("sentinel")
+	var chest: ORMMaterial3D = sentinel.get_pivot("chest_plate").material_override
+	check("the sentinel's chest plate is not forced flat non-metal",
+		chest.metallic > 0.5)
+	sentinel.free()
 
 
 func _test_sentinel_wears_stone_and_iron_plating() -> void:
@@ -481,6 +517,62 @@ func _test_outfit_pieces_are_reasonably_sized() -> void:
 			"belt"], 3.0, 2.5)
 	_check_outfit_sizes("sentinel", ["chest_plate", "waist_band", "belt_buckle", "harness_l",
 			"pauldron_l", "gauntlet_l", "fur_cuff_l", "greave_l", "helm", "seam_chest"], 6.0, 5.0)
+
+
+# Judge finding, round 4 (2026-09-24, night capture): a giant glowing sphere
+# filled the screen approaching Mireth -- her orbiting orb, attached with
+# _attach_orbiting_glow() straight onto a bare BoneAttachment3D (no
+# _BONE_MESH_UNSCALE wrapper), suffers the exact same stray-100x-bone-basis
+# bug the outfit pass above already found and fixed for armor, since that
+# bug lives in the shared rig's own "Rig" node scale, not anything specific
+# to armor meshes -- confirmed empirically (tools/_debug_facing.gd, run once
+# and deleted) by finding a DEF-bone's composed basis is ~100x scale in
+# model space even though its ORIGIN reads correctly, which is exactly what
+# _bone_attachment()'s unscale wrapper cancels and every non-armor
+# attachment (the sword, the accent beads, the accent light) was never
+# routed through. Joshua's own live-play report the same day named the
+# sword too ("oversized/glitched on screen"). This extends the same size
+# check above to every emissive mesh/orb in the file, not just armor.
+func _test_emissive_pieces_are_reasonably_sized() -> void:
+	print("no glowing accent (sword edge, orbiting orb, eye) is 100x oversized either")
+	_check_outfit_sizes("dreamwalker", ["blade_edge"], 3.0, 2.5)
+	_check_outfit_sizes("keeper", ["accent_bead"], 3.0, 2.5)
+	_check_outfit_sizes("sentinel", ["accent_bead"], 6.0, 5.0)
+
+
+# Joshua's live-play report, round 4 (2026-09-24): the player walks
+# backwards -- the body faces opposite its own movement direction.
+# character_model.gd's _build() sets _rig_root.rotation.y = PI on the
+# (unverified) assumption "the imported rig rests facing +Z"; player.gd's
+# _face_movement (and npc.gd's talk-facing, and demo_director.gd's own
+# facing override) all assume, separately, "the front of the model is its
+# -Z side." Settled here from the skeleton itself rather than by trusting
+# either assumption: DEF-toe.L sits forward of DEF-foot.L for any biped
+# standing normally, in every action this rig plays (idle included), so the
+# foot-to-toe direction -- read with the SAME tree-independent bone math
+# blade_tip_global() already relies on, composed all the way up through
+# _rig_root (so this bakes in whatever correction _build() currently
+# applies) -- names which way the model actually faces without assuming
+# either side of the mismatch. tools/_debug_facing.gd (run once and
+# deleted) found this direction pointing toward +Z with the PI rotation in
+# place: the rig rests facing -Z natively (the opposite of the header's old
+# guess), so the PI "correction" was flipping it the wrong way.
+func _test_model_faces_forward_along_minus_z() -> void:
+	print("the model faces -Z, matching player.gd/npc.gd/demo_director.gd's own front-is-minus-Z assumption")
+	for kind in [CharacterModelScript.KIND_DREAMWALKER, CharacterModelScript.KIND_KEEPER,
+			CharacterModelScript.KIND_SENTINEL]:
+		var model = CharacterModelScript.build(kind)
+		var skel: Skeleton3D = model._skeleton
+		var toe_idx := skel.find_bone("DEF-toe.L")
+		var foot_idx := skel.find_bone("DEF-foot.L")
+		check("%s has the toe/foot bones this check needs" % kind, toe_idx != -1 and foot_idx != -1)
+		var toe_pos: Vector3 = (model._node_world_transform(skel) * model._bone_chain_transform(skel, toe_idx)).origin
+		var foot_pos: Vector3 = (model._node_world_transform(skel) * model._bone_chain_transform(skel, foot_idx)).origin
+		var forward: Vector3 = toe_pos - foot_pos
+		forward.y = 0.0
+		check("%s: the foot-to-toe direction (standing forward) points toward -Z, not +Z" % kind,
+			forward.normalized().dot(Vector3(0.0, 0.0, -1.0)) > 0.5)
+		model.free()
 
 
 func _test_armor_does_not_leak_between_kinds() -> void:

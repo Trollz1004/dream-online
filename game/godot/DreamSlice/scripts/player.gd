@@ -73,6 +73,7 @@ var _camera: Camera3D
 var _visual: Node3D
 var _model: Node3D = null
 var _gold_rim: MeshInstance3D
+var _fill_light: SpotLight3D = null
 var _auto_sprint := false
 var _last_tap := {}
 var _dash_dir := Vector3.ZERO
@@ -119,6 +120,9 @@ func _ready() -> void:
 	_camera.current = true
 	_spring.add_child(_camera)
 
+	_fill_light = _build_fill_light()
+	_camera.add_child(_fill_light)
+
 	events.open(event_path)
 
 	if capture_mode:
@@ -157,6 +161,28 @@ func _build_gold_rim() -> MeshInstance3D:
 	rim.rotation_degrees = Vector3(90.0, 0.0, 0.0)
 	rim.visible = false
 	return rim
+
+
+# Judge finding, round 4 (2026-09-24): the player read as a flat black
+# silhouette in both day and night captures -- armour detail invisible. The
+# world's own sun (day) or moon (night) lights the character from whatever
+# direction it happens to sit at, which regularly leaves the camera-facing
+# side underlit at golden hour or in the dark. A SpotLight3D parented to the
+# camera itself, aimed straight down the camera's own -Z (its default facing,
+# so no extra rotation is needed), always lands on whatever side of the
+# character the camera is actually looking at, in either world, without
+# touching the world's own lighting or its day/night grade. Kept deliberately
+# subtle (a modest energy, no shadows of its own) per Joshua's own "do not
+# wash out the scene" -- this is a fill/rim light, not a stage spotlight.
+func _build_fill_light() -> SpotLight3D:
+	var light := SpotLight3D.new()
+	light.light_energy = 1.4
+	light.light_color = Color(1.0, 0.92, 0.78)   # warm/golden, so steel actually catches it
+	light.spot_range = 9.0
+	light.spot_angle = 30.0
+	light.spot_angle_attenuation = 1.5
+	light.shadow_enabled = false
+	return light
 
 
 func set_time_of_day(t: String) -> void:

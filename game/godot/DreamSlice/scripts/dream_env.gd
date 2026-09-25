@@ -100,27 +100,37 @@ const MOUNTAIN_HAZE_MAX := 0.42
 # frequency and phase than the far range's so the two never look like one
 # range repeated. It sits well clear of every hand-placed piece of scenery
 # (the closest rock/tree/ruin in the field stands at |z| <= 45, leaving a
-# 25 m gap of flat horizon-fill before NEAR_MOUNTAIN_Z_NEAR) but, on the first
-# day-polish pass, deliberately NOT as far out as the far range: at 270+ m
-# even this layer's own darker, warmer bake washed out under the environment's
-# aerial-perspective fog, since that fog scales with real camera distance, not
-# distance from the field's centre. Sitting a few hundred metres closer keeps
-# it inside a range where its own warm, saturated rock tone actually survives
-# to the eye, which is what makes it read as a nearer, sunlit foothill in
-# front of the hazier, bluer far range instead of one more pale silhouette.
-const NEAR_MOUNTAIN_AMPLITUDE := 80.0
+# gap of flat horizon-fill before NEAR_MOUNTAIN_Z_NEAR).
+#
+# Round 4 (2026-09-24, judge capture): the FIRST day-polish pass's own values
+# here (Z_NEAR -70, Z_FAR -120, AMPLITUDE 80, BASE_Y -3) put a ~77 m-tall
+# ridge starting just 70 m out -- a >45 degree elevation angle at its nearest
+# edge from anywhere near ground level, which reads as "a huge pale wall
+# filling the top third of the frame," not foothills, and its rock tone
+# (0.47, 0.34, 0.22) was within a rounding error of the far range's own lit
+# tone (0.48, 0.34, 0.22), so it did not even read as a separate, closer
+# layer. Pushed back and down here so the range's own peak sits well below
+# the far range's own peak AND subtends a smaller angle from the field than
+# the far range's peaks do even in the least favourable pairing of edges
+# (tests/test_dream_env.gd's _test_near_mountain_never_reads_taller_than_the_
+# far_range checks this as a plain arithmetic invariant on the constants
+# below, not a rendered capture), and darkened/warmed well past the far
+# range's own tone so it reads as a closer, sun-warmed foothill silhouette
+# in front of the hazier, cooler, paler far range instead of a repeat of it.
+const NEAR_MOUNTAIN_AMPLITUDE := 45.0
 const NEAR_MOUNTAIN_X_HALF := 130.0
-const NEAR_MOUNTAIN_Z_NEAR := -70.0
-const NEAR_MOUNTAIN_Z_FAR := -120.0
-const NEAR_MOUNTAIN_GRID_STEP := 4.0
-const NEAR_MOUNTAIN_BASE_Y := -3.0
-# Darker and more saturated than the far range's lit tone: closer, sunlit
-# foothill rock rather than a distant, hazy silhouette.
-const NEAR_MOUNTAIN_ROCK_LIT := Color(0.47, 0.34, 0.22)
-const NEAR_MOUNTAIN_ROCK_SHADOW := Color(0.12, 0.13, 0.19)
-# 95 m never reaches a believable snowline for a foothill this close, so this
-# layer carries no snow at all -- the line is pinned past 1.0, past any
-# height_frac the shading code can ever produce.
+const NEAR_MOUNTAIN_Z_NEAR := -150.0
+const NEAR_MOUNTAIN_Z_FAR := -230.0
+const NEAR_MOUNTAIN_GRID_STEP := 5.0
+const NEAR_MOUNTAIN_BASE_Y := -20.0
+# Darker and warmer (more red relative to blue) than the far range's own lit
+# tone: closer, sun-warmed foothill rock silhouetted against the hazier,
+# paler far range, rather than the same pale colour repeated at a bigger size.
+const NEAR_MOUNTAIN_ROCK_LIT := Color(0.36, 0.15, 0.05)
+const NEAR_MOUNTAIN_ROCK_SHADOW := Color(0.04, 0.035, 0.05)
+# Never reaches a believable snowline for a foothill this close and this
+# short, so this layer carries no snow at all -- the line is pinned past
+# 1.0, past any height_frac the shading code can ever produce.
 const NEAR_MOUNTAIN_SNOW_LINE := 1.5
 
 # Poly Haven CC0 textures (assets/third_party/LICENSES.md has the full
@@ -205,6 +215,11 @@ var _sign_frame_count := 0
 var _mountain_layers: Array = []
 var _pebble_positions: Array = []
 var _autumn_tree_tint_count := 0
+# The actual override materials _tint_autumn_foliage() creates, for
+# tests/test_dream_env.gd to sample -- see that function's own note (round 4,
+# 2026-09-24): counting how many surfaces got tinted, the only thing the
+# original test checked, does not catch a tint that still reads red.
+var _tinted_leaf_materials: Array = []
 
 
 func _ready() -> void:
@@ -320,6 +335,15 @@ func pebble_instance_count() -> int:
 ## (day-polish pass item 2), or 0 in Night mode.
 func autumn_tree_tint_count() -> int:
 	return _autumn_tree_tint_count
+
+
+## The actual override materials created by the autumn-tint fix, for a test
+## to sample directly -- round 4 (2026-09-24): a judge capture still showed
+## one tree "still saturated red" after autumn_tree_tint_count() > 0 already
+## read green, because that count only proved a tint was APPLIED, never that
+## the result stopped looking red. See _tint_autumn_foliage()'s own note.
+func tinted_leaf_materials() -> Array:
+	return _tinted_leaf_materials
 
 
 # The terrain's own height at world (x, z), before any prop or corridor
@@ -1299,20 +1323,44 @@ func _find_first_mesh_instance(n: Node) -> MeshInstance3D:
 
 
 # Day-polish pass item 2: the judge's read of 003b-day-wide.png called one
-# tree "bright saturated red." Inspecting the imported models directly (see
-# the report this fix shipped with) found CommonTree.glb's own
-# "Leaves_NormalTree" surface is a plain white-albedo material driven entirely
-# by its own texture, and that texture is bright, saturated red;
-# TwistedTree.glb's "Leaves_TwistedTree" surface is the same shape of
-# material. Every tree model's own "Leaves_*" surface -- found by name, not by
-# model index, so this keeps working if a future tree swap changes which slot
-# is which, and skips DeadTree.glb, which has no leaf surface at all -- gets a
-# per-instance material override multiplying that texture toward a dry autumn
-# ochre/brown, "should be dry autumn ochre/brown" per the spec. A per-instance
-# override (MeshInstance3D.set_surface_override_material), not a mutation of
-# the shared imported Mesh resource's own baked material, which every other
-# instance of the same model would otherwise share.
+# tree "bright saturated red." Every tree model's own "Leaves_*" surface --
+# found by name, not by model index, so this keeps working if a future tree
+# swap changes which slot is which, and skips DeadTree.glb, which has no leaf
+# surface at all -- gets a per-instance material override toward a dry
+# autumn ochre/brown, "should be dry autumn ochre/brown" per the spec. A
+# per-instance override (MeshInstance3D.set_surface_override_material), not a
+# mutation of the shared imported Mesh resource's own baked material, which
+# every other instance of the same model would otherwise share.
+#
+# Round 4 (2026-09-24, judge capture): one tree still read saturated red
+# after this fix's first pass, which had just multiplied _AUTUMN_LEAF_TINT
+# onto the surface's OWN albedo_texture (new_mat.albedo_color = tint, texture
+# left alone). That works for CommonTree.glb's "Leaves_NormalTree" (measured,
+# tools/_debug_tree_leaf_material.gd, run once and deleted: average colour
+# (0.22, 0.31, 0.0) -- actually green, not red at all, despite this file's
+# own earlier comment claiming otherwise) but not for TwistedTree.glb's
+# "Leaves_TwistedTree" (measured average (0.36, 0.05, 0.05) -- genuinely
+# saturated red): a multiply can only ever DARKEN a texture's existing hue,
+# never shift it, so an ochre tint times a strongly red texture still comes
+# out red (measured after-multiply: (0.21, 0.02, 0.01)). Both leaf textures
+# also carry real alpha variation (measured average alpha ~0.22-0.29 -- most
+# of the card is transparent gaps between leaf-cluster shapes), confirmed via
+# their materials' own transparency mode, so the fix cannot just drop the
+# texture (that would make the whole card opaque, losing the leaf silhouette
+# it cuts out). _autumn_leaf_alpha_mask() below replaces every visible
+# texel's own RGB with flat white while keeping its ALPHA exactly as
+# imported, so albedo_color alone (not the source texture's own hue) decides
+# the final colour everywhere the leaf shape is actually visible, regardless
+# of how red the source art was -- computed once per source texture and
+# cached (a per-instance repeat of this over all 11 placed trees would be
+# needless repeated image work for a result that never changes).
 const _AUTUMN_LEAF_TINT := Color(0.58, 0.40, 0.20)
+
+# Texture2D (by resource id) -> its own alpha-mask ImageTexture, see
+# _autumn_leaf_alpha_mask()'s own note. Static: shared by every DreamEnv
+# instance a test run builds, since the source textures themselves are the
+# same shared, cached resources across every load() of the same .glb.
+static var _autumn_leaf_mask_cache: Dictionary = {}
 
 
 func _tint_autumn_foliage(inst: Node) -> void:
@@ -1328,8 +1376,44 @@ func _tint_autumn_foliage(inst: Node) -> void:
 			var new_mat: Material = src_mat.duplicate() if src_mat != null else StandardMaterial3D.new()
 			if new_mat is BaseMaterial3D:
 				new_mat.albedo_color = _AUTUMN_LEAF_TINT
+				if new_mat.albedo_texture != null:
+					new_mat.albedo_texture = _autumn_leaf_alpha_mask(new_mat.albedo_texture)
+				_tinted_leaf_materials.append(new_mat)
 			mesh_inst.set_surface_override_material(i, new_mat)
 			_autumn_tree_tint_count += 1
+
+
+# Returns a cached ImageTexture the same size as `source`, every texel's RGB
+# flattened to white (1, 1, 1) while its ALPHA is copied through unchanged --
+# so a material using this as albedo_texture, with albedo_color set to
+# _AUTUMN_LEAF_TINT, renders that flat tint everywhere the source texture was
+# visible at all, and nothing (no leaf shape, no cutout) wherever it was
+# transparent, regardless of what colour the source art actually painted
+# there. Operates on the raw byte buffer (PackedByteArray), not
+# Image.get_pixel()/set_pixel() per texel (a Color-object-per-pixel loop
+# measured meaningfully slower over a full leaf-card texture) -- every 4th
+# byte starting at offset 3 is one texel's alpha in Image.FORMAT_RGBA8; every
+# other byte becomes 255.
+func _autumn_leaf_alpha_mask(source: Texture2D) -> Texture2D:
+	var key: int = source.get_instance_id()
+	if _autumn_leaf_mask_cache.has(key):
+		return _autumn_leaf_mask_cache[key]
+	var img: Image = source.get_image()
+	img.decompress()
+	if img.get_format() != Image.FORMAT_RGBA8:
+		img.convert(Image.FORMAT_RGBA8)
+	var data: PackedByteArray = img.get_data()
+	var i := 0
+	while i < data.size():
+		data[i] = 255
+		data[i + 1] = 255
+		data[i + 2] = 255
+		i += 4
+	var masked := Image.create_from_data(img.get_width(), img.get_height(), false,
+		Image.FORMAT_RGBA8, data)
+	var tex := ImageTexture.create_from_image(masked)
+	_autumn_leaf_mask_cache[key] = tex
+	return tex
 
 
 func _find_all_mesh_instances(n: Node) -> Array:

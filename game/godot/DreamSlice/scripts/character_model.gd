@@ -189,7 +189,18 @@ func _build() -> void:
 			kind = KIND_DREAMWALKER
 
 	_rig_root = BASE_SCENE.instantiate()
-	_rig_root.rotation.y = PI   # the imported rig rests facing +Z; see the visual check note below.
+	# Judge finding, round 4 (2026-09-24, live play): the player walked
+	# backwards -- the body faced opposite its own movement direction. This
+	# line used to read `_rig_root.rotation.y = PI` on the assumption "the
+	# imported rig rests facing +Z" (an eyeballed guess, never checked against
+	# the skeleton itself). tests/test_character_model.gd's
+	# _test_model_faces_forward_along_minus_z settles it from the rig's own
+	# bones instead -- DEF-toe.L sits forward of DEF-foot.L for any biped
+	# standing normally, and with the PI rotation in place that foot-to-toe
+	# direction pointed toward +Z, opposite player.gd's _face_movement (and
+	# npc.gd's talk-facing, and demo_director.gd's own facing override), which
+	# all assume the model's front is -Z. The rig actually rests facing -Z
+	# natively -- no correction needed at all.
 	add_child(_rig_root)
 	_skeleton = _rig_root.get_node("RootNode/Rig/Skeleton3D")
 	_anim = _rig_root.get_node("AnimationPlayer")
@@ -244,14 +255,24 @@ func _tint_body(main_color: Color, trim_color: Color, metallic: float, roughness
 # tracks its bone every frame the node is inside a live, processing tree --
 # unlike the bone-pose read _bone_chain_transform() below relies on, which
 # works with no tree at all; see that function's own note).
+#
+# Judge finding, round 4 (2026-09-24, night capture): this used to hang the
+# bead/light straight off a bare BoneAttachment3D, the same shape of mistake
+# _bone_attachment()'s own header note already diagnosed and fixed for armor
+# -- a DEF-bone's composed basis carries a stray ~100x scale in model space
+# (this rig's "Rig" node itself, confirmed by tools/_debug_facing.gd, run
+# once and deleted) even though its ORIGIN reads correctly, so a MeshInstance3D
+# hung directly off the attachment renders ~100x too big and ~100x too far
+# out. Nothing about that bug is specific to armor pieces; it hits any raw
+# BoneAttachment3D child. Routed through the shared _bone_attachment() helper
+# (its own small unscale wrapper) below, same as every armor piece, fixes
+# Mireth's orbiting orb (_attach_orbiting_glow) and the Sentinel's eye
+# (this function) alike.
 func _attach_glow(bone_name: String, local_offset: Vector3, color: Color,
 		day_energy: float, night_energy: float, with_light: bool) -> void:
-	var bone_idx := _skeleton.find_bone(bone_name)
-	if bone_idx == -1:
+	var attach := _bone_attachment(bone_name)
+	if attach == null:
 		return
-	var attachment := BoneAttachment3D.new()
-	attachment.bone_name = bone_name
-	_skeleton.add_child(attachment)
 
 	var bead := MeshInstance3D.new()
 	var sphere := SphereMesh.new()
@@ -267,7 +288,7 @@ func _attach_glow(bone_name: String, local_offset: Vector3, color: Color,
 	_accent_material.emission_energy_multiplier = day_energy
 	bead.material_override = _accent_material
 	bead.position = local_offset
-	attachment.add_child(bead)
+	attach.add_child(bead)
 	pivots["accent_bead"] = bead
 
 	if with_light:
@@ -276,7 +297,7 @@ func _attach_glow(bone_name: String, local_offset: Vector3, color: Color,
 		_accent_light.omni_range = 4.0
 		_accent_light.light_energy = day_energy
 		_accent_light.light_color = color
-		attachment.add_child(_accent_light)
+		attach.add_child(_accent_light)
 		pivots["accent_light"] = _accent_light
 
 	_accent_day = day_energy
@@ -286,18 +307,17 @@ func _attach_glow(bone_name: String, local_offset: Vector3, color: Color,
 # Like _attach_glow, but the bead+light sit on a pivot offset by
 # `orbit_radius` and `orbit_height` rather than directly on the bone; the
 # pivot itself is rotated every update_pose() call (Keeper only) so the orb
-# genuinely orbits rather than just floating at a fixed offset.
+# genuinely orbits rather than just floating at a fixed offset. Routed
+# through _bone_attachment()'s own unscale wrapper for the same reason
+# _attach_glow above now is -- see that function's header note.
 func _attach_orbiting_glow(bone_name: String, orbit_radius: float, orbit_height: float,
 		color: Color, day_energy: float, night_energy: float) -> void:
-	var bone_idx := _skeleton.find_bone(bone_name)
-	if bone_idx == -1:
+	var attach := _bone_attachment(bone_name)
+	if attach == null:
 		return
-	var attachment := BoneAttachment3D.new()
-	attachment.bone_name = bone_name
-	_skeleton.add_child(attachment)
 
 	_orbit_pivot = Node3D.new()
-	attachment.add_child(_orbit_pivot)
+	attach.add_child(_orbit_pivot)
 	pivots["orbit_pivot"] = _orbit_pivot
 
 	var offset := Vector3(orbit_radius, orbit_height, 0.0)
@@ -341,6 +361,12 @@ func _setup_dreamwalker() -> void:
 # built twice: one copy bone-attached across the upper back (sheathed), one
 # to the right hand (drawn). update_pose() toggles which is visible off the
 # `action` string.
+#
+# Judge finding, round 4 (2026-09-24, live play): "the sword is oversized/
+# glitched on screen." Same bug as _attach_glow's own header note -- both
+# sword copies used to hang straight off a bare BoneAttachment3D, picking up
+# the rig's stray ~100x model-space basis scale. Routed through
+# _bone_attachment()'s unscale wrapper below, same as every armor piece.
 func _build_and_attach_sword() -> void:
 	var steel_mat := StandardMaterial3D.new()
 	steel_mat.albedo_color = DW_TRIM
@@ -357,24 +383,24 @@ func _build_and_attach_sword() -> void:
 	_accent_material.emission = DW_ACCENT
 	_accent_material.emission_energy_multiplier = 0.6
 
-	var back_attach := BoneAttachment3D.new()
-	back_attach.bone_name = "DEF-spine.003"
-	_skeleton.add_child(back_attach)
-	_sword_sheathed = _build_sword_mesh(steel_mat, grip_mat, false)
-	_sword_sheathed.position = Vector3(-0.05, 0.09, -0.02)
-	_sword_sheathed.rotation_degrees = Vector3(105.0, 6.0, 14.0)
-	back_attach.add_child(_sword_sheathed)
-	pivots["sword_sheathed"] = _sword_sheathed
+	var back_attach := _bone_attachment("DEF-spine.003")
+	if back_attach != null:
+		_sword_sheathed = _build_sword_mesh(steel_mat, grip_mat, false)
+		_sword_sheathed.position = Vector3(-0.05, 0.09, -0.02)
+		_sword_sheathed.rotation_degrees = Vector3(105.0, 6.0, 14.0)
+		back_attach.add_child(_sword_sheathed)
+		pivots["sword_sheathed"] = _sword_sheathed
 
-	var hand_attach := BoneAttachment3D.new()
-	hand_attach.bone_name = "DEF-hand.R"
-	_skeleton.add_child(hand_attach)
-	_sword_drawn = _build_sword_mesh(steel_mat, grip_mat, true)
-	hand_attach.add_child(_sword_drawn)
-	pivots["sword_drawn"] = _sword_drawn
+	var hand_attach := _bone_attachment("DEF-hand.R")
+	if hand_attach != null:
+		_sword_drawn = _build_sword_mesh(steel_mat, grip_mat, true)
+		hand_attach.add_child(_sword_drawn)
+		pivots["sword_drawn"] = _sword_drawn
 
-	_sword_drawn.visible = false
-	_sword_sheathed.visible = true
+	if _sword_drawn != null:
+		_sword_drawn.visible = false
+	if _sword_sheathed != null:
+		_sword_sheathed.visible = true
 
 
 func _build_sword_mesh(steel_mat: Material, grip_mat: Material, glowing_edge: bool) -> Node3D:
@@ -504,6 +530,17 @@ const SEAM_CYAN := Color(0.25, 0.95, 1.0)      # the Sentinel's own glowing seam
 # (an ORMMaterial3D reading a Poly Haven "arm" packed AO/roughness/metallic
 # map directly), so a real photographed surface -- not a flat colour --
 # carries every plate, cuff and coat below.
+#
+# Judge finding, round 4 (2026-09-24): "armour detail invisible," the player
+# read as a flat black silhouette. `metallic` defaults to 0.0 on a fresh
+# ORMMaterial3D and, exactly like albedo_color multiplies albedo_texture,
+# multiplies straight through the orm_texture's own metallic (blue) channel
+# -- so leaving it unset zeroed out metallic on every piece this function
+# ever built, worn-steel plate included, regardless of how metallic the
+# baked ORM texture actually reads there. Set to 1.0 so the texture's own
+# per-pixel metallic value (near-zero on leather/fabric ORM maps, high on the
+# worn-steel one) is what actually shows, not a hidden zero this function was
+# quietly forcing on every surface, metal or not.
 func _pbr_material(albedo_path: String, normal_path: String, arm_path: String,
 		tint: Color, uv_scale: float) -> ORMMaterial3D:
 	var m := ORMMaterial3D.new()
@@ -512,6 +549,7 @@ func _pbr_material(albedo_path: String, normal_path: String, arm_path: String,
 	m.normal_enabled = true
 	m.normal_texture = load(normal_path)
 	m.orm_texture = load(arm_path)
+	m.metallic = 1.0
 	m.uv1_scale = Vector3(uv_scale, uv_scale, uv_scale)
 	return m
 
@@ -734,7 +772,11 @@ func _build_dreamwalker_armor() -> void:
 	pivots["greave_r"] = _attach_cylinder("DEF-shin.R", Vector3.ZERO, 0.065, 0.055, 0.22, plate_mat)
 
 	var cape_mat := StandardMaterial3D.new()
-	cape_mat.albedo_color = Color(0.20, 0.10, 0.28)
+	# Judge finding, round 4 (2026-09-24): "violet cloth visible" -- the
+	# original (0.20, 0.10, 0.28) was already the right hue but too dark to
+	# read once the player stopped being a flat black silhouette; brightened
+	# here, its own roughness (cloth, not metal) unchanged.
+	cape_mat.albedo_color = Color(0.32, 0.16, 0.46)
 	cape_mat.roughness = 0.85
 	cape_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	var cape := _build_cloth_panel(0.30, 0.22, 0.42, 0.10, cape_mat)

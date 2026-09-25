@@ -32,6 +32,7 @@ func run(r) -> void:
 	_test_night_street_furniture_and_tower_massing()
 	_test_day_has_no_night_street_furniture()
 	_test_mountain_has_a_nearer_second_range()
+	_test_near_mountain_never_reads_taller_than_the_far_range()
 	_test_day_ground_has_pebble_scatter()
 	_test_day_track_is_pbr_textured()
 	_test_day_trees_have_no_saturated_red_foliage()
@@ -208,6 +209,37 @@ func _test_mountain_has_a_nearer_second_range() -> void:
 	night.free()
 
 
+# Round 4 (2026-09-24, day capture): the near range read as "a huge pale
+# wall filling the top third of the frame," not foothills. It should never
+# subtend a larger angle on screen than the far range's own peaks, from
+# EITHER range's least favourable edge -- the near range's own NEAREST edge
+# (its largest apparent angle) against the far range's own FARTHEST edge
+# (its smallest apparent angle) -- so the inequality holds for any camera
+# position inside the field, not just one particular capture's framing. Pure
+# arithmetic on the two ranges' own constants, no camera or renderer needed.
+func _test_near_mountain_never_reads_taller_than_the_far_range() -> void:
+	print("the near foothill range never subtends a larger on-screen angle than the far range's own peaks")
+	var DreamEnv := load("res://scripts/dream_env.gd")
+	var near_peak_y: float = DreamEnv.NEAR_MOUNTAIN_BASE_Y + DreamEnv.NEAR_MOUNTAIN_AMPLITUDE
+	var far_peak_y: float = DreamEnv.MOUNTAIN_BASE_Y + DreamEnv.MOUNTAIN_AMPLITUDE
+	var near_angle_worst: float = near_peak_y / absf(DreamEnv.NEAR_MOUNTAIN_Z_NEAR)
+	var far_angle_best: float = far_peak_y / absf(DreamEnv.MOUNTAIN_Z_FAR)
+	check("the near range's own peak sits lower above the field than the far range's own peak",
+		near_peak_y < far_peak_y)
+	check("the near range's steepest apparent angle stays well below the far range's shallowest",
+		near_angle_worst < far_angle_best * 0.75)
+
+	# Darker and warmer than the far range's own lit rock tone, so it reads
+	# as a closer, sun-warmed foothill silhouette in front of the hazier,
+	# cooler far range -- not the same pale colour repeated at a bigger size.
+	var near_lit: Color = DreamEnv.NEAR_MOUNTAIN_ROCK_LIT
+	var far_lit: Color = DreamEnv.MOUNTAIN_ROCK_LIT
+	check("the near range's lit rock is meaningfully darker than the far range's, not the same tone repeated",
+		(near_lit.r + near_lit.g + near_lit.b) + 0.15 < (far_lit.r + far_lit.g + far_lit.b))
+	check("the near range's lit rock is meaningfully warmer (more red relative to blue) than the far range's",
+		(near_lit.r - near_lit.b) > (far_lit.r - far_lit.b) + 0.03)
+
+
 # Day-polish pass item 3: "scattered small rocks and pebbles," beyond the 22
 # larger tumbled rocks _build_rock_clutter already placed for spec 003.
 func _test_day_ground_has_pebble_scatter() -> void:
@@ -243,7 +275,58 @@ func _test_day_trees_have_no_saturated_red_foliage() -> void:
 	var day = _build("day")
 	check("every tree with red source foliage had its colour corrected",
 		day.autumn_tree_tint_count() > 0)
+
+	# Round 4 (2026-09-24): a judge capture still showed one tree "still
+	# saturated red" while the check above already read green, because
+	# multiplying an ochre tint over an ALREADY saturated-red texture only
+	# darkens that same red hue -- it can never shift it away from red.
+	# TwistedTree.glb's own leaf texture measured (tools/_debug_tree_leaf_
+	# material.gd, run once and deleted) at an average (0.36, 0.05, 0.05):
+	# strongly red. Sample each tinted material's own actual rendered colour
+	# (its texture times its albedo_color, alpha-weighted so fully
+	# transparent texels -- most of a leaf card -- do not count) and check
+	# the reddest sampled texel across every tinted tree reads as warm
+	# ochre/brown, not red.
+	var worst_ratio := 0.0
+	for mat in day.tinted_leaf_materials():
+		worst_ratio = maxf(worst_ratio, _worst_red_ratio(mat))
+	check("no tinted leaf material still reads as saturated red once its own texture is accounted for",
+		worst_ratio < 2.0)
 	day.free()
+
+
+# red-to-green+blue ratio of the reddest visible (alpha > 0.1) texel in
+# `mat`'s own rendered appearance (its albedo_texture, if any, modulated by
+# its albedo_color exactly the way the standard shader multiplies them) --
+# or of the flat albedo_color alone when there is no texture. A ratio near 1
+# reads as a balanced warm tone (ochre/brown); a ratio well past 2 reads as
+# visibly red-dominant.
+func _worst_red_ratio(mat: BaseMaterial3D) -> float:
+	var tex: Texture2D = mat.albedo_texture
+	if tex == null:
+		var c: Color = mat.albedo_color
+		return c.r / maxf(c.g + c.b, 0.02)
+	var img: Image = tex.get_image()
+	img.decompress()
+	if img.get_format() != Image.FORMAT_RGBA8:
+		img.convert(Image.FORMAT_RGBA8)
+	var w := img.get_width()
+	var h := img.get_height()
+	var step_x: int = maxi(1, w / 32)
+	var step_y: int = maxi(1, h / 32)
+	var worst := 0.0
+	var x := 0
+	while x < w:
+		var y := 0
+		while y < h:
+			var texel: Color = img.get_pixel(x, y)
+			if texel.a > 0.1:
+				var eff := Color(texel.r * mat.albedo_color.r, texel.g * mat.albedo_color.g,
+					texel.b * mat.albedo_color.b)
+				worst = maxf(worst, eff.r / maxf(eff.g + eff.b, 0.02))
+			y += step_y
+		x += step_x
+	return worst
 
 
 # Spec 003 lever 4: "facade detail ... instead of bare boxes." The concrete

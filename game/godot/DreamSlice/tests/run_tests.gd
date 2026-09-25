@@ -16,8 +16,15 @@ extends SceneTree
 # Raised to 425 for the side-screen capture fix (4 new checks), to 515 for
 # the outfit pass (90 checks) and to 530 with the day-polish pass merged in
 # (15 checks: nearer mountain range, ground macro variation, pebbles, textured
-# cart track, autumn foliage tint).
-const MINIMUM_CHECKS := 530
+# cart track, autumn foliage tint). Raised to 555 for the round-4 regression
+# fix pass: the model's own facing direction (9 checks), every emissive mesh/
+# orb's size (6), a subtle camera-following fill light (5), metal plate
+# pieces actually reading as metal (2), a visibly violet cape (1), the near
+# mountain range never reading taller than the far one (4), and a tinted
+# leaf material actually losing its red hue, not just getting darker (1) --
+# 28 checks on top of 530, minus 3 checks the tree/mountain tests already had
+# that got folded into stronger versions rather than duplicated.
+const MINIMUM_CHECKS := 555
 
 var passed := 0
 var failed := 0
@@ -38,6 +45,7 @@ func _init() -> void:
 	_test_combo_grammar()
 	_test_camera_relative()
 	_test_body_does_not_spin_the_camera()
+	_test_player_has_a_subtle_camera_following_fill_light()
 	_test_capture_mode_is_read_at_ready()
 	_test_e_talks_to_a_nearby_npc()
 	_test_heavy_attack_on_right_mouse()
@@ -310,6 +318,31 @@ func _test_body_does_not_spin_the_camera() -> void:
 	player._face_movement(0.5)
 	check("turning to face movement leaves the camera where it was",
 		absf(player._spring.rotation.y - before) < 0.0001)
+
+	player.free()
+
+
+# Judge finding, round 4 (2026-09-24): the player read as a flat black
+# silhouette in both day and night captures -- armour detail invisible.
+# There was no light attached to the player at all; the only illumination on
+# the character came from the world's own sun/moon + ambient, which a
+# golden-hour sun or a dim night moon leaves the camera-facing side of a
+# close-up character underlit. A light that follows the camera (so it always
+# lands on whatever side of the character the camera is actually looking at,
+# in either world) fixes that without touching the world's own lighting.
+func _test_player_has_a_subtle_camera_following_fill_light() -> void:
+	print("the player carries its own subtle fill light, so it never reads as a flat black silhouette")
+	var player = load("res://scripts/player.gd").new()
+	player._ready()
+
+	check("the player built a fill light", player._fill_light != null)
+	check("the fill light is an actual Light3D", player._fill_light is Light3D)
+	check("the fill light follows the camera rig (parented under it, not the world)",
+		player._fill_light.get_parent() == player._camera or player._fill_light.get_parent() == player._spring)
+	check("the fill light is subtle, not a stage spotlight (energy stays modest)",
+		player._fill_light.light_energy > 0.2 and player._fill_light.light_energy < 3.0)
+	check("the fill light leans warm/golden, not a cold flat white",
+		player._fill_light.light_color.r >= player._fill_light.light_color.b)
 
 	player.free()
 
