@@ -55,6 +55,19 @@ production. Stylised is fine; cheap is not. The gameplay, systems and timeline o
   3. Mage: dark flowing robes with glowing violet and blue runes, staff, spell light at the hand.
   4. Dark knight: jagged black and red plate, glowing red polearm, red cape, a dragon motif.
   Each is redrawn in the both-worlds fusion style before it is modelled.
+- **The same classes in the night city** (Joshua's own Gemini images, 2026-09-24, kept at
+  `C:\DREAM\recon\concepts\2026-09-24\joshua-city-classes-1..4.jpg`; approved by the judge as the
+  target mood). The knight wears plate over a tactical vest with the lion shield and sword; the
+  archer mixes leather with modern boots and a visor and fights from ledges and rooftops; the
+  mage wears violet robes over street clothes with large blue spell circles; the dark knight is
+  spiked black plate with glowing red seams and a glowing red polearm. The Night Dream city
+  target is: rain, wet streets reflecting neon, glass towers with lit windows, crowds under
+  umbrellas, cars with headlights, graffiti walls and alley bins. None of these pictures goes
+  into the repository or into a generator; workers get these words.
+- **Knight look chosen** (Joshua, 2026-09-24, from `joshua-city-classes-1.jpg`): steel helmet
+  with dark visor goggles, plate pauldrons, vambraces and greaves over an olive tactical vest
+  with pouches and belts, dark undersuit, the lion-crest shield and a long straight sword. This is
+  the knight class's reference look in both worlds.
 - Concept art is generated locally in ComfyUI (Z-Image Turbo, Apache 2.0) from generic words
   only. Reference pictures Joshua shares are read for mood, materials and proportion, and are
   never given to a generator or copied.

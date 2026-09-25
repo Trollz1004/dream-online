@@ -153,9 +153,13 @@ Five starting classes. The founder's own class image (made with Gemini from his 
 2. **Elf archer**: leather, hooded cloak, longbow. Light and quick.
 3. **Mage**: robes with glowing runes, staff, spell light at the hand.
 4. **Dark knight**: jagged black and red plate, polearm, dragon motif.
-5. **Healer** (new, founder 2026-09-24): the support class that keeps a group alive. Its look is still to be designed.
+5. **Healer** (new, founder 2026-09-24): the support class that keeps a group alive. At its awakening (a job change reached through a quest checkpoint) the Healer becomes a **Priest**. Its look is still to be designed.
 
 Rules, in the founder's words and meaning:
 
 - **Sup@ cannot be beaten without a healer.** The fight is tuned so a group with no healer fails; this is a design requirement, not a difficulty setting.
-- **Obli** is a skill that reduces incoming damage by **60% when leveled to its maximum**. Lower levels give less. Which class owns it, its duration and its cooldown are open.
+- **Obli** is a Priest skill cast on the party: it reduces incoming damage by **60% when leveled to its maximum** (lower levels give less), for a short window, on a long cooldown.
+- **Party-only buffs.** Auras and group buffs reach only the caster's party, never the raid at large or bystanders; that is what makes the party matter. Examples in the founder's numbers: a Knight defender's **Empower** aura, +30% damage for the whole party; a Priest's health buff, +20% maximum health for the whole party.
+- **Cooldown-acceleration skill** (working name **Chrono**): a self-buff that makes the next skill cast come back immediately, then Chrono itself goes on its own cooldown. The intended use is getting Obli up again sooner in a hard fight.
+
+All numbers above are the founder's targets and stay [PLACEHOLDER] until playtested. The generic research behind these patterns is kept privately at `C:\DREAMeconesearch\party-mechanics-2026-09-24.md`; competitor names never appear in this document.
