@@ -43,6 +43,11 @@ func run(r) -> void:
 	_test_sentinel_eye_differs_day_and_night()
 	_test_keeper_orb_differs_day_and_night_and_orbits()
 	_test_sentinel_dwarfs_the_others()
+	_test_dreamwalker_wears_armor_and_a_cape()
+	_test_keeper_wears_a_rust_red_coat()
+	_test_sentinel_wears_stone_and_iron_plating()
+	_test_outfit_pieces_are_reasonably_sized()
+	_test_armor_does_not_leak_between_kinds()
 
 
 func check(label: String, condition: bool) -> void:
@@ -328,6 +333,167 @@ func _test_sentinel_dwarfs_the_others() -> void:
 		sentinel._rig_root.scale.y > dw._rig_root.scale.y * 1.5)
 	check("the Sentinel is scaled up well past the keeper",
 		sentinel._rig_root.scale.y > keeper._rig_root.scale.y * 1.5)
+	dw.free()
+	keeper.free()
+	sentinel.free()
+
+
+# ---------------------------------------------------------------------------
+# Character direction (spec 003, "Character direction", Joshua 2026-09-24):
+# each kind must read as a distinct, finished character -- medieval
+# silhouettes in modern-feeling materials -- not the same bare tinted
+# mannequin three times over.
+# ---------------------------------------------------------------------------
+
+func _test_dreamwalker_wears_armor_and_a_cape() -> void:
+	print("the dreamwalker wears plate armor, a mail skirt, a belt and a short violet cape")
+	var dw = CharacterModelScript.build("dreamwalker")
+	for piece in ["torso_armor", "mail_skirt", "belt", "pauldron_l", "pauldron_r", "bracer_l",
+			"bracer_r", "greave_l", "greave_r", "cape", "hood", "seam_chest"]:
+		check("dreamwalker has a %s" % piece, dw.has_pivot(piece) and dw.get_pivot(piece) != null)
+
+	var torso: MeshInstance3D = dw.get_pivot("torso_armor")
+	var torso_mat: Material = torso.material_override
+	check("the torso plate reads the worn-steel texture, not a flat colour",
+		torso_mat is ORMMaterial3D and (torso_mat as ORMMaterial3D).albedo_texture != null)
+
+	var cape: MeshInstance3D = dw.get_pivot("cape")
+	check("the cape is real cloth geometry, not a flat placeholder",
+		cape.mesh != null and cape.mesh.get_surface_count() > 0)
+	dw.free()
+
+
+func _test_keeper_wears_a_rust_red_coat() -> void:
+	print("Mireth wears a long fitted rust-red coat, a high collar, bronze clasps, shoulder capes, mail cuffs and a belt")
+	var keeper = CharacterModelScript.build("keeper")
+	for piece in ["robe", "collar", "clasp_l", "clasp_r", "belt", "shoulder_cape_l",
+			"shoulder_cape_r", "cuff_l", "cuff_r"]:
+		check("keeper has a %s" % piece, keeper.has_pivot(piece) and keeper.get_pivot(piece) != null)
+
+	var robe: MeshInstance3D = keeper.get_pivot("robe")
+	var robe_mat: Material = robe.material_override
+	check("the coat reads the woven-fabric texture, not a flat colour",
+		robe_mat is ORMMaterial3D and (robe_mat as ORMMaterial3D).albedo_texture != null)
+	check("the coat is tinted rust-red, not the old rig's purple robe",
+		(robe_mat as ORMMaterial3D).albedo_color.r > (robe_mat as ORMMaterial3D).albedo_color.b)
+	keeper.free()
+
+
+func _test_sentinel_wears_stone_and_iron_plating() -> void:
+	print("the Sentinel is a hulking brute in riveted iron plate, leather harness and a belt, not a bare mannequin")
+	var sentinel = CharacterModelScript.build("sentinel")
+	for piece in ["chest_plate", "waist_band", "belt_buckle", "harness_l", "harness_r",
+			"pauldron_l", "pauldron_r", "gauntlet_l", "gauntlet_r", "greave_l", "greave_r", "helm",
+			"seam_chest"]:
+		check("sentinel has a %s" % piece, sentinel.has_pivot(piece) and sentinel.get_pivot(piece) != null)
+
+	var seam: MeshInstance3D = sentinel.get_pivot("seam_chest")
+	var seam_mat: StandardMaterial3D = seam.material_override
+	check("the construct's seam glows cyan, distinct from its amber/violet eye",
+		seam_mat.emission.is_equal_approx(CharacterModelScript.SEAM_CYAN))
+	sentinel.free()
+
+
+
+# ---------------------------------------------------------------------------
+# Judge finding, 2026-09-24: the live capture rendered pure black -- the
+# camera sitting inside an outfit mesh roughly 100x too large and 100x too
+# far from the character. Isolated headlessly, without spending the two
+# screenshot captures spec 003 rations, by comparing blade_base_global()
+# (reads only a bone transform's ORIGIN -- correctly scaled, ~0.98 m for a
+# hand) against the same bone math applied to a whole mesh, which also uses
+# the transform's BASIS: this rig's DEF-bone chain bakes a stray ~100x scale
+# into that basis that nothing before this ever needed to read (a point or a
+# normalized direction, blade_tip_global()'s and blade_base_global()'s own
+# whole usage, never needs a transform's scale to be right; a mesh's own
+# vertices do). Fixed in character_model.gd's _bone_attachment(), which now
+# hangs every piece off a small unscale wrapper (_BONE_MESH_UNSCALE) inside
+# each BoneAttachment3D, cancelling that stray scale for position and size
+# alike.
+#
+# This check reuses the SAME tree-independent bone math blade_tip_global()
+# leans on and _test_blade_tip_and_base already proves correct --
+# _node_world_transform() and _bone_chain_transform() compose real
+# transforms by hand, bone rest pose included, with no tree and no
+# per-frame processing required (a live SceneTree parent plus an
+# update_pose() call were tried first and both left every attachment
+# reading back at the model's own origin -- BoneAttachment3D's own live
+# tracking needs an actual per-frame engine tick, which a synchronous
+# --script test never pumps; that path is not exercised here). Every
+# outfit piece is a MeshInstance3D under the unscale wrapper under a
+# BoneAttachment3D (the same shape _attach_box/_attach_dome/_attach_cylinder/
+# the cape/the coat lathe all build), so walking up from the mesh to the
+# nearest BoneAttachment3D ancestor, composing every local transform found
+# along the way, always recovers the piece's true placement.
+func _piece_world_corners(model, mi: MeshInstance3D) -> Array:
+	# Walk from the mesh up to (not including) its owning BoneAttachment3D,
+	# composing every local transform in between -- the unscale wrapper
+	# _bone_attachment() now inserts (character_model.gd's own fix for this
+	# same finding) included, whatever its depth.
+	var local_chain := Transform3D.IDENTITY
+	var n: Node = mi
+	while n != null and not (n is BoneAttachment3D):
+		if n is Node3D:
+			local_chain = (n as Node3D).transform * local_chain
+		n = n.get_parent()
+	var attach: BoneAttachment3D = n
+	var bone_idx: int = model._skeleton.find_bone(attach.bone_name)
+	var bone_t: Transform3D = model._node_world_transform(model._skeleton) \
+		* model._bone_chain_transform(model._skeleton, bone_idx)
+	var xform: Transform3D = bone_t * local_chain
+	var aabb: AABB = mi.mesh.get_aabb()
+	var minv := Vector3.INF
+	var maxv := -Vector3.INF
+	for i in 8:
+		var corner := aabb.position + Vector3(
+			aabb.size.x if (i & 1) else 0.0,
+			aabb.size.y if (i & 2) else 0.0,
+			aabb.size.z if (i & 4) else 0.0)
+		var world: Vector3 = xform * corner
+		minv = minv.min(world)
+		maxv = maxv.max(world)
+	return [minv, maxv]
+
+
+func _check_outfit_sizes(kind: String, pieces: Array, max_size: float, max_offset: float) -> void:
+	var model = CharacterModelScript.build(kind)
+	var root_origin: Vector3 = model._node_world_transform(model._skeleton).origin
+	for piece in pieces:
+		var mi: MeshInstance3D = model.get_pivot(piece)
+		var corners: Array = _piece_world_corners(model, mi)
+		var minv: Vector3 = corners[0]
+		var maxv: Vector3 = corners[1]
+		var size: float = (maxv - minv).length()
+		var center: Vector3 = (minv + maxv) * 0.5
+		var offset: float = center.distance_to(root_origin)
+		check("%s's %s spans under %.1f m (measured %.2f m)"
+				% [kind, piece, max_size, size], size < max_size)
+		check("%s's %s sits near the character, not displaced across the map (measured %.2f m from the rig root)"
+				% [kind, piece, offset], offset < max_offset)
+	model.free()
+
+
+func _test_outfit_pieces_are_reasonably_sized() -> void:
+	print("no outfit piece is oversized enough to swallow the camera")
+	_check_outfit_sizes("dreamwalker", ["torso_armor", "mail_skirt", "belt", "pauldron_l",
+			"bracer_l", "greave_l", "cape", "hood"], 3.0, 2.5)
+	_check_outfit_sizes("keeper", ["robe", "collar", "clasp_l", "shoulder_cape_l", "cuff_l",
+			"belt"], 3.0, 2.5)
+	_check_outfit_sizes("sentinel", ["chest_plate", "waist_band", "belt_buckle", "harness_l",
+			"pauldron_l", "gauntlet_l", "fur_cuff_l", "greave_l", "helm", "seam_chest"], 6.0, 5.0)
+
+
+func _test_armor_does_not_leak_between_kinds() -> void:
+	print("armor and clothing stay on their own kind")
+	var dw = CharacterModelScript.build("dreamwalker")
+	var keeper = CharacterModelScript.build("keeper")
+	var sentinel = CharacterModelScript.build("sentinel")
+	check("only the dreamwalker wears a cape",
+		not keeper.has_pivot("cape") and not sentinel.has_pivot("cape"))
+	check("only the keeper wears a coat",
+		not dw.has_pivot("robe") and not sentinel.has_pivot("robe"))
+	check("only the sentinel wears a helm",
+		not dw.has_pivot("helm") and not keeper.has_pivot("helm"))
 	dw.free()
 	keeper.free()
 	sentinel.free()
