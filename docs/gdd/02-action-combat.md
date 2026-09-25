@@ -163,3 +163,8 @@ Rules, in the founder's words and meaning:
 - **Cooldown-acceleration skill** (working name **Chrono**): a self-buff that makes the next skill cast come back immediately, then Chrono itself goes on its own cooldown. The intended use is getting Obli up again sooner in a hard fight.
 
 All numbers above are the founder's targets and stay [PLACEHOLDER] until playtested. The generic research behind these patterns is kept privately on the Alienware node (`recon/research/party-mechanics-2026-09-24.md` under the workspace root); competitor names never appear in this document.
+
+## Bosses (founder, 2026-09-24)
+
+- **Sup@**: cannot be beaten without a healer in the party (see above).
+- **Myth@s** (new): a towering dark knight in spiked black and red plate over tactical gear, glowing red seams, a red visor, a torn red cape and a huge glowing red polearm-axe. The founder's own concept image shows him arriving in the Night Dreams city with a crowd pulling back around him. Fight design is open.

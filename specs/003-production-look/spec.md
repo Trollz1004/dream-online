@@ -68,6 +68,13 @@ production. Stylised is fine; cheap is not. The gameplay, systems and timeline o
   with dark visor goggles, plate pauldrons, vambraces and greaves over an olive tactical vest
   with pouches and belts, dark undersuit, the lion-crest shield and a long straight sword. This is
   the knight class's reference look in both worlds.
+- **The modern-feel set** (Joshua, 2026-09-24, `joshua-modern-classes-and-mythas.jpg`, his own
+  Gemini image; the strongest reference so far). Knight: ornate dark plate with gold filigree over
+  a tactical vest full of pouches, goggles pushed up on the helm, lion shield, long sword. Archer:
+  headset and glasses, a high-tech bow with a glowing blue string and ring details, dark cloak
+  over leather with pouches, shooting from rooftops over a river city. Mage: glasses, violet and
+  black robes with gold patterns, a floating spell book, large blue spell circles. The red dark
+  knight in that set becomes the boss **Myth@s** (see `docs/gdd/02-action-combat.md`).
 - Concept art is generated locally in ComfyUI (Z-Image Turbo, Apache 2.0) from generic words
   only. Reference pictures Joshua shares are read for mood, materials and proportion, and are
   never given to a generator or copied.
