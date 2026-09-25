@@ -19,6 +19,14 @@ config/features=PackedStringArray("4.7", "Forward Plus")
 ; passes its own --resolution (Open-DreamSlice.cmd: 1600x900).
 window/size/viewport_width=1920
 window/size/viewport_height=1080
+; Windowed, never fullscreen (Joshua, 2026-09-24: "keep window mode for game
+; be best"; he splits his desk between a TV and a monitor). canvas_items
+; stretch scales the HUD with the window, so a 1280x720 window on the TV
+; shows the whole readout instead of cropping it.
+window/size/mode=0
+window/size/resizable=true
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
 
 [physics]
 

@@ -17,5 +17,5 @@ if not exist "%PROJECT%\project.godot" (
     exit /b 1
 )
 
-start "" "%GODOT%" --path "%PROJECT%" --resolution 1600x900
+start "" "%GODOT%" --path "%PROJECT%" --windowed --resolution 1600x900
 exit /b 0
