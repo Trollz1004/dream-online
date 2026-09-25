@@ -36,6 +36,15 @@ func run(r) -> void:
 	_test_day_ground_has_pebble_scatter()
 	_test_day_track_is_pbr_textured()
 	_test_day_trees_have_no_saturated_red_foliage()
+	_test_night_has_pedestrians_within_the_art_briefs_range()
+	_test_pedestrian_paths_never_enter_the_fight_lane_or_miraths_spot()
+	_test_night_has_traffic_within_the_art_briefs_range()
+	_test_car_positions_stay_on_their_own_lane_within_the_street()
+	_test_night_has_rain_and_splash_particles()
+	_test_night_has_steam_vents()
+	_test_night_has_alley_bins_and_graffiti_panels()
+	_test_night_has_blade_signs_and_four_neon_colours()
+	_test_day_builds_none_of_the_night_city_life()
 
 
 func check(label: String, condition: bool) -> void:
@@ -527,3 +536,153 @@ func _test_day_has_no_night_street_furniture() -> void:
 	check("day builds no tower setbacks", e.tower_setback_count() == 0)
 	check("day builds no sign frames", e.sign_frame_count() == 0)
 	e.free()
+
+
+# ---------------------------------------------------------------------------
+# Spec 003-production-look, "the city" pass: rain, wet-street reflections,
+# crowds under umbrellas, cars, steam and alley dressing for the Night Dream
+# target mood. Each check below follows the same shape every other spec 003
+# pass in this file already used: a pure static function checked directly
+# with no renderer where the requirement is "logic" (a path never enters the
+# fight lane), and a small getter on a built-but-never-added instance where
+# the requirement is "this piece exists" (a count, a node reference).
+# ---------------------------------------------------------------------------
+
+func _test_night_has_pedestrians_within_the_art_briefs_range() -> void:
+	print("night city has 10-20 ambient pedestrians, some carrying umbrellas")
+	var night = _build("night")
+	var count: int = night.pedestrian_count()
+	check("pedestrian count is within the art brief's 10-20 range", count >= 10 and count <= 20)
+	check("at least one pedestrian carries an umbrella", night.umbrella_count() > 0)
+	check("not every pedestrian carries an umbrella (a believable mixed crowd)",
+		night.umbrella_count() < count)
+	night.free()
+
+
+# pedestrian_state is pure and static (see its own header note), so this
+# sweeps every path, several phase offsets and a wide span of simulated time
+# and checks the fight-lane/Mireth-clearance invariant directly -- no built
+# model, no scene tree, no renderer, exactly like fight_lane_is_clear's own
+# existing use against hand-placed scenery above.
+func _test_pedestrian_paths_never_enter_the_fight_lane_or_miraths_spot() -> void:
+	print("every pedestrian path stays clear of the fight lane and Mireth's spot, at every point in its cycle")
+	var DreamEnv := load("res://scripts/dream_env.gd")
+	var over := false
+	for path_index in range(DreamEnv.PEDESTRIAN_PATHS.size()):
+		var phase := 0.0
+		while phase < 400.0:
+			var t := 0.0
+			while t < 200.0:
+				var state: Dictionary = DreamEnv.pedestrian_state(path_index, phase, t)
+				var pos: Vector3 = state["position"]
+				var flat := Vector2(pos.x, pos.z)
+				if flat.distance_to(Vector2(DreamEnv.CLEAR_CENTER.x, DreamEnv.CLEAR_CENTER.z)) < DreamEnv.CLEAR_RADIUS:
+					over = true
+				if flat.distance_to(Vector2(DreamEnv.MIRETH_SPOT.x, DreamEnv.MIRETH_SPOT.z)) < DreamEnv.MIRETH_CLEAR_RADIUS:
+					over = true
+				t += 3.7
+			phase += 53.0
+	check("no sampled pedestrian position ever enters the fight lane or Mireth's clear disk", not over)
+
+
+func _test_night_has_traffic_within_the_art_briefs_range() -> void:
+	print("night city has 3-6 ambient cars with headlights and tail lights")
+	var night = _build("night")
+	var count: int = night.car_count()
+	check("car count is within the art brief's 3-6 range", count >= 3 and count <= 6)
+	night.free()
+	var day = _build("day")
+	check("day places no cars", day.car_count() == 0)
+	day.free()
+
+
+# car_position is pure and static, same convention as pedestrian_state above.
+func _test_car_positions_stay_on_their_own_lane_within_the_street() -> void:
+	print("cars stay on their own lane, within the 7 m wide street, for their whole loop")
+	var DreamEnv := load("res://scripts/dream_env.gd")
+	var off_lane := false
+	var off_street := false
+	for lane_index in range(DreamEnv.CAR_LANES.size()):
+		var lane: Dictionary = DreamEnv.CAR_LANES[lane_index]
+		var t := 0.0
+		while t < 120.0:
+			var pos: Vector3 = DreamEnv.car_position(lane_index, float(lane["speed"]), 12.0, t)
+			if absf(pos.x - float(lane["x"])) > 0.01:
+				off_lane = true
+			if absf(pos.x) > 3.5:
+				off_street = true
+			if pos.z < DreamEnv.CAR_Z_MIN - 0.01 or pos.z > DreamEnv.CAR_Z_MAX + 0.01:
+				off_street = true
+			t += 2.3
+	check("every sampled car position stays exactly on its assigned lane's x", not off_lane)
+	check("every sampled car position stays inside the street's own width and length", not off_street)
+
+
+func _test_night_has_rain_and_splash_particles() -> void:
+	print("night city has rain streaks and street-level splash ripples")
+	var night = _build("night")
+	check("night builds a rain-streak particle system", night.rain_particles() != null)
+	check("the rain system actually emits particles", night.rain_particles().amount > 0)
+	check("night builds a ground-splash particle system", night.rain_splash_particles() != null)
+	check("the splash system actually emits particles", night.rain_splash_particles().amount > 0)
+	night.free()
+	var day = _build("day")
+	check("day builds no rain", day.rain_particles() == null)
+	check("day builds no ground splash", day.rain_splash_particles() == null)
+	day.free()
+
+
+func _test_night_has_steam_vents() -> void:
+	print("night city has steam rising from street vents")
+	var DreamEnv := load("res://scripts/dream_env.gd")
+	var night = _build("night")
+	check("every configured steam vent was built",
+		night.steam_vent_count() == DreamEnv.STEAM_VENT_POSITIONS.size())
+	check("at least one steam vent exists", night.steam_vent_count() > 0)
+	night.free()
+	var day = _build("day")
+	check("day builds no steam vents", day.steam_vent_count() == 0)
+	day.free()
+
+
+func _test_night_has_alley_bins_and_graffiti_panels() -> void:
+	print("night city has alley bins and graffiti-like colour panels")
+	var night = _build("night")
+	check("at least one alley bin was placed", night.alley_bin_count() > 0)
+	check("at least one graffiti-style colour panel was placed", night.graffiti_panel_count() > 0)
+	night.free()
+	var day = _build("day")
+	check("day places no alley bins", day.alley_bin_count() == 0)
+	check("day places no graffiti panels", day.graffiti_panel_count() == 0)
+	day.free()
+
+
+func _test_night_has_blade_signs_and_four_neon_colours() -> void:
+	print("night city has vertical blade signs, drawn from a cyan/pink/amber/violet palette")
+	var DreamEnv := load("res://scripts/dream_env.gd")
+	check("the shared neon palette carries all four target hues",
+		DreamEnv.NIGHT_SIGN_COLORS.size() == 4)
+	var night = _build("night")
+	check("at least one blade sign was placed", night.blade_sign_count() > 0)
+	night.free()
+	var day = _build("day")
+	check("day places no blade signs", day.blade_sign_count() == 0)
+	day.free()
+
+
+# One consolidated regression check ("day world must be unchanged," per this
+# task's own card) rather than repeating the same day.free() dance nine more
+# times across the checks above.
+func _test_day_builds_none_of_the_night_city_life() -> void:
+	print("day dream builds none of the night city's pedestrians, traffic, rain, steam or alley dressing")
+	var day = _build("day")
+	check("day: no pedestrians", day.pedestrian_count() == 0)
+	check("day: no umbrellas", day.umbrella_count() == 0)
+	check("day: no cars", day.car_count() == 0)
+	check("day: no rain", day.rain_particles() == null)
+	check("day: no splash", day.rain_splash_particles() == null)
+	check("day: no steam vents", day.steam_vent_count() == 0)
+	check("day: no alley bins", day.alley_bin_count() == 0)
+	check("day: no graffiti panels", day.graffiti_panel_count() == 0)
+	check("day: no blade signs", day.blade_sign_count() == 0)
+	day.free()

@@ -24,7 +24,14 @@ extends SceneTree
 # leaf material actually losing its red hue, not just getting darker (1) --
 # 28 checks on top of 530, minus 3 checks the tree/mountain tests already had
 # that got folded into stronger versions rather than duplicated.
-const MINIMUM_CHECKS := 555
+# Raised to 588 for spec 003-production-look's "the city" pass: night-only
+# pedestrians and umbrellas, the fight-lane/Mireth-clearance invariant swept
+# across every pedestrian path, traffic within its own lane and the street's
+# own width, rain and ground-splash particle systems, steam vents, alley bins
+# and graffiti panels, blade signs and the four-colour neon palette, plus one
+# consolidated "day world stays untouched" regression check -- 33 checks on
+# top of 555.
+const MINIMUM_CHECKS := 588
 
 var passed := 0
 var failed := 0
