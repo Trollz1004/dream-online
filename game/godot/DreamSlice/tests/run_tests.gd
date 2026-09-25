@@ -13,7 +13,7 @@ extends SceneTree
 # pass (376) were merged together; each added its own checks on top of 327.
 # Raised to 421 for spec 003's second pass: real tree and ruin-kit models,
 # a heightmap mountain, and night street furniture/tower massing checks.
-const MINIMUM_CHECKS := 421
+const MINIMUM_CHECKS := 425
 
 var passed := 0
 var failed := 0
@@ -48,6 +48,7 @@ func _init() -> void:
 	load("res://tests/test_character_model.gd").new().run(self)
 	load("res://tests/test_skills_new.gd").new().run(self)
 	load("res://tests/test_demo_director.gd").new().run(self)
+	load("res://tests/test_side_screen.gd").new().run(self)
 	var ran := passed + failed
 	if ran < MINIMUM_CHECKS:
 		failed += 1
