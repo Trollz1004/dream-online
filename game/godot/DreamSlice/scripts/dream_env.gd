@@ -58,6 +58,24 @@ const TERRAIN_AMPLITUDE := 3.5
 const TERRAIN_GRID_STEP := 2.5
 const TERRAIN_TEX_TILE := 5.0
 
+# Spec 003 lever 2: a heightmap-displaced distant mountain range (a real 3D
+# mesh with ridges and valleys, replacing the earlier cluster of faceted
+# cones) far behind the field. The domain is a rectangle in X/Z, tapering
+# smoothly to 0 height at every one of its four edges (see mountain_height)
+# so the mesh blends into the horizon-fill plane instead of showing a hard
+# boundary against the sky.
+const MOUNTAIN_AMPLITUDE := 200.0
+const MOUNTAIN_X_HALF := 190.0
+const MOUNTAIN_Z_NEAR := -270.0
+const MOUNTAIN_Z_FAR := -420.0
+const MOUNTAIN_GRID_STEP := 8.0
+const MOUNTAIN_BASE_Y := -4.0
+const MOUNTAIN_ROCK_LIT := Color(0.46, 0.42, 0.46)
+const MOUNTAIN_ROCK_SHADOW := Color(0.20, 0.17, 0.24)
+const MOUNTAIN_SNOW_LIT := Color(0.96, 0.94, 0.94)
+const MOUNTAIN_SNOW_SHADOW := Color(0.58, 0.58, 0.68)
+const MOUNTAIN_SNOW_LINE := 0.55
+
 # Poly Haven CC0 textures (assets/third_party/LICENSES.md has the full
 # source/licence record for every path below, read before any of them were
 # used).
@@ -74,6 +92,22 @@ const _STREET_ALBEDO := "res://assets/third_party/textures/street/asphalt_02_dif
 const _STREET_NORMAL := "res://assets/third_party/textures/street/asphalt_02_nor_gl_1k.jpg"
 const _STREET_ARM := "res://assets/third_party/textures/street/asphalt_02_arm_1k.jpg"
 const _SKY_HDRI := "res://assets/third_party/hdri/kloofendal_48d_partly_cloudy_1k.hdr"
+
+# Spec 003 lever 1 (trees) and lever 2/4 (ruins): real CC0 models, replacing the
+# procedural stick-cylinder trees and box cottages. Sourced from Quaternius via
+# poly.pizza's static CDN, same provenance pattern as UniversalBaseCharacter.glb
+# below and documented in assets/third_party/LICENSES.md.
+const _TREE_MODELS := [
+	"res://assets/third_party/quaternius/DeadTree.glb",
+	"res://assets/third_party/quaternius/TwistedTree.glb",
+	"res://assets/third_party/quaternius/CommonTree.glb",
+]
+# Each model's own real-world height (metres), read from its imported mesh AABB
+# (Quaternius's single-model exports bake their own scale into the mesh, unlike
+# the combined ModularRuinsPack preview below) -- used to normalise every tree
+# to a similar in-scene height regardless of the source model's native size.
+const _TREE_MODEL_NATIVE_HEIGHT := [12.77, 18.74, 7.26]
+const _RUINS_PACK := "res://assets/third_party/quaternius/ModularRuinsPack.glb"
 
 var mode := "day"
 
@@ -99,6 +133,16 @@ var _moon_light: DirectionalLight3D = null
 var _day_ground_mat: StandardMaterial3D = null
 var _night_facade_mat: ORMMaterial3D = null
 var _night_street_mat: ORMMaterial3D = null
+
+# Spec 003: real-model bookkeeping, for tests/test_dream_env.gd to check without
+# a renderer -- the same small-getter convention as day_ground_material() etc.
+var _tree_instances: Array = []
+var _ruin_piece_cache: Dictionary = {}
+var _ruin_pack_scratch: Node3D = null
+var _ruin_instances: Array = []
+var _bench_count := 0
+var _tower_setback_count := 0
+var _sign_frame_count := 0
 
 
 func _ready() -> void:
@@ -146,6 +190,48 @@ func night_facade_material() -> Material:
 ## or null in Day mode.
 func night_street_material() -> Material:
 	return _night_street_mat
+
+
+## How many real tree models were placed (spec 003 lever 1), or 0 in Night mode.
+func tree_instance_count() -> int:
+	return _tree_instances.size()
+
+
+## The resource path of every placed tree's mesh -- a real imported model's
+## mesh carries its source file in its own resource_path (e.g. ending in
+## ".glb::..."), where a runtime-generated ArrayMesh (the old branch-cylinder
+## trees) never would. Lets a test tell "a real model" from "geometry built in
+## code" without a renderer.
+func tree_model_paths() -> Array:
+	var paths: Array = []
+	for t in _tree_instances:
+		paths.append(t)
+	return paths
+
+
+## How many real ruin-kit pieces were placed (spec 003 levers 2/4), or 0 in
+## Night mode.
+func ruin_piece_count() -> int:
+	return _ruin_instances.size()
+
+
+func ruin_model_paths() -> Array:
+	return _ruin_instances.duplicate()
+
+
+## Night-only street furniture and tower massing counts (spec 003 lever 4):
+## benches, the setback tiers that break up a tower's silhouette, and the
+## empty signage frames behind the abstract colour panels.
+func bench_count() -> int:
+	return _bench_count
+
+
+func tower_setback_count() -> int:
+	return _tower_setback_count
+
+
+func sign_frame_count() -> int:
+	return _sign_frame_count
 
 
 # The terrain's own height at world (x, z), before any prop or corridor
@@ -215,7 +301,7 @@ func _build_day_scenery() -> void:
 	_build_horizon_fill(Color(0.44, 0.34, 0.19))
 	_build_ground_patches()
 	_build_day_track()
-	_build_cottages()
+	_build_ruin_village()
 	_build_dry_stone_walls()
 	_build_rock_clutter()
 	_build_trees()
@@ -234,6 +320,7 @@ func _build_night_scenery() -> void:
 	_build_lamps()
 	_build_signs()
 	_build_street_signs()
+	_build_benches()
 
 
 # ---------------------------------------------------------------------------
@@ -520,58 +607,6 @@ func _grass_tuft_mesh(blade_count: int, height: float, base_color: Color, tip_co
 	return st.commit()
 
 
-# A cone built face by face, each side facet given one of two flat, baked-in
-# vertex colours depending on whether that facet's outward direction leans
-# toward `sun_ref` (lit) or away from it (shadow) -- a judge review of
-# day.png on 2026-09-23 asked for the mountain's near-flat pastel triangles
-# to read as rock under a low sun, with a lit side and a shadow side. Kept
-# unshaded and coloured this way on purpose rather than shaded: real-time
-# lighting at the day scene's own exposure bleached an earlier shaded attempt
-# toward white regardless of distance, so the two tones are art-directed and
-# fixed, immune to that.
-func _faceted_cone_mesh(bottom_radius: float, top_radius: float, height: float, segments: int,
-		lit_color: Color, shadow_color: Color, sun_ref: Vector3) -> ArrayMesh:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for i in range(segments):
-		var a0 := (float(i) / float(segments)) * TAU
-		var a1 := (float(i + 1) / float(segments)) * TAU
-		var b0 := Vector3(sin(a0) * bottom_radius, 0.0, cos(a0) * bottom_radius)
-		var b1 := Vector3(sin(a1) * bottom_radius, 0.0, cos(a1) * bottom_radius)
-		var t0 := Vector3(sin(a0) * top_radius, height, cos(a0) * top_radius)
-		var t1 := Vector3(sin(a1) * top_radius, height, cos(a1) * top_radius)
-		var mid_ang := (a0 + a1) * 0.5
-		var face_normal := Vector3(sin(mid_ang), 0.15, cos(mid_ang)).normalized()
-		var tone := lit_color if face_normal.dot(sun_ref) > 0.15 else shadow_color
-		st.set_color(tone)
-		st.add_vertex(b0)
-		st.set_color(tone)
-		st.add_vertex(b1)
-		st.set_color(tone)
-		st.add_vertex(t1)
-		st.set_color(tone)
-		st.add_vertex(b0)
-		st.set_color(tone)
-		st.add_vertex(t1)
-		st.set_color(tone)
-		st.add_vertex(t0)
-	st.generate_normals()
-	return st.commit()
-
-
-# An orthonormal basis whose local Y axis points along `dir`. Used to orient a
-# CylinderMesh, which extends along its own local Y, along an arbitrary branch
-# direction.
-func _axes_along(dir: Vector3) -> Basis:
-	var y := dir.normalized()
-	var r := Vector3.FORWARD
-	if absf(y.dot(r)) > 0.95:
-		r = Vector3.RIGHT
-	var x := (r - y * y.dot(r)).normalized()
-	var z := x.cross(y)
-	return Basis(x, y, z)
-
-
 # The three axes of a vertical face whose outward-facing normal is `normal`.
 # A QuadMesh's front side faces its own local -Z (checked directly against
 # the engine: an unrotated QuadMesh's two triangles wind to a (0,0,-1)
@@ -756,171 +791,166 @@ func _build_day_track() -> void:
 		add_child(rut)
 
 
-func _build_cottages() -> void:
-	# Two stone tones (one for walls facing the sun, one for walls facing
-	# away, chosen per wall against SUN_REF) instead of one flat colour, plus
-	# a darker trim band and window/door framing -- a judge review of
-	# day.png on 2026-09-23 said the cottages read as dark boxes. Four
-	# cottages, two with a slate roof, one roofless with a jagged broken
-	# wall top, placed 15 to 35 m ahead of the game camera and on both sides
-	# of the lane. Spec 003 lever 2 ("real rocks, ruins") replaces the flat
-	# stone_lit/stone_shadow colours with Poly Haven's Rock Face 03 texture,
-	# tinted lit and shadow -- the same distinction, now with real texture
-	# detail instead of a flat fill.
-	var stone_lit := _rock_material(Color(0.95, 0.82, 0.62))
-	var stone_shadow := _rock_material(Color(0.42, 0.40, 0.46))
-	var trim_mat := _flat_mat(Color(0.20, 0.17, 0.15), 0.88)
-	var roof_mat := _flat_mat(Color(0.18, 0.19, 0.25), 0.7)
-	_build_cottage(Vector3(-16.0, 0.0, -10.0), 18.0, stone_lit, stone_shadow, trim_mat, roof_mat,
-		false, true)
-	_build_cottage(Vector3(16.0, 0.0, -14.0), -22.0, stone_lit, stone_shadow, trim_mat, roof_mat,
-		true, false)
-	_build_cottage(Vector3(-14.0, 0.0, -23.0), 205.0, stone_lit, stone_shadow, trim_mat, roof_mat,
-		false, false)
-	_build_cottage(Vector3(14.0, 0.0, -24.0), 160.0, stone_lit, stone_shadow, trim_mat, roof_mat,
-		true, false)
+# Quaternius's own "Modular Ruins Pack" preview file (poly.pizza, CC0 -- see
+# assets/third_party/LICENSES.md) bundles dozens of pieces as direct children
+# of one RootNode, each with its own baked transform (a real-world scale and,
+# for several pieces, an axis-correcting rotation). Instantiating it once and
+# reading a named child's mesh plus transform.basis -- never that child's own
+# translation, which is only its shelf position in the preview -- is what
+# makes a piece reusable at an arbitrary new position: see _load_ruin_piece.
+func _ruin_pack_root() -> Node3D:
+	if _ruin_pack_scratch == null:
+		var packed: PackedScene = load(_RUINS_PACK)
+		_ruin_pack_scratch = packed.instantiate()
+	return _ruin_pack_scratch
 
 
-# A rectangular cottage, w (local X) by d (local Z), rotated by yaw_deg around
-# `base`. `intact` gives it full-height walls all round and a pitched roof;
-# otherwise the back wall is a ruined stub and there is no roof, open to the
-# sky. `jagged` replaces the front and back walls with several short, stepped
-# segments of varying height for a broken silhouette, rather than one clean
-# uniform edge. wall_h 3.2 m sits inside the "3 to 4 m tall" range a judge
-# review of day.png on 2026-09-23 asked for (was 2.6 m).
-func _build_cottage(base: Vector3, yaw_deg: float, stone_lit: Material, stone_shadow: Material,
-		trim_mat: Material, roof_mat: Material, intact: bool, jagged: bool) -> void:
-	var w := 5.4
-	var d := 4.6
-	var wall_h := 3.2
-	var t := 0.35
-	var door_w := 1.1
+func _load_ruin_piece(piece_name: String) -> Dictionary:
+	if _ruin_piece_cache.has(piece_name):
+		return _ruin_piece_cache[piece_name]
+	var src := _ruin_pack_root().find_child(piece_name, true, false) as MeshInstance3D
+	var mesh: Mesh = src.mesh
+	var piece_basis: Basis = src.transform.basis
+
+	# The piece's own real-world footprint, for an approximate axis-aligned
+	# collision box: every corner of the mesh's local AABB run through
+	# piece_basis alone (no yaw, no translation yet) -- the same 8-corner
+	# sweep this asset pass used up front to read these pieces' true sizes
+	# off the imported scene rather than guessing from the raw glTF's own
+	# per-node scale values, several of which turned out non-uniform.
+	var local_aabb: AABB = mesh.get_aabb()
+	var world_aabb := AABB()
+	for i in range(8):
+		var corner: Vector3 = local_aabb.position + Vector3(
+			local_aabb.size.x * float(i & 1),
+			local_aabb.size.y * float((i >> 1) & 1),
+			local_aabb.size.z * float((i >> 2) & 1))
+		var wc: Vector3 = piece_basis * corner
+		if i == 0:
+			world_aabb.position = wc
+		else:
+			world_aabb = world_aabb.expand(wc)
+	var entry := {
+		"mesh": mesh,
+		"basis": piece_basis,
+		"size": world_aabb.size,
+		"center_y": world_aabb.position.y + world_aabb.size.y * 0.5,
+	}
+	_ruin_piece_cache[piece_name] = entry
+	return entry
+
+
+# Places one copy of a named ruin-kit piece at `pos`, facing `yaw_deg`. Every
+# piece in this pack pivots at its own base (local y=0), read directly off the
+# imported scene rather than assumed, so `pos` is exactly the piece's own
+# footing on the ground. Registers an approximate axis-aligned collision box
+# from the piece's own real-world size -- the same footprint bookkeeping
+# every other solid piece of scenery in this file uses.
+func _place_ruin_piece(piece_name: String, pos: Vector3, yaw_deg: float) -> MeshInstance3D:
+	var entry := _load_ruin_piece(piece_name)
+	var mesh: Mesh = entry["mesh"]
+	var piece_basis: Basis = entry["basis"]
+	var yaw_basis := Basis(Vector3.UP, deg_to_rad(yaw_deg))
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.transform = Transform3D(yaw_basis * piece_basis, pos)
+	add_child(mi)
+	_ruin_instances.append(mesh.resource_path)
+
+	var size: Vector3 = entry["size"]
+	var radius := Vector2(size.x, size.z).length() * 0.5
+	if _is_clear_pos(pos, radius):
+		var body := StaticBody3D.new()
+		var shape := CollisionShape3D.new()
+		var box := BoxShape3D.new()
+		box.size = size
+		shape.shape = box
+		body.position = pos + Vector3(0.0, float(entry["center_y"]), 0.0)
+		body.rotation_degrees = Vector3(0.0, yaw_deg, 0.0)
+		body.add_child(shape)
+		add_child(body)
+		_register_footprint(pos, radius)
+	return mi
+
+
+# Spec 003 levers 2 and 4: "real ruin pieces ... weathered and partly
+# collapsed, placed as a small abandoned village along the cart track,"
+# replacing the procedural box cottages. Four small roofless rooms at the
+# same four spots the cottages stood -- _build_grass_scatter's own
+# ruin_centers still clumps grass around these same points -- plus a
+# freestanding broken archway and scattered rubble between them so the
+# village reads as one place rather than four unrelated ruins.
+func _build_ruin_village() -> void:
+	var sites := [
+		{"pos": Vector3(-16.0, 0.0, -10.0), "yaw": 18.0, "seed": 4401},
+		{"pos": Vector3(16.0, 0.0, -14.0), "yaw": -22.0, "seed": 4402},
+		{"pos": Vector3(-14.0, 0.0, -23.0), "yaw": 205.0, "seed": 4403},
+		{"pos": Vector3(14.0, 0.0, -24.0), "yaw": 160.0, "seed": 4404},
+	]
+	for site in sites:
+		_build_ruin_structure(site["pos"], site["yaw"], int(site["seed"]))
+
+	_place_ruin_piece("Arch_Gothic_RoundColumn", Vector3(-9.0, 0.0, -34.0), 90.0)
+	_place_ruin_piece("Floor_Tree", Vector3(9.5, 0.0, -19.0), 35.0)
+
 	var rng := RandomNumberGenerator.new()
-	rng.seed = int(base.x * 1000.0 + base.z)
+	rng.seed = 4499
+	var rubble := ["Brick", "Bricks", "Trapdoor"]
+	for i in range(6):
+		var pos := Vector3(rng.randf_range(-30.0, 30.0), 0.0, rng.randf_range(-32.0, -4.0))
+		if not _is_clear_pos(pos, 1.5):
+			continue
+		_place_ruin_piece(rubble[i % rubble.size()], pos, rng.randf_range(0.0, 360.0))
 
-	# Front wall, split around an empty doorway, with a darker frame either
-	# side of the gap.
-	var side_w := (w - door_w) * 0.5
-	var front_n := Vector3(0.0, 0.0, -1.0)
-	if jagged:
-		_jagged_wall_run(base, yaw_deg, Vector3(-w * 0.5, 0.0, -d * 0.5), side_w, Vector3.RIGHT,
-			t, wall_h * 0.5, wall_h, front_n, stone_lit, stone_shadow, rng, 3)
-		_jagged_wall_run(base, yaw_deg, Vector3(door_w * 0.5, 0.0, -d * 0.5), side_w, Vector3.RIGHT,
-			t, wall_h * 0.5, wall_h, front_n, stone_lit, stone_shadow, rng, 3)
-	else:
-		_wall_piece(base, yaw_deg, Vector3(-(door_w * 0.5 + side_w * 0.5), 0.0, -d * 0.5),
-			Vector3(side_w, wall_h, t), front_n, stone_lit, stone_shadow)
-		_wall_piece(base, yaw_deg, Vector3(door_w * 0.5 + side_w * 0.5, 0.0, -d * 0.5),
-			Vector3(side_w, wall_h, t), front_n, stone_lit, stone_shadow)
-	var jamb_h := wall_h * (0.5 if jagged else 1.0)
-	_place_visual_box(base + _rotate_y(Vector3(-door_w * 0.5, jamb_h * 0.5, -d * 0.5), yaw_deg),
-		Vector3(0.14, jamb_h, t + 0.06), yaw_deg, trim_mat)
-	_place_visual_box(base + _rotate_y(Vector3(door_w * 0.5, jamb_h * 0.5, -d * 0.5), yaw_deg),
-		Vector3(0.14, jamb_h, t + 0.06), yaw_deg, trim_mat)
-
-	# Back wall: full height when the cottage still stands, a jagged run of
-	# broken steps or a plain low stub when it does not.
-	var back_n := Vector3(0.0, 0.0, 1.0)
-	if intact:
-		_wall_piece(base, yaw_deg, Vector3(0.0, 0.0, d * 0.5), Vector3(w, wall_h, t), back_n,
-			stone_lit, stone_shadow)
-	elif jagged:
-		_jagged_wall_run(base, yaw_deg, Vector3(-w * 0.5, 0.0, d * 0.5), w, Vector3.RIGHT, t,
-			wall_h * 0.2, wall_h * 0.65, back_n, stone_lit, stone_shadow, rng, 5)
-	else:
-		_wall_piece(base, yaw_deg, Vector3(0.0, 0.0, d * 0.5), Vector3(w, wall_h * 0.4, t), back_n,
-			stone_lit, stone_shadow)
-
-	# Left wall, with a real window hole framed in the trim colour.
-	_wall_with_window(base, yaw_deg, -w * 0.5, d, wall_h, t, stone_lit, stone_shadow, trim_mat)
-
-	# Right wall, plain, lower when the cottage has fallen into ruin.
-	var right_h := wall_h if intact else wall_h * 0.7
-	_wall_piece(base, yaw_deg, Vector3(w * 0.5, 0.0, 0.0), Vector3(t, right_h, d),
-		Vector3(1.0, 0.0, 0.0), stone_lit, stone_shadow)
-
-	_cottage_base_trim(base, yaw_deg, w, d, t, trim_mat)
-
-	if intact:
-		var roof := MeshInstance3D.new()
-		var prism := PrismMesh.new()
-		# PrismMesh with left_to_right = 0.5 is a centred ridge along local Z,
-		# base at local y = -size.y/2: exactly a pitched roof over a w x d
-		# footprint. No collision: nothing in this slice reaches roof height.
-		prism.size = Vector3(w + 0.6, 1.7, d + 0.6)
-		prism.left_to_right = 0.5
-		roof.mesh = prism
-		roof.material_override = roof_mat
-		roof.position = base + _rotate_y(Vector3(0.0, wall_h + 0.85, 0.0), yaw_deg)
-		roof.rotation_degrees = Vector3(0.0, yaw_deg, 0.0)
-		add_child(roof)
+	if _ruin_pack_scratch != null:
+		_ruin_pack_scratch.free()
+		_ruin_pack_scratch = null
 
 
-# `local_base` is the bottom-centre of the piece in the cottage's own local
-# space (before the yaw rotation); the piece is centred on top of that base.
-# `local_normal` is that piece's own outward-facing direction, also before
-# rotation; once rotated into world space it picks stone_lit or
-# stone_shadow by whether the wall faces the sun (SUN_REF) or away from it --
-# a judge review of day.png on 2026-09-23 said the cottages read as flat
-# dark boxes with no sense of which side the light was on.
-func _wall_piece(base: Vector3, yaw_deg: float, local_base: Vector3, size: Vector3,
-		local_normal: Vector3, stone_lit: Material, stone_shadow: Material) -> MeshInstance3D:
-	var center_local := local_base + Vector3(0.0, size.y * 0.5, 0.0)
-	var pos := base + _rotate_y(center_local, yaw_deg)
-	var world_normal := _rotate_y(local_normal, yaw_deg)
-	var mat := stone_lit if world_normal.dot(SUN_REF) > 0.05 else stone_shadow
-	return _place_box(pos, size, yaw_deg, mat)
+# A roofless 4x4 m ruined room built from the modular kit's own 2 m grid: a
+# 4 m broken archway standing in for the whole north wall (the doorway in),
+# and three more walls each made of two 2 m modules along the other three
+# sides. One of those six modules, chosen by `seed_val`, is swapped for a
+# rubble pile instead of a wall piece -- "weathered and partly collapsed"
+# rather than merely old, on top of the archway's own break.
+func _build_ruin_structure(center: Vector3, yaw_deg: float, seed_val: int) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_val
+	var collapsed_slot := rng.randi_range(0, 5)
+
+	_place_ruin_piece("Wall_ArchRound_Broken", center + _rotate_y(Vector3(0.0, 0.0, -2.0), yaw_deg),
+		yaw_deg)
+
+	var south_pieces := ["Wall_Overgrown", "Window_Bars_Overgrown"]
+	if rng.randf() < 0.5:
+		south_pieces.reverse()
+	_place_wall_slot(center, yaw_deg, Vector3(-1.0, 0.0, 2.0), 0.0, south_pieces[0], collapsed_slot, 0)
+	_place_wall_slot(center, yaw_deg, Vector3(1.0, 0.0, 2.0), 0.0, south_pieces[1], collapsed_slot, 1)
+
+	# West and east walls run along local Z, so each module needs a 90 degree
+	# turn on top of the structure's own yaw to lie along that axis instead
+	# of the piece's native local X.
+	_place_wall_slot(center, yaw_deg, Vector3(-2.0, 0.0, -1.0), 90.0, "Wall_Hole", collapsed_slot, 2)
+	_place_wall_slot(center, yaw_deg, Vector3(-2.0, 0.0, 1.0), 90.0, "Wall_Broken", collapsed_slot, 3)
+	_place_wall_slot(center, yaw_deg, Vector3(2.0, 0.0, -1.0), 90.0, "Window_Open", collapsed_slot, 4)
+	_place_wall_slot(center, yaw_deg, Vector3(2.0, 0.0, 1.0), 90.0, "Wall_Half", collapsed_slot, 5)
+
+	# A floor slab with a tree growing through it, just inside the ruin --
+	# nature reclaiming an abandoned building.
+	_place_ruin_piece("Floor_Tree", center, yaw_deg)
 
 
-# A run of short wall segments of independently randomised height between
-# min_h and max_h, along run_axis starting at local_start -- a broken,
-# stepped silhouette instead of one clean edge, for the one cottage built
-# with jagged = true.
-func _jagged_wall_run(base: Vector3, yaw_deg: float, local_start: Vector3, run_len: float,
-		run_axis: Vector3, t: float, min_h: float, max_h: float, local_normal: Vector3,
-		stone_lit: Material, stone_shadow: Material, rng: RandomNumberGenerator,
-		segments: int) -> void:
-	var seg_len := run_len / float(segments)
-	for i in range(segments):
-		var h := rng.randf_range(min_h, max_h)
-		var seg_center: Vector3 = local_start + run_axis * (seg_len * (float(i) + 0.5))
-		var size := Vector3(seg_len * 1.04, h, t) if absf(run_axis.x) > 0.5 \
-			else Vector3(t, h, seg_len * 1.04)
-		_wall_piece(base, yaw_deg, seg_center, size, local_normal, stone_lit, stone_shadow)
-
-
-# Two uprights (stone, picking lit/shadow by facing like any other wall), a
-# sill and a lintel in the darker trim colour, leaving a real 1.2 x 1.0 m
-# hole in the middle of a wall running along local Z at local_x.
-func _wall_with_window(base: Vector3, yaw_deg: float, local_x: float, d: float, wall_h: float,
-		t: float, stone_lit: Material, stone_shadow: Material, trim_mat: Material) -> void:
-	var sill_h := 0.9
-	var win_h := 1.0
-	var lintel_h := wall_h - sill_h - win_h
-	var seg_d := (d - 1.2) * 0.5
-	var side_n := Vector3(1.0, 0.0, 0.0) if local_x > 0.0 else Vector3(-1.0, 0.0, 0.0)
-	_wall_piece(base, yaw_deg, Vector3(local_x, 0.0, -(0.6 + seg_d * 0.5)), Vector3(t, wall_h, seg_d),
-		side_n, stone_lit, stone_shadow)
-	_wall_piece(base, yaw_deg, Vector3(local_x, 0.0, 0.6 + seg_d * 0.5), Vector3(t, wall_h, seg_d),
-		side_n, stone_lit, stone_shadow)
-	_wall_piece(base, yaw_deg, Vector3(local_x, 0.0, 0.0), Vector3(t, sill_h, 1.2),
-		side_n, trim_mat, trim_mat)
-	_wall_piece(base, yaw_deg, Vector3(local_x, sill_h + win_h, 0.0), Vector3(t, lintel_h, 1.2),
-		side_n, trim_mat, trim_mat)
-
-
-# A dark plinth band running around the base of the cottage, purely visual.
-func _cottage_base_trim(base: Vector3, yaw_deg: float, w: float, d: float, t: float,
-		trim_mat: Material) -> void:
-	var band_h := 0.28
-	_place_visual_box(base + _rotate_y(Vector3(0.0, band_h * 0.5, -d * 0.5), yaw_deg),
-		Vector3(w + 0.08, band_h, t + 0.06), yaw_deg, trim_mat)
-	_place_visual_box(base + _rotate_y(Vector3(0.0, band_h * 0.5, d * 0.5), yaw_deg),
-		Vector3(w + 0.08, band_h, t + 0.06), yaw_deg, trim_mat)
-	_place_visual_box(base + _rotate_y(Vector3(-w * 0.5, band_h * 0.5, 0.0), yaw_deg),
-		Vector3(t + 0.06, band_h, d + 0.08), yaw_deg, trim_mat)
-	_place_visual_box(base + _rotate_y(Vector3(w * 0.5, band_h * 0.5, 0.0), yaw_deg),
-		Vector3(t + 0.06, band_h, d + 0.08), yaw_deg, trim_mat)
+# One wall module of a _build_ruin_structure call: either the named piece, or
+# -- when this call's own slot_index matches the structure's one collapsed
+# slot -- a low pile of rubble left where the wall used to be, so every ruin
+# loses exactly one wall module rather than reading merely weathered.
+func _place_wall_slot(center: Vector3, yaw_deg: float, local_pos: Vector3, extra_yaw: float,
+		piece_name: String, collapsed_slot: int, slot_index: int) -> void:
+	var pos := center + _rotate_y(local_pos, yaw_deg)
+	if slot_index == collapsed_slot:
+		_place_ruin_piece("Bricks", pos, yaw_deg + extra_yaw)
+		return
+	_place_ruin_piece(piece_name, pos, yaw_deg + extra_yaw)
 
 
 func _build_dry_stone_walls() -> void:
@@ -990,70 +1020,66 @@ func _place_rock(pos: Vector3, radius: float, mat: Material) -> void:
 		_register_footprint(pos, radius)
 
 
+# Spec 003 lever 1: real CC0 tree models (Quaternius, via poly.pizza --
+# assets/third_party/LICENSES.md), replacing the recursive branch-cylinder
+# trees this used to build in code -- the loudest remaining "prototype"
+# signal in the Day Dream field next to the character models spec 003's own
+# first pass already replaced. Each of the same eleven positions the old
+# procedural trees stood at now gets one of the three models in
+# _TREE_MODELS, chosen round-robin so the field doesn't repeat one silhouette,
+# with per-instance scale (varying which of a gnarled, dead or common tree
+# reads as "the big one") and a full random yaw so identical instances of the
+# same model never face the same way twice.
 func _build_trees() -> void:
-	var trunk_mat := _flat_mat(Color(0.22, 0.16, 0.12), 0.95)
 	var positions := [
 		Vector3(-22.0, 0.0, -8.0), Vector3(-28.0, 0.0, 4.0), Vector3(-18.0, 0.0, 22.0),
 		Vector3(20.0, 0.0, -18.0), Vector3(30.0, 0.0, -6.0), Vector3(26.0, 0.0, 20.0),
 		Vector3(-14.0, 0.0, -30.0), Vector3(15.0, 0.0, -34.0), Vector3(6.0, 0.0, 34.0),
 		Vector3(-32.0, 0.0, -24.0), Vector3(34.0, 0.0, 8.0),
 	]
-	var seed_val := 4001
-	for pos in positions:
-		var height: float = 5.0 + float(seed_val % 5)
-		_build_bare_tree(pos, height, seed_val, trunk_mat)
-		seed_val += 17
-
-
-const TREE_DEPTH := 2
-
-
-func _build_bare_tree(pos: Vector3, height: float, seed_val: int, trunk_mat: Material) -> void:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = seed_val
-	var root := Node3D.new()
-	root.position = pos
-	add_child(root)
-	# The trunk (this first call only) tapers hard, 0.34 rather than the
-	# 0.55 branches use below -- a judge review of day.png on 2026-09-23
-	# asked for more taper on the big foreground trunks specifically.
-	_add_branch(root, Vector3.ZERO, Vector3.UP, height, height * 0.07, TREE_DEPTH, rng, trunk_mat, 0.34)
-	_place_collision_cylinder(pos + Vector3(0.0, height * 0.3, 0.0), height * 0.09, height * 0.6)
+	rng.seed = 4001
+	for i in range(positions.size()):
+		var pos: Vector3 = positions[i]
+		var model_index := i % _TREE_MODELS.size()
+		var target_height := rng.randf_range(5.5, 9.5)
+		var yaw_deg := rng.randf_range(0.0, 360.0)
+		_place_tree(pos, model_index, target_height, yaw_deg)
 
 
-# A recursive cylinder: a trunk, then two or three branches from its tip, then
-# a second generation of twigs. Bare of leaves, per the art brief. `taper`
-# is top_radius as a fraction of bottom_radius for this one segment; branches
-# spawned from it keep the branch default (0.6) regardless of what the
-# trunk itself used.
-func _add_branch(parent: Node3D, from: Vector3, dir: Vector3, length: float, radius: float,
-		depth: int, rng: RandomNumberGenerator, mat: Material, taper: float = 0.6) -> void:
-	if length < 0.25 or radius < 0.015:
-		return
-	var mesh := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = radius * taper
-	cyl.bottom_radius = radius
-	cyl.height = length
-	cyl.radial_segments = 5
-	mesh.mesh = cyl
-	mesh.material_override = mat
-	var mid := from + dir * (length * 0.5)
-	mesh.transform = Transform3D(_axes_along(dir), mid)
-	parent.add_child(mesh)
+# Instantiates one of the three real tree models at `pos`, uniformly scaled
+# so its own real-world height (read off the imported mesh, _TREE_MODEL_
+# NATIVE_HEIGHT -- these three exports are not all authored at the same
+# scale) lands at `target_height` regardless of which model was picked, and
+# yawed to `yaw_deg`.
+func _place_tree(pos: Vector3, model_index: int, target_height: float, yaw_deg: float) -> void:
+	var packed: PackedScene = load(_TREE_MODELS[model_index])
+	var inst := packed.instantiate()
+	inst.position = pos
+	inst.rotation_degrees = Vector3(0.0, yaw_deg, 0.0)
+	var native_height: float = _TREE_MODEL_NATIVE_HEIGHT[model_index]
+	inst.scale = Vector3.ONE * (target_height / native_height)
+	add_child(inst)
 
-	if depth <= 0:
-		return
-	var tip := from + dir * length
-	var branch_count := rng.randi_range(2, 3)
-	for i in range(branch_count):
-		var spread := deg_to_rad(rng.randf_range(25.0, 50.0))
-		var twist: float = (float(i) / float(branch_count)) * TAU + rng.randf_range(-0.3, 0.3)
-		var side := Vector3.RIGHT if absf(dir.dot(Vector3.RIGHT)) < 0.9 else Vector3.FORWARD
-		var axis := dir.cross(side).normalized()
-		var new_dir := dir.rotated(axis, spread).rotated(dir, twist).normalized()
-		_add_branch(parent, tip, new_dir, length * rng.randf_range(0.55, 0.7), radius * 0.6,
-			depth - 1, rng, mat, 0.55)
+	var mesh_inst := _find_first_mesh_instance(inst)
+	_tree_instances.append(mesh_inst.mesh.resource_path if mesh_inst != null and mesh_inst.mesh != null else "")
+
+	# A slim collision cylinder for the trunk, the same stand-in every other
+	# solid piece of scenery in this file registers, sized off the tree's
+	# own final in-scene height rather than a fixed fraction of a procedural
+	# trunk that no longer exists.
+	_place_collision_cylinder(pos + Vector3(0.0, target_height * 0.3, 0.0),
+		target_height * 0.06, target_height * 0.6)
+
+
+func _find_first_mesh_instance(n: Node) -> MeshInstance3D:
+	if n is MeshInstance3D:
+		return n
+	for c in n.get_children():
+		var found := _find_first_mesh_instance(c)
+		if found != null:
+			return found
+	return null
 
 
 # Dry grass tufts and red-brown brush, scattered by the thousand as one
@@ -1277,44 +1303,117 @@ func _build_dust_motes() -> void:
 	add_child(particles)
 
 
-# A single mountain massif, built as a cluster of overlapping low-poly
-# faceted cones so its ridge line is irregular rather than one perfect
-# triangle. Pushed to 335-385 m, unshaded so the day scene's own ambient +
-# AGX lift cannot bleach it toward white regardless of distance (a first,
-# shaded attempt did exactly that), and hazed at range by
-# fog_aerial_perspective. Two tones baked into each peak's own mesh (lit
-# facets facing the sun, shadow facets facing away) so it reads as rock
-# under a low sun rather than one flat pastel triangle, per a judge review of
-# day.png on 2026-09-23 -- unshaded still, so the tones stay fixed and
-# cannot wash out the way real-time lighting did before. Far outside the
-# playfield either way: no collision, nothing can walk there.
+# The mountain range's own height at world (x, z): a rectangular domain
+# ~380 m wide by ~150 m deep, tapering smoothly to 0 at every edge (see the
+# MOUNTAIN_* consts above), filled with a ridged multifractal -- four octaves
+# of 1 - |sin(...)|, a "ridge" shape peaked rather than smooth-rounded, at
+# rising frequency and shifting phase across both X and Z so the ridge line
+# is irregular and non-repeating rather than one straight repeating wall.
+# Pure and static, no mesh, no RNG, exactly like hill_height above, so
+# tests/test_dream_env.gd can check it directly and _build_mountain below
+# just samples it per vertex.
+static func mountain_height(x: float, z: float) -> float:
+	var x_fade: float = 1.0 - smoothstep(150.0, MOUNTAIN_X_HALF, absf(x))
+	var z_fade: float = smoothstep(0.0, 40.0, MOUNTAIN_Z_NEAR - z) \
+		* smoothstep(0.0, 40.0, z - MOUNTAIN_Z_FAR)
+	var fade: float = x_fade * z_fade
+	if fade <= 0.0:
+		return 0.0
+
+	var total := 0.0
+	var weight_sum := 0.0
+	var freq := 0.011
+	var weight := 1.0
+	for octave in range(4):
+		var t: float = sin(x * freq + z * freq * 0.55 + float(octave) * 2.3) \
+			+ sin(x * freq * 0.63 - z * freq * 1.4 + float(octave) * 5.1)
+		# 1 - |sin| lies in [0, 1]; squaring sharpens the peaks without
+		# leaving that range, so the weighted average below (weights all
+		# positive) is provably bounded to [0, 1] with no clamp needed.
+		var ridge: float = 1.0 - absf(sin(t * 0.5))
+		total += ridge * ridge * weight
+		weight_sum += weight
+		weight *= 0.5
+		freq *= 2.15
+	return fade * (total / weight_sum) * MOUNTAIN_AMPLITUDE
+
+
+# A heightmap-displaced 3D mesh (spec 003 lever 2), replacing the earlier
+# cluster of faceted cones: real ridges and valleys with actual depth, so the
+# range keeps its own parallax as the demo camera moves instead of reading as
+# a flat cutout. Unshaded, with the height/slope-based rock-to-snow tone
+# baked into vertex colour rather than read from real-time lighting -- the
+# same defensive choice the old cone mesh made, kept for the same reason: a
+# judge review of day.png on 2026-09-23 found a first, shaded attempt at this
+# mountain bleached white by the day scene's own ambient + AGX lift regardless
+# of distance. Atmospheric fade comes from the environment's own
+# fog_aerial_perspective (already tuned for the old mountain, still active),
+# not from anything this mesh does itself. No collision: far outside the
+# playfield either way, nothing can walk there.
 func _build_mountain() -> void:
+	var steps_x := int((MOUNTAIN_X_HALF * 2.0) / MOUNTAIN_GRID_STEP)
+	var steps_z := int((MOUNTAIN_Z_NEAR - MOUNTAIN_Z_FAR) / MOUNTAIN_GRID_STEP)
+	var rows: Array = []
+	for j in range(steps_z + 1):
+		var z: float = MOUNTAIN_Z_NEAR - float(j) * MOUNTAIN_GRID_STEP
+		var row := PackedVector3Array()
+		for i in range(steps_x + 1):
+			var x: float = -MOUNTAIN_X_HALF + float(i) * MOUNTAIN_GRID_STEP
+			row.append(Vector3(x, mountain_height(x, z), z))
+		rows.append(row)
+
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for j in range(steps_z):
+		var row0: PackedVector3Array = rows[j]
+		var row1: PackedVector3Array = rows[j + 1]
+		for i in range(steps_x):
+			var p00: Vector3 = row0[i]
+			var p10: Vector3 = row0[i + 1]
+			var p01: Vector3 = row1[i]
+			var p11: Vector3 = row1[i + 1]
+			# Same winding rule as _terrain_vertex: (p00, p01, p10) and
+			# (p10, p01, p11) both give an upward-facing normal for this grid.
+			_mountain_vertex(st, p00)
+			_mountain_vertex(st, p01)
+			_mountain_vertex(st, p10)
+			_mountain_vertex(st, p10)
+			_mountain_vertex(st, p01)
+			_mountain_vertex(st, p11)
+	var mesh := st.commit()
+
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.vertex_color_use_as_albedo = true
-	# Cool blue-violet haze peaks, and two peaks on the sun's side of the
-	# massif in a warmer tint -- each pair is (lit, shadow).
-	var cool := [Color(0.46, 0.40, 0.58), Color(0.17, 0.14, 0.25)]
-	var warm := [Color(0.64, 0.46, 0.46), Color(0.24, 0.17, 0.21)]
-	var peaks := [
-		{"pos": Vector3(-70.0, 0.0, -360.0), "r": 52.0, "h": 92.0, "seg": 6, "warm": false},
-		{"pos": Vector3(-14.0, 0.0, -385.0), "r": 66.0, "h": 122.0, "seg": 7, "warm": false},
-		{"pos": Vector3(32.0, 0.0, -365.0), "r": 46.0, "h": 82.0, "seg": 5, "warm": true},
-		{"pos": Vector3(74.0, 0.0, -345.0), "r": 56.0, "h": 100.0, "seg": 8, "warm": true},
-		{"pos": Vector3(-38.0, 0.0, -335.0), "r": 38.0, "h": 70.0, "seg": 6, "warm": false},
-	]
-	for peak in peaks:
-		var tones: Array = warm if peak["warm"] else cool
-		var mesh := MeshInstance3D.new()
-		var h: float = peak["h"]
-		mesh.mesh = _faceted_cone_mesh(float(peak["r"]), float(peak["r"]) * 0.04, h,
-			int(peak["seg"]), tones[0], tones[1], SUN_REF)
-		mesh.material_override = mat
-		var p: Vector3 = peak["pos"]
-		# _faceted_cone_mesh's base sits at local y=0, not centred, unlike
-		# CylinderMesh.
-		mesh.position = Vector3(p.x, -4.0, p.z)
-		add_child(mesh)
+
+	var mesh_inst := MeshInstance3D.new()
+	mesh_inst.mesh = mesh
+	mesh_inst.material_override = mat
+	mesh_inst.position = Vector3(0.0, MOUNTAIN_BASE_Y, 0.0)
+	add_child(mesh_inst)
+
+
+# Bakes one vertex's colour from its own height (rock low, snow above
+# MOUNTAIN_SNOW_LINE) and an estimated slope: a central-difference normal from
+# four extra mountain_height samples, dotted against SUN_REF the same way
+# every other hand-tinted piece of Day Dream scenery in this file picks its
+# lit or shadow tone. No st.generate_normals() call for this mesh -- the
+# baked vertex colour already carries the sun-relative shading this unshaded
+# material actually uses, and a lighting normal would go unused.
+func _mountain_vertex(st: SurfaceTool, p: Vector3) -> void:
+	var e := 3.0
+	var h_x0 := mountain_height(p.x - e, p.z)
+	var h_x1 := mountain_height(p.x + e, p.z)
+	var h_z0 := mountain_height(p.x, p.z - e)
+	var h_z1 := mountain_height(p.x, p.z + e)
+	var normal := Vector3(h_x0 - h_x1, 2.0 * e, h_z0 - h_z1).normalized()
+	var lit: float = clampf(normal.dot(SUN_REF) * 0.6 + 0.55, 0.0, 1.0)
+	var height_frac: float = clampf(p.y / MOUNTAIN_AMPLITUDE, 0.0, 1.0)
+	var snow_t: float = smoothstep(MOUNTAIN_SNOW_LINE, MOUNTAIN_SNOW_LINE + 0.25, height_frac)
+	var rock := MOUNTAIN_ROCK_SHADOW.lerp(MOUNTAIN_ROCK_LIT, lit)
+	var snow := MOUNTAIN_SNOW_SHADOW.lerp(MOUNTAIN_SNOW_LIT, lit)
+	st.set_color(rock.lerp(snow, snow_t))
+	st.add_vertex(p)
 
 
 # ---------------------------------------------------------------------------
@@ -1463,6 +1562,7 @@ func _build_towers() -> void:
 		_near_towers.append({"pos": Vector3(pos.x, 0.0, pos.z), "w": w, "h": h, "d": d})
 		_add_tower_windows(Vector3(pos.x, 0.0, pos.z), w, h, d, 7, 12, rng)
 		_add_tower_ledges(Vector3(pos.x, 0.0, pos.z), w, h, d)
+		_add_tower_massing(Vector3(pos.x, 0.0, pos.z), w, h, d, mat, rng)
 
 	# Far skyline: a MultiMesh wall of towers, dense to the horizon, no
 	# collision, because nothing on this slice's 120 m ground can reach past
@@ -1623,10 +1723,9 @@ func _finalize_windows() -> void:
 
 # Horizontal trim bands wrapping a near tower at regular height intervals --
 # the "ledge" half of spec 003 lever 4's facade detail, breaking up an
-# otherwise featureless box silhouette the same way _cottage_base_trim
-# already does for the Day Dream's cottages. Near towers only: the far
-# skyline is a single shared unit-box MultiMesh with no room for per-tower
-# extra geometry, and reads fine as a silhouette at that distance regardless.
+# otherwise featureless box silhouette. Near towers only: the far skyline is
+# a single shared unit-box MultiMesh with no room for per-tower extra
+# geometry, and reads fine as a silhouette at that distance regardless.
 func _add_tower_ledges(pos: Vector3, w: float, h: float, d: float) -> void:
 	var ledge_mat := _flat_mat(Color(0.09, 0.09, 0.11), 0.6)
 	var spacing := 9.0
@@ -1637,6 +1736,61 @@ func _add_tower_ledges(pos: Vector3, w: float, h: float, d: float) -> void:
 		_place_visual_box(pos + Vector3(0.0, y, 0.0), Vector3(w + protrude, band_h, d + protrude),
 			0.0, ledge_mat)
 		y += spacing
+
+
+# Breaks up a tower slab's silhouette above the ledges (spec 003 lever 4):
+# most near towers get a setback tier -- a smaller box stacked on the roof,
+# inset from the facade below, with its own thin ledge at the step -- and
+# every near tower gets a small rooftop structure (a mechanical penthouse
+# box, sometimes with a vent stack) on whatever the topmost tier ends up
+# being, plus a low awning over its street-facing side near ground level.
+func _add_tower_massing(pos: Vector3, w: float, h: float, d: float, mat: Material,
+		rng: RandomNumberGenerator) -> void:
+	var top_y := h
+	var top_w := w
+	var top_d := d
+	if rng.randf() < 0.6:
+		var setback_w := w * rng.randf_range(0.5, 0.75)
+		var setback_d := d * rng.randf_range(0.5, 0.75)
+		var setback_h := h * rng.randf_range(0.15, 0.3)
+		_place_box(pos + Vector3(0.0, top_y + setback_h * 0.5, 0.0),
+			Vector3(setback_w, setback_h, setback_d), 0.0, mat)
+		var ledge_mat := _flat_mat(Color(0.09, 0.09, 0.11), 0.6)
+		_place_visual_box(pos + Vector3(0.0, top_y + 0.02, 0.0),
+			Vector3(setback_w + 0.3, 0.14, setback_d + 0.3), 0.0, ledge_mat)
+		top_y += setback_h
+		top_w = setback_w
+		top_d = setback_d
+		_tower_setback_count += 1
+
+	var pent_mat := _flat_mat(Color(0.10, 0.10, 0.12), 0.7)
+	var pent_w := top_w * rng.randf_range(0.2, 0.4)
+	var pent_d := top_d * rng.randf_range(0.2, 0.4)
+	var pent_h := rng.randf_range(1.4, 3.0)
+	_place_visual_box(pos + Vector3(top_w * 0.15, top_y + pent_h * 0.5, top_d * 0.1),
+		Vector3(pent_w, pent_h, pent_d), 0.0, pent_mat)
+	if rng.randf() < 0.5:
+		var vent := MeshInstance3D.new()
+		var cyl := CylinderMesh.new()
+		cyl.top_radius = 0.22
+		cyl.bottom_radius = 0.28
+		cyl.height = rng.randf_range(1.6, 3.2)
+		vent.mesh = cyl
+		vent.material_override = pent_mat
+		vent.position = pos + Vector3(-top_w * 0.2, top_y + cyl.height * 0.5, -top_d * 0.15)
+		add_child(vent)
+
+	# A low awning over the tower's own -Z face (the face every near tower
+	# happens to share, since these boxes are axis-aligned -- see
+	# _build_towers), well under the demo camera's 2.5 m eye height so it
+	# reads as street-level detail rather than another ledge.
+	var awning := MeshInstance3D.new()
+	var awning_mesh := BoxMesh.new()
+	awning_mesh.size = Vector3(w * 0.7, 0.12, 1.1)
+	awning.mesh = awning_mesh
+	awning.material_override = _flat_mat(Color(0.12, 0.05, 0.05), 0.75)
+	awning.position = pos + Vector3(0.0, 3.1, -(d * 0.5 + 0.55))
+	add_child(awning)
 
 
 # ---------------------------------------------------------------------------
@@ -1830,18 +1984,35 @@ func _build_signs() -> void:
 		var panel_y := rng.randf_range(h * 0.3, h * 0.6)
 		var panel_count := rng.randi_range(2, 4)
 		for j in range(panel_count):
+			var panel_size := Vector2(rng.randf_range(0.8, 2.0), rng.randf_range(0.4, 1.1))
+			var offset: Vector3 = Vector3(0.0, panel_y + float(j) * 1.3, 0.0) \
+				+ x_axis * rng.randf_range(-1.0, 1.0)
+			var basis := Basis(x_axis, Vector3.UP, z_axis)
+
+			# An empty signage frame behind the colour panel -- a slightly
+			# larger, unlit dark quad, set back a hair further from the wall
+			# along the same normal offset, so it reads as a sunken frame the
+			# panel sits inside rather than a colour block floating on bare
+			# concrete. No letterforms, no logo, per the originality rule.
+			_sign_frame_count += 1
+			var frame := MeshInstance3D.new()
+			var frame_quad := QuadMesh.new()
+			frame_quad.size = panel_size + Vector2(0.18, 0.22)
+			frame.mesh = frame_quad
+			frame.material_override = _flat_mat(Color(0.05, 0.05, 0.06), 0.8, true)
+			frame.transform = Transform3D(basis, face_center + offset - normal * 0.02)
+			add_child(frame)
+
 			var panel := MeshInstance3D.new()
 			var quad := QuadMesh.new()
-			quad.size = Vector2(rng.randf_range(0.8, 2.0), rng.randf_range(0.4, 1.1))
+			quad.size = panel_size
 			panel.mesh = quad
 			var mat := StandardMaterial3D.new()
 			mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 			mat.albedo_color = colors[(i + j) % colors.size()]
 			mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 			panel.material_override = mat
-			var basis := Basis(x_axis, Vector3.UP, z_axis)
-			panel.transform = Transform3D(basis,
-				face_center + Vector3(0.0, panel_y + float(j) * 1.3, 0.0) + x_axis * rng.randf_range(-1.0, 1.0))
+			panel.transform = Transform3D(basis, face_center + offset)
 			add_child(panel)
 
 
@@ -1862,19 +2033,53 @@ func _build_street_signs() -> void:
 	var i := 0
 	for pos: Vector3 in positions:
 		_place_cylinder(pos + Vector3(0.0, 1.1, 0.0), 0.06, 2.2, post_mat)
+		var panel_size := Vector2(0.5, rng.randf_range(1.3, 2.0))
+		var facing: Vector3 = Vector3.ZERO - pos
+		facing.y = 0.0
+		var axes := _face_axes(facing.normalized())
+		var basis := Basis(axes[0], Vector3.UP, axes[2])
+		var panel_pos := pos + Vector3(0.0, 2.0, 0.0)
+
+		# The same empty signage frame the tower panels wear (_build_signs):
+		# a slightly larger dark quad just behind the colour, set on the
+		# post rather than a wall.
+		_sign_frame_count += 1
+		var frame := MeshInstance3D.new()
+		var frame_quad := QuadMesh.new()
+		frame_quad.size = panel_size + Vector2(0.14, 0.18)
+		frame.mesh = frame_quad
+		frame.material_override = _flat_mat(Color(0.05, 0.05, 0.06), 0.8, true)
+		frame.transform = Transform3D(basis, panel_pos - axes[2] * 0.015)
+		add_child(frame)
+
 		var panel := MeshInstance3D.new()
 		var quad := QuadMesh.new()
-		quad.size = Vector2(0.5, rng.randf_range(1.3, 2.0))
+		quad.size = panel_size
 		panel.mesh = quad
 		var mat := StandardMaterial3D.new()
 		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		mat.albedo_color = colors[i % colors.size()]
 		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 		panel.material_override = mat
-		var facing: Vector3 = Vector3.ZERO - pos
-		facing.y = 0.0
-		var axes := _face_axes(facing.normalized())
-		panel.transform = Transform3D(Basis(axes[0], Vector3.UP, axes[2]),
-			pos + Vector3(0.0, 2.0, 0.0))
+		panel.transform = Transform3D(basis, panel_pos)
 		add_child(panel)
 		i += 1
+
+
+# Street-level benches (spec 003 lever 4: "a few street props") along the
+# pavement, clear of the fight lane like any other solid piece -- a seat slab
+# and two end supports, no back rest, low enough to read at a glance as a
+# public bench rather than a box.
+func _build_benches() -> void:
+	var bench_mat := _flat_mat(Color(0.10, 0.10, 0.12), 0.75)
+	var positions := [
+		Vector3(-4.5, 0.0, -20.0), Vector3(4.5, 0.0, -20.0),
+		Vector3(-4.5, 0.0, 20.0), Vector3(4.5, 0.0, 20.0),
+	]
+	for pos: Vector3 in positions:
+		if not _is_clear_pos(pos, 1.0):
+			continue
+		_place_box(pos + Vector3(0.0, 0.42, 0.0), Vector3(1.6, 0.08, 0.5), 0.0, bench_mat)
+		_place_visual_box(pos + Vector3(-0.65, 0.21, 0.0), Vector3(0.08, 0.42, 0.46), 0.0, bench_mat)
+		_place_visual_box(pos + Vector3(0.65, 0.21, 0.0), Vector3(0.08, 0.42, 0.46), 0.0, bench_mat)
+		_bench_count += 1
