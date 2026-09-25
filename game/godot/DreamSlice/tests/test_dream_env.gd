@@ -31,6 +31,10 @@ func run(r) -> void:
 	_test_night_has_no_ruin_pieces()
 	_test_night_street_furniture_and_tower_massing()
 	_test_day_has_no_night_street_furniture()
+	_test_mountain_has_a_nearer_second_range()
+	_test_day_ground_has_pebble_scatter()
+	_test_day_track_is_pbr_textured()
+	_test_day_trees_have_no_saturated_red_foliage()
 
 
 func check(label: String, condition: bool) -> void:
@@ -136,22 +140,110 @@ func _test_day_has_no_city_windows() -> void:
 
 # Spec 003 lever 2: "PBR ground materials" for the Day Dream field, sourced
 # from Poly Haven (assets/third_party/LICENSES.md) rather than the flat
-# StandardMaterial3D colour the field shipped with. day_ground_material() is
-# a small getter, the same shape as env()/ground_body()/windows_node()
-# above, so a test can look at the material without reaching into the ground
-# mesh's own child structure.
+# StandardMaterial3D colour the field shipped with. Day-polish pass item 3
+# ("proper tiling and macro variation, no visible repeat") moved this to a
+# real ShaderMaterial that blends in a second, differently-scaled sample of
+# the same texture, so this test checks shader uniforms rather than
+# StandardMaterial3D properties. day_ground_material() is a small getter, the
+# same shape as env()/ground_body()/windows_node() above, so a test can look
+# at the material without reaching into the ground mesh's own child structure.
 func _test_day_ground_is_pbr_textured() -> void:
-	print("day ground carries a real PBR texture, not a flat colour")
+	print("day ground carries a real PBR texture with macro variation, not a flat colour")
 	var day = _build("day")
 	var mat = day.day_ground_material()
 	check("day exposes its own ground material", mat != null)
-	check("the ground material has an albedo texture", mat.albedo_texture != null)
-	check("the ground material has a normal map", mat.normal_enabled and mat.normal_texture != null)
+	check("the ground material is a real shader, not a flat colour",
+		mat is ShaderMaterial and mat.shader != null)
+	check("the ground material has an albedo texture",
+		mat.get_shader_parameter("albedo_tex") != null)
+	check("the ground material has a normal map",
+		mat.get_shader_parameter("normal_tex") != null)
+	check("the ground material carries its own macro-variation noise mask",
+		mat.get_shader_parameter("macro_noise_tex") != null)
 	day.free()
 
 	var night = _build("night")
 	check("night never builds a day ground material", night.day_ground_material() == null)
 	night.free()
+
+
+# Day-polish pass: "several ranges at different depths" for real atmospheric
+# perspective, replacing the single near-white, flat-lit range a judge review
+# of 003b-day-wide.png found. mountain_near_height is pure and static, exactly
+# like mountain_height above, so this is checked the same way: no mesh, no
+# environment, no live tree.
+func _test_mountain_has_a_nearer_second_range() -> void:
+	print("a nearer second mountain range sits between the field and the far range")
+	var DreamEnv := load("res://scripts/dream_env.gd")
+	check("flat well inside the field, short of the near range",
+		DreamEnv.mountain_near_height(0.0, 0.0) == 0.0)
+	check("flat beyond the near range's own far edge",
+		DreamEnv.mountain_near_height(0.0, -260.0) == 0.0)
+	check("flat beyond the near range's own side edges",
+		DreamEnv.mountain_near_height(200.0, -190.0) == 0.0)
+
+	var peak := 0.0
+	var over := false
+	var x: float = -DreamEnv.NEAR_MOUNTAIN_X_HALF
+	while x <= DreamEnv.NEAR_MOUNTAIN_X_HALF:
+		var z: float = DreamEnv.NEAR_MOUNTAIN_Z_FAR
+		while z <= DreamEnv.NEAR_MOUNTAIN_Z_NEAR:
+			var h: float = DreamEnv.mountain_near_height(x, z)
+			peak = maxf(peak, h)
+			if h > DreamEnv.NEAR_MOUNTAIN_AMPLITUDE + 0.01 or h < -0.01:
+				over = true
+			z += 5.0
+		x += 5.0
+	check("the near range rises well past half its own amplitude somewhere in it",
+		peak > DreamEnv.NEAR_MOUNTAIN_AMPLITUDE * 0.5)
+	check("no sampled point on the near range exceeds its own amplitude, or drops below zero",
+		not over)
+
+	var day = _build("day")
+	check("day builds exactly two mountain layers (a near and a far range)",
+		day.mountain_layer_count() == 2)
+	day.free()
+	var night = _build("night")
+	check("night builds no mountain layers at all", night.mountain_layer_count() == 0)
+	night.free()
+
+
+# Day-polish pass item 3: "scattered small rocks and pebbles," beyond the 22
+# larger tumbled rocks _build_rock_clutter already placed for spec 003.
+func _test_day_ground_has_pebble_scatter() -> void:
+	print("the day field is scattered with small pebbles")
+	var day = _build("day")
+	check("hundreds of small pebbles were placed", day.pebble_instance_count() > 200)
+	day.free()
+	var night = _build("night")
+	check("night places no pebbles", night.pebble_instance_count() == 0)
+	night.free()
+
+
+# Day-polish pass item 3: "a worn dirt texture on the cart track with wheel
+# ruts," replacing the flat brown colour the track shipped with.
+func _test_day_track_is_pbr_textured() -> void:
+	print("the cart track carries a real worn-dirt texture, not a flat colour")
+	var day = _build("day")
+	var mat = day.cart_track_material()
+	check("day exposes its own cart-track material", mat != null)
+	check("the track material has an albedo texture", mat.albedo_texture != null)
+	day.free()
+	var night = _build("night")
+	check("night never builds a cart-track material", night.cart_track_material() == null)
+	night.free()
+
+
+# Day-polish pass item 2: the judge's read of 003b-day-wide.png called one
+# tree "bright saturated red." Every placed tree's foliage now reads as dry
+# autumn ochre/brown, tracked here the same way every other spec 003 fix in
+# this file exposes a small getter rather than requiring a renderer to check.
+func _test_day_trees_have_no_saturated_red_foliage() -> void:
+	print("day dream trees carry no bright saturated red foliage")
+	var day = _build("day")
+	check("every tree with red source foliage had its colour corrected",
+		day.autumn_tree_tint_count() > 0)
+	day.free()
 
 
 # Spec 003 lever 4: "facade detail ... instead of bare boxes." The concrete

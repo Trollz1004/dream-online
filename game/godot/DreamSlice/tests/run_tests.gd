@@ -13,12 +13,11 @@ extends SceneTree
 # pass (376) were merged together; each added its own checks on top of 327.
 # Raised to 421 for spec 003's second pass: real tree and ruin-kit models,
 # a heightmap mountain, and night street furniture/tower massing checks.
-# Raised to 425 for the side-screen capture fix (4 new checks).
-# Raised to 515 for spec 003's "Character direction" pass, merged in on top:
-# armor, clothing and construct plating on all three kinds (42 checks), plus
-# the judge's own outfit-scale-bug check the black capture prompted (48
-# checks) -- 425 + 90.
-const MINIMUM_CHECKS := 515
+# Raised to 425 for the side-screen capture fix (4 new checks), to 515 for
+# the outfit pass (90 checks) and to 530 with the day-polish pass merged in
+# (15 checks: nearer mountain range, ground macro variation, pebbles, textured
+# cart track, autumn foliage tint).
+const MINIMUM_CHECKS := 530
 
 var passed := 0
 var failed := 0
