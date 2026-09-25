@@ -75,6 +75,13 @@ production. Stylised is fine; cheap is not. The gameplay, systems and timeline o
   over leather with pouches, shooting from rooftops over a river city. Mage: glasses, violet and
   black robes with gold patterns, a floating spell book, large blue spell circles. The red dark
   knight in that set becomes the boss **Myth@s** (see `docs/gdd/02-action-combat.md`).
+- **Walking around, out of combat** (Joshua, 2026-09-24, `joshua-walking-city-1.jpg` and
+  `-2.jpg`). Every class stows its weapon on the back while walking: the knight's sword and
+  shield, the archer's bow, Myth@s's polearm; the mage shows no staff or book until she casts.
+  The walk is calm and confident, shoulders relaxed, among ordinary city people with umbrellas
+  and briefcases on wet crosswalks. The knight wears his goggles down while walking and pushes
+  them up in combat. Weapons come to hand only when a fight starts. The Night Dream city needs
+  ambient pedestrian crowds for this to read.
 - Concept art is generated locally in ComfyUI (Z-Image Turbo, Apache 2.0) from generic words
   only. Reference pictures Joshua shares are read for mood, materials and proportion, and are
   never given to a generator or copied.
