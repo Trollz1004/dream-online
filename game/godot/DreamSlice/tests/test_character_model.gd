@@ -43,6 +43,10 @@ func run(r) -> void:
 	_test_sentinel_eye_differs_day_and_night()
 	_test_keeper_orb_differs_day_and_night_and_orbits()
 	_test_sentinel_dwarfs_the_others()
+	_test_dreamwalker_wears_armor_and_a_cape()
+	_test_keeper_wears_a_rust_red_coat()
+	_test_sentinel_wears_stone_and_iron_plating()
+	_test_armor_does_not_leak_between_kinds()
 
 
 func check(label: String, condition: bool) -> void:
@@ -328,6 +332,78 @@ func _test_sentinel_dwarfs_the_others() -> void:
 		sentinel._rig_root.scale.y > dw._rig_root.scale.y * 1.5)
 	check("the Sentinel is scaled up well past the keeper",
 		sentinel._rig_root.scale.y > keeper._rig_root.scale.y * 1.5)
+	dw.free()
+	keeper.free()
+	sentinel.free()
+
+
+# ---------------------------------------------------------------------------
+# Character direction (spec 003, "Character direction", Joshua 2026-09-24):
+# each kind must read as a distinct, finished character -- medieval
+# silhouettes in modern-feeling materials -- not the same bare tinted
+# mannequin three times over.
+# ---------------------------------------------------------------------------
+
+func _test_dreamwalker_wears_armor_and_a_cape() -> void:
+	print("the dreamwalker wears plate armor, a mail skirt, a belt and a short violet cape")
+	var dw = CharacterModelScript.build("dreamwalker")
+	for piece in ["torso_armor", "mail_skirt", "belt", "pauldron_l", "pauldron_r", "bracer_l",
+			"bracer_r", "greave_l", "greave_r", "cape", "hood", "seam_chest"]:
+		check("dreamwalker has a %s" % piece, dw.has_pivot(piece) and dw.get_pivot(piece) != null)
+
+	var torso: MeshInstance3D = dw.get_pivot("torso_armor")
+	var torso_mat: Material = torso.material_override
+	check("the torso plate reads the worn-steel texture, not a flat colour",
+		torso_mat is ORMMaterial3D and (torso_mat as ORMMaterial3D).albedo_texture != null)
+
+	var cape: MeshInstance3D = dw.get_pivot("cape")
+	check("the cape is real cloth geometry, not a flat placeholder",
+		cape.mesh != null and cape.mesh.get_surface_count() > 0)
+	dw.free()
+
+
+func _test_keeper_wears_a_rust_red_coat() -> void:
+	print("Mireth wears a long fitted rust-red coat, a high collar, bronze clasps, shoulder capes, mail cuffs and a belt")
+	var keeper = CharacterModelScript.build("keeper")
+	for piece in ["robe", "collar", "clasp_l", "clasp_r", "belt", "shoulder_cape_l",
+			"shoulder_cape_r", "cuff_l", "cuff_r"]:
+		check("keeper has a %s" % piece, keeper.has_pivot(piece) and keeper.get_pivot(piece) != null)
+
+	var robe: MeshInstance3D = keeper.get_pivot("robe")
+	var robe_mat: Material = robe.material_override
+	check("the coat reads the woven-fabric texture, not a flat colour",
+		robe_mat is ORMMaterial3D and (robe_mat as ORMMaterial3D).albedo_texture != null)
+	check("the coat is tinted rust-red, not the old rig's purple robe",
+		(robe_mat as ORMMaterial3D).albedo_color.r > (robe_mat as ORMMaterial3D).albedo_color.b)
+	keeper.free()
+
+
+func _test_sentinel_wears_stone_and_iron_plating() -> void:
+	print("the Sentinel is a hulking brute in riveted iron plate, leather harness and a belt, not a bare mannequin")
+	var sentinel = CharacterModelScript.build("sentinel")
+	for piece in ["chest_plate", "waist_band", "belt_buckle", "harness_l", "harness_r",
+			"pauldron_l", "pauldron_r", "gauntlet_l", "gauntlet_r", "greave_l", "greave_r", "helm",
+			"seam_chest"]:
+		check("sentinel has a %s" % piece, sentinel.has_pivot(piece) and sentinel.get_pivot(piece) != null)
+
+	var seam: MeshInstance3D = sentinel.get_pivot("seam_chest")
+	var seam_mat: StandardMaterial3D = seam.material_override
+	check("the construct's seam glows cyan, distinct from its amber/violet eye",
+		seam_mat.emission.is_equal_approx(CharacterModelScript.SEAM_CYAN))
+	sentinel.free()
+
+
+func _test_armor_does_not_leak_between_kinds() -> void:
+	print("armor and clothing stay on their own kind")
+	var dw = CharacterModelScript.build("dreamwalker")
+	var keeper = CharacterModelScript.build("keeper")
+	var sentinel = CharacterModelScript.build("sentinel")
+	check("only the dreamwalker wears a cape",
+		not keeper.has_pivot("cape") and not sentinel.has_pivot("cape"))
+	check("only the keeper wears a coat",
+		not dw.has_pivot("robe") and not sentinel.has_pivot("robe"))
+	check("only the sentinel wears a helm",
+		not dw.has_pivot("helm") and not keeper.has_pivot("helm"))
 	dw.free()
 	keeper.free()
 	sentinel.free()

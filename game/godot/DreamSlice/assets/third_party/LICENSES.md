@@ -11,8 +11,10 @@ credits third-party assets on the end card"), as the appreciated-not-required
 courtesy above.
 
 All files are the 1K JPG (or, for the HDRI, the 1K `.hdr`) resolution tier,
-kept well under the ~40 MB repository budget (spec 003) at roughly 9.4 MB
-total.
+kept well under the ~40 MB repository budget (spec 003) at roughly 16 MB
+total (the three armor/leather/fabric texture sets added 2026-09-24 for
+"Character direction" brought this up from ~9.4 MB; still comfortably under
+this task's own tighter 30 MB ceiling).
 
 ## Ground: Aerial Grass Rock
 
@@ -124,6 +126,79 @@ AI-assisted pipelines) with no no-AI marking.
 - Size: `UniversalBaseCharacter.glb` is 2.2 MB, comfortably under the
   spec's 40 MB import budget and the repo's 80 MB budget.
 
+## Armor, clothing and construct plating (spec 003, "Character direction", 2026-09-24)
+
+Quaternius's own matching outfit pack ("Modular Character Outfits - Fantasy",
+CC0, built to fit this exact rig) is still only distributed behind itch.io's
+click-through purchase flow (see "Known gaps" below and the revision note in
+`scripts/character_model.gd`'s header) -- per spec 003's rule, that was not
+scripted around. Instead, every character now wears procedurally-built
+BoneAttachment3D armor/clothing geometry (plates, pauldrons, bracers,
+greaves, a cape, a coat), textured with two more free Poly Haven CC0 sets
+plus a reuse of the Rock/street sets already listed above. Read at the same
+source pages as the ground/rock/facade/street sets above, all under the same
+Poly Haven site-wide CC0 terms quoted at the top of this file.
+
+### Armor: Metal Plate 02
+
+- Source: https://polyhaven.com/a/metal_plate_02
+- Author: Rob Tuytel, via Poly Haven
+- License: CC0 1.0
+- Files: `textures/armor/metal_plate_02_diff_1k.jpg` (albedo),
+  `textures/armor/metal_plate_02_nor_gl_1k.jpg` (normal),
+  `textures/armor/metal_plate_02_arm_1k.jpg` (packed AO/roughness/metallic)
+- Used for: the dreamwalker's plate armor and mail skirt (tinted dark for the
+  mail), Mireth's mail wrist cuffs, and the Sentinel's iron plate, harness
+  buckle rune backing and (retinted lighter) its "fur" cuff trim
+  (`scripts/character_model.gd`)
+
+### Leather: Brown Leather
+
+- Source: https://polyhaven.com/a/brown_leather
+- Author: Rob Tuytel, via Poly Haven
+- License: CC0 1.0
+- Files: `textures/leather/brown_leather_diff_1k.jpg` (albedo),
+  `textures/leather/brown_leather_nor_gl_1k.jpg` (normal),
+  `textures/leather/brown_leather_arm_1k.jpg` (packed AO/roughness/metallic)
+- Used for: the dreamwalker's and Mireth's belts, and the Sentinel's harness
+  straps, waist band and (retinted) fur-look cuff trim
+  (`scripts/character_model.gd`)
+
+### Fabric: Quatrefoil Jacquard Fabric
+
+- Source: https://polyhaven.com/a/quatrefoil_jacquard_fabric
+- Author: colormass (photography), Rico Cilliers (processing), via Poly Haven
+- License: CC0 1.0
+- Files: `textures/fabric/quatrefoil_jacquard_fabric_diff_1k.jpg` (albedo),
+  `textures/fabric/quatrefoil_jacquard_fabric_nor_gl_1k.jpg` (normal),
+  `textures/fabric/quatrefoil_jacquard_fabric_arm_1k.jpg` (packed
+  AO/roughness/metallic)
+- Used for: Mireth's long coat-robe, its high collar and its two small
+  shoulder capes, tinted rust-red (`scripts/character_model.gd`)
+
+### Reused, no new download
+
+- The Sentinel's own eye accent stays the amber/violet telegraph colour
+  dummy.gd reads directly; nothing new was added for it.
+- Rock Face 03 (already listed above, licensed for the Day Dream field's
+  rocks) was evaluated for the Sentinel's plates during design but the
+  concept art review below moved the Sentinel to riveted iron plate instead,
+  so Rock Face 03 is not actually used by character_model.gd.
+
+## Character direction reference art (not a repository asset)
+
+Joshua's own request of 2026-09-24 pointed this pass at concept art the
+judge lane generated locally in ComfyUI (Z-Image Turbo, Apache 2.0) from
+generic words: `concept_fusion_knight_00002_.png`, `concept_fusion_
+mage_00002_.png` and `concept_brute_00001_.png`, kept outside the repository
+at `C:\DREAM\recon\concepts\2026-09-24\` on the Alienware node. Per spec
+003's own rule ("Concept art is generated locally... Reference pictures
+Joshua shares are read for mood, materials and proportion, and are never
+given to a generator or copied") and this task's own instruction, these
+images were opened and read for silhouette, palette and material only --
+never copied into the repository, never fed to a generator, and are not
+listed as a used asset because nothing from them ships as a file.
+
 ## Revision history
 
 - First pass (superseded): KayKit by Kay Lousberg (kaylousberg.com), CC0 —
@@ -137,15 +212,24 @@ AI-assisted pipelines) with no no-AI marking.
 
 ## Credits for the recording's end card
 
-"Characters: base rig and animations by Quaternius (quaternius.com), CC0."
+"Characters: base rig and animations by Quaternius (quaternius.com), CC0.
+Textures: Rob Tuytel, colormass and Rico Cilliers, via Poly Haven, CC0."
 
-## Known gaps (see the report this work shipped with for the full list)
+## Known gaps (2026-09-24, "Character direction" pass)
 
-- The rig ships as a bare grey mannequin with no clothing or armour
-  geometry; "layered leather and steel", "a robed woman" and
-  "stone-and-iron" currently read through material colour/metallic/
-  roughness only. Quaternius's own "Modular Character Outfits - Fantasy"
-  pack (CC0, built to fit this exact rig) is the natural next step, but its
-  only distribution found was itch.io's click-through purchase flow.
-- No PBR texture maps (albedo detail, normal, roughness/metallic, an
-  emissive mask for the accent glows) exist yet for the mannequin.
+- Quaternius's own "Modular Character Outfits - Fantasy" pack (CC0, built to
+  fit this exact rig) is still the natural upgrade over the procedural
+  BoneAttachment3D geometry this pass built instead, but its only
+  distribution found remains itch.io's click-through purchase flow.
+- The Sentinel reads as a hulking brute in riveted iron plate, per the
+  judge lane's own concept art, but this rig's head is the same generic
+  mannequin head as the other two kinds -- there is no tusked, grey-skinned
+  face to sculpt without a from-scratch head mesh, so its "brow-cap" sits up
+  and back rather than replacing the face.
+- The dreamwalker's and the Sentinel's plate pieces are primitive
+  spheres/cylinders/boxes, not sculpted plate silhouettes; the layered-dome
+  pauldron and the mail-skirt lathe are this pass's best low-poly
+  approximation of the concept art's actual plate shapes.
+- Cloth (the dreamwalker's cape and hood, Mireth's coat, collar and shoulder
+  capes) is rigid BoneAttachment3D geometry with no cloth simulation -- it
+  follows the torso's own rotation, not real drape or wind.
