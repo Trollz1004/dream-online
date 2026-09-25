@@ -184,9 +184,9 @@ func _test_mountain_has_a_nearer_second_range() -> void:
 
 	var peak := 0.0
 	var over := false
-	var x := -DreamEnv.NEAR_MOUNTAIN_X_HALF
+	var x: float = -DreamEnv.NEAR_MOUNTAIN_X_HALF
 	while x <= DreamEnv.NEAR_MOUNTAIN_X_HALF:
-		var z := DreamEnv.NEAR_MOUNTAIN_Z_FAR
+		var z: float = DreamEnv.NEAR_MOUNTAIN_Z_FAR
 		while z <= DreamEnv.NEAR_MOUNTAIN_Z_NEAR:
 			var h: float = DreamEnv.mountain_near_height(x, z)
 			peak = maxf(peak, h)
