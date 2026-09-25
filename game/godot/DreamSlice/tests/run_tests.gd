@@ -11,7 +11,9 @@ extends SceneTree
 # to make a run pass.
 # Raised to 403 when the spec 003 world pass (354) and the real-characters
 # pass (376) were merged together; each added its own checks on top of 327.
-const MINIMUM_CHECKS := 403
+# Raised to 421 for spec 003's second pass: real tree and ruin-kit models,
+# a heightmap mountain, and night street furniture/tower massing checks.
+const MINIMUM_CHECKS := 421
 
 var passed := 0
 var failed := 0
