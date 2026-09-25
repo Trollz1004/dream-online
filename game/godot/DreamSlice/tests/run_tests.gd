@@ -13,7 +13,10 @@ extends SceneTree
 # pass (376) were merged together; each added its own checks on top of 327.
 # Raised to 421 for spec 003's second pass: real tree and ruin-kit models,
 # a heightmap mountain, and night street furniture/tower massing checks.
-const MINIMUM_CHECKS := 421
+# Raised to 436 for the day-polish pass: a nearer second mountain range, the
+# ground shader's own macro variation, pebble scatter, the textured cart
+# track, and the autumn foliage tint fix.
+const MINIMUM_CHECKS := 436
 
 var passed := 0
 var failed := 0

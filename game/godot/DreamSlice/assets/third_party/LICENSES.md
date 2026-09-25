@@ -60,6 +60,22 @@ total.
   desktop only) doing the actual reflection work over a low-roughness variant
   of this material
 
+## Dirt (day-polish pass, 2026-09-24)
+
+- Source: https://polyhaven.com/a/dirt
+- Author: Charlotte Baglioni, via Poly Haven
+- License: CC0 1.0 (read at https://polyhaven.com/license the same day, same
+  terms already quoted at the top of this file: no login, no click-through,
+  free for commercial use, unrestricted modification, no no-AI marking)
+- Files: `textures/dirt/dirt_diff_1k.jpg` (albedo), `textures/dirt/
+  dirt_nor_gl_1k.jpg` (OpenGL-convention normal map), `textures/dirt/
+  dirt_arm_1k.jpg` (packed AO/roughness/metallic)
+- Used for: the Day Dream field's cart track and its wheel ruts
+  (`scripts/dream_env.gd`, `_build_day_track`/`_dirt_material`), replacing the
+  flat brown colour the track shipped with -- "a worn dirt texture on the cart
+  track with wheel ruts" from the judge's read of `003b-day-wide.png`.
+- Size: 2.57 MB total (diff 0.70 MB, nor_gl 1.15 MB, arm 0.62 MB).
+
 ## Sky
 
 The Day Dream sky's clouds (`_build_sky_clouds` in `scripts/dream_env.gd`) are
@@ -214,6 +230,44 @@ clouds above. A CC0 mountain model was the spec's other listed option, but a
 single downloaded model would need to tile or repeat to fill the same wide
 backdrop this heightmap already covers with real, non-repeating ridges and
 valleys and per-vertex rock/snow shading, so nothing was fetched for it.
+
+## Day-polish pass (2026-09-24): mountain, tree colour and ground detail
+
+The Claude judge lane's own review of the crowdfunding-demo reference frame
+`003b-day-wide.png` found: the mountain range read "nearly white and
+flat-lit, like a paper cutout"; the CommonTree instances showed "bright
+saturated red" foliage; and the ground read as "a flat plain tan floor" with
+no macro variation, few small rocks, an untextured cart track, and thin grass
+near the ruins and path. None of this needed a new downloaded asset:
+
+- **Mountain**: `scripts/dream_env.gd` now builds two heightfield layers
+  (`_build_mountain`/`_build_mountain_layer`) -- the existing far range
+  (`mountain_height`) plus a new, nearer foothill ridge
+  (`mountain_near_height`) at a different frequency and phase, both still
+  generated at runtime from a ridged sine multifractal, no imported model, for
+  the same reason recorded above under "Mountain range: not a downloaded
+  asset." Rock and snow colours were re-tuned warmer/cooler and the snow line
+  raised, and the far layer bakes a depth-based blue-grey haze straight into
+  its own vertex colour for real atmospheric perspective.
+- **Tree foliage colour**: no tree model was swapped. Inspecting the imported
+  `CommonTree.glb` and `TwistedTree.glb` scenes directly found their own
+  "Leaves_*" mesh surfaces are plain white-albedo materials driven entirely by
+  their own (bright red, in CommonTree's case) textures; `_place_tree` now
+  applies a per-instance material override (`_tint_autumn_foliage`) that
+  multiplies that surface toward a dry autumn ochre/brown, leaving the bark
+  surfaces and the source `.glb` files untouched.
+- **Ground detail**: the Day Dream ground material (`_day_ground_material`)
+  moved from a plain `StandardMaterial3D` to a `ShaderMaterial` that blends in
+  a second, differently scaled and rotated sample of the same Aerial Grass
+  Rock texture via a runtime-generated noise mask (`_ground_macro_noise_texture`,
+  the same "generate at runtime, no imported asset" choice already made for
+  the sky clouds), for macro variation and darker patches with no new texture
+  download. A new pebble `MultiMesh` (`_build_pebble_scatter`) reuses the
+  already-licensed Rock Face 03 texture. The cart track and its wheel ruts
+  (`_build_day_track`/`_dirt_material`) use the one new asset this pass
+  fetched, Poly Haven's Dirt (above). Grass clumps near the ruins and path
+  edges were thickened with a second, taller tuft `MultiMesh`
+  (`_build_tall_grass_clumps`), reusing the existing runtime wind shader.
 
 ## Revision history
 
