@@ -11,8 +11,13 @@ credits third-party assets on the end card"), as the appreciated-not-required
 courtesy above.
 
 All files are the 1K JPG (or, for the HDRI, the 1K `.hdr`) resolution tier,
-kept well under the ~40 MB repository budget (spec 003) at roughly 9.4 MB
-total.
+kept well under the ~40 MB repository budget (spec 003) at roughly 16 MB of
+texture total (the three armor/leather/fabric texture sets added 2026-09-24
+for "Character direction" brought this up from ~9.4 MB). The tree and ruin
+glTF models (below) add a further ~16.2 MB of imported meshes. Comfortably
+under this task's own tighter 30 MB ceiling for the character-direction
+work specifically, and under the repo's own 80 MB `assets/third_party`
+budget overall.
 
 ## Ground: Aerial Grass Rock
 
@@ -215,6 +220,154 @@ single downloaded model would need to tile or repeat to fill the same wide
 backdrop this heightmap already covers with real, non-repeating ridges and
 valleys and per-vertex rock/snow shading, so nothing was fetched for it.
 
+## Armor, clothing and construct plating (spec 003, "Character direction", 2026-09-24)
+
+Quaternius's own matching outfit pack ("Modular Character Outfits - Fantasy",
+CC0, built to fit this exact rig) is still only distributed behind itch.io's
+click-through purchase flow (see "Known gaps" below and the revision note in
+`scripts/character_model.gd`'s header) -- per spec 003's rule, that was not
+scripted around. Instead, every character now wears procedurally-built
+BoneAttachment3D armor/clothing geometry (plates, pauldrons, bracers,
+greaves, a cape, a coat), textured with two more free Poly Haven CC0 sets
+plus a reuse of the Rock/street sets already listed above. Read at the same
+source pages as the ground/rock/facade/street sets above, all under the same
+Poly Haven site-wide CC0 terms quoted at the top of this file.
+
+### Armor: Metal Plate 02
+
+- Source: https://polyhaven.com/a/metal_plate_02
+- Author: Rob Tuytel, via Poly Haven
+- License: CC0 1.0
+- Files: `textures/armor/metal_plate_02_diff_1k.jpg` (albedo),
+  `textures/armor/metal_plate_02_nor_gl_1k.jpg` (normal),
+  `textures/armor/metal_plate_02_arm_1k.jpg` (packed AO/roughness/metallic)
+- Used for: the dreamwalker's plate armor and mail skirt (tinted dark for the
+  mail), Mireth's mail wrist cuffs, and the Sentinel's iron plate, harness
+  buckle rune backing and (retinted lighter) its "fur" cuff trim
+  (`scripts/character_model.gd`)
+
+### Leather: Brown Leather
+
+- Source: https://polyhaven.com/a/brown_leather
+- Author: Rob Tuytel, via Poly Haven
+- License: CC0 1.0
+- Files: `textures/leather/brown_leather_diff_1k.jpg` (albedo),
+  `textures/leather/brown_leather_nor_gl_1k.jpg` (normal),
+  `textures/leather/brown_leather_arm_1k.jpg` (packed AO/roughness/metallic)
+- Used for: the dreamwalker's and Mireth's belts, and the Sentinel's harness
+  straps, waist band and (retinted) fur-look cuff trim
+  (`scripts/character_model.gd`)
+
+### Fabric: Quatrefoil Jacquard Fabric
+
+- Source: https://polyhaven.com/a/quatrefoil_jacquard_fabric
+- Author: colormass (photography), Rico Cilliers (processing), via Poly Haven
+- License: CC0 1.0
+- Files: `textures/fabric/quatrefoil_jacquard_fabric_diff_1k.jpg` (albedo),
+  `textures/fabric/quatrefoil_jacquard_fabric_nor_gl_1k.jpg` (normal),
+  `textures/fabric/quatrefoil_jacquard_fabric_arm_1k.jpg` (packed
+  AO/roughness/metallic)
+- Used for: Mireth's long coat-robe, its high collar and its two small
+  shoulder capes, tinted rust-red (`scripts/character_model.gd`)
+
+### Reused, no new download
+
+- The Sentinel's own eye accent stays the amber/violet telegraph colour
+  dummy.gd reads directly; nothing new was added for it.
+- Rock Face 03 (already listed above, licensed for the Day Dream field's
+  rocks) was evaluated for the Sentinel's plates during design but the
+  concept art review below moved the Sentinel to riveted iron plate instead,
+  so Rock Face 03 is not actually used by character_model.gd.
+
+## Character direction reference art (not a repository asset)
+
+Joshua's own request of 2026-09-24 pointed this pass at concept art the
+judge lane generated locally in ComfyUI (Z-Image Turbo, Apache 2.0) from
+generic words: `concept_fusion_knight_00002_.png`, `concept_fusion_
+mage_00002_.png` and `concept_brute_00001_.png`, kept outside the repository
+at `C:\DREAM\recon\concepts\2026-09-24\` on the Alienware node. Per spec
+003's own rule ("Concept art is generated locally... Reference pictures
+Joshua shares are read for mood, materials and proportion, and are never
+given to a generator or copied") and this task's own instruction, these
+images were opened and read for silhouette, palette and material only --
+never copied into the repository, never fed to a generator, and are not
+listed as a used asset because nothing from them ships as a file.
+
+## Revision history
+
+- First pass (superseded): KayKit by Kay Lousberg (kaylousberg.com), CC0 —
+  `KayKit-Character-Pack-Adventures-1.0` (Knight.glb, Mage.glb) and
+  `KayKit-Character-Pack-Skeletons-1.0` (Skeleton_Warrior.glb), fetched
+  directly from their GitHub repos (also CC0, also a plain login-free
+  fetch). Replaced the same day on Joshua's judgement that the pack's
+  chunky, big-headed proportions read as "toy" rather than the realistic,
+  cinematic-fantasy look spec 003 asks for. Nothing from that pass ships;
+  it is recorded here only so the substitution is not silently lost.
+
+## Credits for the recording's end card
+
+"Characters, trees and ruins: models by Quaternius (quaternius.com), CC0.
+Ground, rock, facade, street, armor, leather and fabric textures: Rob
+Tuytel, colormass and Rico Cilliers, via Poly Haven (polyhaven.com), CC0."
+
+## Known gaps
+
+- Quaternius's own "Modular Character Outfits - Fantasy" pack (CC0, built to
+  fit this exact rig) is still the natural upgrade over the procedural
+  BoneAttachment3D geometry the "Character direction" pass (2026-09-24)
+  built instead, but its only distribution found remains itch.io's
+  click-through purchase flow.
+- The Sentinel reads as a hulking brute in riveted iron plate, per the
+  judge lane's own concept art, but this rig's head is the same generic
+  mannequin head as the other two kinds -- there is no tusked, grey-skinned
+  face to sculpt without a from-scratch head mesh, so its "brow-cap" sits up
+  and back rather than replacing the face.
+- The dreamwalker's and the Sentinel's plate pieces are primitive
+  spheres/cylinders/boxes, not sculpted plate silhouettes; the layered-dome
+  pauldron and the mail-skirt lathe are this pass's best low-poly
+  approximation of the concept art's actual plate shapes.
+- Cloth (the dreamwalker's cape and hood, Mireth's coat, collar and shoulder
+  capes) is rigid BoneAttachment3D geometry with no cloth simulation -- it
+  follows the torso's own rotation, not real drape or wind.
+
+## Day-polish pass (2026-09-24): mountain, tree colour and ground detail
+
+The Claude judge lane's own review of the crowdfunding-demo reference frame
+`003b-day-wide.png` found: the mountain range read "nearly white and
+flat-lit, like a paper cutout"; the CommonTree instances showed "bright
+saturated red" foliage; and the ground read as "a flat plain tan floor" with
+no macro variation, few small rocks, an untextured cart track, and thin grass
+near the ruins and path. None of this needed a new downloaded asset:
+
+- **Mountain**: `scripts/dream_env.gd` now builds two heightfield layers
+  (`_build_mountain`/`_build_mountain_layer`) -- the existing far range
+  (`mountain_height`) plus a new, nearer foothill ridge
+  (`mountain_near_height`) at a different frequency and phase, both still
+  generated at runtime from a ridged sine multifractal, no imported model, for
+  the same reason recorded above under "Mountain range: not a downloaded
+  asset." Rock and snow colours were re-tuned warmer/cooler and the snow line
+  raised, and the far layer bakes a depth-based blue-grey haze straight into
+  its own vertex colour for real atmospheric perspective.
+- **Tree foliage colour**: no tree model was swapped. Inspecting the imported
+  `CommonTree.glb` and `TwistedTree.glb` scenes directly found their own
+  "Leaves_*" mesh surfaces are plain white-albedo materials driven entirely by
+  their own (bright red, in CommonTree's case) textures; `_place_tree` now
+  applies a per-instance material override (`_tint_autumn_foliage`) that
+  multiplies that surface toward a dry autumn ochre/brown, leaving the bark
+  surfaces and the source `.glb` files untouched.
+- **Ground detail**: the Day Dream ground material (`_day_ground_material`)
+  moved from a plain `StandardMaterial3D` to a `ShaderMaterial` that blends in
+  a second, differently scaled and rotated sample of the same Aerial Grass
+  Rock texture via a runtime-generated noise mask (`_ground_macro_noise_texture`,
+  the same "generate at runtime, no imported asset" choice already made for
+  the sky clouds), for macro variation and darker patches with no new texture
+  download. A new pebble `MultiMesh` (`_build_pebble_scatter`) reuses the
+  already-licensed Rock Face 03 texture. The cart track and its wheel ruts
+  (`_build_day_track`/`_dirt_material`) use the one new asset this pass
+  fetched, Poly Haven's Dirt (above). Grass clumps near the ruins and path
+  edges were thickened with a second, taller tuft `MultiMesh`
+  (`_build_tall_grass_clumps`), reusing the existing runtime wind shader.
+
 ## Revision history
 
 - First pass (superseded): KayKit by Kay Lousberg (kaylousberg.com), CC0 —
@@ -241,3 +394,20 @@ Ground, rock, facade and street textures: Poly Haven (polyhaven.com), CC0."
   only distribution found was itch.io's click-through purchase flow.
 - No PBR texture maps (albedo detail, normal, roughness/metallic, an
   emissive mask for the accent glows) exist yet for the mannequin.
+
+## Dirt (day-polish pass, 2026-09-24)
+
+- Source: https://polyhaven.com/a/dirt
+- Author: Charlotte Baglioni, via Poly Haven
+- License: CC0 1.0 (read at https://polyhaven.com/license the same day, same
+  terms already quoted at the top of this file: no login, no click-through,
+  free for commercial use, unrestricted modification, no no-AI marking)
+- Files: `textures/dirt/dirt_diff_1k.jpg` (albedo), `textures/dirt/
+  dirt_nor_gl_1k.jpg` (OpenGL-convention normal map), `textures/dirt/
+  dirt_arm_1k.jpg` (packed AO/roughness/metallic)
+- Used for: the Day Dream field's cart track and its wheel ruts
+  (`scripts/dream_env.gd`, `_build_day_track`/`_dirt_material`), replacing the
+  flat brown colour the track shipped with -- "a worn dirt texture on the cart
+  track with wheel ruts" from the judge's read of `003b-day-wide.png`.
+- Size: 2.57 MB total (diff 0.70 MB, nor_gl 1.15 MB, arm 0.62 MB).
+

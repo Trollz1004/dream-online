@@ -31,6 +31,11 @@ func run(r) -> void:
 	_test_night_has_no_ruin_pieces()
 	_test_night_street_furniture_and_tower_massing()
 	_test_day_has_no_night_street_furniture()
+	_test_mountain_has_a_nearer_second_range()
+	_test_near_mountain_never_reads_taller_than_the_far_range()
+	_test_day_ground_has_pebble_scatter()
+	_test_day_track_is_pbr_textured()
+	_test_day_trees_have_no_saturated_red_foliage()
 
 
 func check(label: String, condition: bool) -> void:
@@ -136,22 +141,192 @@ func _test_day_has_no_city_windows() -> void:
 
 # Spec 003 lever 2: "PBR ground materials" for the Day Dream field, sourced
 # from Poly Haven (assets/third_party/LICENSES.md) rather than the flat
-# StandardMaterial3D colour the field shipped with. day_ground_material() is
-# a small getter, the same shape as env()/ground_body()/windows_node()
-# above, so a test can look at the material without reaching into the ground
-# mesh's own child structure.
+# StandardMaterial3D colour the field shipped with. Day-polish pass item 3
+# ("proper tiling and macro variation, no visible repeat") moved this to a
+# real ShaderMaterial that blends in a second, differently-scaled sample of
+# the same texture, so this test checks shader uniforms rather than
+# StandardMaterial3D properties. day_ground_material() is a small getter, the
+# same shape as env()/ground_body()/windows_node() above, so a test can look
+# at the material without reaching into the ground mesh's own child structure.
 func _test_day_ground_is_pbr_textured() -> void:
-	print("day ground carries a real PBR texture, not a flat colour")
+	print("day ground carries a real PBR texture with macro variation, not a flat colour")
 	var day = _build("day")
 	var mat = day.day_ground_material()
 	check("day exposes its own ground material", mat != null)
-	check("the ground material has an albedo texture", mat.albedo_texture != null)
-	check("the ground material has a normal map", mat.normal_enabled and mat.normal_texture != null)
+	check("the ground material is a real shader, not a flat colour",
+		mat is ShaderMaterial and mat.shader != null)
+	check("the ground material has an albedo texture",
+		mat.get_shader_parameter("albedo_tex") != null)
+	check("the ground material has a normal map",
+		mat.get_shader_parameter("normal_tex") != null)
+	check("the ground material carries its own macro-variation noise mask",
+		mat.get_shader_parameter("macro_noise_tex") != null)
 	day.free()
 
 	var night = _build("night")
 	check("night never builds a day ground material", night.day_ground_material() == null)
 	night.free()
+
+
+# Day-polish pass: "several ranges at different depths" for real atmospheric
+# perspective, replacing the single near-white, flat-lit range a judge review
+# of 003b-day-wide.png found. mountain_near_height is pure and static, exactly
+# like mountain_height above, so this is checked the same way: no mesh, no
+# environment, no live tree.
+func _test_mountain_has_a_nearer_second_range() -> void:
+	print("a nearer second mountain range sits between the field and the far range")
+	var DreamEnv := load("res://scripts/dream_env.gd")
+	check("flat well inside the field, short of the near range",
+		DreamEnv.mountain_near_height(0.0, 0.0) == 0.0)
+	check("flat beyond the near range's own far edge",
+		DreamEnv.mountain_near_height(0.0, -260.0) == 0.0)
+	check("flat beyond the near range's own side edges",
+		DreamEnv.mountain_near_height(200.0, -190.0) == 0.0)
+
+	var peak := 0.0
+	var over := false
+	var x: float = -DreamEnv.NEAR_MOUNTAIN_X_HALF
+	while x <= DreamEnv.NEAR_MOUNTAIN_X_HALF:
+		var z: float = DreamEnv.NEAR_MOUNTAIN_Z_FAR
+		while z <= DreamEnv.NEAR_MOUNTAIN_Z_NEAR:
+			var h: float = DreamEnv.mountain_near_height(x, z)
+			peak = maxf(peak, h)
+			if h > DreamEnv.NEAR_MOUNTAIN_AMPLITUDE + 0.01 or h < -0.01:
+				over = true
+			z += 5.0
+		x += 5.0
+	check("the near range rises well past half its own amplitude somewhere in it",
+		peak > DreamEnv.NEAR_MOUNTAIN_AMPLITUDE * 0.5)
+	check("no sampled point on the near range exceeds its own amplitude, or drops below zero",
+		not over)
+
+	var day = _build("day")
+	check("day builds exactly two mountain layers (a near and a far range)",
+		day.mountain_layer_count() == 2)
+	day.free()
+	var night = _build("night")
+	check("night builds no mountain layers at all", night.mountain_layer_count() == 0)
+	night.free()
+
+
+# Round 4 (2026-09-24, day capture): the near range read as "a huge pale
+# wall filling the top third of the frame," not foothills. It should never
+# subtend a larger angle on screen than the far range's own peaks, from
+# EITHER range's least favourable edge -- the near range's own NEAREST edge
+# (its largest apparent angle) against the far range's own FARTHEST edge
+# (its smallest apparent angle) -- so the inequality holds for any camera
+# position inside the field, not just one particular capture's framing. Pure
+# arithmetic on the two ranges' own constants, no camera or renderer needed.
+func _test_near_mountain_never_reads_taller_than_the_far_range() -> void:
+	print("the near foothill range never subtends a larger on-screen angle than the far range's own peaks")
+	var DreamEnv := load("res://scripts/dream_env.gd")
+	var near_peak_y: float = DreamEnv.NEAR_MOUNTAIN_BASE_Y + DreamEnv.NEAR_MOUNTAIN_AMPLITUDE
+	var far_peak_y: float = DreamEnv.MOUNTAIN_BASE_Y + DreamEnv.MOUNTAIN_AMPLITUDE
+	var near_angle_worst: float = near_peak_y / absf(DreamEnv.NEAR_MOUNTAIN_Z_NEAR)
+	var far_angle_best: float = far_peak_y / absf(DreamEnv.MOUNTAIN_Z_FAR)
+	check("the near range's own peak sits lower above the field than the far range's own peak",
+		near_peak_y < far_peak_y)
+	check("the near range's steepest apparent angle stays well below the far range's shallowest",
+		near_angle_worst < far_angle_best * 0.75)
+
+	# Darker and warmer than the far range's own lit rock tone, so it reads
+	# as a closer, sun-warmed foothill silhouette in front of the hazier,
+	# cooler far range -- not the same pale colour repeated at a bigger size.
+	var near_lit: Color = DreamEnv.NEAR_MOUNTAIN_ROCK_LIT
+	var far_lit: Color = DreamEnv.MOUNTAIN_ROCK_LIT
+	check("the near range's lit rock is meaningfully darker than the far range's, not the same tone repeated",
+		(near_lit.r + near_lit.g + near_lit.b) + 0.15 < (far_lit.r + far_lit.g + far_lit.b))
+	check("the near range's lit rock is meaningfully warmer (more red relative to blue) than the far range's",
+		(near_lit.r - near_lit.b) > (far_lit.r - far_lit.b) + 0.03)
+
+
+# Day-polish pass item 3: "scattered small rocks and pebbles," beyond the 22
+# larger tumbled rocks _build_rock_clutter already placed for spec 003.
+func _test_day_ground_has_pebble_scatter() -> void:
+	print("the day field is scattered with small pebbles")
+	var day = _build("day")
+	check("hundreds of small pebbles were placed", day.pebble_instance_count() > 200)
+	day.free()
+	var night = _build("night")
+	check("night places no pebbles", night.pebble_instance_count() == 0)
+	night.free()
+
+
+# Day-polish pass item 3: "a worn dirt texture on the cart track with wheel
+# ruts," replacing the flat brown colour the track shipped with.
+func _test_day_track_is_pbr_textured() -> void:
+	print("the cart track carries a real worn-dirt texture, not a flat colour")
+	var day = _build("day")
+	var mat = day.cart_track_material()
+	check("day exposes its own cart-track material", mat != null)
+	check("the track material has an albedo texture", mat.albedo_texture != null)
+	day.free()
+	var night = _build("night")
+	check("night never builds a cart-track material", night.cart_track_material() == null)
+	night.free()
+
+
+# Day-polish pass item 2: the judge's read of 003b-day-wide.png called one
+# tree "bright saturated red." Every placed tree's foliage now reads as dry
+# autumn ochre/brown, tracked here the same way every other spec 003 fix in
+# this file exposes a small getter rather than requiring a renderer to check.
+func _test_day_trees_have_no_saturated_red_foliage() -> void:
+	print("day dream trees carry no bright saturated red foliage")
+	var day = _build("day")
+	check("every tree with red source foliage had its colour corrected",
+		day.autumn_tree_tint_count() > 0)
+
+	# Round 4 (2026-09-24): a judge capture still showed one tree "still
+	# saturated red" while the check above already read green, because
+	# multiplying an ochre tint over an ALREADY saturated-red texture only
+	# darkens that same red hue -- it can never shift it away from red.
+	# TwistedTree.glb's own leaf texture measured (tools/_debug_tree_leaf_
+	# material.gd, run once and deleted) at an average (0.36, 0.05, 0.05):
+	# strongly red. Sample each tinted material's own actual rendered colour
+	# (its texture times its albedo_color, alpha-weighted so fully
+	# transparent texels -- most of a leaf card -- do not count) and check
+	# the reddest sampled texel across every tinted tree reads as warm
+	# ochre/brown, not red.
+	var worst_ratio := 0.0
+	for mat in day.tinted_leaf_materials():
+		worst_ratio = maxf(worst_ratio, _worst_red_ratio(mat))
+	check("no tinted leaf material still reads as saturated red once its own texture is accounted for",
+		worst_ratio < 2.0)
+	day.free()
+
+
+# red-to-green+blue ratio of the reddest visible (alpha > 0.1) texel in
+# `mat`'s own rendered appearance (its albedo_texture, if any, modulated by
+# its albedo_color exactly the way the standard shader multiplies them) --
+# or of the flat albedo_color alone when there is no texture. A ratio near 1
+# reads as a balanced warm tone (ochre/brown); a ratio well past 2 reads as
+# visibly red-dominant.
+func _worst_red_ratio(mat: BaseMaterial3D) -> float:
+	var tex: Texture2D = mat.albedo_texture
+	if tex == null:
+		var c: Color = mat.albedo_color
+		return c.r / maxf(c.g + c.b, 0.02)
+	var img: Image = tex.get_image()
+	img.decompress()
+	if img.get_format() != Image.FORMAT_RGBA8:
+		img.convert(Image.FORMAT_RGBA8)
+	var w := img.get_width()
+	var h := img.get_height()
+	var step_x: int = maxi(1, w / 32)
+	var step_y: int = maxi(1, h / 32)
+	var worst := 0.0
+	var x := 0
+	while x < w:
+		var y := 0
+		while y < h:
+			var texel: Color = img.get_pixel(x, y)
+			if texel.a > 0.1:
+				var eff := Color(texel.r * mat.albedo_color.r, texel.g * mat.albedo_color.g,
+					texel.b * mat.albedo_color.b)
+				worst = maxf(worst, eff.r / maxf(eff.g + eff.b, 0.02))
+			y += step_y
+		x += step_x
+	return worst
 
 
 # Spec 003 lever 4: "facade detail ... instead of bare boxes." The concrete

@@ -24,20 +24,19 @@ extends Node3D
 # stylised rig) versus what this route needed (a material pass on a
 # realistic one).
 #
-# Known limitation, reported rather than hidden: this rig ships as a bare
-# grey mannequin -- no clothing geometry. "Layered leather and steel" and
-# "a robed woman" currently read only through material colour and
-# metallic/roughness values on the mannequin's own two material slots
-# (M_Main, M_Joints), not through modelled armour or robe meshes.
-# Quaternius's own "Modular Character Outfits - Fantasy" pack (CC0, built to
-# fit this exact rig) is the natural next step for real armour/robe
-# geometry, but its only distribution this lane found is itch.io's
-# purchase-flow download button, a manual click-through -- per spec 003's
-# rule this file stops short of that rather than script around it. Actual
-# PBR texture maps for the mannequin (albedo, normal, roughness/metallic, an
-# emissive mask for the accent glows) are the other open item; Joshua has
-# offered to generate those in ComfyUI once told which maps are needed (see
-# the report this work shipped with).
+# Revision note (2026-09-24, "Character direction" pass): this rig used to
+# ship as a bare grey mannequin with material tint standing in for
+# "layered leather and steel" and "a robed woman". It no longer does --
+# see the "Armor & clothing" section below, added the same day against the
+# judge lane's own local ComfyUI concept art -- but it is still a bare
+# mannequin UNDER the new armor/coat geometry, and that geometry is
+# primitive (BoxMesh/CylinderMesh/SphereMesh, plus two small SurfaceTool
+# meshes), not sculpted plate/cloth. Quaternius's own "Modular Character
+# Outfits - Fantasy" pack (CC0, built to fit this exact rig) would still be
+# the better source for real armour/robe geometry, but its only
+# distribution this lane found remains itch.io's purchase-flow download
+# button, a manual click-through -- per spec 003's rule this file stops
+# short of that rather than script around it.
 #
 # Two pieces of requested behaviour ARE built as simple primitive geometry
 # (the same BoxMesh/CylinderMesh approach the old procedural rig used
@@ -101,14 +100,27 @@ const S_EYE_NIGHT := Color(0.56, 0.24, 0.96)
 # Palette carried over from the old procedural rig (spec 002, "The
 # character"), reused here as material tints on the one shared mannequin
 # instead of on bespoke geometry.
-const DW_MAIN := Color(0.09, 0.085, 0.095)     # the dreamwalker's dark leather
-const DW_TRIM := Color(0.58, 0.60, 0.64)       # steel plate/joints
+const DW_MAIN := Color(0.09, 0.085, 0.095)     # the dreamwalker's dark chainmail underlayer
+const DW_TRIM := Color(0.58, 0.60, 0.64)       # steel plate/joints (bare-mannequin fallback)
 const DW_ACCENT := Color(0.58, 0.30, 0.97)     # the Dreamedge's violet fuller, carried over
-const K_ROBE := Color(0.30, 0.24, 0.36)        # Mireth's robe
-const K_TRIM := Color(0.42, 0.20, 0.10)        # her robe's rust trim
+
+# 2026-09-24 revision, against the judge lane's own ComfyUI concept art
+# (concept_fusion_knight_00002_.png -- read for silhouette/palette/material
+# only, per spec 003; never copied into the repo): Mireth's coat is rust-red,
+# not the old rig's mauve/purple, and her clasps read bronze-bright rather
+# than the old rust-brown trim.
+const K_ROBE := Color(0.58, 0.22, 0.12)        # Mireth's rust-red coat and body tint
+const K_TRIM := Color(0.40, 0.27, 0.12)        # her coat's warm bronze-brown trim
+const K_CLASP := Color(0.55, 0.40, 0.16)       # her coat's two bronze clasps
 const K_LANTERN := Color(1.0, 0.72, 0.34)      # her lantern light, unchanged
-const S_STONE := Color(0.40, 0.38, 0.36)       # the Sentinel's stone-and-iron body
-const S_BRONZE := Color(0.46, 0.33, 0.15)      # its banded joints
+
+# The Sentinel's concept (concept_brute_00001_.png) is a hulking, tusked
+# brute in riveted iron plate, fur and leather -- not a literal stone golem
+# (spec 003 offered either). S_STONE keeps its name (nothing outside this
+# file reads it) but is now a grey-green brute skin tone; the plates
+# themselves are iron (S_PLATE_IRON, below), not rock.
+const S_STONE := Color(0.38, 0.41, 0.37)       # the brute's grey-green skin
+const S_BRONZE := Color(0.46, 0.33, 0.15)      # its banded joints (bare-mannequin fallback)
 
 const BASE_SCENE := preload("res://assets/third_party/quaternius/UniversalBaseCharacter.glb")
 
@@ -177,7 +189,18 @@ func _build() -> void:
 			kind = KIND_DREAMWALKER
 
 	_rig_root = BASE_SCENE.instantiate()
-	_rig_root.rotation.y = PI   # the imported rig rests facing +Z; see the visual check note below.
+	# Judge finding, round 4 (2026-09-24, live play): the player walked
+	# backwards -- the body faced opposite its own movement direction. This
+	# line used to read `_rig_root.rotation.y = PI` on the assumption "the
+	# imported rig rests facing +Z" (an eyeballed guess, never checked against
+	# the skeleton itself). tests/test_character_model.gd's
+	# _test_model_faces_forward_along_minus_z settles it from the rig's own
+	# bones instead -- DEF-toe.L sits forward of DEF-foot.L for any biped
+	# standing normally, and with the PI rotation in place that foot-to-toe
+	# direction pointed toward +Z, opposite player.gd's _face_movement (and
+	# npc.gd's talk-facing, and demo_director.gd's own facing override), which
+	# all assume the model's front is -Z. The rig actually rests facing -Z
+	# natively -- no correction needed at all.
 	add_child(_rig_root)
 	_skeleton = _rig_root.get_node("RootNode/Rig/Skeleton3D")
 	_anim = _rig_root.get_node("AnimationPlayer")
@@ -232,14 +255,24 @@ func _tint_body(main_color: Color, trim_color: Color, metallic: float, roughness
 # tracks its bone every frame the node is inside a live, processing tree --
 # unlike the bone-pose read _bone_chain_transform() below relies on, which
 # works with no tree at all; see that function's own note).
+#
+# Judge finding, round 4 (2026-09-24, night capture): this used to hang the
+# bead/light straight off a bare BoneAttachment3D, the same shape of mistake
+# _bone_attachment()'s own header note already diagnosed and fixed for armor
+# -- a DEF-bone's composed basis carries a stray ~100x scale in model space
+# (this rig's "Rig" node itself, confirmed by tools/_debug_facing.gd, run
+# once and deleted) even though its ORIGIN reads correctly, so a MeshInstance3D
+# hung directly off the attachment renders ~100x too big and ~100x too far
+# out. Nothing about that bug is specific to armor pieces; it hits any raw
+# BoneAttachment3D child. Routed through the shared _bone_attachment() helper
+# (its own small unscale wrapper) below, same as every armor piece, fixes
+# Mireth's orbiting orb (_attach_orbiting_glow) and the Sentinel's eye
+# (this function) alike.
 func _attach_glow(bone_name: String, local_offset: Vector3, color: Color,
 		day_energy: float, night_energy: float, with_light: bool) -> void:
-	var bone_idx := _skeleton.find_bone(bone_name)
-	if bone_idx == -1:
+	var attach := _bone_attachment(bone_name)
+	if attach == null:
 		return
-	var attachment := BoneAttachment3D.new()
-	attachment.bone_name = bone_name
-	_skeleton.add_child(attachment)
 
 	var bead := MeshInstance3D.new()
 	var sphere := SphereMesh.new()
@@ -255,7 +288,7 @@ func _attach_glow(bone_name: String, local_offset: Vector3, color: Color,
 	_accent_material.emission_energy_multiplier = day_energy
 	bead.material_override = _accent_material
 	bead.position = local_offset
-	attachment.add_child(bead)
+	attach.add_child(bead)
 	pivots["accent_bead"] = bead
 
 	if with_light:
@@ -264,7 +297,7 @@ func _attach_glow(bone_name: String, local_offset: Vector3, color: Color,
 		_accent_light.omni_range = 4.0
 		_accent_light.light_energy = day_energy
 		_accent_light.light_color = color
-		attachment.add_child(_accent_light)
+		attach.add_child(_accent_light)
 		pivots["accent_light"] = _accent_light
 
 	_accent_day = day_energy
@@ -274,18 +307,17 @@ func _attach_glow(bone_name: String, local_offset: Vector3, color: Color,
 # Like _attach_glow, but the bead+light sit on a pivot offset by
 # `orbit_radius` and `orbit_height` rather than directly on the bone; the
 # pivot itself is rotated every update_pose() call (Keeper only) so the orb
-# genuinely orbits rather than just floating at a fixed offset.
+# genuinely orbits rather than just floating at a fixed offset. Routed
+# through _bone_attachment()'s own unscale wrapper for the same reason
+# _attach_glow above now is -- see that function's header note.
 func _attach_orbiting_glow(bone_name: String, orbit_radius: float, orbit_height: float,
 		color: Color, day_energy: float, night_energy: float) -> void:
-	var bone_idx := _skeleton.find_bone(bone_name)
-	if bone_idx == -1:
+	var attach := _bone_attachment(bone_name)
+	if attach == null:
 		return
-	var attachment := BoneAttachment3D.new()
-	attachment.bone_name = bone_name
-	_skeleton.add_child(attachment)
 
 	_orbit_pivot = Node3D.new()
-	attachment.add_child(_orbit_pivot)
+	attach.add_child(_orbit_pivot)
 	pivots["orbit_pivot"] = _orbit_pivot
 
 	var offset := Vector3(orbit_radius, orbit_height, 0.0)
@@ -321,6 +353,7 @@ func _attach_orbiting_glow(bone_name: String, orbit_radius: float, orbit_height:
 func _setup_dreamwalker() -> void:
 	_tint_body(DW_MAIN, DW_TRIM, 0.55, 0.4)
 	_build_and_attach_sword()
+	_build_dreamwalker_armor()
 
 
 # A simple primitive sword (blade, crossguard, leather grip -- the same
@@ -328,6 +361,12 @@ func _setup_dreamwalker() -> void:
 # built twice: one copy bone-attached across the upper back (sheathed), one
 # to the right hand (drawn). update_pose() toggles which is visible off the
 # `action` string.
+#
+# Judge finding, round 4 (2026-09-24, live play): "the sword is oversized/
+# glitched on screen." Same bug as _attach_glow's own header note -- both
+# sword copies used to hang straight off a bare BoneAttachment3D, picking up
+# the rig's stray ~100x model-space basis scale. Routed through
+# _bone_attachment()'s unscale wrapper below, same as every armor piece.
 func _build_and_attach_sword() -> void:
 	var steel_mat := StandardMaterial3D.new()
 	steel_mat.albedo_color = DW_TRIM
@@ -344,24 +383,24 @@ func _build_and_attach_sword() -> void:
 	_accent_material.emission = DW_ACCENT
 	_accent_material.emission_energy_multiplier = 0.6
 
-	var back_attach := BoneAttachment3D.new()
-	back_attach.bone_name = "DEF-spine.003"
-	_skeleton.add_child(back_attach)
-	_sword_sheathed = _build_sword_mesh(steel_mat, grip_mat, false)
-	_sword_sheathed.position = Vector3(-0.05, 0.09, -0.02)
-	_sword_sheathed.rotation_degrees = Vector3(105.0, 6.0, 14.0)
-	back_attach.add_child(_sword_sheathed)
-	pivots["sword_sheathed"] = _sword_sheathed
+	var back_attach := _bone_attachment("DEF-spine.003")
+	if back_attach != null:
+		_sword_sheathed = _build_sword_mesh(steel_mat, grip_mat, false)
+		_sword_sheathed.position = Vector3(-0.05, 0.09, -0.02)
+		_sword_sheathed.rotation_degrees = Vector3(105.0, 6.0, 14.0)
+		back_attach.add_child(_sword_sheathed)
+		pivots["sword_sheathed"] = _sword_sheathed
 
-	var hand_attach := BoneAttachment3D.new()
-	hand_attach.bone_name = "DEF-hand.R"
-	_skeleton.add_child(hand_attach)
-	_sword_drawn = _build_sword_mesh(steel_mat, grip_mat, true)
-	hand_attach.add_child(_sword_drawn)
-	pivots["sword_drawn"] = _sword_drawn
+	var hand_attach := _bone_attachment("DEF-hand.R")
+	if hand_attach != null:
+		_sword_drawn = _build_sword_mesh(steel_mat, grip_mat, true)
+		hand_attach.add_child(_sword_drawn)
+		pivots["sword_drawn"] = _sword_drawn
 
-	_sword_drawn.visible = false
-	_sword_sheathed.visible = true
+	if _sword_drawn != null:
+		_sword_drawn.visible = false
+	if _sword_sheathed != null:
+		_sword_sheathed.visible = true
 
 
 func _build_sword_mesh(steel_mat: Material, grip_mat: Material, glowing_edge: bool) -> Node3D:
@@ -423,12 +462,435 @@ func _setup_keeper() -> void:
 	# card judge note carried over from the old rig, 2026-09-23: brighter
 	# than this at night blew out Mireth's own face).
 	_attach_orbiting_glow("DEF-shoulder.L", 0.16, 0.10, K_LANTERN, 1.3, 1.1)
+	_build_keeper_coat()
 
 
 func _setup_sentinel() -> void:
 	_rig_root.scale = Vector3.ONE * SENTINEL_SCALE
 	_tint_body(S_STONE, S_BRONZE, 0.5, 0.6)
 	_attach_glow("DEF-head", Vector3(0.0, 0.03, 0.09), S_EYE_DAY, 2.6, 4.0, false)
+	_build_sentinel_plating()
+
+
+# ---------------------------------------------------------------------------
+# Armor & clothing (spec 003, "Character direction"; judge note 2026-09-24
+# read the judge lane's own local ComfyUI concept art -- concept_fusion_
+# knight_00002_.png, concept_fusion_mage_00002_.png, concept_brute_00001_.png
+# -- for silhouette, palette and material only, never copied into the repo,
+# per spec 003's own rule and the LFS budget). Dresses the bare Quaternius
+# mannequin, since Quaternius's own matching outfit pack ("Modular Character
+# Outfits - Fantasy") sits behind an itch.io click-through spec 003's rule
+# stops short of (see this file's header note). Every piece is a rigid
+# BoneAttachment3D child of _skeleton -- the same technique the sword
+# already used -- built from primitives and two small SurfaceTool meshes
+# (a lathe for Mireth's coat/collar, a tapered panel for the dreamwalker's
+# cape), never the mannequin's own UVs. Two new CC0 Poly Haven texture sets
+# (a worn steel plate, a clean brown leather) plus a burgundy jacquard
+# fabric (tinted rust-red for Mireth's coat) are read at
+# assets/third_party/LICENSES.md before use; the same worn-steel texture
+# doubles as the Sentinel's iron plate rather than adding a fourth download.
+#
+# Bone-local axis note, established empirically (tools/_dump_bones.gd,
+# deleted after use) rather than assumed: this rig's "Rig" node carries a
+# 100x scale and a Z-up-to-Y-up axis swap above the Skeleton3D, but every
+# BoneAttachment3D child already reads and writes in real-world metres (the
+# same evidence the sword's own 0.05-0.15 m offsets and the Keeper's 0.16 m
+# orbit radius gave). For the spine chain (hips up through the head) +Y is
+# up and +Z is forward -- read off the existing sword-sheathed offset
+# (Vector3(-0.05, 0.09, -0.02), i.e. slightly up and toward the BACK at
+# negative Z) and the Sentinel's own forward-facing eye offset (positive Z).
+# Limb bones (shoulder/forearm/shin) have no such guarantee -- each bone's
+# own roll from the source rig is unknown -- so every piece hung off a limb
+# below is either rotation-safe (a sphere/dome pauldron or helm reads the
+# same from any angle) or short and roughly as wide as it is tall (a
+# bracer/greave/gauntlet cuff), so a wrong guess about which way the bone's
+# local axes point costs proportion, never a piece that vanishes or points
+# off into empty air.
+# ---------------------------------------------------------------------------
+
+const _ARMOR_ALBEDO := "res://assets/third_party/textures/armor/metal_plate_02_diff_1k.jpg"
+const _ARMOR_NORMAL := "res://assets/third_party/textures/armor/metal_plate_02_nor_gl_1k.jpg"
+const _ARMOR_ARM := "res://assets/third_party/textures/armor/metal_plate_02_arm_1k.jpg"
+const _LEATHER_ALBEDO := "res://assets/third_party/textures/leather/brown_leather_diff_1k.jpg"
+const _LEATHER_NORMAL := "res://assets/third_party/textures/leather/brown_leather_nor_gl_1k.jpg"
+const _LEATHER_ARM := "res://assets/third_party/textures/leather/brown_leather_arm_1k.jpg"
+const _COAT_ALBEDO := "res://assets/third_party/textures/fabric/quatrefoil_jacquard_fabric_diff_1k.jpg"
+const _COAT_NORMAL := "res://assets/third_party/textures/fabric/quatrefoil_jacquard_fabric_nor_gl_1k.jpg"
+const _COAT_ARM := "res://assets/third_party/textures/fabric/quatrefoil_jacquard_fabric_arm_1k.jpg"
+
+const DW_PLATE := Color(0.48, 0.49, 0.52)      # the dreamwalker's matte fitted plate
+const DW_LEATHER := Color(0.16, 0.10, 0.06)    # its belt and the sword grip's own leather
+const S_PLATE_IRON := Color(0.20, 0.20, 0.22)  # the brute's riveted iron plate
+const S_LEATHER := Color(0.14, 0.09, 0.06)     # its harness straps and belt
+const S_FUR := Color(0.55, 0.42, 0.28)         # a tan fur-trim band, the same leather texture retinted
+const SEAM_CYAN := Color(0.25, 0.95, 1.0)      # the Sentinel's own glowing seam (Joshua, 2026-09-24)
+
+
+# Mirrors dream_env.gd's own _rock_material()/_facade_material() pattern
+# (an ORMMaterial3D reading a Poly Haven "arm" packed AO/roughness/metallic
+# map directly), so a real photographed surface -- not a flat colour --
+# carries every plate, cuff and coat below.
+#
+# Judge finding, round 4 (2026-09-24): "armour detail invisible," the player
+# read as a flat black silhouette. `metallic` defaults to 0.0 on a fresh
+# ORMMaterial3D and, exactly like albedo_color multiplies albedo_texture,
+# multiplies straight through the orm_texture's own metallic (blue) channel
+# -- so leaving it unset zeroed out metallic on every piece this function
+# ever built, worn-steel plate included, regardless of how metallic the
+# baked ORM texture actually reads there. Set to 1.0 so the texture's own
+# per-pixel metallic value (near-zero on leather/fabric ORM maps, high on the
+# worn-steel one) is what actually shows, not a hidden zero this function was
+# quietly forcing on every surface, metal or not.
+func _pbr_material(albedo_path: String, normal_path: String, arm_path: String,
+		tint: Color, uv_scale: float) -> ORMMaterial3D:
+	var m := ORMMaterial3D.new()
+	m.albedo_texture = load(albedo_path)
+	m.albedo_color = tint
+	m.normal_enabled = true
+	m.normal_texture = load(normal_path)
+	m.orm_texture = load(arm_path)
+	m.metallic = 1.0
+	m.uv1_scale = Vector3(uv_scale, uv_scale, uv_scale)
+	return m
+
+
+func _seam_material(color: Color, energy: float) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = color
+	m.emission_enabled = true
+	m.emission = color
+	m.emission_energy_multiplier = energy
+	return m
+
+
+# Judge finding, 2026-09-24: the live capture rendered pure black -- every
+# outfit piece here (never the sword, the accent beads or the orbiting
+# light, which only ever move a MeshInstance3D's own small position/rotation
+# and never transform a whole mesh's vertices through the BONE's own
+# composed basis) came out roughly 100x too large, positioned roughly 100x
+# too far from the character. Root cause, isolated headlessly by comparing
+# blade_base_global() (reads only a bone transform's ORIGIN -- correctly
+# scaled, ~0.98 m for a hand) against the same bone math applied to a whole
+# mesh (which also uses the transform's BASIS, carrying a stray ~100x scale
+# this rig's DEF-bone chain bakes in that nothing before this needed to
+# read): a bone's composed pose transform is safe to read for a point or a
+# normalized direction, but not safe to use as a whole mesh's parent
+# transform. This wrapper, scaled by the exact inverse of the Rig node's own
+# measured 100x (tools/_dump_bones.gd, run once and deleted, see this file's
+# header note), cancels that stray scale for every piece added under it --
+# position and size alike, since Node3D scale composes multiplicatively
+# through translation as well as extent.
+const _BONE_MESH_UNSCALE := 0.01
+
+# The same rigid BoneAttachment3D technique _build_and_attach_sword() and
+# _attach_glow() already use, factored out for the many plates below --
+# except every mesh actually hangs off a small unscale wrapper inside the
+# attachment (see _BONE_MESH_UNSCALE above), never off the attachment
+# directly.
+func _bone_attachment(bone_name: String) -> Node3D:
+	if _skeleton.find_bone(bone_name) == -1:
+		return null
+	var attach := BoneAttachment3D.new()
+	attach.bone_name = bone_name
+	_skeleton.add_child(attach)
+	var unscale := Node3D.new()
+	unscale.scale = Vector3.ONE * _BONE_MESH_UNSCALE
+	attach.add_child(unscale)
+	return unscale
+
+
+func _attach_box(bone_name: String, local_pos: Vector3, size: Vector3,
+		rot_degrees: Vector3, material: Material) -> MeshInstance3D:
+	var attach := _bone_attachment(bone_name)
+	if attach == null:
+		return null
+	var box := BoxMesh.new()
+	box.size = size
+	var mi := MeshInstance3D.new()
+	mi.mesh = box
+	mi.position = local_pos
+	mi.rotation_degrees = rot_degrees
+	mi.material_override = material
+	attach.add_child(mi)
+	return mi
+
+
+# Orientation-safe: a sphere reads the same from any bone roll, which is
+# what makes it the right shape for anything hung off a limb bone whose own
+# local axes this rig never confirmed (see the header note) -- pauldrons,
+# the Sentinel's brow-cap, the dreamwalker's hood, the two coat clasps.
+# `squash` scales the local Y axis only, so a full sphere (1.0) can flatten
+# into a dome (well under 1.0) without becoming orientation-sensitive.
+func _attach_dome(bone_name: String, local_pos: Vector3, radius: float,
+		squash: float, material: Material) -> MeshInstance3D:
+	var attach := _bone_attachment(bone_name)
+	if attach == null:
+		return null
+	var sphere := SphereMesh.new()
+	sphere.radius = radius
+	sphere.height = radius * 2.0
+	sphere.radial_segments = 16
+	sphere.rings = 10
+	var mi := MeshInstance3D.new()
+	mi.mesh = sphere
+	mi.position = local_pos
+	mi.scale = Vector3(1.0, squash, 1.0)
+	mi.material_override = material
+	attach.add_child(mi)
+	return mi
+
+
+func _attach_cylinder(bone_name: String, local_pos: Vector3, top_r: float,
+		bottom_r: float, height: float, material: Material) -> MeshInstance3D:
+	var attach := _bone_attachment(bone_name)
+	if attach == null:
+		return null
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = top_r
+	cyl.bottom_radius = bottom_r
+	cyl.height = height
+	cyl.radial_segments = 14
+	var mi := MeshInstance3D.new()
+	mi.mesh = cyl
+	mi.position = local_pos
+	mi.material_override = material
+	attach.add_child(mi)
+	return mi
+
+
+# A tapered cloth panel hanging in -Y (down the back) from wherever its
+# caller positions it -- the dreamwalker's short cape. Double-sided (cull
+# disabled) since the demo camera sees it from the front and the back alike,
+# and single-sided normals are the standard, acceptable simplification for
+# a billboard-thin cloth panel (the same trade a foliage card makes).
+func _build_cloth_panel(width_top: float, width_bottom: float, length: float,
+		drape: float, material: Material) -> MeshInstance3D:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var segments: int = 6
+	var prev_l := Vector3.ZERO
+	var prev_r := Vector3.ZERO
+	for i in range(segments + 1):
+		var t: float = float(i) / float(segments)
+		var w: float = lerp(width_top, width_bottom, t)
+		var y: float = -length * t
+		var z: float = -drape * sin(t * PI * 0.5)
+		var l := Vector3(-w * 0.5, y, z)
+		var r := Vector3(w * 0.5, y, z)
+		if i > 0:
+			var n: Vector3 = (l - prev_l).cross(prev_r - prev_l).normalized()
+			st.set_normal(n); st.add_vertex(prev_l)
+			st.set_normal(n); st.add_vertex(l)
+			st.set_normal(n); st.add_vertex(r)
+			st.set_normal(n); st.add_vertex(prev_l)
+			st.set_normal(n); st.add_vertex(r)
+			st.set_normal(n); st.add_vertex(prev_r)
+		prev_l = l
+		prev_r = r
+	var mesh: ArrayMesh = st.commit()
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.material_override = material
+	return mi
+
+
+# A revolve of a radius/height profile around the local Y axis -- Mireth's
+# long coat and its high collar. Radial symmetry sidesteps the one real
+# unknown a spine-chain bone still leaves (which way local X/Z point);
+# only "+Y is up" has to hold, and the header note above grounds that.
+func _build_lathe_mesh(profile: Array[Vector2], radial_segments: int, material: Material) -> MeshInstance3D:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var rings: Array = []
+	for p in profile:
+		var ring: Array[Vector3] = []
+		for s in radial_segments:
+			var a: float = TAU * float(s) / float(radial_segments)
+			ring.append(Vector3(cos(a) * p.x, p.y, sin(a) * p.x))
+		rings.append(ring)
+	for ring_i in range(rings.size() - 1):
+		var top: Array[Vector3] = rings[ring_i]
+		var bot: Array[Vector3] = rings[ring_i + 1]
+		for s in radial_segments:
+			var s2: int = (s + 1) % radial_segments
+			var a: Vector3 = top[s]
+			var b: Vector3 = top[s2]
+			var c: Vector3 = bot[s2]
+			var d: Vector3 = bot[s]
+			var n1: Vector3 = (b - a).cross(c - a).normalized()
+			st.set_normal(n1); st.add_vertex(a)
+			st.set_normal(n1); st.add_vertex(b)
+			st.set_normal(n1); st.add_vertex(c)
+			var n2: Vector3 = (c - a).cross(d - a).normalized()
+			st.set_normal(n2); st.add_vertex(a)
+			st.set_normal(n2); st.add_vertex(c)
+			st.set_normal(n2); st.add_vertex(d)
+	var mesh: ArrayMesh = st.commit()
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.material_override = material
+	return mi
+
+
+# ---------------------------------------------------------------------------
+# The dreamwalker: a fitted chainmail-and-plate torso over the body's own
+# dark-mail tint, layered pauldrons, bracers, a mail skirt (tassets) below
+# the belt, greaves, and a short hooded violet cape with the sword sheathed
+# diagonally across the back (_build_and_attach_sword's own job, unchanged).
+# ---------------------------------------------------------------------------
+func _build_dreamwalker_armor() -> void:
+	var plate_mat := _pbr_material(_ARMOR_ALBEDO, _ARMOR_NORMAL, _ARMOR_ARM, DW_PLATE, 2.0)
+	var mail_mat := _pbr_material(_ARMOR_ALBEDO, _ARMOR_NORMAL, _ARMOR_ARM, DW_MAIN, 5.0)
+	var leather_mat := _pbr_material(_LEATHER_ALBEDO, _LEATHER_NORMAL, _LEATHER_ARM, DW_LEATHER, 1.0)
+	var seam_mat := _seam_material(DW_ACCENT, 0.45)
+
+	pivots["torso_armor"] = _attach_box("DEF-spine.002", Vector3(0.0, -0.02, 0.05),
+		Vector3(0.32, 0.30, 0.11), Vector3.ZERO, plate_mat)
+	pivots["seam_chest"] = _attach_box("DEF-spine.002", Vector3(0.0, -0.02, 0.107),
+		Vector3(0.30, 0.012, 0.01), Vector3.ZERO, seam_mat)
+
+	# A short lathe of mail hanging from the hips, under the belt -- the
+	# tassets the concept art shows below the breastplate.
+	var skirt_profile: Array[Vector2] = [Vector2(0.155, 0.0), Vector2(0.165, -0.14), Vector2(0.15, -0.26)]
+	pivots["mail_skirt"] = _build_lathe_mesh(skirt_profile, 14, mail_mat)
+	var skirt_attach := _bone_attachment("DEF-hips")
+	if skirt_attach != null:
+		skirt_attach.add_child(pivots["mail_skirt"])
+
+	pivots["belt"] = _attach_cylinder("DEF-hips", Vector3.ZERO, 0.17, 0.17, 0.07, leather_mat)
+
+	# Two stacked domes read as a layered pauldron (a main plate plus a
+	# smaller cap) without ever depending on the shoulder bone's own roll.
+	pivots["pauldron_l"] = _attach_dome("DEF-shoulder.L", Vector3.ZERO, 0.095, 0.75, plate_mat)
+	pivots["pauldron_cap_l"] = _attach_dome("DEF-shoulder.L", Vector3.ZERO, 0.06, 0.7, plate_mat)
+	pivots["pauldron_r"] = _attach_dome("DEF-shoulder.R", Vector3.ZERO, 0.095, 0.75, plate_mat)
+	pivots["pauldron_cap_r"] = _attach_dome("DEF-shoulder.R", Vector3.ZERO, 0.06, 0.7, plate_mat)
+
+	pivots["bracer_l"] = _attach_cylinder("DEF-forearm.L", Vector3.ZERO, 0.05, 0.045, 0.16, plate_mat)
+	pivots["bracer_r"] = _attach_cylinder("DEF-forearm.R", Vector3.ZERO, 0.05, 0.045, 0.16, plate_mat)
+	pivots["greave_l"] = _attach_cylinder("DEF-shin.L", Vector3.ZERO, 0.065, 0.055, 0.22, plate_mat)
+	pivots["greave_r"] = _attach_cylinder("DEF-shin.R", Vector3.ZERO, 0.065, 0.055, 0.22, plate_mat)
+
+	var cape_mat := StandardMaterial3D.new()
+	# Judge finding, round 4 (2026-09-24): "violet cloth visible" -- the
+	# original (0.20, 0.10, 0.28) was already the right hue but too dark to
+	# read once the player stopped being a flat black silhouette; brightened
+	# here, its own roughness (cloth, not metal) unchanged.
+	cape_mat.albedo_color = Color(0.32, 0.16, 0.46)
+	cape_mat.roughness = 0.85
+	cape_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var cape := _build_cloth_panel(0.30, 0.22, 0.42, 0.10, cape_mat)
+	cape.position = Vector3(0.0, -0.06, -0.09)
+	var cape_attach := _bone_attachment("DEF-spine.003")
+	if cape_attach != null:
+		cape_attach.add_child(cape)
+	pivots["cape"] = cape
+
+	pivots["hood"] = _attach_dome("DEF-head", Vector3(0.0, -0.02, -0.08), 0.075, 0.9, cape_mat)
+
+
+# ---------------------------------------------------------------------------
+# Mireth: a long fitted rust-red coat-robe (a lathe from the hips) with a
+# high standing collar, two bronze clasps at the throat, small flared
+# shoulder capes, dark mail cuffs at the wrists and a leather belt -- over
+# the body's own rust/bronze tint (_setup_keeper's own _tint_body call).
+# The orbiting orb is _attach_orbiting_glow()'s own job, unchanged.
+# ---------------------------------------------------------------------------
+func _build_keeper_coat() -> void:
+	var coat_mat := _pbr_material(_COAT_ALBEDO, _COAT_NORMAL, _COAT_ARM, K_ROBE, 2.0)
+	coat_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var leather_mat := _pbr_material(_LEATHER_ALBEDO, _LEATHER_NORMAL, _LEATHER_ARM, DW_LEATHER, 1.0)
+	var mail_mat := _pbr_material(_ARMOR_ALBEDO, _ARMOR_NORMAL, _ARMOR_ARM, DW_MAIN, 5.0)
+
+	var coat_profile: Array[Vector2] = [
+		Vector2(0.185, 0.58), Vector2(0.20, 0.30), Vector2(0.155, 0.05),
+		Vector2(0.185, -0.15), Vector2(0.22, -0.45), Vector2(0.26, -0.85),
+	]
+	var coat := _build_lathe_mesh(coat_profile, 14, coat_mat)
+	var coat_attach := _bone_attachment("DEF-hips")
+	if coat_attach != null:
+		coat_attach.add_child(coat)
+	pivots["robe"] = coat
+
+	var collar_profile: Array[Vector2] = [Vector2(0.10, 0.13), Vector2(0.115, 0.0)]
+	var collar := _build_lathe_mesh(collar_profile, 14, coat_mat)
+	var collar_attach := _bone_attachment("DEF-neck")
+	if collar_attach != null:
+		collar_attach.add_child(collar)
+	pivots["collar"] = collar
+
+	var clasp_mat := StandardMaterial3D.new()
+	clasp_mat.albedo_color = K_CLASP
+	clasp_mat.metallic = 0.9
+	clasp_mat.roughness = 0.3
+	pivots["clasp_l"] = _attach_dome("DEF-spine.003", Vector3(-0.035, 0.0, 0.11), 0.02, 1.0, clasp_mat)
+	pivots["clasp_r"] = _attach_dome("DEF-spine.003", Vector3(0.035, 0.0, 0.11), 0.02, 1.0, clasp_mat)
+
+	pivots["shoulder_cape_l"] = _build_cloth_panel(0.16, 0.10, 0.18, 0.03, coat_mat)
+	var sc_l_attach := _bone_attachment("DEF-shoulder.L")
+	if sc_l_attach != null:
+		pivots["shoulder_cape_l"].position = Vector3(0.02, 0.0, 0.0)
+		sc_l_attach.add_child(pivots["shoulder_cape_l"])
+	pivots["shoulder_cape_r"] = _build_cloth_panel(0.16, 0.10, 0.18, 0.03, coat_mat)
+	var sc_r_attach := _bone_attachment("DEF-shoulder.R")
+	if sc_r_attach != null:
+		pivots["shoulder_cape_r"].position = Vector3(-0.02, 0.0, 0.0)
+		sc_r_attach.add_child(pivots["shoulder_cape_r"])
+
+	pivots["cuff_l"] = _attach_cylinder("DEF-forearm.L", Vector3.ZERO, 0.045, 0.045, 0.06, mail_mat)
+	pivots["cuff_r"] = _attach_cylinder("DEF-forearm.R", Vector3.ZERO, 0.045, 0.045, 0.06, mail_mat)
+	pivots["belt"] = _attach_cylinder("DEF-hips", Vector3(0.0, 0.02, 0.0), 0.165, 0.165, 0.06, leather_mat)
+
+
+# ---------------------------------------------------------------------------
+# The Sentinel: a hulking brute in riveted iron plate over a leather harness
+# and belt (concept_brute_00001_.png), not the same lean body as the
+# dreamwalker -- built on the same shared rig (spec 003 welcomes a different
+# CC0 creature mesh, but that needs a second skeleton and a second animation
+# retarget this lane judged too fragile to risk against a working 403/403
+# suite) so it leans on SENTINEL_SCALE plus a deliberately bulkier plate
+# silhouette instead. Its eye accent (_setup_sentinel's own _attach_glow
+# call, unchanged) stays the amber/violet telegraph colour dummy.gd reads
+# directly; the small cyan glow below is a separate, purely decorative rune
+# on the belt buckle and the harness -- Joshua's own "glowing cyan seams"
+# instruction for this kind, keeping the fantasy-construct identity the
+# concept art's grounded brute otherwise leaves out.
+# ---------------------------------------------------------------------------
+func _build_sentinel_plating() -> void:
+	var iron_mat := _pbr_material(_ARMOR_ALBEDO, _ARMOR_NORMAL, _ARMOR_ARM, S_PLATE_IRON, 2.5)
+	var leather_mat := _pbr_material(_LEATHER_ALBEDO, _LEATHER_NORMAL, _LEATHER_ARM, S_LEATHER, 1.2)
+	var fur_mat := _pbr_material(_LEATHER_ALBEDO, _LEATHER_NORMAL, _LEATHER_ARM, S_FUR, 3.0)
+	var seam_mat := _seam_material(SEAM_CYAN, 1.6)
+
+	pivots["chest_plate"] = _attach_box("DEF-spine.002", Vector3(0.0, -0.02, 0.07),
+		Vector3(0.50, 0.46, 0.20), Vector3.ZERO, iron_mat)
+	pivots["harness_l"] = _attach_box("DEF-spine.002", Vector3(-0.09, 0.05, 0.11),
+		Vector3(0.10, 0.55, 0.03), Vector3(0.0, 0.0, 28.0), leather_mat)
+	pivots["harness_r"] = _attach_box("DEF-spine.002", Vector3(0.09, 0.05, 0.11),
+		Vector3(0.10, 0.55, 0.03), Vector3(0.0, 0.0, -28.0), leather_mat)
+	pivots["seam_chest"] = _attach_box("DEF-spine.002", Vector3(0.0, -0.02, 0.135),
+		Vector3(0.09, 0.09, 0.012), Vector3(0.0, 0.0, 45.0), seam_mat)
+
+	pivots["waist_band"] = _attach_cylinder("DEF-hips", Vector3.ZERO, 0.27, 0.27, 0.16, leather_mat)
+	pivots["belt_buckle"] = _attach_dome("DEF-hips", Vector3(0.0, 0.0, 0.27), 0.055, 0.6, seam_mat)
+
+	pivots["pauldron_l"] = _attach_dome("DEF-shoulder.L", Vector3.ZERO, 0.17, 0.8, iron_mat)
+	pivots["pauldron_r"] = _attach_dome("DEF-shoulder.R", Vector3.ZERO, 0.17, 0.8, iron_mat)
+
+	pivots["gauntlet_l"] = _attach_cylinder("DEF-forearm.L", Vector3.ZERO, 0.095, 0.085, 0.22, iron_mat)
+	pivots["gauntlet_r"] = _attach_cylinder("DEF-forearm.R", Vector3.ZERO, 0.095, 0.085, 0.22, iron_mat)
+	pivots["fur_cuff_l"] = _attach_cylinder("DEF-forearm.L", Vector3(0.0, 0.08, 0.0), 0.10, 0.09, 0.05, fur_mat)
+	pivots["fur_cuff_r"] = _attach_cylinder("DEF-forearm.R", Vector3(0.0, 0.08, 0.0), 0.10, 0.09, 0.05, fur_mat)
+
+	pivots["greave_l"] = _attach_cylinder("DEF-shin.L", Vector3.ZERO, 0.115, 0.10, 0.30, iron_mat)
+	pivots["greave_r"] = _attach_cylinder("DEF-shin.R", Vector3.ZERO, 0.115, 0.10, 0.30, iron_mat)
+
+	# A small iron brow-cap, not a full face-covering helm: the concept art's
+	# brute shows its tusked face, and this rig has no tusk geometry to give
+	# it (a known limitation, reported rather than hidden -- see this file's
+	# header note). Sitting up and back leaves the existing eye accent's own
+	# forward offset (z=0.09, _setup_sentinel's own _attach_glow call) clear.
+	pivots["helm"] = _attach_dome("DEF-head", Vector3(0.0, 0.08, -0.03), 0.085, 0.55, iron_mat)
 
 
 # amber by day, violet by night for the Sentinel's eye, the same swap the
