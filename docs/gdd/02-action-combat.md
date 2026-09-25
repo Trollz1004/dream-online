@@ -144,3 +144,18 @@ Arc class:
 - `Arc.E.TrapKick`
 
 All values are [PLACEHOLDER] until playtested.
+
+## Classes and group rules (founder, 2026-09-24)
+
+Five starting classes. The founder's own class image (made with Gemini from his text) sets the mood for four of them; every class must also look right in the Night Dreams city, following the one-outfit-both-worlds rule in `08-day-dreams-night-dreams-world.md`.
+
+1. **Knight**: plate, sword and crest shield. Front line.
+2. **Elf archer**: leather, hooded cloak, longbow. Light and quick.
+3. **Mage**: robes with glowing runes, staff, spell light at the hand.
+4. **Dark knight**: jagged black and red plate, polearm, dragon motif.
+5. **Healer** (new, founder 2026-09-24): the support class that keeps a group alive. Its look is still to be designed.
+
+Rules, in the founder's words and meaning:
+
+- **Sup@ cannot be beaten without a healer.** The fight is tuned so a group with no healer fails; this is a design requirement, not a difficulty setting.
+- **Obli** is a skill that reduces incoming damage by **60% when leveled to its maximum**. Lower levels give less. Which class owns it, its duration and its cooldown are open.
