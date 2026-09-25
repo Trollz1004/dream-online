@@ -183,3 +183,11 @@ All numbers above are the founder's targets and stay [PLACEHOLDER] until playtes
 
 - **Sup@**: cannot be beaten without a healer in the party (see above).
 - **Myth@s** (new): a towering dark knight in spiked black and red plate over tactical gear, glowing red seams, a red visor, a torn red cape and a huge glowing red polearm-axe. The founder's own concept image shows him arriving in the Night Dreams city with a crowd pulling back around him. Fight design is open.
+
+## Small smart parties beat big crowds (founder, 2026-09-24)
+
+DREAM is **action combat**: aimed attacks, dodges and positioning, never tab-target lock-on. The founder's older group-fight footage (reference only, kept privately) is used for what it shows about tactics, not controls: a coordinated party of six beating a much larger crowd because the party plays together.
+
+- **Rotating protection.** Obli's long cooldown means a party with more than one caster takes turns, so one window starts as the last one ends ("your obli now" was the call in the footage). Tuning should reward that planning.
+- **Fast cooldown calls.** Players need a one-button party ping for key cooldowns ("Obli ready", "cast yours now", "Empower up") shown on the party interface, so coordination does not depend on typing in chat mid-fight.
+- The design goal: a small, well-built, well-played party can beat larger numbers; raw headcount alone should not decide a group fight.
