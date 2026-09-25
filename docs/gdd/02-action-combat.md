@@ -162,4 +162,4 @@ Rules, in the founder's words and meaning:
 - **Party-only buffs.** Auras and group buffs reach only the caster's party, never the raid at large or bystanders; that is what makes the party matter. Examples in the founder's numbers: a Knight defender's **Empower** aura, +30% damage for the whole party; a Priest's health buff, +20% maximum health for the whole party.
 - **Cooldown-acceleration skill** (working name **Chrono**): a self-buff that makes the next skill cast come back immediately, then Chrono itself goes on its own cooldown. The intended use is getting Obli up again sooner in a hard fight.
 
-All numbers above are the founder's targets and stay [PLACEHOLDER] until playtested. The generic research behind these patterns is kept privately at `C:\DREAMeconesearch\party-mechanics-2026-09-24.md`; competitor names never appear in this document.
+All numbers above are the founder's targets and stay [PLACEHOLDER] until playtested. The generic research behind these patterns is kept privately on the Alienware node (`recon/research/party-mechanics-2026-09-24.md` under the workspace root); competitor names never appear in this document.
