@@ -525,15 +525,40 @@ func _seam_material(color: Color, energy: float) -> StandardMaterial3D:
 	return m
 
 
+# Judge finding, 2026-09-24: the live capture rendered pure black -- every
+# outfit piece here (never the sword, the accent beads or the orbiting
+# light, which only ever move a MeshInstance3D's own small position/rotation
+# and never transform a whole mesh's vertices through the BONE's own
+# composed basis) came out roughly 100x too large, positioned roughly 100x
+# too far from the character. Root cause, isolated headlessly by comparing
+# blade_base_global() (reads only a bone transform's ORIGIN -- correctly
+# scaled, ~0.98 m for a hand) against the same bone math applied to a whole
+# mesh (which also uses the transform's BASIS, carrying a stray ~100x scale
+# this rig's DEF-bone chain bakes in that nothing before this needed to
+# read): a bone's composed pose transform is safe to read for a point or a
+# normalized direction, but not safe to use as a whole mesh's parent
+# transform. This wrapper, scaled by the exact inverse of the Rig node's own
+# measured 100x (tools/_dump_bones.gd, run once and deleted, see this file's
+# header note), cancels that stray scale for every piece added under it --
+# position and size alike, since Node3D scale composes multiplicatively
+# through translation as well as extent.
+const _BONE_MESH_UNSCALE := 0.01
+
 # The same rigid BoneAttachment3D technique _build_and_attach_sword() and
-# _attach_glow() already use, factored out for the many plates below.
-func _bone_attachment(bone_name: String) -> BoneAttachment3D:
+# _attach_glow() already use, factored out for the many plates below --
+# except every mesh actually hangs off a small unscale wrapper inside the
+# attachment (see _BONE_MESH_UNSCALE above), never off the attachment
+# directly.
+func _bone_attachment(bone_name: String) -> Node3D:
 	if _skeleton.find_bone(bone_name) == -1:
 		return null
 	var attach := BoneAttachment3D.new()
 	attach.bone_name = bone_name
 	_skeleton.add_child(attach)
-	return attach
+	var unscale := Node3D.new()
+	unscale.scale = Vector3.ONE * _BONE_MESH_UNSCALE
+	attach.add_child(unscale)
+	return unscale
 
 
 func _attach_box(bone_name: String, local_pos: Vector3, size: Vector3,
