@@ -57,6 +57,8 @@ var last_spoken_line := ""
 
 func _ready() -> void:
 	_read_args()
+	if (_capture_path != "" or _demo_mode) and DisplayServer.get_name() != "headless":
+		load("res://scripts/side_screen.gd").apply(get_window())
 	_build_fade_overlay()
 
 	_env = DreamEnvScript.new()

@@ -24,6 +24,13 @@ func run(r) -> void:
 	_test_terrain_rises_in_the_outer_band()
 	_test_terrain_stays_bounded()
 	_test_colour_grade_differs_per_world()
+	_test_day_trees_are_real_models()
+	_test_night_has_no_trees()
+	_test_mountain_is_a_real_heightfield()
+	_test_day_ruin_village_uses_real_ruin_pieces()
+	_test_night_has_no_ruin_pieces()
+	_test_night_street_furniture_and_tower_massing()
+	_test_day_has_no_night_street_furniture()
 
 
 func check(label: String, condition: bool) -> void:
@@ -242,3 +249,106 @@ func _test_colour_grade_differs_per_world() -> void:
 		or day.env().adjustment_contrast != night.env().adjustment_contrast)
 	day.free()
 	night.free()
+
+
+# Spec 003 lever 1: "real tree models" replacing the procedural branch-
+# cylinder trees. tree_model_paths() reports a real imported model's own
+# resource_path (always pointing at one of the three .glb files under
+# assets/third_party/quaternius), never an empty string a runtime-generated
+# ArrayMesh would carry -- the same "read the resource itself, not a
+# worker's word about it" rule the whole project follows for pictures.
+func _test_day_trees_are_real_models() -> void:
+	print("day dream trees are real CC0 models, not procedural geometry")
+	var e = _build("day")
+	check("one tree per original placement position", e.tree_instance_count() == 11)
+	var paths: Array = e.tree_model_paths()
+	var all_real := true
+	var distinct := {}
+	for p in paths:
+		if not String(p).contains(".glb"):
+			all_real = false
+		distinct[p] = true
+	check("every placed tree references a real imported .glb model", all_real)
+	check("more than one distinct tree model is used (variety)", distinct.size() > 1)
+	e.free()
+
+
+func _test_night_has_no_trees() -> void:
+	print("night dream has no field trees")
+	var e = _build("night")
+	check("night places no trees", e.tree_instance_count() == 0)
+	e.free()
+
+
+# Spec 003 lever 2: "a far mountain range that looks real: a heightmap-
+# displaced distant terrain mesh (noise-based ridges ...)." mountain_height
+# is pure and static, exactly like hill_height above, so this is checked the
+# same way: no mesh, no environment, no live tree.
+func _test_mountain_is_a_real_heightfield() -> void:
+	print("the mountain range is a real, bounded heightfield")
+	var DreamEnv := load("res://scripts/dream_env.gd")
+	check("flat well inside the playable field, far short of the range",
+		DreamEnv.mountain_height(0.0, 0.0) == 0.0)
+	check("flat beyond the range's own far edge",
+		DreamEnv.mountain_height(0.0, -450.0) == 0.0)
+	check("flat beyond the range's own side edges",
+		DreamEnv.mountain_height(250.0, -340.0) == 0.0)
+
+	var peak := 0.0
+	var over := false
+	var x := -190.0
+	while x <= 190.0:
+		var z := -420.0
+		while z <= -270.0:
+			var h: float = DreamEnv.mountain_height(x, z)
+			peak = maxf(peak, h)
+			if h > DreamEnv.MOUNTAIN_AMPLITUDE + 0.01 or h < -0.01:
+				over = true
+			z += 7.0
+		x += 7.0
+	check("the range actually rises well past half its own amplitude somewhere in it",
+		peak > DreamEnv.MOUNTAIN_AMPLITUDE * 0.5)
+	check("no sampled point exceeds the range's own amplitude, or drops below zero", not over)
+
+
+# Spec 003 levers 2 and 4: "real ruin pieces ... placed as a small abandoned
+# village," replacing the procedural box cottages.
+func _test_day_ruin_village_uses_real_ruin_pieces() -> void:
+	print("day dream ruins are real CC0 kit pieces, not procedural boxes")
+	var e = _build("day")
+	check("a substantial number of real ruin pieces were placed", e.ruin_piece_count() >= 30)
+	var paths: Array = e.ruin_model_paths()
+	var all_real := true
+	for p in paths:
+		if not String(p).contains("ModularRuinsPack.glb"):
+			all_real = false
+	check("every placed ruin piece references the real ruin-kit model", all_real)
+	e.free()
+
+
+func _test_night_has_no_ruin_pieces() -> void:
+	print("night dream has no field ruins")
+	var e = _build("night")
+	check("night places no ruin-kit pieces", e.ruin_piece_count() == 0)
+	e.free()
+
+
+# Spec 003 lever 4: "break up tower slabs with setbacks, rooftop structures,
+# ledges, awnings, and a few street props (lamps, benches, signage frames)."
+func _test_night_street_furniture_and_tower_massing() -> void:
+	print("night city has street furniture and tower massing beyond bare slabs")
+	var e = _build("night")
+	check("at least one bench was placed", e.bench_count() > 0)
+	check("at least one near tower got a setback tier", e.tower_setback_count() > 0)
+	check("every sign carries an empty frame behind its colour panel",
+		e.sign_frame_count() > 0)
+	e.free()
+
+
+func _test_day_has_no_night_street_furniture() -> void:
+	print("day dream never builds night-only street furniture")
+	var e = _build("day")
+	check("day places no benches", e.bench_count() == 0)
+	check("day builds no tower setbacks", e.tower_setback_count() == 0)
+	check("day builds no sign frames", e.sign_frame_count() == 0)
+	e.free()

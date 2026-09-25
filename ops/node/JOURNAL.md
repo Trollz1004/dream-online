@@ -2,6 +2,26 @@
 
 One entry per session, newest first, in the form did, verified, blocked, next, commits. Written by the Claude judge lane for a reader with no memory of the session.
 
+## 2026-09-24 afternoon and evening EDT, Claude Opus 5.5, session start with `/alienware-node`
+
+**Direction from Joshua.** The gameplay demo must look close to finished production, because backers decide in seconds. Characters were "very bubble like"; the target is cinematic fantasy CGI with believable proportions. One outfit must fit both worlds (medieval shapes in sleek materials: fine chainmail, fitted plate, faint light seams); the sword rides sheathed on the back; a mage's orb floats. Every place exists in both worlds with the same NPCs (fruit stand by day is a convenience store by night; a field boss by day fights in a stadium, park or parking lot by night). He will take the best recording to Google AI Studio for enhancement; everything stays real gameplay and any enhanced cut is labelled. He said the lane may research anything and should turn what it learns into skills. He asked that no video be recorded or opened on his desktop until the characters look right.
+
+**Did.**
+- Spec 003 (`specs/003-production-look/spec.md`) and the both-worlds rules in `docs/gdd/08-day-dreams-night-dreams-world.md`.
+- First round (two Sonnet workers): Quaternius CC0 rig and animation library replacing the box figures, sword sheathe/draw, Mireth's orbiting orb; Poly Haven CC0 textures, shaped terrain, wind grass, clouds, colour grade, depth of field. The orange washout after the Dream Lunge was the camera inside the Sentinel's double-sided additive beam; beams now cull back faces.
+- Second round: Quaternius CC0 trees and modular ruins replace stick trees and box houses; a ridged heightmap mountain replaces the cones; city towers got setbacks, rooftops, awnings, benches.
+- GitHub refused the push: the repository's free Git LFS allowance is used up. `assets/third_party/**` is now excluded from LFS in `.gitattributes`, and the unpushed commits were rebuilt as one commit (`6509f0e`); the originals stay on branch `judge/production-look`.
+- ComfyUI on this box (Z-Image Turbo, Apache 2.0) made facade tests and character concept art from generic words: `C:\DREAM\recon\concepts\2026-09-24\` (sheet `DREAM-characters-both-worlds.png`). It crashed once in VAE decode and was restarted by restarting the Desktop app; renders run 60 to 110 s per step, and casting the model to fp8 made it slower, not faster. It is stopped at the end of this entry.
+- GitHub survey of all 27 repositories: 24 are archived; 4 open PRs, all Dependabot. The one merged extra branch in the profile repo could not be deleted (classifier); the command was handed to Joshua. `hermes` is archived on GitHub while the local checkout is still used; asked him whether that was intended. ANTIGRAVITY's Dependabot PRs (all CI red, one a four-major-version cryptography jump) are Codex's to test.
+
+**Verified.** Headless suite 403 of 403 after round one and 421 of 421 after round two, both on `main` after the merge. Frames opened by the judge: `C:\DREAM\recon\003b-day-wide.png`, `003b-day-village.png`, `003b-night-street.png`, `003m-day.png`. Interactive frame rate 52 to 60 when the GPU is not shared.
+
+**Weak, still to fix.** Mountains too pale; one tree is saturated red; the ground is a plain tan floor (a polish worker is on these, branch `judge/prod-day-polish`). The outfit branch `judge/prod-outfits` renders black (camera inside an outfit mesh, probably a bone-scale bug); sent back to its worker. The Sentinel's beam and charge orb are a flat orange bar and a big plain sphere: a VFX pass is owed. No demo recording has been made since spec 002.
+
+**Next.** Judge and merge the outfit fix and the day polish; a VFX pass; then one demo recording, frames checked, before showing Joshua. Write a skill for the ComfyUI concept workflow once its speed problem is understood.
+
+**Commits.** `6509f0e` (round one, squashed without LFS), `9c74dca` (merge of round two), both pushed.
+
 ## 2026-09-23 about 16:20 EDT, Claude Opus 5.5, session start with `/alienware-node`
 
 **Did.**
