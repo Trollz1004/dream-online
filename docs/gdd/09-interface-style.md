@@ -27,3 +27,12 @@ The picture is from a Blueprint interface template on Fab that the founder saved
 ## Same menu, both dreams
 
 The menu is the same by day and by night. Because it is see-through, it takes its mood from the world behind it: warm ruins in a Day Dream, city light in a Night Dream.
+
+## Party interface (founder, 2026-09-24)
+
+From the founder's own recorded gameplay as a healer-line character in an older MMO (frames kept privately, never in this repository), what the party interface must make obvious:
+
+- The party list on the left, each member with a health bar, always visible in group content.
+- A party-buff tray: every active buff from the party shown as an icon near the top of the screen, grouped by source, with its remaining time. Party-only buffs are the heart of group play, so the player must see at a glance what the party is giving them.
+- A combat log that reports damage dealt and what drain effects returned (mana and health), because the healer line's hidden damage shows up there first.
+- Protective effects such as a party shield read as a large, obvious shape around the protected players, not as a small icon alone (accessibility: never colour alone).
