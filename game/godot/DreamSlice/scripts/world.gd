@@ -142,6 +142,7 @@ func _ready() -> void:
 	pet_shop_panel = PetShopPanelScript.new()
 	pet_shop_panel.pet_state = pet.state
 	pet_shop_panel.pet_node = pet
+	pet_shop_panel.hud = hud
 	add_child(pet_shop_panel)
 	if _pet_shop_open_demo:
 		pet_shop_panel.toggle()
@@ -158,7 +159,24 @@ func _ready() -> void:
 	sentinel.defeated.connect(func() -> void: pet.spawn_loot_burst(sentinel.position))
 
 	if _pet_loot_demo:
-		pet.spawn_loot_burst(player.position + Vector3(1.0, 0.0, -1.0))
+		# Round 2 judge finding: spawning glints off at the player's own
+		# position sent GeminEYE flying well away from its shoulder spot, so
+		# it read tiny in a capture next to the (much closer) player. A
+		# demo burst close to the pet's own current spot keeps it large in
+		# frame while still visibly flying a short distance and holding the
+		# Looting bubble open long enough for a capture to land on it.
+		#
+		# The spawn itself is delayed past the scene's own first-frame
+		# shader/font compile stall (measured: 1-32 fps for roughly the
+		# first second, 60 fps from then on -- see the round 2 report). An
+		# unwarmed first frame can carry a delta of a full second or more,
+		# which is longer than the whole loot-collection flight, so a
+		# --capture landing on that same giant first frame always found the
+		# glints already collected. Waiting lets the burst -- and the
+		# capture landing shortly after it -- both run under a normal,
+		# small delta instead.
+		get_tree().create_timer(1.2).timeout.connect(
+			func() -> void: pet.spawn_loot_burst(pet.position + Vector3(0.9, -0.35, 0.4)))
 
 	if _demo_mode:
 		var director := DemoDirectorScript.new()

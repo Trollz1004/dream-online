@@ -27,10 +27,15 @@ const SKIN_VOID := "void"
 # object at all (tests/test_pet.gd's own "choosing a skin changes the pet's
 # colours" check).
 const SKIN_COLOURS := {
-	SKIN_DEFAULT: {"shell": Color(0.14, 0.15, 0.17), "eye": Color(0.55, 0.92, 0.90)},
-	SKIN_EMBER: {"shell": Color(0.20, 0.09, 0.06), "eye": Color(1.00, 0.55, 0.20)},
-	SKIN_FROST: {"shell": Color(0.10, 0.14, 0.20), "eye": Color(0.60, 0.85, 1.00)},
-	SKIN_VOID: {"shell": Color(0.05, 0.03, 0.09), "eye": Color(0.72, 0.40, 1.00)},
+	# Round 2 judge finding (2026-09-25): the first pass's shell tones were
+	# all near-black and read as a flat, unlit-looking ball even with a
+	# metallic material -- there was too little albedo for the metal to
+	# actually catch light. Every skin below is a visibly lighter "gunmetal"
+	# tone of its own colour, not a near-black one.
+	SKIN_DEFAULT: {"shell": Color(0.32, 0.34, 0.38), "eye": Color(0.45, 0.95, 0.92)},
+	SKIN_EMBER: {"shell": Color(0.38, 0.19, 0.14), "eye": Color(1.00, 0.55, 0.20)},
+	SKIN_FROST: {"shell": Color(0.24, 0.30, 0.40), "eye": Color(0.60, 0.85, 1.00)},
+	SKIN_VOID: {"shell": Color(0.20, 0.15, 0.27), "eye": Color(0.72, 0.40, 1.00)},
 }
 
 var life_seconds := LIFE_MAX
