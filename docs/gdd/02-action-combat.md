@@ -166,7 +166,8 @@ Known splits so far:
 
 - **Human knight line**: awakens as the **Knight** (Nightmare Class: full damage, damage party buffs such as Empower) or the **Defender** (DREAM Class: vitality-focused, can absorb damage taken by party members, support party buffs, still deals damage).
 - **Healer line**: awakens as the **Priest** (heals, Obli-type protection skills, health buff) or takes the **damage path**, whose melee damage scales with a psychic/intelligence multiplier.
-- The archer, mage and dark knight splits are still to be named.
+- **Elf archer line** (founder, 2026-09-25: "the ranger that can be melee as second skill awakening"): starts as the ranged archer with the longbow. The second awakening path is a **melee ranger**: a strength-built archer who closes in and kills with daggers, keeping the hooded ranger look (the Quaternius CC0 ranger outfit merged on 2026-09-25). It breaks the usual rule that an archer stays at range, on purpose. Which of the two paths is the Nightmare Class and which the DREAM Class is still to be ruled.
+- The mage and dark knight splits are still to be named.
 
 Design secret, not for player-facing copy: the Healer line, played well, ends up the highest damage dealer in a party, and players will not expect it, because few people play a healer. Tuning must keep that true without making the class feel mandatory for damage.
 
