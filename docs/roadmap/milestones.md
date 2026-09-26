@@ -198,4 +198,4 @@ Exit criteria:
 2. Continue the next slice work tracked in TASKS.md: icon and pet polish, then the melee
    dagger ranger's combat.
 3. No engine install is pending; Godot 4.7.2 is already in place on the Alienware node.
-4. Build movement and one hit-confirm loop before adding more systems.
+4. Done in the slice: movement, the light attack chain, heavy attack, guard, lunge and burst exist; `docs/gdd/02a-hit-confirm-requirements.md` stays the bar for feel.

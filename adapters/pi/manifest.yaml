@@ -3,7 +3,7 @@ version: 0.4
 source: local-cli
 description: "Pi runtime — CLI login lane. Full model ladder: OpenAI (GPT-5.5), Ollama Cloud/Local, OpenRouter, Grok, xAI, Nous, and free models."
 owner: sabretooth
-node_id: sabretooth
+node_id: alienware
 cli_command: "pi"
 health_check: "pi --version"
 paperclip_adapter_type: "pi_local"

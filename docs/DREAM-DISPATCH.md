@@ -58,7 +58,7 @@ Latest: 789 of 789 on `main` at `0c7bf71` (2026-09-25, Alienware node). Live NPC
 
 ## KNOWN FAILURES
 
-None in the game code. Outside it, unchanged from earlier sessions: GitHub Actions cannot confirm any merge while the account's billing lock stands ("The job was not started because your account is locked due to a billing issue"), so the local run is the only gate. Claude Code's permission classifier refuses the Visual Studio install and the hermes `master` merge; both are Joshua's to run from his own terminal. The stack script's `sentry` probe of `192.168.0.8:9140` fails by design since Sabretooth folded its Sentry into JARVIS on 2026-09-18.
+None in the game code. Outside it: the account's billing lock was cleared on 2026-09-26 and the Live NPC Lab check ran green on `aaf54fc`, so GitHub Actions is a gate again alongside the local run. While the lock stood, Actions could not confirm any merge ("The job was not started because your account is locked due to a billing issue"), which is what it looked like before it cleared. Claude Code's permission classifier refuses the Visual Studio install and the hermes `master` merge; both are Joshua's to run from his own terminal. The stack script's `sentry` probe of `192.168.0.8:9140` fails by design since Sabretooth folded its Sentry into JARVIS on 2026-09-18.
 
 
 ## OPEN QUESTIONS

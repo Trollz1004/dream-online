@@ -1,0 +1,90 @@
+name: Godot slice
+
+# The combat slice's own headless suite (game/godot/DreamSlice/tests/run_tests.gd),
+# run on every push and pull request so it can be a required check on main.
+# Joshua's ruling of 2026-09-26: a merge needs a 90 percent or better pass rate
+# on the affected tests, in every repository, enforced. The runner itself exits
+# nonzero on any failed check; this job reports the rate and every failure in
+# the job summary and fails below 90 percent or below the runner's own floor.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: "4.7.2"
+
+jobs:
+  headless-suite:
+    name: Godot headless suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch Godot
+        run: |
+          curl -sSL --retry 3 -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip
+          chmod +x "Godot_v${GODOT_VERSION}-stable_linux.x86_64"
+          "./Godot_v${GODOT_VERSION}-stable_linux.x86_64" --version
+
+      - name: Import the project (fresh checkout has no .godot cache)
+        run: |
+          timeout 900 "./Godot_v${GODOT_VERSION}-stable_linux.x86_64" --headless --path game/godot/DreamSlice --import > import.log 2>&1 || true
+          tail -n 5 import.log
+
+      - name: Run the suite and gate at 90 percent
+        run: |
+          set +e
+          timeout 900 "./Godot_v${GODOT_VERSION}-stable_linux.x86_64" --headless --path game/godot/DreamSlice --script res://tests/run_tests.gd > suite.log 2>&1
+          runner_exit=$?
+          set -e
+          summary=$(grep -E '^passed: [0-9]+ +failed: [0-9]+' suite.log | tail -n 1 || true)
+          floor=$(grep -E '^const MINIMUM_CHECKS := [0-9]+' game/godot/DreamSlice/tests/run_tests.gd | grep -oE '[0-9]+$')
+          if [ -z "$summary" ]; then
+            echo "The runner printed no summary line (exit $runner_exit). Last 40 lines:"
+            tail -n 40 suite.log
+            echo "## Godot headless suite: no summary line, runner exit $runner_exit" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          passed=$(echo "$summary" | grep -oE 'passed: [0-9]+' | grep -oE '[0-9]+')
+          failed=$(echo "$summary" | grep -oE 'failed: [0-9]+' | grep -oE '[0-9]+')
+          ran=$((passed + failed))
+          rate=$(( ran > 0 ? passed * 100 / ran : 0 ))
+          {
+            echo "## Godot headless suite"
+            echo ""
+            echo "$passed of $ran checks passed ($rate percent). Floor: $floor. Runner exit: $runner_exit."
+            echo ""
+            if [ "$failed" -gt 0 ]; then
+              echo "Failures:"
+              echo ""
+              grep -E '^\s*\[FAIL\]' suite.log | sed 's/^/- /'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "$passed of $ran passed ($rate percent), floor $floor, runner exit $runner_exit"
+          grep -E '^\s*\[FAIL\]' suite.log || true
+          if [ "$ran" -lt "$floor" ]; then
+            echo "Fewer checks ran than the floor: a suite was skipped."
+            exit 1
+          fi
+          if [ "$rate" -lt 90 ]; then
+            echo "Pass rate below 90 percent."
+            exit 1
+          fi
+
+      - name: Keep the logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-suite-logs
+          path: |
+            import.log
+            suite.log
+          if-no-files-found: ignore

@@ -20,7 +20,7 @@ team spends time on larger world, economy, PvP, or live-service systems.
 The first playable can move into implementation only when these checks are true:
 
 - The Godot headless suite passes at its MINIMUM_CHECKS floor on main.
-- The C++ toolchain can compile a minimal Unreal project.
+- Only if the Unreal revisit terms in docs/tech/engine-decision-2026-09-20.md are met: the C++ toolchain can compile a minimal Unreal project.
 - The first zone can be represented with placeholders that clearly show spawn, road,
   guide NPC, resource node, enemy pocket, world event area, and return route.
 - Live NPC Lab can answer through mock or local mode without provider keys.

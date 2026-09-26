@@ -3,7 +3,7 @@ version: 0.3
 source: local-cli
 description: "Hermes Agent CLI — CEO/operator lane. Full model ladder: OpenAI, Ollama Cloud/Local, OpenRouter, Grok, xAI, Nous, and free models."
 owner: sabretooth
-node_id: sabretooth
+node_id: alienware
 cli_command: "hermes"
 health_check: "hermes --version"
 paperclip_adapter_type: "pi_local"

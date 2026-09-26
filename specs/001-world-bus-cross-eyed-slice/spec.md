@@ -25,11 +25,11 @@ Hermes drafted this file from card 001A. The judge accepted it with these change
 
 ### User Story 1 - A test zone the founder can open and play (Priority: P1)
 
-The founder double-clicks one shortcut and the section 43 test zone opens in Unreal Engine 5.8.2. It is a third-person zone with a character he can move, an action attack, a dodge with i-frames, and one readable telegraphed CrossEyed beam. OpEnAeYe, GeminEyE and the random CrossEyed Duo spawn follow inside the same zone once the first beam is playable. A perfect dodge writes one `player.perfect_dodge` event, in the envelope of `contracts/world-event-envelope.md`, to a local log, so the event path of story 2 later reads the same truth. Combat never waits on inference.
+The founder double-clicks one shortcut and the section 43 test zone opens in Godot 4.7.2 (`game/godot/DreamSlice`; this story was written for Unreal 5.8.2 before the 2026-09-20 engine decision). It is a third-person zone with a character he can move, an action attack, a dodge with i-frames, and one readable telegraphed CrossEyed beam. OpEnAeYe, GeminEyE and the random CrossEyed Duo spawn follow inside the same zone once the first beam is playable. A perfect dodge writes one `player.perfect_dodge` event, in the envelope of `contracts/world-event-envelope.md`, to a local log, so the event path of story 2 later reads the same truth. Combat never waits on inference.
 
 **Why this priority**: The founder cannot make decisions from specs and task lists; work that puts the game on screen comes first (recorded 2026-09-19). Hermes's draft had this story last. The judge moved it first. The event path and the fallback follow after he has looked at the zone.
 
-**Gate**: The node has no DREAM project file. Creating it is the founder's decision, given in his own words in the game lane's session and recorded in `ops/node/JOURNAL.md` with the date (judge's ruling 1).
+**Gate**: Met on 2026-09-20: the Godot project `game/godot/DreamSlice/project.godot` exists. As written: the node has no DREAM project file. Creating it is the founder's decision, given in his own words in the game lane's session and recorded in `ops/node/JOURNAL.md` with the date (judge's ruling 1).
 
 **Independent Test**: Open the zone from the shortcut. Run the movement, attack, dodge and beam checks with inference disabled. Capture one perfect-dodge event from the local log and check every required envelope field against the contract.
 
@@ -161,6 +161,6 @@ A test harness exercises slow, unavailable, malformed, and rejected inference re
 - The approved inference route is replaceable. A model response may be absent, delayed, invalid, or silent without invalidating the deterministic world path.
 - Silence is an acceptable NPC result when the salience decision or failure policy selects it.
 - The two CrossEyed identities are OpEnAeYe and GeminEyE, and the Encounter Director may coordinate their deterministic encounter telemetry.
-- The current node has no DREAM project file, authoritative persistence service, or event bus from the reconnaissance. Stories 2 and 3 are demonstrable as a simulated contract proof on the existing prototypes; story 1 depends on founder approval and the project-creation decision.
+- Superseded 2026-09-20: the Godot project exists, story 1 is built, and stories 2 and 3 are proven by Mireth's memory link (`scripts/npc_memory.gd`) with its local fallback. As written: the current node has no DREAM project file, authoritative persistence service, or event bus from the reconnaissance. Stories 2 and 3 are demonstrable as a simulated contract proof on the existing prototypes; story 1 depends on founder approval and the project-creation decision.
 - The section 43 test zone is a bounded proof, not a claim that the game is live or playable.
 - The implementation will not create a new service, choose an unapproved persistence policy, or change founder locks from this draft.

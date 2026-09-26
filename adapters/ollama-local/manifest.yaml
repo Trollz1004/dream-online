@@ -3,7 +3,7 @@ version: 0.2
 source: local-cli
 description: "Local Ollama via OpenCode bridge. Self-hosted free models from http://localhost:11434. Zero cloud cost."
 owner: sabretooth
-node_id: sabretooth
+node_id: alienware
 cli_command: "opencode"
 health_check: "curl -s http://localhost:11434/api/tags -o NUL && echo ollama-local:healthy || echo 'ollama may be at alt host; check 192.168.0.x:11434'"
 paperclip_adapter_type: "opencode_local"

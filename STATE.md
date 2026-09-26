@@ -7,7 +7,7 @@ Purpose: compact handoff for the current state of the repository. This file must
 ## Root
 
 - Repo root on the Alienware node: `C:\DREAM\dream-online`. `DREAM_ROOT` resolves there. Older documents name a `D:` drive root; that clone was folded in and removed on 2026-09-19 (`docs/CONSOLIDATION-2026-09-19.md`).
-- GitHub: `Trollz1004/dream-online`, public, `main` is the only remote branch. GitHub Actions cannot run while the account's billing lock stands, so the local test run is the only gate.
+- GitHub: `Trollz1004/dream-online`, public, `main` is the only remote branch. The account's billing lock was cleared on 2026-09-26 and Actions runs again, so the gates are the local suites and the Actions checks.
 - Rules: `CLAUDE.md` loads `AGENTS.md`. Node operations and the rulings in force: `ops/node/skills/alienware-node/SKILL.md`, section 0.
 - Engine decision: `docs/tech/engine-decision-2026-09-20.md` (Godot 4.7.2 now; Unreal parked on defined revisit terms).
 - Design index: `docs/DESIGN-INDEX.md`. Port contract: `docs/tech/local-prototype-ports.md`. Local commands: `docs/tech/local-command-reference.md`. AI failure behavior: `docs/tech/ai-failure-behavior.md`.
@@ -37,7 +37,7 @@ Unreal Engine 5.8.2 stays at `C:\DREAM\UE_5.8`, with City Sample on disk, for ci
 
 - Rulings in force, in Joshua's own dated words: section 0 of `ops/node/skills/alienware-node/SKILL.md`. Combat rulings: `docs/gdd/02-action-combat.md`. World: `docs/gdd/08-day-dreams-night-dreams-world.md`. Interface: `docs/gdd/09-interface-style.md`. Honest readiness check: `docs/gdd/10-crowdfunding-readiness.md`.
 - Latest rulings (2026-09-24 and 2026-09-25): five classes including a Healer; at the awakening every class splits into a Nightmare path or a DREAM path; the archer line's second path is a melee dagger ranger; windowed mode always.
-- Open for the node lane: ten tracked `.gd` files lack their `.uid` sidecars (named in the 2026-09-26 journal entry); icon and pet polish; the melee dagger ranger's combat; which ranger path is Nightmare and which is DREAM is Joshua's call.
+- Open for the node lane: the runbook's landing rule still needs the note that Actions is a gate again; icon and pet polish; the melee dagger ranger's combat; which ranger path is Nightmare and which is DREAM is Joshua's call.
 
 ## Safe work boundaries
 

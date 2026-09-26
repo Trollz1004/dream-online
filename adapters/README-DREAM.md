@@ -4,6 +4,11 @@ This folder mirrors the current ANTIGRAVITY adapter manifests for DREAM ONLINE.
 The copied manifests point `paperclip_adapter_config.cwd` at the fixed root
 `C:\DREAM\dream-online` instead of `C:\antigravity`.
 
+Paperclip is parked, so these manifests are reference until it returns. Their
+`cwd` is the Alienware checkout, and `node_id` says `alienware` to match. If
+Paperclip ever runs on Sabretooth again, the adapter must reach the Alienware
+checkout through the node mechanism rather than a local path.
+
 ## Mirrored Adapters
 
 - `codex` — Codex CLI auth-signin lane.

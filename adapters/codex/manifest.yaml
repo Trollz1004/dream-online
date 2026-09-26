@@ -3,7 +3,7 @@ version: 0.3
 source: auth-signin
 description: "Codex CLI — OpenAI auth sign-in from C:\\DREAM\\dream-online. Direct CLI lane; do not use Paperclip codex_local mini routing for real work."
 owner: sabretooth
-node_id: sabretooth
+node_id: alienware
 cli_command: "codex"
 health_check: "codex --version"
 paperclip_adapter_type: "codex_local"
