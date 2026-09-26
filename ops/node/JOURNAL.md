@@ -2,6 +2,18 @@
 
 One entry per session, newest first, in the form did, verified, blocked, next, commits. Written by the Claude judge lane for a reader with no memory of the session.
 
+## 2026-09-25 later, same session, about 23:30 EDT
+
+**Did.** Joshua saw the ranger on the desktop slice and liked it better, so `judge/prod-outfits-ranger` was merged. He then ruled the archer line's second awakening path is a melee dagger ranger (recorded in `docs/gdd/02-action-combat.md`). Two Sonnet builders ran in parallel: the GeminEYE timed looting pet with a demo NEEDs shop on P (`judge/pet-gemineye`, sent back once for looks), and a movable keyboard hotbar with red and blue potions and food on 1 to 3 (`judge/skill-keyboard`). Both merged; world.gd and run_tests.gd conflicts resolved keeping both.
+
+**Verified.** Headless suite 789 of 789 on `main` at `0c7bf71`. Frame `C:\DREAM\recon\combined-2026-09-25.png` opened by the judge: hotbar at left under the help text, pet at the shoulder with its timer, 60 frames per second, no overlap. Pet frames in `C:\DREAM\recon\pet-2026-09-25\`, hotbar frames in `C:\DREAM\recon\skillbar-2026-09-25\`. A capture hung for 13 minutes in a fresh worktree with no import cache; fix is `godot --headless --path ... --import` first and a timeout on every capture.
+
+**Weak, still to fix.** Hotbar icons are plain coloured dots (potions should look like bottles, food like food); the pet's bubble and tombstone are too small at play distance, the loot gems read as flat yellow shapes, the eye as a flat pale disc. Drag and rebinding were not tested interactively. Hermes made no commits in either repository since 2026-09-24; Joshua is asking it directly.
+
+**Next.** Icon and pet polish pass; the melee dagger ranger's combat; which ranger path is Nightmare and which DREAM is his call.
+
+**Commits.** `118eaf8` (pet merge), `0c7bf71` (hotbar merge), `984ae7b` (awakening ruling), all pushed.
+
 ## 2026-09-25 about 21:40 EDT, Claude Opus 5.5, session start with `/alienware-node`
 
 **Did.** Health YELLOW only because Sabretooth's JARVIS answered without its identity string; every service on this node was UP. `drift ground` was RED: 44 uncommitted files in the main checkout, left by a worker at about 01:30 on 2026-09-25. They were a Quaternius CC0 Ranger outfit ("Modular Character Outfits - Fantasy", standard pack, licence recorded in `assets/third_party/LICENSES.md`), a rework of `character_model.gd`, preview tools, and re-imported texture sidecars. The headless suite passed 675 of 675 on that tree, so it was committed as `3894728` on `judge/prod-outfits-ranger` and pushed as a branch. It is not merged.
