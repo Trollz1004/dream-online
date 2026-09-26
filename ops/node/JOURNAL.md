@@ -2,6 +2,18 @@
 
 One entry per session, newest first, in the form did, verified, blocked, next, commits. Written by the Claude judge lane for a reader with no memory of the session.
 
+## 2026-09-25 about 21:40 EDT, Claude Opus 5.5, session start with `/alienware-node`
+
+**Did.** Health YELLOW only because Sabretooth's JARVIS answered without its identity string; every service on this node was UP. `drift ground` was RED: 44 uncommitted files in the main checkout, left by a worker at about 01:30 on 2026-09-25. They were a Quaternius CC0 Ranger outfit ("Modular Character Outfits - Fantasy", standard pack, licence recorded in `assets/third_party/LICENSES.md`), a rework of `character_model.gd`, preview tools, and re-imported texture sidecars. The headless suite passed 675 of 675 on that tree, so it was committed as `3894728` on `judge/prod-outfits-ranger` and pushed as a branch. It is not merged.
+
+**Verified.** Two frames at 6 s, both opened by the judge: `C:\DREAM\recon\ranger-check-2026-09-25.png` (the branch) and `C:\DREAM\recon\main-check-2026-09-25.png` (`main`). On `main` the player reads as a plain black figure with a gold belt; the knight look chosen on 2026-09-24 does not come across at play distance. On the branch the player wears a real textured green hooded ranger outfit with boots and a cloak, but carries a flat green triangle shield, and the look is not the one Joshua chose.
+
+**Blocked.** Which look goes forward is Joshua's call; the two pictures were put to him.
+
+**Next.** Once he picks: either merge the ranger branch and replace the flat shield, or bring the knight's plate materials up so they read at play distance (the ranger branch's texture work may help either way). Mountains are still pale and the ground still a plain tan floor. Sixteen stale agent worktrees under `.claude/worktrees/` can be pruned. The daily skill scout was skipped this session to save the cap.
+
+**Commits.** `3894728` on `judge/prod-outfits-ranger`, pushed, not merged; this journal entry on `main`.
+
 ## 2026-09-24 afternoon and evening EDT, Claude Opus 5.5, session start with `/alienware-node`
 
 **Direction from Joshua.** The gameplay demo must look close to finished production, because backers decide in seconds. Characters were "very bubble like"; the target is cinematic fantasy CGI with believable proportions. One outfit must fit both worlds (medieval shapes in sleek materials: fine chainmail, fitted plate, faint light seams); the sword rides sheathed on the back; a mage's orb floats. Every place exists in both worlds with the same NPCs (fruit stand by day is a convenience store by night; a field boss by day fights in a stadium, park or parking lot by night). He will take the best recording to Google AI Studio for enhancement; everything stays real gameplay and any enhanced cut is labelled. He said the lane may research anything and should turn what it learns into skills. He asked that no video be recorded or opened on his desktop until the characters look right.
