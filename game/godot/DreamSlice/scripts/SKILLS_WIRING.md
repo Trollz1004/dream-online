@@ -1,5 +1,7 @@
 # Wiring Dream Lunge, Nightveil Burst and the vfx.gd effects into player.gd
 
+**Note (2026-09-26):** The wiring described here was completed on 2026-09-23 in commit `1c3ad77` ("game(godot): wire the crowdfunding demo -- Sentinel, Mireth's memory, day/night"). This file is now the historical implementation note, not pending instructions.
+
 Spec 002 (`specs/002-crowdfunding-demo/spec.md`), "Skills added". This lane built
 `scripts/lunge_state.gd`, `scripts/burst_state.gd` and `scripts/vfx.gd` as
 standalone pieces (the same shape as `attack_state.gd` / `heavy_attack_state.gd`)

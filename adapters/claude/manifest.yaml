@@ -13,7 +13,7 @@ health_check: "claude --version && echo claude:healthy || echo claude:unavailabl
 # and nothing sits in front of it.
 paperclip_adapter_type: "claude_local"
 paperclip_adapter_config:
-  cwd: "D:\\CLAUDE's-N-Joshua's-Dream-Online-MMORPG"
+  cwd: "C:\\DREAM\\dream-online"
   model: "claude-sonnet-5"
   env:
     CLAUDE_CODE_MAX_OUTPUT_TOKENS: "8192"

@@ -1,5 +1,9 @@
 # Software Install Plan
 
+Status note (2026-09-26): superseded by the 2026-09-20 engine decision. Godot 4.7.2 is
+installed on the Alienware node and needs no compiler, so no Unreal, Visual Studio, or
+CMake install is pending. This file is kept as the July 2026 record.
+
 Status: draft
 
 ## Current installed tools

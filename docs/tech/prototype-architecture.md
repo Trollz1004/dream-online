@@ -1,8 +1,10 @@
 # Prototype Architecture
 
+**Status note (2026-09-26):** This is a parked Unreal reference, kept for the revisit terms recorded in `docs/tech/engine-decision-2026-09-20.md`. The current implementation is the Godot slice at `game/godot/DreamSlice`.
+
 ## Current Reality
 
-Existing state says the E drive is the DREAM ONLINE build root and currently contains scaffolding only: no game loop, no game server, and no netcode yet.
+The repo root is `C:\DREAM\dream-online`, and the Godot slice at `game/godot/DreamSlice` now exists alongside the prototype servers described below.
 
 Primary design source of truth remains in the main repo:
 
@@ -19,7 +21,7 @@ Track A: lightweight browser/server prototype.
 - Proves basic world state, fishing, inventory, and agent memory.
 - Faster iteration on this node.
 
-Track B: Unreal vertical slice after engine install/decision.
+Track B: the engine decision is made (Godot); the vertical slice is `game/godot/DreamSlice`.
 
 - Proves real action combat feel.
 - Proves server-authoritative hit validation.
@@ -28,7 +30,7 @@ Track B: Unreal vertical slice after engine install/decision.
 
 ## Live-NPC Backend Target
 
-Paperclip on Sabretooth port `3100` is the intended webhook backend once the game server exists. Game server triggers call Paperclip, Paperclip routes to the correct NPC tier, and memory write-back persists the result. There is no Agent Hub on :3130.
+Paperclip on Sabretooth port `3100` is the intended webhook backend once the game server exists. Game server triggers call Paperclip, Paperclip routes to the correct NPC tier, and memory write-back persists the result. There is no Agent Hub on :3130. Paperclip is now parked; the current NPC path is the Live NPC Lab on `9127`, with its own providers, allowlist, timeout and fallback.
 
 Initial implementation must stub this flow before spending on high-cost models.
 
@@ -52,7 +54,7 @@ Do not commit the full MMO to any engine until these are answered:
 - Can live NPC memory run with bounded cost and safe lore constraints?
 - Can tools support years of crafting/economy/content growth?
 
-## Unreal Direction If Chosen
+## Unreal Direction (parked; revisit terms in the engine decision record)
 
 - World: World Partition, Data Layers, One File Per Actor.
 - Combat: Gameplay Ability System, C++ hit validation, animation notifies.

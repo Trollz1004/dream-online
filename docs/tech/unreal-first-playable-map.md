@@ -1,5 +1,7 @@
 # Unreal First Playable Implementation Map
 
+**Status note (2026-09-26):** This is a parked Unreal reference, kept for the revisit terms recorded in `docs/tech/engine-decision-2026-09-20.md`. The current implementation is the Godot slice at `game/godot/DreamSlice`.
+
 Status: planning draft
 
 Purpose: map the current Dream data contracts and first-playable docs into future Unreal

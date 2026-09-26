@@ -1,14 +1,15 @@
 # DREAM Adapter Mirror
 
 This folder mirrors the current ANTIGRAVITY adapter manifests for DREAM ONLINE.
-The copied manifests point `paperclip_adapter_config.cwd` at this portable
-`DREAM_ROOT` instead of `C:\antigravity`.
+The copied manifests point `paperclip_adapter_config.cwd` at the fixed root
+`C:\DREAM\dream-online` instead of `C:\antigravity`.
 
 ## Mirrored Adapters
 
 - `codex` — Codex CLI auth-signin lane.
 - `pi` — Pi CLI lane; Codex-class model path stays `openai-codex/gpt-5.5`.
-- `opencode` — OpenCode local/provider ladder.
+- `opencode` — OpenCode is configured by the git-ignored `opencode/opencode.json` at
+  the repo root, not by a folder under `adapters/`.
 - `hermes` — Hermes CEO/operator lane.
 - `grok` — Grok CLI/browser-auth lane.
 - `gemini` — Gemini CLI/browser-auth lane.
@@ -31,9 +32,9 @@ that folder when the repo adapter manifests change.
 Use the path-aware sync helper, not a blind copy:
 
 ```powershell
-D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\adapters\sync-from-antigravity.ps1
+C:\DREAM\dream-online\adapters\sync-from-antigravity.ps1
 ```
 
-It copies canonical adapter files and rewrites manifest paths from
-`C:\ANTIGRAVITY` to `DREAM_ROOT`, so Paperclip runs against the DREAM
-drive when a DREAM task is assigned.
+This script is git-ignored and exists only on the node, not in the repo. It copies
+canonical adapter files and rewrites manifest paths from `C:\ANTIGRAVITY` to
+`DREAM_ROOT`, so Paperclip runs against the DREAM repo when a DREAM task is assigned.

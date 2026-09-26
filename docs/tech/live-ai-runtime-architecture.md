@@ -1,5 +1,7 @@
 # Live AI Runtime Architecture
 
+**Status note (2026-09-26):** The provider assumptions below are superseded. Sup@ is on the real signed-in Claude CLI and never an API key, and the lab's providers are gated in `game/server/live-npc-lab/src/providers.js`. The 1min.ai figures below are the July 2026 provider evaluation, kept for reference.
+
 ## Purpose
 
 Design the AI runtime for DREAM ONLINE without accidentally making every player an always-on expensive cloud session.

@@ -1,8 +1,11 @@
 # Dream ONLINE Research Radar
 
+Status note (2026-09-26): the engine moved to Godot 4.7.2 on 2026-09-20; the lenses below
+still name Unreal in places and should be read with that in mind.
+
 Status: active recurring Codex app automation
 Cadence: every 6 hours
-Workspace: `D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG`
+Workspace: `C:\DREAM\dream-online`
 Automation id: `dream-online-research-radar`
 
 ## Purpose
@@ -17,7 +20,8 @@ Each run should produce a compact founder-facing report, not a file edit.
 ## Required lenses
 
 - Game design: player feeling, loop quality, tuning levers, failure states.
-- Unreal world building: World Partition, HLOD, PCG, streaming, traversal scale.
+- Godot world building: scenes, streaming, terrain, environment dressing at open-world
+  scale; Unreal only as parked reference.
 - Unreal systems engineering: C++/Blueprint split, GAS, Nanite/Lumen constraints.
 - Unreal multiplayer architecture: server authority, replication, prediction, anti-cheat.
 - Unreal technical art: materials, Niagara, PCG determinism, visual budgets.

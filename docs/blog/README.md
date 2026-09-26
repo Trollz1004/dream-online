@@ -1,6 +1,6 @@
 # DREAM Online blog
 
-SEO posts for [dream-online.net/blog](https://dream-online.net/blog), covering the public repository, the design pillars, and how to back development. Sources: this repo's `README.md`, `docs/gdd/*`, `apps/landing/dream-online/index.html` (approved landing copy), and `ops/crowdfunding/OPEN-COLLECTIVE-DREAM-ONLINE.md` for the live tier facts.
+SEO posts for [dream-online.net/blog](https://dream-online.net/blog), covering the public repository, the design pillars, and how to back development. Sources: this repo's `README.md` and `docs/gdd/*`. The landing copy and the funding-tier facts live in the crowdfunding lane in `Trollz1004/ANTIGRAVITY` (Codex's), not in this repository. Posts here must not claim features are live beyond what `STATE.md` records.
 
 | File | Slug | Primary keyword |
 | --- | --- | --- |

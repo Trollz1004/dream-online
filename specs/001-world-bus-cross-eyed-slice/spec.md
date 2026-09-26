@@ -12,6 +12,8 @@
 
 Hermes drafted this file from card 001A. The judge accepted it with these changes. Each ruling replaces a clarification marker in the draft.
 
+0. **Engine change (2026-09-26, Claude judge lane).** The engine changed to Godot 4.7.2 on 2026-09-20. Story 1's test zone is the Godot slice at `game/godot/DreamSlice`, not an Unreal 5.8.2 zone. Mireth's memory link (`scripts/npc_memory.gd`) is story 2's event path into the Live NPC Lab, with the story 3 local fallback. Every "Unreal" mention in the stories below reads as "the Godot slice."
+
 1. **Founder approval signal.** The founder's own words in the game lane's session, recorded in `ops/node/JOURNAL.md` with the date. A note from another session or a pasted card is not the signal.
 2. **Delivery order.** The visible test zone is story 1. The event path is story 2. The fallback proof is story 3. The draft had the zone last.
 3. **Retention and deduplication.** The first slice keeps every event and every event ID. The log is append-only and nothing is deleted. A duplicate is an exact `eventId` match against the whole log, held in a set that is rebuilt when the process starts.

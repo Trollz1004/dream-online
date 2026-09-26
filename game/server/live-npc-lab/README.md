@@ -14,7 +14,7 @@ This lab is intentionally small:
 ## Run
 
 ```powershell
-cd "D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\server\live-npc-lab"
+cd "C:\DREAM\dream-online\game\server\live-npc-lab"
 npm start
 ```
 
@@ -23,19 +23,23 @@ npm start
 ```powershell
 npm test
 npm run test:first-playable
+npm run test:npc-profiles
 npm run test:ai-failures
+npm run test:cost-guards
 npm run test:memory-scopes
 npm run test:memory-compaction
 npm run test:lore-retrieval
+npm run test:world-event-memory
 npm run test:contracts
 ```
 
-`npm test` runs the smoke check, first-playable dialogue/event/memory flow, NPC
-profile registry check, AI failure behavior policy check, scoped-memory retrieval
-check, local memory compaction check, and local lore retrieval check. The
-first-playable, failure-policy, memory-scope, memory-compaction, and lore-retrieval
-checks use temporary local data directories so they do not add JSONL records to the
-repo data folder.
+`npm test` runs ten checks: the smoke check, the first-playable dialogue/event/memory
+flow, the NPC profile registry check, the AI failure behavior policy check, the
+cost-guard check, the scoped-memory retrieval check, the local memory compaction
+check, the local lore retrieval check, the Hermes provider check, and the world-event
+memory recall check. The first-playable, failure-policy, memory-scope,
+memory-compaction, and lore-retrieval checks use temporary local data directories so
+they do not add JSONL records to the repo data folder.
 
 Default URL:
 
