@@ -48,7 +48,12 @@ extends SceneTree
 # 667 + vest_back existence (1) + vest_back size/offset (2) = 670.
 # Raised to 675 for the licensed modular Ranger replacement: active outfit,
 # 65-bone skeleton, authored hood, skinned pauldron and skinned bracers.
-const MINIMUM_CHECKS := 675
+# Raised to 722 for GeminEYE, the timed companion pet (spec: Joshua's own
+# idea, 2026-09-25): pet_state.gd's timer/life/looting/skin rules,
+# pet_shop.gd's demo NEEDs balance and purchases, and the source-string
+# check pinning world.gd's own --pet-time/--pet-loot-demo/--pet-shop-open
+# cmdline wiring -- 47 checks in tests/test_pet.gd.
+const MINIMUM_CHECKS := 722
 
 var passed := 0
 var failed := 0
@@ -87,6 +92,7 @@ func _init() -> void:
 	load("res://tests/test_skills_new.gd").new().run(self)
 	load("res://tests/test_demo_director.gd").new().run(self)
 	load("res://tests/test_side_screen.gd").new().run(self)
+	load("res://tests/test_pet.gd").new().run(self)
 	var ran := passed + failed
 	if ran < MINIMUM_CHECKS:
 		failed += 1

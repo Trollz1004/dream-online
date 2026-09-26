@@ -20,6 +20,9 @@ const DreamEnvScript := preload("res://scripts/dream_env.gd")
 const NpcMemoryScript := preload("res://scripts/npc_memory.gd")
 const MemoryPanelScript := preload("res://scripts/memory_panel.gd")
 const DemoDirectorScript := preload("res://scripts/demo_director.gd")
+const PetScript := preload("res://scripts/pet.gd")
+const PetShopPanelScript := preload("res://scripts/pet_shop_panel.gd")
+const PetState := preload("res://scripts/pet_state.gd")
 
 const MIRETH_WITNESS_RADIUS := 40.0
 const DEFAULT_LAB_URL := "http://127.0.0.1:9127"
@@ -30,6 +33,8 @@ var npc: Node3D = null
 var hud: Node = null
 var npc_memory: Node = null
 var memory_panel: Node = null
+var pet: Node3D = null
+var pet_shop_panel: Node = null
 
 var _capture_path := ""
 var _capture_at := 2.0
@@ -38,6 +43,14 @@ var _demo_yaw := 0.0
 var _dream_mode := "day"
 var _demo_mode := false
 var _lab_url := DEFAULT_LAB_URL
+# GeminEYE's own capture-only conveniences (Joshua's idea, 2026-09-25): a
+# shorter life for --pet-time so a capture can show the tombstone without
+# waiting an hour, and --pet-loot-demo so a capture can show the Looting
+# bubble with no fight staged first. Read the same way world.gd already
+# reads --capture/--at/--move/--yaw/--dream/--demo/--lab-url.
+var _pet_time := PetState.LIFE_MAX
+var _pet_loot_demo := false
+var _pet_shop_open_demo := false   # --pet-shop-open: a capture needs the panel open with no key press to drive it
 
 var _env: Node3D = null
 var _fade_layer: CanvasLayer
@@ -117,11 +130,35 @@ func _ready() -> void:
 	npc.set_time_of_day(_dream_mode)
 	player.npc = npc
 
+	# GeminEYE, the timed companion pet (Joshua's own idea, 2026-09-25).
+	# Configured before add_child, the same ordering rule player.gd's own
+	# capture_mode/demo_yaw already follow: configure() builds the pure
+	# pet_state.gd instance _ready() will find already sitting there.
+	pet = PetScript.new()
+	pet.configure(_pet_time)
+	pet.player = player
+	add_child(pet)
+
+	pet_shop_panel = PetShopPanelScript.new()
+	pet_shop_panel.pet_state = pet.state
+	pet_shop_panel.pet_node = pet
+	add_child(pet_shop_panel)
+	if _pet_shop_open_demo:
+		pet_shop_panel.toggle()
+
 	player.perfect_dodge_confirmed.connect(_on_perfect_dodge)
 	player.heavy_hit_landed.connect(_on_heavy_hit)
 	player.skill_used.connect(_on_skill_used)
 	player.talked.connect(_on_talked)
 	sentinel.defeated.connect(_on_sentinel_defeated)
+	# Loot glints drop where the Sentinel fell, and GeminEYE flies to them --
+	# spec's own "hook there" instruction. sentinel.position is flat, plain
+	# geometry the same way npc.gd/dummy.gd already document (both are
+	# direct children of world with no transform of their own).
+	sentinel.defeated.connect(func() -> void: pet.spawn_loot_burst(sentinel.position))
+
+	if _pet_loot_demo:
+		pet.spawn_loot_burst(player.position + Vector3(1.0, 0.0, -1.0))
 
 	if _demo_mode:
 		var director := DemoDirectorScript.new()
@@ -172,6 +209,12 @@ func _read_args() -> void:
 			_demo_mode = true
 		if args[i] == "--lab-url" and i + 1 < args.size():
 			_lab_url = args[i + 1]
+		if args[i] == "--pet-time" and i + 1 < args.size():
+			_pet_time = float(args[i + 1])
+		if args[i] == "--pet-loot-demo":
+			_pet_loot_demo = true
+		if args[i] == "--pet-shop-open":
+			_pet_shop_open_demo = true
 
 
 func _capture_after(seconds: float) -> void:
