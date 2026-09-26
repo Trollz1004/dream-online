@@ -53,7 +53,10 @@ extends SceneTree
 # pet_shop.gd's demo NEEDs balance and purchases, and the source-string
 # check pinning world.gd's own --pet-time/--pet-loot-demo/--pet-shop-open
 # cmdline wiring -- 47 checks in tests/test_pet.gd.
-const MINIMUM_CHECKS := 722
+# Raised to 789 when the keyboard hotbar merged beside the pet: 67 checks in
+# tests/test_keyboard_hotbar.gd (consumables, grid geometry, cooldown
+# mapping, drag clamp, saved layout) on top of 722.
+const MINIMUM_CHECKS := 789
 
 var passed := 0
 var failed := 0
@@ -93,6 +96,7 @@ func _init() -> void:
 	load("res://tests/test_demo_director.gd").new().run(self)
 	load("res://tests/test_side_screen.gd").new().run(self)
 	load("res://tests/test_pet.gd").new().run(self)
+	load("res://tests/test_keyboard_hotbar.gd").new().run(self)
 	var ran := passed + failed
 	if ran < MINIMUM_CHECKS:
 		failed += 1

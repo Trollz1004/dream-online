@@ -231,6 +231,20 @@ func interact_label() -> Label:
 	return _interact
 
 
+# Called once by scripts/keyboard_panel.gd, which replaces this column's six
+# skill lines with its own keycap readout (Joshua's ruling: a skill bar's job
+# is to show what is ready and what is cooling down). Health, stamina, target
+# and event lines stay -- only the six lines this list already named go dark,
+# so the same cooldown is never shown twice on screen at once.
+func set_skill_labels_visible(v: bool) -> void:
+	_dash.visible = v
+	_swing.visible = v
+	_heavy.visible = v
+	_guard.visible = v
+	_lunge.visible = v
+	_burst.visible = v
+
+
 func _line(box: VBoxContainer, size: int, colour: Color) -> Label:
 	var label := Label.new()
 	label.add_theme_font_size_override("font_size", size)

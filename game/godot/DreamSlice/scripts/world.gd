@@ -23,6 +23,7 @@ const DemoDirectorScript := preload("res://scripts/demo_director.gd")
 const PetScript := preload("res://scripts/pet.gd")
 const PetShopPanelScript := preload("res://scripts/pet_shop_panel.gd")
 const PetState := preload("res://scripts/pet_state.gd")
+const KeyboardPanelScript := preload("res://scripts/keyboard_panel.gd")
 
 const MIRETH_WITNESS_RADIUS := 40.0
 const DEFAULT_LAB_URL := "http://127.0.0.1:9127"
@@ -35,6 +36,7 @@ var npc_memory: Node = null
 var memory_panel: Node = null
 var pet: Node3D = null
 var pet_shop_panel: Node = null
+var keyboard_panel: Node = null
 
 var _capture_path := ""
 var _capture_at := 2.0
@@ -51,6 +53,7 @@ var _lab_url := DEFAULT_LAB_URL
 var _pet_time := PetState.LIFE_MAX
 var _pet_loot_demo := false
 var _pet_shop_open_demo := false   # --pet-shop-open: a capture needs the panel open with no key press to drive it
+var _use_potion_flag := false   # capture-only, see _read_args() and _ready()
 
 var _env: Node3D = null
 var _fade_layer: CanvasLayer
@@ -109,6 +112,20 @@ func _ready() -> void:
 	add_child(player)
 	if _demo_move != Vector3.ZERO:
 		player.demo_move(_demo_move)
+
+	# The keyboard hotbar readout (scripts/keyboard_panel.gd): its own
+	# CanvasLayer, wired with the two references it needs and nothing else.
+	keyboard_panel = KeyboardPanelScript.new()
+	keyboard_panel.player = player
+	keyboard_panel.hud = hud
+	add_child(keyboard_panel)
+	if _use_potion_flag:
+		# A capture-only convenience (same shape as player.gd's own
+		# --force-combat): fires the red potion the instant the panel exists,
+		# so a --capture shortly after shows its cooldown sweep without a
+		# scripted keyboard event, which --write-movie captures never
+		# generate (see player.gd's own _should_force_combat_pose comment).
+		keyboard_panel._use_slot("1")
 
 	sentinel = DummyScript.new()
 	sentinel.position = Vector3(0.0, 0.0, -6.0)
@@ -233,6 +250,8 @@ func _read_args() -> void:
 			_pet_loot_demo = true
 		if args[i] == "--pet-shop-open":
 			_pet_shop_open_demo = true
+		if args[i] == "--use-potion":
+			_use_potion_flag = true
 
 
 func _capture_after(seconds: float) -> void:
