@@ -1,0 +1,86 @@
+name: Demo on GitHub Pages
+
+# Spec 004 (specs/004-cloud-demo): the real combat slice, exported with the
+# repo's single-threaded "Web" preset, published to GitHub Pages on every merge
+# to main so the hosted demo never lags the merge gate. The build steps are the
+# same as .github/workflows/godot-slice.yml plus the export template, which is
+# read out of the official 1.28 GB archive by HTTP byte range (tens of MB) and
+# never vendored into the repository. The page is stamped with the commit hash
+# and the statement that it is the real slice, not enhanced footage.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "game/godot/**"
+      - ".github/workflows/demo-pages.yml"
+      - ".github/scripts/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: "4.7.2"
+
+jobs:
+  build:
+    name: Export the web build
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch Godot
+        run: |
+          curl -sSL --retry 3 -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip
+          chmod +x "Godot_v${GODOT_VERSION}-stable_linux.x86_64"
+          "./Godot_v${GODOT_VERSION}-stable_linux.x86_64" --version
+
+      - name: Fetch only the web export template (HTTP byte range)
+        run: python3 .github/scripts/fetch_web_template.py
+
+      - name: Import the project
+        run: |
+          timeout 900 "./Godot_v${GODOT_VERSION}-stable_linux.x86_64" --headless --path game/godot/DreamSlice --import > import.log 2>&1 || true
+          tail -n 3 import.log
+
+      - name: Export the Web preset
+        run: |
+          mkdir -p build/web
+          timeout 900 "./Godot_v${GODOT_VERSION}-stable_linux.x86_64" --headless --path game/godot/DreamSlice --export-release Web ../../../build/web/index.html > export.log 2>&1
+          test -s build/web/index.wasm && test -s build/web/index.pck
+          ls -la build/web
+
+      - name: Stamp the page with the commit and the real-slice label
+        run: python3 .github/scripts/stamp_demo.py build/web/index.html "${GITHUB_SHA}" "$(date -u +%Y-%m-%d)"
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload the build as the Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    name: Publish to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
