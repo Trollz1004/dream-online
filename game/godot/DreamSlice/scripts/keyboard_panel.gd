@@ -50,9 +50,12 @@ var _mouse_was_captured_for_alt := false
 func _ready() -> void:
 	layer = 5   # above hud.gd's default CanvasLayer, so keycaps draw over the plain readout
 	_build_ui()
-	_load_layout()
+	var had_saved_position := _load_layout()
 	if hud != null and hud.has_method("set_skill_labels_visible"):
 		hud.set_skill_labels_visible(false)
+	if not had_saved_position:
+		await get_tree().process_frame
+		_place_below_help_text()
 
 
 func _build_ui() -> void:
@@ -126,6 +129,16 @@ func _viewport_size() -> Vector2:
 	if is_inside_tree() and get_viewport() != null:
 		return get_viewport().get_visible_rect().size
 	return Vector2(1920.0, 1080.0)
+
+
+# CanvasLayer (unlike Control) has no get_global_mouse_position() of its own,
+# so every drag reads the mouse through its Viewport instead -- the same
+# pixel space _root's own position and every keycap's get_global_rect()
+# already use, since this layer applies no extra transform of its own.
+func _mouse_pos() -> Vector2:
+	if is_inside_tree() and get_viewport() != null:
+		return get_viewport().get_mouse_position()
+	return Vector2.ZERO
 
 
 # ---------------------------------------------------------------------------
@@ -257,7 +270,7 @@ func _on_grip_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE:
 			_dragging = true
-			_drag_offset = get_global_mouse_position() - _root.position
+			_drag_offset = _mouse_pos() - _root.position
 
 
 func _input(event: InputEvent) -> void:
@@ -276,7 +289,7 @@ func _input(event: InputEvent) -> void:
 		return
 
 	if event is InputEventMouseMotion and _dragging:
-		var target: Vector2 = get_global_mouse_position() - _drag_offset
+		var target: Vector2 = _mouse_pos() - _drag_offset
 		_root.position = HotbarLayout.clamp_position(target, HotbarLayout.panel_total_size(), _viewport_size())
 		return
 
@@ -298,7 +311,7 @@ func _on_keycap_input(event: InputEvent, key_name: String) -> void:
 		if Input.mouse_mode == Input.MOUSE_MODE_VISIBLE and _bindings.has(key_name):
 			_item_drag_source = key_name
 	elif _item_drag_source != "":
-		var target := _keycap_at(get_global_mouse_position())
+		var target := _keycap_at(_mouse_pos())
 		if target != "" and NUMBER_KEYS.has(target) and target != _item_drag_source:
 			_bindings = HotbarLayout.swap_bindings(_bindings, _item_drag_source, target)
 			_save_layout()
@@ -339,16 +352,40 @@ func _use_slot(key_name: String) -> void:
 # Saved layout: user://hud_layout.cfg
 # ---------------------------------------------------------------------------
 
-func _load_layout() -> void:
+# Returns true when a saved position was actually found, so _ready() knows
+# whether it still needs to work out a first-run default that clears hud.gd's
+# own text (see _place_below_help_text below).
+func _load_layout() -> bool:
 	var pos := DEFAULT_POSITION
 	var cfg := ConfigFile.new()
+	var found := false
 	if cfg.load(LAYOUT_PATH) == OK:
+		found = true
 		var data := {"x": cfg.get_value("panel", "x", pos.x), "y": cfg.get_value("panel", "y", pos.y)}
 		pos = HotbarLayout.position_from_dict(data, DEFAULT_POSITION)
 		var bindings_str: String = cfg.get_value("panel", "bindings", "")
 		var loaded: Dictionary = HotbarLayout.decode_bindings(bindings_str)
 		if not loaded.is_empty():
 			_bindings = loaded
+	_root.position = HotbarLayout.clamp_position(pos, HotbarLayout.panel_total_size(), _viewport_size())
+	return found
+
+
+# First run, nothing saved yet: DEFAULT_POSITION is a guess that a longer
+# help paragraph (hud.gd's own _help label, a VBoxContainer child whose
+# height only settles once the container has actually sorted its children)
+# can grow past. One frame after _ready, hud.gd's column has settled, so its
+# real bottom edge is read and the panel is placed just under it instead --
+# still never touching hud.gd itself beyond the help_label() getter it
+# already exposed.
+func _place_below_help_text() -> void:
+	if hud == null or not hud.has_method("help_label"):
+		return
+	var help_label: Control = hud.help_label()
+	if help_label == null:
+		return
+	var below: float = help_label.global_position.y + help_label.size.y + 16.0
+	var pos := Vector2(DEFAULT_POSITION.x, maxf(DEFAULT_POSITION.y, below))
 	_root.position = HotbarLayout.clamp_position(pos, HotbarLayout.panel_total_size(), _viewport_size())
 
 
