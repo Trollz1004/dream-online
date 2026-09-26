@@ -310,6 +310,22 @@ listed as a used asset because nothing from them ships as a file.
 Ground, rock, facade, street, armor, leather and fabric textures: Rob
 Tuytel, colormass and Rico Cilliers, via Poly Haven (polyhaven.com), CC0."
 
+## Quaternius — "Modular Character Outfits - Fantasy" (standard pack)
+
+- Author: Quaternius (quaternius.com / quaternius.itch.io)
+- Source: https://quaternius.itch.io/modular-character-outfits-fantasy
+- License: Creative Commons Zero 1.0 Universal (CC0)
+- Retrieved: the free 280 MB Standard archive through itch.io's documented
+  "No thanks, just take me to the downloads" path. No account or payment.
+- Selected files under `assets/third_party/quaternius_outfits/`: the
+  `Male_Ranger.gltf` rig, its `.bin`, and the six referenced Ranger/base-body
+  texture maps. The full archive remains outside the repository under
+  `C:\DREAM\downloads` and is not shipped.
+- Intended use: evaluate the real skinned Ranger clothing geometry, made for
+  Quaternius's Universal Base Characters, as a replacement for primitive
+  BoneAttachment3D boxes on the Dreamwalker. Import/camera QA decides whether
+  it ships; copying the source here does not itself approve the look.
+
 ## Known gaps
 
 - Quaternius's own "Modular Character Outfits - Fantasy" pack (CC0, built to

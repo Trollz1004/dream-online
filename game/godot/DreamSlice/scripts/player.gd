@@ -129,7 +129,7 @@ func _ready() -> void:
 	_visual.add_child(_gold_rim)
 
 	_spring = SpringArm3D.new()
-	_spring.spring_length = 6.0
+	_spring.spring_length = 4.2
 	_spring.position = Vector3(0.0, 1.4, 0.0)
 	add_child(_spring)
 	_camera = Camera3D.new()
@@ -211,10 +211,10 @@ func _build_gold_rim() -> MeshInstance3D:
 # wash out the scene" -- this is a fill/rim light, not a stage spotlight.
 func _build_fill_light() -> SpotLight3D:
 	var light := SpotLight3D.new()
-	light.light_energy = 1.4
+	light.light_energy = 1.15
 	light.light_color = Color(1.0, 0.92, 0.78)   # warm/golden, so steel actually catches it
 	light.spot_range = 9.0
-	light.spot_angle = 30.0
+	light.spot_angle = 28.0
 	light.spot_angle_attenuation = 1.5
 	light.shadow_enabled = false
 	return light

@@ -214,6 +214,9 @@ func _test_vfx_smoke() -> void:
 	var fire_mesh: MeshInstance3D = fire.get_child(0)
 	check("the fired beam's material is not double-sided either, for the same reason",
 		fire_mesh.material_override.cull_mode == BaseMaterial3D.CULL_BACK)
+	var fire_box: BoxMesh = fire_mesh.mesh
+	check("the fired beam is a thin shaft of light, not a street-wide paint flood",
+		fire_box.size.x <= 0.25 and fire_box.size.y <= 0.25)
 
 	check("all nine effects landed under the stage with no error raised",
 		stage.get_child_count() == 9)

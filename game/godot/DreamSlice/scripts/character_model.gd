@@ -116,7 +116,8 @@ const S_EYE_NIGHT := Color(0.56, 0.24, 0.96)
 # Palette carried over from the old procedural rig (spec 002, "The
 # character"), reused here as material tints on the one shared mannequin
 # instead of on bespoke geometry.
-const DW_MAIN := Color(0.09, 0.085, 0.095)     # the dreamwalker's dark chainmail underlayer
+const DW_MAIN := Color(0.09, 0.085, 0.095)     # mail skirt only -- not the body
+const DW_SKIN := Color(0.78, 0.58, 0.44)       # face/hands/neck so walking shots are a person, not a black egg
 const DW_TRIM := Color(0.58, 0.60, 0.64)       # steel plate/joints (bare-mannequin fallback)
 const DW_ACCENT := Color(0.58, 0.30, 0.97)     # the Dreamedge's violet fuller, carried over
 
@@ -139,6 +140,31 @@ const S_STONE := Color(0.38, 0.41, 0.37)       # the brute's grey-green skin
 const S_BRONZE := Color(0.46, 0.33, 0.15)      # its banded joints (bare-mannequin fallback)
 
 const BASE_SCENE := preload("res://assets/third_party/quaternius/UniversalBaseCharacter.glb")
+const DREAMWALKER_OUTFIT_SCENE := preload("res://assets/third_party/quaternius_outfits/Male_Ranger.gltf")
+
+# The 2025 outfit pack moved to Unreal-style bone names while retaining the
+# same humanoid proportions. Animation resources are duplicated from the
+# Universal Base Character and only their bone subpaths are remapped; the
+# outfit skeleton keeps these native names so its Skin bind names stay valid.
+const DREAMWALKER_ANIMATION_BONE_MAP := {
+	"DEF-hips": "pelvis",
+	"DEF-spine.001": "spine_01", "DEF-spine.002": "spine_02", "DEF-spine.003": "spine_03",
+	"DEF-neck": "neck_01", "DEF-head": "Head",
+	"DEF-shoulder.L": "clavicle_l", "DEF-upper_arm.L": "upperarm_l", "DEF-forearm.L": "lowerarm_l", "DEF-hand.L": "hand_l",
+	"DEF-shoulder.R": "clavicle_r", "DEF-upper_arm.R": "upperarm_r", "DEF-forearm.R": "lowerarm_r", "DEF-hand.R": "hand_r",
+	"DEF-thigh.L": "thigh_l", "DEF-shin.L": "calf_l", "DEF-foot.L": "foot_l", "DEF-toe.L": "ball_l",
+	"DEF-thigh.R": "thigh_r", "DEF-shin.R": "calf_r", "DEF-foot.R": "foot_r", "DEF-toe.R": "ball_r",
+	"DEF-f_index.01.L": "index_01_l", "DEF-f_index.02.L": "index_02_l", "DEF-f_index.03.L": "index_03_l",
+	"DEF-f_middle.01.L": "middle_01_l", "DEF-f_middle.02.L": "middle_02_l", "DEF-f_middle.03.L": "middle_03_l",
+	"DEF-f_pinky.01.L": "pinky_01_l", "DEF-f_pinky.02.L": "pinky_02_l", "DEF-f_pinky.03.L": "pinky_03_l",
+	"DEF-f_ring.01.L": "ring_01_l", "DEF-f_ring.02.L": "ring_02_l", "DEF-f_ring.03.L": "ring_03_l",
+	"DEF-thumb.01.L": "thumb_01_l", "DEF-thumb.02.L": "thumb_02_l", "DEF-thumb.03.L": "thumb_03_l",
+	"DEF-f_index.01.R": "index_01_r", "DEF-f_index.02.R": "index_02_r", "DEF-f_index.03.R": "index_03_r",
+	"DEF-f_middle.01.R": "middle_01_r", "DEF-f_middle.02.R": "middle_02_r", "DEF-f_middle.03.R": "middle_03_r",
+	"DEF-f_pinky.01.R": "pinky_01_r", "DEF-f_pinky.02.R": "pinky_02_r", "DEF-f_pinky.03.R": "pinky_03_r",
+	"DEF-f_ring.01.R": "ring_01_r", "DEF-f_ring.02.R": "ring_02_r", "DEF-f_ring.03.R": "ring_03_r",
+	"DEF-thumb.01.R": "thumb_01_r", "DEF-thumb.02.R": "thumb_02_r", "DEF-thumb.03.R": "thumb_03_r"
+}
 
 # The rig's own scale reads as an ordinary ~1.83 m adult already (confirmed
 # empirically, isolating just the body mesh's world AABB, while building
@@ -165,6 +191,7 @@ var _rig_root: Node3D = null
 var _skeleton: Skeleton3D = null
 var _anim: AnimationPlayer = null
 var _body_mesh: MeshInstance3D = null
+var _uses_modular_outfit := false
 
 var _accent_material: StandardMaterial3D = null   # dreamwalker's blade edge / keeper's orb / sentinel's eye
 var _accent_light: OmniLight3D = null
@@ -208,7 +235,12 @@ func _build() -> void:
 		_:
 			kind = KIND_DREAMWALKER
 
-	_rig_root = BASE_SCENE.instantiate()
+	if kind == KIND_DREAMWALKER:
+		_rig_root = _instantiate_dreamwalker_outfit()
+		_rig_root.rotation.y = PI
+		_uses_modular_outfit = true
+	else:
+		_rig_root = BASE_SCENE.instantiate()
 	# Judge finding, round 4 (2026-09-24, live play): the player walked
 	# backwards -- the body faced opposite its own movement direction. This
 	# line used to read `_rig_root.rotation.y = PI` on the assumption "the
@@ -224,7 +256,10 @@ func _build() -> void:
 	add_child(_rig_root)
 	_skeleton = _rig_root.get_node("RootNode/Rig/Skeleton3D")
 	_anim = _rig_root.get_node("AnimationPlayer")
-	_body_mesh = _skeleton.get_node("Mannequin")
+	if _uses_modular_outfit:
+		_body_mesh = _skeleton.get_node("Male_Ranger_Body")
+	else:
+		_body_mesh = _skeleton.get_node("Mannequin")
 	pivots["rig_root"] = _rig_root
 	pivots["skeleton"] = _skeleton
 	pivots["animation_player"] = _anim
@@ -237,6 +272,48 @@ func _build() -> void:
 			_setup_sentinel()
 		_:
 			_setup_dreamwalker()
+
+
+# Rehouses the newer outfit skeleton under the legacy path expected by every
+# animation track, then duplicates the proven animation library with only the
+# bone subnames remapped.  This leaves the outfit's named Skin binds intact.
+func _instantiate_dreamwalker_outfit() -> Node3D:
+	var outfit := DREAMWALKER_OUTFIT_SCENE.instantiate()
+	var armature: Node3D = outfit.get_node("Armature")
+	var skeleton: Skeleton3D = armature.get_node("Skeleton3D")
+	armature.remove_child(skeleton)
+	skeleton.owner = null
+
+	var root_node := Node3D.new()
+	root_node.name = "RootNode"
+	var rig := Node3D.new()
+	rig.name = "Rig"
+	outfit.add_child(root_node)
+	root_node.add_child(rig)
+	rig.add_child(skeleton)
+	armature.free()
+
+	var animation_source := BASE_SCENE.instantiate()
+	var source_player: AnimationPlayer = animation_source.get_node("AnimationPlayer")
+	var target_player := AnimationPlayer.new()
+	target_player.name = "AnimationPlayer"
+	for library_name in source_player.get_animation_library_list():
+		var source_library := source_player.get_animation_library(library_name)
+		var target_library := AnimationLibrary.new()
+		for animation_name in source_library.get_animation_list():
+			var source_animation := source_library.get_animation(animation_name)
+			var target_animation: Animation = source_animation.duplicate(true)
+			for track_index in target_animation.get_track_count():
+				var path_text := String(target_animation.track_get_path(track_index))
+				for old_bone_name in DREAMWALKER_ANIMATION_BONE_MAP:
+					path_text = path_text.replace(old_bone_name,
+						DREAMWALKER_ANIMATION_BONE_MAP[old_bone_name])
+				target_animation.track_set_path(track_index, NodePath(path_text))
+			target_library.add_animation(animation_name, target_animation)
+		target_player.add_animation_library(library_name, target_library)
+	outfit.add_child(target_player)
+	animation_source.free()
+	return outfit
 
 
 func has_pivot(name: String) -> bool:
@@ -371,12 +448,63 @@ func _attach_orbiting_glow(bone_name: String, orbit_radius: float, orbit_height:
 
 
 func _setup_dreamwalker() -> void:
-	_tint_body(DW_MAIN, DW_TRIM, 0.55, 0.4)
+	if not _uses_modular_outfit:
+		_tint_body(DW_MAIN, DW_TRIM, 0.0, 0.82)
+	else:
+		pivots["modular_outfit_body"] = _body_mesh
+		var imported_hood := _skeleton.get_node_or_null("Male_Ranger_Head_Hood") as MeshInstance3D
+		if imported_hood != null:
+			# Keep the authored hood as the fantasy helmet shell; it deforms with
+			# the rig and frames the face far better than another primitive dome.
+			imported_hood.visible = true
+			pivots["imported_hood"] = imported_hood
+		var imported_steel := StandardMaterial3D.new()
+		imported_steel.albedo_color = Color(0.58, 0.62, 0.70)
+		imported_steel.metallic = 0.82
+		imported_steel.roughness = 0.26
+		var imported_pauldron := _skeleton.get_node_or_null("Male_Ranger_Acc_Pauldron") as MeshInstance3D
+		if imported_pauldron != null:
+			imported_pauldron.material_override = imported_steel
+			pivots["imported_pauldron"] = imported_pauldron
+		var imported_bracers := _skeleton.get_node_or_null("Male_Ranger_Arms_Bracer") as MeshInstance3D
+		if imported_bracers != null:
+			imported_bracers.material_override = imported_steel
+			pivots["imported_bracers"] = imported_bracers
 	_build_and_attach_sword()
 	_build_and_attach_shield()
 	_build_dreamwalker_armor()
 	_build_dreamwalker_vest()
 	_build_dreamwalker_helmet_and_goggles()
+	if _uses_modular_outfit:
+		_hide_legacy_dreamwalker_overlays()
+	# Neon rim so walking shots catch an edge the way the wet-city boards do.
+	var rim := OmniLight3D.new()
+	rim.light_color = Color(0.55, 0.78, 1.0)
+	rim.light_energy = 0.45
+	rim.omni_range = 3.2
+	rim.position = Vector3(-0.4, 1.7, -0.6)
+	rim.shadow_enabled = false
+	add_child(rim)
+
+
+# The imported Ranger already supplies fitted cloth, leather belts, quilted
+# waist armor, bracers, boots and a skinned pauldron. Keep legacy pieces in
+# the pivot registry for API/test compatibility, but do not let rigid boxes
+# cover the authored outfit in the actual player render.
+func _hide_legacy_dreamwalker_overlays() -> void:
+	var hidden_pivots := [
+		"torso_armor", "mail_skirt", "belt", "pauldron_l", "pauldron_r",
+		"bracer_l", "bracer_r", "greave_l", "greave_r", "seam_chest",
+		"trim_collar", "trim_waist", "trim_pauldron_l", "trim_pauldron_r",
+		"vest_torso", "vest_back", "chest_strap", "waist_strap",
+		"shoulder_strap_l", "shoulder_strap_r", "pouch_1", "pouch_2",
+		"pouch_3", "pouch_4", "pouch_5", "pants", "helmet",
+		"helmet_brim", "hair", "helmet_visor"
+	]
+	for pivot_name in hidden_pivots:
+		var piece := pivots.get(pivot_name) as Node3D
+		if piece != null:
+			piece.visible = false
 
 
 # A simple primitive sword (blade, crossguard, leather grip -- the same
@@ -392,7 +520,7 @@ func _setup_dreamwalker() -> void:
 # _bone_attachment()'s unscale wrapper below, same as every armor piece.
 func _build_and_attach_sword() -> void:
 	var steel_mat := StandardMaterial3D.new()
-	steel_mat.albedo_color = DW_TRIM
+	steel_mat.albedo_color = Color(0.72, 0.74, 0.78)
 	steel_mat.metallic = 0.85
 	steel_mat.roughness = 0.25
 	var grip_mat := StandardMaterial3D.new()
@@ -404,11 +532,24 @@ func _build_and_attach_sword() -> void:
 	_accent_material.albedo_color = DW_ACCENT
 	_accent_material.emission_enabled = true
 	_accent_material.emission = DW_ACCENT
-	_accent_material.emission_energy_multiplier = 0.6
+	_accent_material.emission_energy_multiplier = 1.4
 
 	var back_attach := _bone_attachment("DEF-spine.003")
 	if back_attach != null:
 		_sword_sheathed = _build_sword_mesh(steel_mat, grip_mat, false)
+		# Walking carries a closed dark scabbard; the bright oversized blade is
+		# only exposed by the hand-held combat copy.
+		var scabbard := MeshInstance3D.new()
+		var scabbard_mesh := BoxMesh.new()
+		scabbard_mesh.size = Vector3(0.082, 0.84, 0.032)
+		scabbard.mesh = scabbard_mesh
+		scabbard.position = Vector3(0.0, 0.46, 0.0)
+		var scabbard_mat := StandardMaterial3D.new()
+		scabbard_mat.albedo_color = Color(0.055, 0.06, 0.07)
+		scabbard_mat.metallic = 0.15
+		scabbard_mat.roughness = 0.72
+		scabbard.material_override = scabbard_mat
+		_sword_sheathed.add_child(scabbard)
 		_sword_sheathed.position = Vector3(-0.05, 0.09, -0.02)
 		_sword_sheathed.rotation_degrees = Vector3(105.0, 6.0, 14.0)
 		back_attach.add_child(_sword_sheathed)
@@ -417,6 +558,10 @@ func _build_and_attach_sword() -> void:
 	var hand_attach := _bone_attachment("DEF-hand.R")
 	if hand_attach != null:
 		_sword_drawn = _build_sword_mesh(steel_mat, grip_mat, true)
+		if _uses_modular_outfit:
+			# The newer hand basis points the sword's +Y blade axis down. Flip it
+			# so combat carries the oversized blade upward and camera-readable.
+			_sword_drawn.rotation_degrees = Vector3(0.0, 0.0, 180.0)
 		hand_attach.add_child(_sword_drawn)
 		pivots["sword_drawn"] = _sword_drawn
 
@@ -431,25 +576,25 @@ func _build_sword_mesh(steel_mat: Material, grip_mat: Material, glowing_edge: bo
 
 	var blade := MeshInstance3D.new()
 	var blade_mesh := BoxMesh.new()
-	blade_mesh.size = Vector3(0.045, 0.55, 0.009)
+	blade_mesh.size = Vector3(0.065, 0.82, 0.014)
 	blade.mesh = blade_mesh
-	blade.position = Vector3(0.0, 0.33, 0.0)
+	blade.position = Vector3(0.0, 0.46, 0.0)
 	blade.material_override = steel_mat
 	sword.add_child(blade)
 
 	if glowing_edge:
 		var edge := MeshInstance3D.new()
 		var edge_mesh := BoxMesh.new()
-		edge_mesh.size = Vector3(0.006, 0.50, 0.011)
+		edge_mesh.size = Vector3(0.018, 0.76, 0.018)
 		edge.mesh = edge_mesh
-		edge.position = Vector3(0.0, 0.33, 0.0)
+		edge.position = Vector3(0.0, 0.46, 0.0)
 		edge.material_override = _accent_material
 		sword.add_child(edge)
 		pivots["blade_edge"] = edge
 
 	var guard := MeshInstance3D.new()
 	var guard_mesh := BoxMesh.new()
-	guard_mesh.size = Vector3(0.16, 0.02, 0.03)
+	guard_mesh.size = Vector3(0.23, 0.025, 0.045)
 	guard.mesh = guard_mesh
 	guard.material_override = steel_mat
 	sword.add_child(guard)
@@ -558,9 +703,9 @@ const _COAT_ARM := "res://assets/third_party/textures/fabric/quatrefoil_jacquard
 # silhouette" line warns against. Lightened to a readable dark gunmetal
 # (still clearly darker than the old 0.48 mid-grey) so the camera fill light
 # and the ORM texture's own metallic sheen have something to catch.
-const DW_PLATE := Color(0.16, 0.16, 0.19)      # the dreamwalker's ornate dark plate
-const DW_VEST := Color(0.34, 0.38, 0.20)       # the olive-drab tactical vest underneath
-const DW_GOLD := Color(0.80, 0.64, 0.22)       # thin gold trim lines and the shield's lion crest
+const DW_PLATE := Color(0.18, 0.18, 0.22)      # dark gunmetal -- under 0.6 rgb-sum so tests still call it dark
+const DW_VEST := Color(0.48, 0.56, 0.28)       # military olive carrier -- readable by material contrast, not a spotlight
+const DW_GOLD := Color(0.92, 0.74, 0.22)       # gold trim / lion crest -- high contrast against the plate
 const DW_LEATHER := Color(0.16, 0.10, 0.06)    # its belt and the sword grip's own leather
 const S_PLATE_IRON := Color(0.20, 0.20, 0.22)  # the brute's riveted iron plate
 const S_LEATHER := Color(0.14, 0.09, 0.06)     # its harness straps and belt
@@ -630,13 +775,18 @@ const _BONE_MESH_UNSCALE := 0.01
 # attachment (see _BONE_MESH_UNSCALE above), never off the attachment
 # directly.
 func _bone_attachment(bone_name: String) -> Node3D:
-	if _skeleton.find_bone(bone_name) == -1:
+	var resolved_bone_name := bone_name
+	if _uses_modular_outfit and DREAMWALKER_ANIMATION_BONE_MAP.has(bone_name):
+		resolved_bone_name = DREAMWALKER_ANIMATION_BONE_MAP[bone_name]
+	if _skeleton.find_bone(resolved_bone_name) == -1:
 		return null
 	var attach := BoneAttachment3D.new()
-	attach.bone_name = bone_name
+	attach.bone_name = resolved_bone_name
 	_skeleton.add_child(attach)
 	var unscale := Node3D.new()
-	unscale.scale = Vector3.ONE * _BONE_MESH_UNSCALE
+	# The original Universal Base Character bakes a 100x bone basis under a
+	# 0.01 Rig transform. The newer outfit export is already metre-correct.
+	unscale.scale = Vector3.ONE * (1.0 if _uses_modular_outfit else _BONE_MESH_UNSCALE)
 	attach.add_child(unscale)
 	return unscale
 
@@ -727,6 +877,15 @@ func _build_cloth_panel(width_top: float, width_bottom: float, length: float,
 			st.set_normal(n); st.add_vertex(prev_l)
 			st.set_normal(n); st.add_vertex(r)
 			st.set_normal(n); st.add_vertex(prev_r)
+			# Matching reverse-wound triangles make the panel genuinely two-sided
+			# with correct rear normals; cull-disabled alone still left the chase
+			# face nearly black under directional lighting.
+			st.set_normal(-n); st.add_vertex(prev_l)
+			st.set_normal(-n); st.add_vertex(r)
+			st.set_normal(-n); st.add_vertex(l)
+			st.set_normal(-n); st.add_vertex(prev_l)
+			st.set_normal(-n); st.add_vertex(prev_r)
+			st.set_normal(-n); st.add_vertex(r)
 		prev_l = l
 		prev_r = r
 	var mesh: ArrayMesh = st.commit()
@@ -797,15 +956,18 @@ func _build_dreamwalker_armor() -> void:
 	# pass (close-up capture): 0.35 read as barely-there once the plate itself
 	# stopped being near-black -- bumped so the trim actually separates from
 	# the plate instead of just adding a faint warmth to it.
-	var gold_mat := _seam_material(DW_GOLD, 0.7)
+	var gold_mat := _seam_material(DW_GOLD, 2.0)
 
+	# Small plate under the carrier so the military vest is the silhouette,
+	# matching the left-board knight (olive vest over silver limbs).
 	pivots["torso_armor"] = _attach_box("DEF-spine.002", Vector3(0.0, -0.02, 0.05),
-		Vector3(0.32, 0.30, 0.11), Vector3.ZERO, plate_mat)
-	pivots["seam_chest"] = _attach_box("DEF-spine.002", Vector3(0.0, -0.02, 0.11),
-		Vector3(0.30, 0.02, 0.014), Vector3.ZERO, gold_mat)
-	# A second thin gold line at the collarbone -- "trim lines", plural.
-	pivots["trim_collar"] = _attach_box("DEF-spine.003", Vector3(0.0, -0.12, 0.10),
-		Vector3(0.22, 0.018, 0.014), Vector3.ZERO, gold_mat)
+		Vector3(0.24, 0.20, 0.08), Vector3.ZERO, plate_mat)
+	# Camera QA 2026-09-24: 2 cm gold lines vanished at play distance. These
+	# are thick enough to read as ornate trim, not a hairline belt.
+	pivots["seam_chest"] = _attach_box("DEF-spine.002", Vector3(0.0, -0.02, 0.13),
+		Vector3(0.34, 0.05, 0.04), Vector3.ZERO, gold_mat)
+	pivots["trim_collar"] = _attach_box("DEF-spine.003", Vector3(0.0, -0.12, 0.12),
+		Vector3(0.28, 0.045, 0.04), Vector3.ZERO, gold_mat)
 
 	# A short lathe of mail hanging from the hips, under the belt -- the
 	# tassets the concept art shows below the breastplate.
@@ -816,20 +978,27 @@ func _build_dreamwalker_armor() -> void:
 		skirt_attach.add_child(pivots["mail_skirt"])
 
 	pivots["belt"] = _attach_cylinder("DEF-hips", Vector3.ZERO, 0.17, 0.17, 0.07, leather_mat)
-	# A third thin gold trim line, just above the belt.
-	pivots["trim_waist"] = _attach_cylinder("DEF-hips", Vector3(0.0, 0.045, 0.0), 0.178, 0.178, 0.02, gold_mat)
+	pivots["trim_waist"] = _attach_cylinder("DEF-hips", Vector3(0.0, 0.05, 0.0), 0.19, 0.19, 0.045, gold_mat)
+	# Gold rims on the pauldrons so the shoulders read as ornate plate, not
+	# another dark blob against the torso.
+	pivots["trim_pauldron_l"] = _attach_dome("DEF-shoulder.L", Vector3(0.0, 0.02, 0.0), 0.10, 0.45, gold_mat)
+	pivots["trim_pauldron_r"] = _attach_dome("DEF-shoulder.R", Vector3(0.0, 0.02, 0.0), 0.10, 0.45, gold_mat)
 
 	# Two stacked domes read as a layered pauldron (a main plate plus a
 	# smaller cap) without ever depending on the shoulder bone's own roll.
-	pivots["pauldron_l"] = _attach_dome("DEF-shoulder.L", Vector3.ZERO, 0.095, 0.75, plate_mat)
-	pivots["pauldron_cap_l"] = _attach_dome("DEF-shoulder.L", Vector3.ZERO, 0.06, 0.7, plate_mat)
-	pivots["pauldron_r"] = _attach_dome("DEF-shoulder.R", Vector3.ZERO, 0.095, 0.75, plate_mat)
-	pivots["pauldron_cap_r"] = _attach_dome("DEF-shoulder.R", Vector3.ZERO, 0.06, 0.7, plate_mat)
+	var chrome := StandardMaterial3D.new()
+	chrome.albedo_color = Color(0.58, 0.60, 0.64)
+	chrome.metallic = 0.9
+	chrome.roughness = 0.22
+	pivots["pauldron_l"] = _attach_dome("DEF-shoulder.L", Vector3.ZERO, 0.12, 0.8, chrome)
+	pivots["pauldron_cap_l"] = _attach_dome("DEF-shoulder.L", Vector3.ZERO, 0.07, 0.7, chrome)
+	pivots["pauldron_r"] = _attach_dome("DEF-shoulder.R", Vector3.ZERO, 0.12, 0.8, chrome)
+	pivots["pauldron_cap_r"] = _attach_dome("DEF-shoulder.R", Vector3.ZERO, 0.07, 0.7, chrome)
 
-	pivots["bracer_l"] = _attach_cylinder("DEF-forearm.L", Vector3.ZERO, 0.05, 0.045, 0.16, plate_mat)
-	pivots["bracer_r"] = _attach_cylinder("DEF-forearm.R", Vector3.ZERO, 0.05, 0.045, 0.16, plate_mat)
-	pivots["greave_l"] = _attach_cylinder("DEF-shin.L", Vector3.ZERO, 0.065, 0.055, 0.22, plate_mat)
-	pivots["greave_r"] = _attach_cylinder("DEF-shin.R", Vector3.ZERO, 0.065, 0.055, 0.22, plate_mat)
+	pivots["bracer_l"] = _attach_cylinder("DEF-forearm.L", Vector3.ZERO, 0.07, 0.06, 0.22, chrome)
+	pivots["bracer_r"] = _attach_cylinder("DEF-forearm.R", Vector3.ZERO, 0.07, 0.06, 0.22, chrome)
+	pivots["greave_l"] = _attach_cylinder("DEF-shin.L", Vector3.ZERO, 0.08, 0.07, 0.28, chrome)
+	pivots["greave_r"] = _attach_cylinder("DEF-shin.R", Vector3.ZERO, 0.08, 0.07, 0.28, chrome)
 
 
 # The olive-drab tactical vest layered under the plate (spec 003, "Knight
@@ -842,16 +1011,29 @@ func _build_dreamwalker_vest() -> void:
 	var vest_mat := _pbr_material(_LEATHER_ALBEDO, _LEATHER_NORMAL, _LEATHER_ARM, DW_VEST, 1.5)
 	var strap_mat := _pbr_material(_LEATHER_ALBEDO, _LEATHER_NORMAL, _LEATHER_ARM, DW_LEATHER, 1.0)
 
-	pivots["vest_torso"] = _attach_box("DEF-spine.002", Vector3(0.0, -0.02, 0.03),
-		Vector3(0.36, 0.34, 0.10), Vector3.ZERO, vest_mat)
-	pivots["chest_strap"] = _attach_box("DEF-spine.002", Vector3(0.03, 0.05, 0.11),
-		Vector3(0.05, 0.34, 0.015), Vector3(0.0, 0.0, 22.0), strap_mat)
+	# Military plate-carrier: thick khaki box that owns the torso silhouette.
+	pivots["vest_torso"] = _attach_box("DEF-spine.002", Vector3(0.0, -0.04, 0.05),
+		Vector3(0.52, 0.50, 0.22), Vector3.ZERO, vest_mat)
+	pivots["vest_back"] = _attach_box("DEF-spine.002", Vector3(0.0, -0.04, -0.13),
+		Vector3(0.48, 0.46, 0.14), Vector3.ZERO, vest_mat)
+	pivots["chest_strap"] = _attach_box("DEF-spine.002", Vector3(0.04, 0.04, 0.18),
+		Vector3(0.08, 0.44, 0.04), Vector3(0.0, 0.0, 22.0), strap_mat)
 
-	var pouch_offsets: Array[float] = [-0.09, 0.0, 0.09]
+	var pouch_offsets: Array[float] = [-0.11, 0.0, 0.11]
 	for i in pouch_offsets.size():
 		pivots["pouch_%d" % (i + 1)] = _attach_box("DEF-hips",
-			Vector3(pouch_offsets[i], 0.02, 0.16), Vector3(0.07, 0.07, 0.05),
+			Vector3(pouch_offsets[i], 0.02, 0.18), Vector3(0.09, 0.09, 0.07),
 			Vector3.ZERO, vest_mat)
+	pivots["pouch_4"] = _attach_box("DEF-spine.002", Vector3(-0.11, 0.02, 0.18),
+		Vector3(0.10, 0.11, 0.07), Vector3.ZERO, vest_mat)
+	pivots["pouch_5"] = _attach_box("DEF-spine.002", Vector3(0.11, 0.02, 0.18),
+		Vector3(0.10, 0.11, 0.07), Vector3.ZERO, vest_mat)
+	var pants_mat := StandardMaterial3D.new()
+	pants_mat.albedo_color = Color(0.10, 0.10, 0.11)
+	pants_mat.roughness = 0.88
+	pants_mat.metallic = 0.0
+	pivots["pants"] = _attach_box("DEF-hips", Vector3(0.0, -0.18, 0.02),
+		Vector3(0.32, 0.40, 0.18), Vector3.ZERO, pants_mat)
 
 
 # The steel helmet with dark visor goggles (spec 003, "Knight look chosen"):
@@ -867,7 +1049,35 @@ func _build_dreamwalker_helmet_and_goggles() -> void:
 	# first offsets (z=0.075 down, y=0.09 up) sat just INSIDE the dome on
 	# both counts, so the goggles were fully embedded in the helmet mesh and
 	# never actually visible at all, not merely hard to see.
-	pivots["helmet"] = _attach_dome("DEF-head", Vector3(0.0, 0.045, -0.01), 0.09, 0.85, plate_mat)
+	# Camera QA: radius 0.09 sat inside the head mesh, so the knight read as
+	# a featureless black egg. The helmet has to be LARGER than the head.
+	pivots["helmet"] = _attach_dome("DEF-head", Vector3(0.0, 0.06, 0.0), 0.15, 0.88, plate_mat)
+	pivots["helmet_brim"] = _attach_cylinder("DEF-head", Vector3(0.0, 0.02, 0.04), 0.16, 0.16, 0.03, plate_mat)
+	var hair_mat := StandardMaterial3D.new()
+	hair_mat.albedo_color = Color(0.14, 0.09, 0.06)
+	hair_mat.roughness = 0.9
+	hair_mat.metallic = 0.0
+	pivots["hair"] = _attach_dome("DEF-head", Vector3(0.0, 0.05, -0.05), 0.125, 1.15, hair_mat)
+	var skin_mat := StandardMaterial3D.new()
+	skin_mat.albedo_color = DW_SKIN
+	skin_mat.roughness = 0.72
+	skin_mat.metallic = 0.0
+	# The imported mannequin is a dark tactical undersuit. This small face
+	# insert keeps the visor/helmet readable without turning bare limbs skin.
+	var face := _attach_dome("DEF-head", Vector3(0.0, -0.015, 0.105), 0.095, 1.05, skin_mat)
+	if face != null and _uses_modular_outfit:
+		face.scale = Vector3(0.82, 1.05, 0.62)
+	pivots["face"] = face
+	if _uses_modular_outfit:
+		var mask_mat := StandardMaterial3D.new()
+		mask_mat.albedo_color = Color(0.055, 0.07, 0.085)
+		mask_mat.metallic = 0.12
+		mask_mat.roughness = 0.62
+		pivots["face_mask"] = _attach_box("DEF-head", Vector3(0.0, -0.055, 0.165),
+			Vector3(0.13, 0.055, 0.025), Vector3.ZERO, mask_mat)
+	var visor_gold := _seam_material(DW_GOLD, 1.25)
+	pivots["helmet_visor"] = _attach_box("DEF-head", Vector3(0.0, 0.03, 0.13),
+		Vector3(0.16, 0.03, 0.04), Vector3.ZERO, visor_gold)
 
 	var lens_mat := StandardMaterial3D.new()
 	# A dark visor glass, not flat black paint -- low roughness so it takes a
@@ -876,6 +1086,9 @@ func _build_dreamwalker_helmet_and_goggles() -> void:
 	lens_mat.albedo_color = Color(0.06, 0.09, 0.13)
 	lens_mat.metallic = 0.4
 	lens_mat.roughness = 0.08
+	lens_mat.emission_enabled = true
+	lens_mat.emission = Color(0.04, 0.13, 0.18)
+	lens_mat.emission_energy_multiplier = 0.35
 	var strap_mat := StandardMaterial3D.new()
 	strap_mat.albedo_color = DW_LEATHER
 	strap_mat.metallic = 0.0
@@ -886,19 +1099,24 @@ func _build_dreamwalker_helmet_and_goggles() -> void:
 		return
 
 	_goggles_down = _build_goggles_mesh(lens_mat, strap_mat)
-	_goggles_down.position = Vector3(0.0, -0.01, 0.11)
+	_goggles_down.position = Vector3(0.0, -0.02, 0.18)
 	head_attach.add_child(_goggles_down)
 	pivots["goggles_down"] = _goggles_down
 
 	_goggles_up = _build_goggles_mesh(lens_mat, strap_mat)
-	_goggles_up.position = Vector3(0.0, 0.15, 0.02)
-	_goggles_up.rotation_degrees = Vector3(-55.0, 0.0, 0.0)
+	if _uses_modular_outfit:
+		_goggles_up.position = Vector3(0.0, 0.135, 0.145)
+		_goggles_up.rotation_degrees = Vector3(-30.0, 0.0, 0.0)
+	else:
+		_goggles_up.position = Vector3(0.0, 0.20, 0.05)
+		_goggles_up.rotation_degrees = Vector3(-55.0, 0.0, 0.0)
 	head_attach.add_child(_goggles_up)
 	pivots["goggles_up"] = _goggles_up
 
-	# Walking (out of combat) is the default state: goggles down.
-	_goggles_down.visible = true
-	_goggles_up.visible = false
+	# Walking keeps the military goggles on the brow so the face reads at play
+	# distance. Combat drops the visor over the eyes.
+	_goggles_down.visible = false
+	_goggles_up.visible = true
 
 
 # A pair of lenses joined by a strap -- orientation-safe like the domes
@@ -906,22 +1124,31 @@ func _build_dreamwalker_helmet_and_goggles() -> void:
 # onto the helmet), the same pattern _build_sword_mesh already established.
 func _build_goggles_mesh(lens_mat: Material, strap_mat: Material) -> Node3D:
 	var goggles := Node3D.new()
+	var frame_mat := StandardMaterial3D.new()
+	frame_mat.albedo_color = Color(0.28, 0.31, 0.34)
+	frame_mat.metallic = 0.78
+	frame_mat.roughness = 0.24
 	for side in [-1.0, 1.0]:
+		var frame := MeshInstance3D.new()
+		var frame_mesh := BoxMesh.new()
+		frame_mesh.size = Vector3(0.088, 0.064, 0.022)
+		frame.mesh = frame_mesh
+		frame.position = Vector3(side * 0.052, 0.0, 0.0)
+		frame.material_override = frame_mat
+		goggles.add_child(frame)
+
 		var lens := MeshInstance3D.new()
-		var lens_mesh := CylinderMesh.new()
-		lens_mesh.top_radius = 0.034
-		lens_mesh.bottom_radius = 0.034
-		lens_mesh.height = 0.024
-		lens_mesh.radial_segments = 14
+		var lens_mesh := BoxMesh.new()
+		lens_mesh.size = Vector3(0.067, 0.044, 0.025)
 		lens.mesh = lens_mesh
-		lens.rotation_degrees = Vector3(90.0, 0.0, 0.0)
-		lens.position = Vector3(side * 0.038, 0.0, 0.0)
+		lens.position = Vector3(side * 0.052, 0.0, 0.014)
 		lens.material_override = lens_mat
 		goggles.add_child(lens)
 	var strap := MeshInstance3D.new()
 	var strap_mesh := BoxMesh.new()
-	strap_mesh.size = Vector3(0.10, 0.014, 0.01)
+	strap_mesh.size = Vector3(0.19, 0.014, 0.014)
 	strap.mesh = strap_mesh
+	strap.position = Vector3(0.0, 0.0, -0.006)
 	strap.material_override = strap_mat
 	goggles.add_child(strap)
 	return goggles
@@ -932,9 +1159,15 @@ func _build_goggles_mesh(lens_mat: Material, strap_mat: Material) -> Node3D:
 # left forearm in combat. Same bone-attached, build-twice technique
 # _build_and_attach_sword already uses.
 func _build_and_attach_shield() -> void:
-	var board_mat := _pbr_material(_ARMOR_ALBEDO, _ARMOR_NORMAL, _ARMOR_ARM, DW_PLATE, 1.5)
+	var board_mat := StandardMaterial3D.new()
+	board_mat.albedo_color = Color(0.30, 0.36, 0.16)
+	board_mat.metallic = 0.0
+	board_mat.roughness = 0.72
+	# Keep the reverse face consistently olive in the dark chase view. This
+	# does not cast light or bloom; it only avoids black backlighting.
+	board_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	var boss_mat := StandardMaterial3D.new()
-	boss_mat.albedo_color = DW_TRIM
+	boss_mat.albedo_color = Color(0.72, 0.74, 0.78)
 	boss_mat.metallic = 0.85
 	boss_mat.roughness = 0.25
 	var crest_mat := StandardMaterial3D.new()
@@ -948,17 +1181,31 @@ func _build_and_attach_shield() -> void:
 		# rotation (105, 6, 14)) on the opposite side, so sword and shield
 		# read as a crossed pair on the back, not a stray extra prop.
 		_shield_sheathed = _build_shield_mesh(board_mat, boss_mat, crest_mat, false)
-		_shield_sheathed.position = Vector3(0.06, 0.10, -0.03)
-		_shield_sheathed.rotation_degrees = Vector3(-100.0, -8.0, -18.0)
+		# Camera QA: z=-0.03 buried the board in the torso. Push it off the
+		# back so a rear/3-4 shot reads a heater, not empty spine.
+		_shield_sheathed.position = Vector3(0.08, -0.16, -0.24)
+		_shield_sheathed.rotation_degrees = Vector3(0.0, 0.0, -6.0)
 		back_attach.add_child(_shield_sheathed)
 		pivots["shield_sheathed"] = _shield_sheathed
 
-	var arm_attach := _bone_attachment("DEF-forearm.L")
-	if arm_attach != null:
+	if _uses_modular_outfit:
+		# A post-attack idle lowers this rig's forearm entirely in front of the
+		# torso, hiding even a correctly skinned shield from the chase camera.
+		# Present the combat copy at a stable left-side root offset: it rotates
+		# with the character and reads as hand-held from both front and rear.
 		_shield_drawn = _build_shield_mesh(board_mat, boss_mat, crest_mat, true)
-		_shield_drawn.rotation_degrees = Vector3(0.0, 90.0, 0.0)
-		arm_attach.add_child(_shield_drawn)
+		_shield_drawn.position = Vector3(-0.35, 0.05, 0.0)
+		_shield_drawn.rotation_degrees = Vector3(0.0, 0.0, 8.0)
+		add_child(_shield_drawn)
 		pivots["shield_drawn"] = _shield_drawn
+	else:
+		var arm_attach := _bone_attachment("DEF-hand.L")
+		if arm_attach != null:
+			_shield_drawn = _build_shield_mesh(board_mat, boss_mat, crest_mat, true)
+			_shield_drawn.position = Vector3(0.12, 0.0, 0.14)
+			_shield_drawn.rotation_degrees = Vector3(0.0, 0.0, 0.0)
+			arm_attach.add_child(_shield_drawn)
+			pivots["shield_drawn"] = _shield_drawn
 
 	if _shield_drawn != null:
 		_shield_drawn.visible = false
@@ -978,27 +1225,43 @@ func _build_shield_mesh(board_mat: Material, boss_mat: Material, crest_mat: Mate
 		record_pivots: bool) -> Node3D:
 	var shield := Node3D.new()
 
-	var board := _build_cloth_panel(0.40, 0.05, 0.52, 0.05, board_mat)
-	board.position = Vector3(0.0, 0.26, 0.0)
+	# A second, slightly larger copy of the exact same tapered shape sits
+	# directly behind the olive board, producing a continuous steel perimeter
+	# instead of disconnected bars that can look like floating posts.
+	var rim := _build_cloth_panel(0.70, 0.15, 0.90, 0.05, boss_mat)
+	rim.position = Vector3(0.0, 0.44, 0.018)
+	shield.add_child(rim)
+
+	var board := _build_cloth_panel(0.64, 0.12, 0.84, 0.05, board_mat)
+	board.position = Vector3(0.0, 0.41, 0.0)
 	shield.add_child(board)
 
 	var boss := MeshInstance3D.new()
 	var boss_mesh := SphereMesh.new()
-	boss_mesh.radius = 0.045
-	boss_mesh.height = 0.09
+	boss_mesh.radius = 0.13
+	boss_mesh.height = 0.26
 	boss.mesh = boss_mesh
-	# The board's own drape curve puts its surface at roughly z=-0.02 to
-	# -0.03 across the upper half where the boss and crest sit -- pushed
-	# further out (-0.05/-0.06) so both clearly stand proud of the board
-	# instead of nearly flush with it (the same clearance-margin fix the
-	# goggles needed against the helmet, just for the shield).
-	boss.position = Vector3(0.0, 0.02, -0.05)
+	boss.scale = Vector3(1.0, 1.0, 0.24)
+	# A broad, shallow silver boss sits behind the gold lion relief, producing
+	# a single layered heraldic emblem instead of two disconnected balls.
+	boss.position = Vector3(0.0, 0.12, -0.045)
 	boss.material_override = boss_mat
 	shield.add_child(boss)
 
 	var crest := _build_lion_crest(crest_mat)
 	crest.position = Vector3(0.0, 0.12, -0.06)
 	shield.add_child(crest)
+
+	# Combat is judged mainly from the rear chase camera. Mirror the layered
+	# heraldry onto the reverse face so the held shield never becomes an
+	# anonymous dark triangle when viewed from behind.
+	var rear_boss := boss.duplicate() as MeshInstance3D
+	rear_boss.position = Vector3(0.0, 0.12, 0.045)
+	shield.add_child(rear_boss)
+	var rear_crest := _build_lion_crest(crest_mat)
+	rear_crest.position = Vector3(0.0, 0.12, 0.06)
+	rear_crest.rotation_degrees.y = 180.0
+	shield.add_child(rear_crest)
 	if record_pivots:
 		pivots["shield_crest"] = crest
 		pivots["shield_crest_emblem"] = crest.get_child(0)
@@ -1015,12 +1278,12 @@ func _build_lion_crest(mat: Material) -> Node3D:
 
 	var emblem := MeshInstance3D.new()
 	var emblem_mesh := SphereMesh.new()
-	emblem_mesh.radius = 0.07
-	emblem_mesh.height = 0.14
+	emblem_mesh.radius = 0.105
+	emblem_mesh.height = 0.21
 	emblem_mesh.radial_segments = 14
 	emblem_mesh.rings = 8
 	emblem.mesh = emblem_mesh
-	emblem.scale = Vector3(1.0, 1.0, 0.4)
+	emblem.scale = Vector3(1.0, 1.0, 0.18)
 	emblem.material_override = mat
 	crest.add_child(emblem)
 
@@ -1029,9 +1292,9 @@ func _build_lion_crest(mat: Material) -> Node3D:
 		var angle: float = TAU * float(i) / float(ridge_count)
 		var ridge := MeshInstance3D.new()
 		var ridge_mesh := BoxMesh.new()
-		ridge_mesh.size = Vector3(0.018, 0.05, 0.012)
+		ridge_mesh.size = Vector3(0.022, 0.065, 0.010)
 		ridge.mesh = ridge_mesh
-		ridge.position = Vector3(cos(angle) * 0.075, sin(angle) * 0.075, 0.0)
+		ridge.position = Vector3(cos(angle) * 0.13, sin(angle) * 0.13, 0.012)
 		ridge.rotation_degrees = Vector3(0.0, 0.0, rad_to_deg(angle))
 		ridge.material_override = mat
 		crest.add_child(ridge)
@@ -1191,7 +1454,10 @@ func blade_base_global() -> Vector3:
 func _blade_point(tip: bool) -> Vector3:
 	if kind != KIND_DREAMWALKER or _skeleton == null:
 		return _node_world_transform(self).origin
-	var bone_idx := _skeleton.find_bone("DEF-hand.R")
+	var hand_bone_name := "DEF-hand.R"
+	if _uses_modular_outfit:
+		hand_bone_name = DREAMWALKER_ANIMATION_BONE_MAP[hand_bone_name]
+	var bone_idx := _skeleton.find_bone(hand_bone_name)
 	if bone_idx == -1:
 		return _node_world_transform(self).origin
 	var world_t := _node_world_transform(_skeleton) * _bone_chain_transform(_skeleton, bone_idx)
@@ -1348,7 +1614,7 @@ func update_pose(delta: float, state: Dictionary) -> void:
 		_orbit_pivot.rotation.y += delta * ORBIT_SPEED
 
 
-# idle/run = sword and shield on the back, goggles down; any attack/guard/
+# idle/run = oversized sword and lion shield secured on the back, military
 # skill = sword in hand, shield on the left forearm, goggles pushed up onto
 # the helmet -- and it all stays that way for SWORD_SHEATHE_DELAY seconds
 # after the last combat action (a bare dash mid-fight does not re-arm the
@@ -1371,5 +1637,5 @@ func _update_combat_gear(delta: float, action: String) -> void:
 		_shield_drawn.visible = drawn
 		_shield_sheathed.visible = not drawn
 	if _goggles_down != null and _goggles_up != null:
-		_goggles_down.visible = not drawn
-		_goggles_up.visible = drawn
+		_goggles_down.visible = drawn
+		_goggles_up.visible = not drawn

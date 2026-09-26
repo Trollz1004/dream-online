@@ -437,22 +437,27 @@ static func damage_number(parent: Node3D, pos: Vector3, amount: float, colour: C
 # change with the make of the car.
 static func beam_telegraph(parent: Node3D, from: Vector3, to: Vector3, t: float) -> Node3D:
 	var root := _timed_root(parent, from, 0.12)
-	var diff: Vector3 = to - from
+	var raw_diff: Vector3 = to - from
+	var raw_length: float = raw_diff.length()
+	# Stop the visual shaft before the player/camera bubble. Ending a box at
+	# the chase target projected its near cap as a screen-wide trapezoid.
+	var visual_to: Vector3 = to - raw_diff.normalized() * 1.2 if raw_length > 1.4 else to
+	var diff: Vector3 = visual_to - from
 	var length: float = diff.length()
 	var yaw: float = atan2(diff.x, diff.z) if length > 0.001 else 0.0
 	var progress: float = clampf(t, 0.0, 1.0)
 
 	var line := MeshInstance3D.new()
 	var box := BoxMesh.new()
-	var width: float = lerpf(0.15, 1.1, progress)
-	box.size = Vector3(width, width * 0.7, maxf(length, 0.05))
+	var width: float = lerpf(0.025, 0.06, progress)
+	box.size = Vector3(width, width, maxf(length, 0.05))
 	line.mesh = box
 	line.position = diff * 0.5 + Vector3(0.0, 1.0, 0.0)
 	line.rotation = Vector3(0.0, yaw, 0.0)
 	var material := _emissive_material(TELEGRAPH_WARNING, true, false)
-	material.emission_energy_multiplier = 4.0
+	material.emission_energy_multiplier = 3.5
 	var start_colour: Color = TELEGRAPH_WARNING
-	start_colour.a = 0.3 + 0.5 * progress
+	start_colour.a = 0.10 + 0.20 * progress
 	material.albedo_color = start_colour
 	line.material_override = material
 	root.add_child(line)
@@ -470,17 +475,24 @@ static func beam_telegraph(parent: Node3D, from: Vector3, to: Vector3, t: float)
 # root, punching through and fading fast.
 static func beam_fire(parent: Node3D, from: Vector3, to: Vector3, colour: Color) -> Node3D:
 	var root := _timed_root(parent, from, 0.25)
-	var diff: Vector3 = to - from
+	var raw_diff: Vector3 = to - from
+	var raw_length: float = raw_diff.length()
+	var visual_to: Vector3 = to - raw_diff.normalized() * 1.2 if raw_length > 1.4 else to
+	var diff: Vector3 = visual_to - from
 	var length: float = diff.length()
 	var yaw: float = atan2(diff.x, diff.z) if length > 0.001 else 0.0
 
 	var beam := MeshInstance3D.new()
 	var box := BoxMesh.new()
-	box.size = Vector3(1.1, 0.5, maxf(length, 0.05))
+	box.size = Vector3(0.14, 0.14, maxf(length, 0.05))
 	beam.mesh = box
 	beam.position = diff * 0.5 + Vector3(0.0, 1.0, 0.0)
 	beam.rotation = Vector3(0.0, yaw, 0.0)
 	var material := _emissive_material(colour, true, false)
+	material.emission_energy_multiplier = 8.0
+	var glow: Color = colour
+	glow.a = 0.55
+	material.albedo_color = glow
 	beam.material_override = material
 	root.add_child(beam)
 

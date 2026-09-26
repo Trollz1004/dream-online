@@ -134,7 +134,8 @@ func _wind_up(delta: float, progress: float) -> void:
 	# colour argument: the telegraph is a universal warning, the same amber
 	# regardless of which sentinel is casting it.
 	var eye := _eye_position()
-	Vfx.beam_telegraph(get_parent(), eye, eye + _aim * BEAM_LENGTH, progress)
+	var visual_length := minf(BEAM_LENGTH, global_position.distance_to(player.global_position) + 1.0)
+	Vfx.beam_telegraph(get_parent(), eye, eye + _aim * visual_length, progress)
 
 
 func _fire(delta: float) -> void:
@@ -144,7 +145,8 @@ func _fire(delta: float) -> void:
 		return
 	_resolved = true
 	var eye := _eye_position()
-	Vfx.beam_fire(get_parent(), eye, eye + _aim * BEAM_LENGTH, _beam_colour())
+	var visual_length := minf(BEAM_LENGTH, global_position.distance_to(player.global_position) + 1.0)
+	Vfx.beam_fire(get_parent(), eye, eye + _aim * visual_length, _beam_colour())
 	if _hits_player():
 		player.try_hit(DAMAGE, ATTACK_NAME)
 

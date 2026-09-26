@@ -46,6 +46,7 @@ func run(r) -> void:
 	_test_dreamwalker_wears_ornate_dark_plate_with_gold_trim()
 	_test_dreamwalker_wears_an_olive_drab_tactical_vest()
 	_test_dreamwalker_wears_a_steel_helmet_with_goggles()
+	_test_knight_gear_reads_at_play_distance()
 	_test_dreamwalker_carries_sword_and_shield_on_the_back()
 	_test_shield_has_a_gold_lion_crest()
 	_test_keeper_wears_a_rust_red_coat()
@@ -145,6 +146,16 @@ func _test_build_sets_kind_and_key_pivots() -> void:
 	check("dreamwalker has an animation player", dw.has_pivot("animation_player") and dw.get_pivot("animation_player") != null)
 	check("dreamwalker's animation player knows a light swing",
 		dw._anim.get_animation("Rig|Sword_Attack") != null)
+	check("dreamwalker uses the licensed modular outfit rather than the bare mannequin",
+		dw._uses_modular_outfit and dw.has_pivot("modular_outfit_body"))
+	check("the modular outfit retains its full skinned humanoid skeleton",
+		dw._skeleton.get_bone_count() == 65)
+	check("the authored hood is visible as the fantasy helmet shell",
+		dw.has_pivot("imported_hood") and dw.get_pivot("imported_hood").visible)
+	check("the imported pauldron supplies real silver armor geometry",
+		dw.has_pivot("imported_pauldron") and dw.get_pivot("imported_pauldron").visible)
+	check("the imported bracers supply real limb armor geometry",
+		dw.has_pivot("imported_bracers") and dw.get_pivot("imported_bracers").visible)
 	check("dreamwalker carries a sheathed sword", dw.has_pivot("sword_sheathed") and dw.get_pivot("sword_sheathed") != null)
 	check("dreamwalker carries a drawn sword", dw.has_pivot("sword_drawn") and dw.get_pivot("sword_drawn") != null)
 	check("the sword starts sheathed", dw.get_pivot("sword_sheathed").visible and not dw.get_pivot("sword_drawn").visible)
@@ -194,11 +205,12 @@ func _test_progress_changes_the_pose() -> void:
 	print("a swing's pose changes across its progress")
 	var early = CharacterModelScript.build("dreamwalker")
 	early.update_pose(0.016, {"speed": 0.0, "action": "swing1", "progress": 0.05})
-	var early_rot: Quaternion = early._skeleton.get_bone_pose_rotation(early._skeleton.find_bone("DEF-upper_arm.R"))
+	var arm_bone_name := "upperarm_r" if early._uses_modular_outfit else "DEF-upper_arm.R"
+	var early_rot: Quaternion = early._skeleton.get_bone_pose_rotation(early._skeleton.find_bone(arm_bone_name))
 
 	var late = CharacterModelScript.build("dreamwalker")
 	late.update_pose(0.016, {"speed": 0.0, "action": "swing1", "progress": 0.95})
-	var late_rot: Quaternion = late._skeleton.get_bone_pose_rotation(late._skeleton.find_bone("DEF-upper_arm.R"))
+	var late_rot: Quaternion = late._skeleton.get_bone_pose_rotation(late._skeleton.find_bone(arm_bone_name))
 
 	check("swing1: the right upper arm reads differently at 0.05 and 0.95 progress",
 		not early_rot.is_equal_approx(late_rot))
@@ -393,7 +405,7 @@ func _test_dreamwalker_wears_ornate_dark_plate_with_gold_trim() -> void:
 func _test_dreamwalker_wears_an_olive_drab_tactical_vest() -> void:
 	print("the dreamwalker wears an olive-drab tactical vest with pouches and a strap under the plate")
 	var dw = CharacterModelScript.build("dreamwalker")
-	for piece in ["vest_torso", "chest_strap", "pouch_1", "pouch_2", "pouch_3"]:
+	for piece in ["vest_torso", "vest_back", "chest_strap", "pouch_1", "pouch_2", "pouch_3"]:
 		check("dreamwalker has a %s" % piece, dw.has_pivot(piece) and dw.get_pivot(piece) != null)
 
 	var vest: MeshInstance3D = dw.get_pivot("vest_torso")
@@ -416,12 +428,42 @@ func _test_dreamwalker_wears_a_steel_helmet_with_goggles() -> void:
 	check("the helmet is the same steel plate as the rest of the armor",
 		helmet_mat is ORMMaterial3D and helmet_mat.metallic > 0.5)
 
-	check("walking (out of combat) starts with the goggles down over the eyes",
-		dw.get_pivot("goggles_down").visible and not dw.get_pivot("goggles_up").visible)
+	check("walking (out of combat) starts with the goggles on the brow, face readable",
+		dw.get_pivot("goggles_up").visible and not dw.get_pivot("goggles_down").visible)
 
 	var down: Node3D = dw.get_pivot("goggles_down")
 	check("the goggles are real lens geometry, not a flat placeholder",
 		_collect_mesh_instances(down).size() >= 2)
+	check("the helmet has a brim so it reads as a helmet, not a smooth egg",
+		dw.has_pivot("helmet_brim") and dw.get_pivot("helmet_brim") != null)
+	dw.free()
+
+
+func _test_knight_gear_reads_at_play_distance() -> void:
+	print("knight gear is large and contrasting enough to read at play-camera distance")
+	var dw = CharacterModelScript.build("dreamwalker")
+	var helmet: MeshInstance3D = dw.get_pivot("helmet")
+	var helmet_mesh: SphereMesh = helmet.mesh
+	check("the helmet is larger than the head mesh (radius at least 0.13 m)",
+		helmet_mesh.radius >= 0.13)
+	var vest: MeshInstance3D = dw.get_pivot("vest_torso")
+	var plate: MeshInstance3D = dw.get_pivot("torso_armor")
+	var vest_box: BoxMesh = vest.mesh
+	var plate_box: BoxMesh = plate.mesh
+	check("the olive vest is wider than the breastplate so it peeks at the sides",
+		vest_box.size.x > plate_box.size.x)
+	var gold: MeshInstance3D = dw.get_pivot("seam_chest")
+	var gold_box: BoxMesh = gold.mesh
+	check("chest gold trim is thick enough to read (height at least 4 cm)",
+		gold_box.size.y >= 0.04)
+	var sheathed: Node3D = dw.get_pivot("shield_sheathed")
+	check("the back shield sits off the spine, not buried in the torso",
+		sheathed.position.z <= -0.15)
+	var drawn: Node3D = dw.get_pivot("shield_drawn")
+	check("the combat shield is held off the left hand, not buried at its origin",
+		drawn.position.length() >= 0.15)
+	check("gold pauldron rims exist so shoulders read as ornate plate",
+		dw.has_pivot("trim_pauldron_l") and dw.has_pivot("trim_pauldron_r"))
 	dw.free()
 
 
@@ -431,22 +473,22 @@ func _test_dreamwalker_carries_sword_and_shield_on_the_back() -> void:
 	check("it starts with the sword sheathed and the shield on the back",
 		dw.get_pivot("sword_sheathed").visible and not dw.get_pivot("sword_drawn").visible
 		and dw.get_pivot("shield_sheathed").visible and not dw.get_pivot("shield_drawn").visible)
-	check("and the goggles down over the eyes",
-		dw.get_pivot("goggles_down").visible and not dw.get_pivot("goggles_up").visible)
+	check("and the goggles on the brow so the face reads while walking",
+		dw.get_pivot("goggles_up").visible and not dw.get_pivot("goggles_down").visible)
 
 	dw.update_pose(0.016, {"speed": 0.0, "action": "swing1", "progress": 0.3})
 	check("combat draws the sword and moves the shield to the forearm together",
 		dw.get_pivot("sword_drawn").visible and not dw.get_pivot("sword_sheathed").visible
 		and dw.get_pivot("shield_drawn").visible and not dw.get_pivot("shield_sheathed").visible)
-	check("and pushes the goggles up onto the helmet",
-		dw.get_pivot("goggles_up").visible and not dw.get_pivot("goggles_down").visible)
+	check("and drops the goggles over the eyes as a combat visor",
+		dw.get_pivot("goggles_down").visible and not dw.get_pivot("goggles_up").visible)
 
 	dw.update_pose(CharacterModelScript.SWORD_SHEATHE_DELAY, {"speed": 0.0, "action": "", "progress": 0.0})
 	check("once combat ends and the idle timeout passes, the sword and shield return to the back",
 		dw.get_pivot("sword_sheathed").visible and not dw.get_pivot("sword_drawn").visible
 		and dw.get_pivot("shield_sheathed").visible and not dw.get_pivot("shield_drawn").visible)
-	check("and the goggles come back down",
-		dw.get_pivot("goggles_down").visible and not dw.get_pivot("goggles_up").visible)
+	check("and the goggles return to the brow",
+		dw.get_pivot("goggles_up").visible and not dw.get_pivot("goggles_down").visible)
 	dw.free()
 
 
@@ -598,11 +640,18 @@ func _piece_world_corners(model, piece_root: Node3D) -> Array:
 		if n is Node3D:
 			local_chain = (n as Node3D).transform * local_chain
 		n = n.get_parent()
-	var attach: BoneAttachment3D = n
-	var bone_idx: int = model._skeleton.find_bone(attach.bone_name)
-	var bone_t: Transform3D = model._node_world_transform(model._skeleton) \
-		* model._bone_chain_transform(model._skeleton, bone_idx)
-	var xform: Transform3D = bone_t * local_chain
+	var xform := Transform3D.IDENTITY
+	var attach := n as BoneAttachment3D
+	if attach != null:
+		var bone_idx: int = model._skeleton.find_bone(attach.bone_name)
+		var bone_t: Transform3D = model._node_world_transform(model._skeleton) \
+			* model._bone_chain_transform(model._skeleton, bone_idx)
+		xform = bone_t * local_chain
+	else:
+		# The modular Dreamwalker's combat shield is intentionally rooted on
+		# the character so its post-attack chase silhouette cannot disappear
+		# behind a lowered forearm. local_chain already reaches that root.
+		xform = local_chain
 	var minv := Vector3.INF
 	var maxv := -Vector3.INF
 	for mi in _collect_mesh_instances(piece_root):
@@ -641,7 +690,8 @@ func _test_outfit_pieces_are_reasonably_sized() -> void:
 	print("no outfit piece is oversized enough to swallow the camera")
 	_check_outfit_sizes("dreamwalker", ["torso_armor", "mail_skirt", "belt", "pauldron_l",
 			"bracer_l", "greave_l", "vest_torso", "chest_strap", "pouch_1", "helmet",
-			"goggles_down", "goggles_up", "shield_sheathed", "shield_drawn"], 3.0, 2.5)
+			"helmet_brim", "goggles_down", "goggles_up", "shield_sheathed", "shield_drawn",
+			"trim_pauldron_l", "vest_back"], 3.0, 2.5)
 	_check_outfit_sizes("keeper", ["robe", "collar", "clasp_l", "shoulder_cape_l", "cuff_l",
 			"belt"], 3.0, 2.5)
 	_check_outfit_sizes("sentinel", ["chest_plate", "waist_band", "belt_buckle", "harness_l",
@@ -692,8 +742,10 @@ func _test_model_faces_forward_along_minus_z() -> void:
 			CharacterModelScript.KIND_SENTINEL]:
 		var model = CharacterModelScript.build(kind)
 		var skel: Skeleton3D = model._skeleton
-		var toe_idx := skel.find_bone("DEF-toe.L")
-		var foot_idx := skel.find_bone("DEF-foot.L")
+		var toe_bone_name := "ball_l" if skel.find_bone("ball_l") != -1 else "DEF-toe.L"
+		var foot_bone_name := "foot_l" if skel.find_bone("foot_l") != -1 else "DEF-foot.L"
+		var toe_idx := skel.find_bone(toe_bone_name)
+		var foot_idx := skel.find_bone(foot_bone_name)
 		check("%s has the toe/foot bones this check needs" % kind, toe_idx != -1 and foot_idx != -1)
 		var toe_pos: Vector3 = (model._node_world_transform(skel) * model._bone_chain_transform(skel, toe_idx)).origin
 		var foot_pos: Vector3 = (model._node_world_transform(skel) * model._bone_chain_transform(skel, foot_idx)).origin

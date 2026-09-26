@@ -2156,8 +2156,8 @@ func _build_night_environment() -> void:
 
 	if not OS.has_feature("web"):
 		e.glow_enabled = true
-		e.glow_intensity = 1.1
-		e.glow_bloom = 0.18
+		e.glow_intensity = 0.82
+		e.glow_bloom = 0.08
 		e.glow_hdr_threshold = 1.0
 		e.ssao_enabled = true
 		# The wet street: screen-space reflections, desktop only.
@@ -3132,9 +3132,9 @@ func _civilianize_pedestrian(model: Node3D, coat_mat: Material, body_mat: Materi
 				node.material_override = coat_mat
 	if model.has_pivot("body"):
 		var body := model.get_pivot("body") as MeshInstance3D
-		if body != null:
-			body.set_surface_override_material(0, body_mat)
-			body.set_surface_override_material(1, body_mat)
+		if body != null and body.mesh != null:
+			for surface_index in body.mesh.get_surface_count():
+				body.set_surface_override_material(surface_index, body_mat)
 
 
 # A simple canopy-and-pole umbrella, parented straight onto the model's own
