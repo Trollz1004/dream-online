@@ -78,9 +78,11 @@ Joshua pointed at a player discussion of a long-running combo-driven action game
 - **Defence lives on the skill, not on one button.** Each skill carries a defensive tag: invulnerability frames, super armour, a forward guard, or nothing at all. Choosing the right skill is the defence.
 - **The usual complaint about this family is that nothing is discoverable.** Players cannot see which combinations exist or what each one does. Our answer is a combo list screen that shows every combination in plain words with its defensive tag, and a practice dummy in the test zone to try them against. That screen follows the interface direction in `docs/gdd/09-interface-style.md`: dark see-through panel, three columns, plain words.
 
-### How this is built in Unreal
+### How this is built
 
-Enhanced Input in Unreal 5.8 has a chorded action trigger, which is exactly this shape: Shift and the direction key are the chord, the action key fires it. The input layer can therefore be built in Blueprints with no C++ compiler. The frame data for each skill (startup, active, recovery, cancel windows, invulnerability) still comes from the skill data fields below.
+In Godot, the engine since Joshua's ruling of 2026-09-20: `game/godot/DreamSlice/scripts/combo.gd` resolves a key set to a skill name, with the Shift counted as part of the set, and each skill's frame data (startup, active, recovery, cancel windows, invulnerability) lives in its own state script beside it (`dash_state.gd`, `attack_state.gd`, `heavy_attack_state.gd`, `guard_state.gd`, `lunge_state.gd`, `burst_state.gd`). All of it is plain data and geometry, so the same rules can run on a server later.
+
+The Unreal note that stood here is kept for the parked engine: Enhanced Input in Unreal 5.8 has a chorded action trigger of exactly this shape, Shift and the direction key as the chord and the action key firing it, so the input layer could be built in Blueprints with no C++ compiler.
 
 ## Combat Attributes
 

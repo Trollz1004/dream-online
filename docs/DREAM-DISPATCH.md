@@ -1,6 +1,8 @@
 # DREAM Dispatch
 
-Last updated: 2026-09-25
+Last updated: 2026-09-26
+
+**2026-09-26 evening UTC, Claude judge lane in a cloud checkout (not the Alienware node).** Records only, no game code. An audit of every orientation document against the engine decision, the journal and the code found the same few stale facts echoed across about thirty files: Unreal named as the engine, the retired `D:` drive root, the repository called private, Paperclip's retired port, and test lists short by two scripts. They were fixed on branch `claude/hopeful-cray-0kce1f`, open as pull request 4 for the node lane to land with `git merge --no-ff`. The root `DREAM-DISPATCH.md` duplicate is retired to a pointer, which closes the open question below. Not fixable from the cloud: ten tracked `.gd` files lack `.uid` sidecars (named in the journal entry of the same date); the runbook's landing rule should note the GitHub Actions billing lock. Nothing on the node was touched and the Godot suite was not run there.
 
 **2026-09-25 about 23:30 EDT, Claude judge lane on Alienware.** Ranger look merged (Joshua's pick). GeminEYE pet with demo NEEDs shop (P) and a movable keyboard hotbar with potions and food (1 to 3) merged to `main` at `0c7bf71`, 789 of 789 checks. Next: icon and pet polish, then the melee dagger ranger (archer line second awakening, ruled today).
 
@@ -23,7 +25,7 @@ The playable piece is `game/godot/DreamSlice`: a dash with invulnerability frame
 
 ## CURRENT OWNER
 
-Claude judge lane on Alienware. Ninth session, 2026-09-22, second batch at about 01:40 EDT.
+Claude judge lane on Alienware for game work (the dated entries at the top of this file are newer than the structured sections below, which were last rewritten on 2026-09-22). The 2026-09-26 records pass was done by the Claude judge lane in a cloud checkout.
 
 
 ## LAST VERIFIED STATE
@@ -49,6 +51,8 @@ None stopped or restarted. A local static server was run on port 8099 to check t
 
 ## TEST RESULTS
 
+Latest: 789 of 789 on `main` at `0c7bf71` (2026-09-25, Alienware node). Live NPC Lab `npm test` (ten scripts) and `npm run test:contracts` (eleven contracts) pass in the 2026-09-26 cloud checkout. The paragraph below is the 2026-09-22 result kept for its explanation of the check floor.
+
 `godot --headless --path game/godot/DreamSlice --script res://tests/run_tests.gd`: 149 of 149 pass. The runner fails when fewer checks run than expected, because a GDScript error inside a test function aborts that function silently and the run still exited 0, which hid a whole red suite on 2026-09-20; that floor caught several real mistakes this session (a missing script, a mis-typed variable, a check count off by one) before they could hide the same way.
 
 
@@ -59,8 +63,8 @@ None in the game code. Outside it, unchanged from earlier sessions: GitHub Actio
 
 ## OPEN QUESTIONS
 
-- A second dispatch file exists at the repository root (`DREAM-DISPATCH.md`, from commit `be5b19b`). This file under `docs/` is the one the 2026-09-18 brief names as operational. Codex or Joshua: retire the root copy, or say which one stands.
-- From Codex, 2026-09-19 (handoff `CODEX-TO-FABLE.md` in the drop box): Codex owns the crowdfunding automation in `Trollz1004/ANTIGRAVITY` on Sabretooth and plans `specs/008-crowdfund-game-loops/` there, a specification only, for three game loops: named-NPC gossip, Founder fables and referral memory. Proposed event names, not yet existing anywhere: `npc.name_assigned`, `gossip.message_seeded`, `gossip.message_observed`, `world.fable_recorded`, `world.fable_reference_resolved`, `referral.memory_seeded`, `npc.referral_greeting_delivered`. The spec had not landed when this was written. When it lands, the Alienware Claude lane reviews the event names against the world bus of spec 001, the mapping from backer tiers to naming and fable benefits, and what delivery timing the game can really guarantee. No game code for these loops until then, and only one builder changes game code at a time. Standing fact for any campaign copy: as of 2026-09-19 the game is two local Node prototypes (Live NPC Lab, DreamOps Bridge); there is no Unreal project file and no playable client, so copy must not say these features are live.
+- Answered 2026-09-26: the second dispatch file at the repository root (`DREAM-DISPATCH.md`) is retired to a pointer at this file; this file under `docs/` stands.
+- From Codex, 2026-09-19 (handoff `CODEX-TO-FABLE.md` in the drop box): Codex owns the crowdfunding automation in `Trollz1004/ANTIGRAVITY` on Sabretooth and plans `specs/008-crowdfund-game-loops/` there, a specification only, for three game loops: named-NPC gossip, Founder fables and referral memory. Proposed event names, not yet existing anywhere: `npc.name_assigned`, `gossip.message_seeded`, `gossip.message_observed`, `world.fable_recorded`, `world.fable_reference_resolved`, `referral.memory_seeded`, `npc.referral_greeting_delivered`. The spec had not landed when this was written. When it lands, the Alienware Claude lane reviews the event names against the world bus of spec 001, the mapping from backer tiers to naming and fable benefits, and what delivery timing the game can really guarantee. No game code for these loops until then, and only one builder changes game code at a time. Standing fact for any campaign copy, as of 2026-09-19: the game was two local Node prototypes (Live NPC Lab, DreamOps Bridge) with no playable client. Superseded on 2026-09-20 by the Godot slice; campaign copy may describe only what `STATE.md` records as built, and none of the three gossip, fable and referral loops above exists in the game.
 - Answered: the DREAM stack script is `C:\DREAM\hermes\scripts\dream-stack.ps1`. Its `package.json` wrapper belongs at `C:\DREAM\` and was put back there.
 
 ## DO-NOT-TOUCH
