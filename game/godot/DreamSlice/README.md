@@ -40,6 +40,16 @@ They follow the rulings in `docs/gdd/02-action-combat.md`.
   action key (Q, E, R, F, Z, C, or a mouse button).
 - **A skill without Shift is a different skill**: a direction and F on its own is
   its own combination, and the screen names it when you press it.
+- **Light attack**: left mouse button. **Heavy attack**: right mouse, slower and
+  harder. **Guard**: Q alone, blocks most of a hit but opens you up right after.
+- **Dream Lunge**: hold W and press F. **Nightveil Burst**: R. **Nightfall**: N.
+- **Talk**: E when the screen says Mireth is near.
+- **Pet shop**: P (the GeminEYE looting pet, a demo NEEDs purchase). **Hotbar**:
+  1 to 3 for the red potion, the blue potion and food; the keyboard panel can be
+  dragged.
+
+The on-screen help text in `scripts/hud.gd` is the source of truth when this list
+and the screen disagree.
 
 The dummy winds up for 1.4 seconds, then fires along the line it locked at the
 start of the wind-up. Dash through the beam while the character is bright yellow
@@ -52,9 +62,13 @@ is wide open.
 godot --headless --path game/godot/DreamSlice --script res://tests/run_tests.gd
 ```
 
-87 checks cover the dash frame windows, the stamina and cooldown gates, the
-combo grammar including the rule that the Shift is part of the key set, the
-light attack chain, the world event envelope, and the readout.
+The floor is `MINIMUM_CHECKS` in `tests/run_tests.gd` (789 as of 2026-09-25,
+last run 789 of 789 on `main`). The checks cover the dash frame windows, the
+stamina and cooldown gates, the combo grammar including the rule that the Shift
+is part of the key set, the light attack chain, the heavy attack, the guard, the
+world event envelope, Mireth and her memory link (with the Live NPC Lab down as
+well as up), the demo director, the character model, the environment, the
+side-screen capture, the GeminEYE pet, the keyboard hotbar, and the readout.
 
 The runner also fails when fewer checks run than it expects. A GDScript error
 inside a test function aborts that function and returns here as though nothing
@@ -80,6 +94,11 @@ start of the wind-up, the hit test, and the grammar that decides which key set i
 which skill. All of it is plain data and geometry, so the same rules can run on
 the server later, which is where invulnerability has to be decided.
 
-Placeholder: every shape and colour, the single dummy, and the skills that only
-print their name. Art arrives under the originality rule in
+Real since spec 003 (2026-09-24 and 2026-09-25): a rigged CC0 character with
+animations and the ranger outfit Joshua chose, CC0 ground textures, trees and
+ruins, a ridged mountain, and the Night Dream city with rain, crowds and traffic
+(`assets/third_party/LICENSES.md` names every source). Still placeholder: the
+hotbar icons (plain coloured dots), the pet's loot gems and eye, the Sentinel's
+beam and charge orb, the single dummy, and the skills that only print their
+name. Art keeps arriving under the originality rule in
 `docs/gdd/08-day-dreams-night-dreams-world.md`.

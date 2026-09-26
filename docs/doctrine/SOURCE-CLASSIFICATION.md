@@ -15,8 +15,8 @@ Use this file to prevent design drift when agents encounter mixed project materi
 
 | Path / Material | Class | Notes |
 |---|---|---|
-| `docs/doctrine/DREAM-FABLE-CODEX-MASTER-DISPATCH.md` | CANON | Current consolidated founder-directed DREAM doctrine and builder contract. |
-| `DREAM-DISPATCH.md` | ACTIVE DESIGN | Short-lived operational handoff/current-state file. |
+| `docs/doctrine/DREAM-FABLE-CODEX-MASTER-DISPATCH.md` | CANON | Consolidated founder-directed DREAM doctrine and builder contract. Captured before the 2026-09-20 engine decision (Godot 4.7.2, Unreal parked) and the Paperclip-parked reconciliation; read it with its own reconciliation note and `docs/tech/engine-decision-2026-09-20.md`. |
+| `docs/DREAM-DISPATCH.md` | ACTIVE DESIGN | Short-lived operational handoff/current-state file, read with the newest `ops/node/JOURNAL.md` entry. The root `DREAM-DISPATCH.md` was retired to a pointer on 2026-09-26. |
 | Existing GDD/architecture/testing docs | ACTIVE DESIGN | Reconcile against newer founder locks; preserve compatible implementation work. |
 | Kid sledgehammer / Ban Hammer dance GIF | REFERENCE | Tone/comedic timing inspiration; not an engineering requirement by itself. |
 | Coffee Kraken / Claude imagery | REFERENCE | Character/tone/visual inspiration unless promoted to canon later. |

@@ -1,7 +1,7 @@
 # Contributing To DREAM ONLINE
 
-DREAM ONLINE is in private early production. Contributions are welcome only through
-approved tasks, issues, or direct founder assignment.
+DREAM ONLINE is a public repository in early production. Contributions are welcome only
+through approved tasks, issues, or direct founder assignment.
 
 ## Working rules
 

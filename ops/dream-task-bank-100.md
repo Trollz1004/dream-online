@@ -1,5 +1,9 @@
 # Dream ONLINE Task Bank - 100 Pullable Tasks
 
+Status note (2026-09-26): the engine is Godot 4.7.2, so every "after Unreal install" gate
+below is void, and the Godot slice already covers tasks 30 and 40. Read TASKS.md and the
+newest journal entry before taking anything from this bank.
+
 Purpose: keep Codex and Claude supplied with useful Dream ONLINE work without drifting into
 random installs, noisy reports, secrets, classified material, or public-copy risk.
 
@@ -62,7 +66,7 @@ Status tags:
 27. P0 Research - Research modern action-combat onboarding patterns without direct competitor labels.
 28. P0 Ready - Write enemy behavior spec for one starter enemy: idle, patrol, notice, attack, stagger, flee, reset.
 29. P0 Ready - Define PvE damage rules for early prototype: health, armor, poise, stagger, resist, recovery.
-30. P0 Blocked - Implement first combat pawn in Unreal after engine/toolchain installation.
+30. P0 Done (Godot combat slice, game/godot/DreamSlice) - Implement first combat pawn.
 
 ## P0 - World And Level Design
 
@@ -75,7 +79,7 @@ Status tags:
 37. P0 Ready - Create day/night rules for first prototype: visual state, NPC behavior, enemy behavior, resource behavior.
 38. P0 Research - Research open-world streaming constraints for first prototype scale using official Unreal docs only.
 39. P0 Ready - Draft first World Partition plan for later Unreal work: grid types, always-loaded layer, gameplay actors.
-40. P0 Blocked - Build greybox first zone in Unreal after engine install.
+40. P0 Done (Godot slice zone with dummy, NPC and environments) - Build greybox first zone.
 
 ## P1 - Life Skills And Economy
 
@@ -114,7 +118,7 @@ Status tags:
 67. P1 Research - Research official Unreal replication options for large shared worlds and action combat.
 68. P1 Ready - Create network relevancy budget assumptions for players, NPCs, items, resources, and VFX.
 69. P1 Ready - Define suspicious action logs: impossible movement, impossible hits, rapid trade abuse, duplicated item.
-70. P1 Blocked - Implement dedicated server prototype after Unreal source/C++ path is ready.
+70. P1 Blocked - Implement dedicated server prototype on the Godot track when the server spine is specified.
 
 ## P1 - UX, HUD, And Onboarding
 
@@ -208,9 +212,9 @@ Status tags:
 137. P1 Ready - Define character profile JSON: appearance, voice, starter path, life-skill interest, awakening preview, and entitlement-safe cosmetics.
 138. P1 Ready - Draft first character creation UX flow for keyboard/mouse and controller.
 139. P1 Ready - Define software install checklist for Unreal, Visual Studio C++, CMake, Git LFS, and optional art/audio tools.
-140. P1 Blocked - Install Unreal and Visual Studio C++ toolchain after Joshua approves the long interactive install window.
+140. P1 Obsolete - Godot needs no compiler.
 
 ## Pull Order Recommendation
 
-Start with tasks 1-10, then 11-20, then 21-40. Do not start heavy engine work until
-Unreal, Visual Studio C++ tools, and the target engine version are installed and confirmed.
+Start with tasks 1-10, then 11-20, then 21-40. Continue heavy engine work in
+game/godot/DreamSlice, which is unblocked.

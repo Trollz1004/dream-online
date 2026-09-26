@@ -3,12 +3,12 @@ version: 0.2
 source: auth-signin
 description: "Grok CLI (xAI) — CLI/browser login lane. Full model ladder: xAI/Grok, OpenAI, Ollama Cloud/Local, OpenRouter free models."
 owner: sabretooth
-node_id: sabretooth
+node_id: alienware
 cli_command: "grok"
 health_check: "grok --version"
 paperclip_adapter_type: "opencode_local"
 paperclip_adapter_config:
-  cwd: "D:\\CLAUDE's-N-Joshua's-Dream-Online-MMORPG"
+  cwd: "C:\\DREAM\\dream-online"
   model: "xai/grok-3"
 paperclip_alias: "grok"
 opencode_provider: "xai"

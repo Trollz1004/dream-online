@@ -1,6 +1,6 @@
 # Spec 000: Alienware node setup
 
-Status: in progress. Owner: Claude judge lane on Alienware. Source: `ALIENWARE-NODE-SETUP-FOR-CLAUDE.md` and `PROMPT-FOR-ALIENWARE-CLAUDE-2026-09-18.md` in the drop box, both handed over by Joshua on 2026-09-19. Spec 001 is reserved for the world bus and the CrossEyed slice.
+Status: bring-up complete except for the items still unticked in `tasks.md` (T010 and T014, both Joshua's own action at the keyboard; T012, which also needs Joshua's terminal; and T013, the section 49 reconnaissance). Later work moved to specs 001 through 003. Owner: Claude judge lane on Alienware. Source: `ALIENWARE-NODE-SETUP-FOR-CLAUDE.md` and `PROMPT-FOR-ALIENWARE-CLAUDE-2026-09-18.md` in the drop box, both handed over by Joshua on 2026-09-19. Spec 001 is reserved for the world bus and the CrossEyed slice.
 
 ## Outcome
 

@@ -1,5 +1,8 @@
 # DREAM ONLINE Milestone Roadmap
 
+Status note (2026-09-26): this roadmap was written for the Unreal track, and the engine
+has since moved to Godot 4.7.2, where the first playable slice now exists; see STATE.md.
+
 Status: draft
 
 Purpose: keep Dream work sequenced so contracts, docs, prototypes, and future Unreal work
@@ -40,7 +43,8 @@ Primary references:
 
 - `docs/testing/first-playable-acceptance.md`
 - `docs/testing/first-playable-walkthrough.md`
-- `docs/tech/unreal-first-playable-map.md`
+- `game/godot/DreamSlice/README.md`
+- `docs/tech/engine-decision-2026-09-20.md`
 - `game/server/live-npc-lab/data/first-zone.seed.json`
 
 Exit criteria:
@@ -191,6 +195,7 @@ Exit criteria:
 ## Current next best work
 
 1. Validate local Live NPC Lab endpoints when Joshua requests a check pass.
-2. Freeze First Gate scope before installing Unreal.
-3. Install Unreal/Visual Studio/CMake only during an approved long interactive window.
-4. Build movement and one hit-confirm loop before adding more systems.
+2. Continue the next slice work tracked in TASKS.md: icon and pet polish, then the melee
+   dagger ranger's combat.
+3. No engine install is pending; Godot 4.7.2 is already in place on the Alienware node.
+4. Done in the slice: movement, the light attack chain, heavy attack, guard, lunge and burst exist; `docs/gdd/02a-hit-confirm-requirements.md` stays the bar for feel.

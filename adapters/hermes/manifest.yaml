@@ -3,12 +3,12 @@ version: 0.3
 source: local-cli
 description: "Hermes Agent CLI — CEO/operator lane. Full model ladder: OpenAI, Ollama Cloud/Local, OpenRouter, Grok, xAI, Nous, and free models."
 owner: sabretooth
-node_id: sabretooth
+node_id: alienware
 cli_command: "hermes"
 health_check: "hermes --version"
 paperclip_adapter_type: "pi_local"
 paperclip_adapter_config:
-  cwd: "D:\\CLAUDE's-N-Joshua's-Dream-Online-MMORPG"
+  cwd: "C:\\DREAM\\dream-online"
   model: "openai/gpt-5.5-pro"
   thinking: "high"
 paperclip_alias: "hermes"

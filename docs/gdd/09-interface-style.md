@@ -1,7 +1,7 @@
 # Interface style: calm, dark, see-through
 
 Status: founder direction, recorded 2026-09-20 by the Claude judge lane from Joshua's own words and one reference picture
-Audience: Codex, Claude, interface design, Unreal UI work
+Audience: Codex, Claude, interface design, Godot UI work (the engine since 2026-09-20; Unreal is parked)
 
 ## The ruling
 
@@ -22,7 +22,7 @@ The rows in the picture: load recommended settings, window mode, screen resoluti
 
 ## Where it comes from
 
-The picture is from a Blueprint interface template on Fab that the founder saved to his library and is downloading. It is built on Unreal's Common UI, so it needs no C++ compiler. Like every Fab asset it is used inside the Unreal project only and never committed to this public repository; read its licence line before use.
+The picture is from a Blueprint interface template on Fab that the founder saved to his library and is downloading. It is built on Unreal's Common UI, so it needs no C++ compiler. Like every Fab asset it is used inside the Unreal project only and never committed to this public repository; read its licence line before use. Since the engine decision of 2026-09-20 the look is rebuilt in Godot's Control and Theme nodes from this description; the Fab template is reference for the layout only and never enters the Godot project.
 
 ## Same menu, both dreams
 

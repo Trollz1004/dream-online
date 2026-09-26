@@ -10,8 +10,8 @@
   customer-facing mission/benefit framing (FL §496.405 compliance wall applies).
 - **Sup@** — ("Opus" backwards + @) the companion sphere NPC, Destiny-Ghost archetype.
   Orange spark visual. Every player gets one at character creation. Narrator,
-  quest-giver, primary game voice. The ONE NPC powered by real Claude API
-  (Anthropic agent). Per-player persistent memory, levels with the player.
+  quest-giver, primary game voice. The ONE NPC on the real signed-in Claude CLI,
+  never an API key. Per-player persistent memory, levels with the player.
   Monetization: cosmetics/voices only, never power.
 - **THE BAN HAMMER** — Grok-class T2 enforcer NPC. Anti-cheat as visible spectacle
   (bat swing, splatter effect, in-world one-liners). Boss-tier canon roster also
@@ -33,37 +33,33 @@
   write-back.
 
 ## Orchestration
-- **Paperclip** — Mission Control, `http://127.0.0.1:3100`, company
-  `ANTIGRAVITY Marketing Co` (`ANT`). It holds task governance and runs the judge
-  lanes. It does **not** hold Git delivery — only a judge pushes, merges, or
-  deletes. Confirm identity before trusting it: `GET /api/openapi.json` ->
-  `.info.title` must read `Paperclip API`. A port answering is not identity.
+- **Paperclip** — parked. Nothing answers on port 3100. Mission Control is JARVIS
+  on the Sabretooth node, `http://192.168.0.8:9150/` (LAN). Work tracking is Spec
+  Kit specs under `specs/` plus the judge lanes.
 - **OmniRoute** — `:20128` / `:20129`, the authenticated model route for
   harnesses. Judges use their own official CLIs and never route through it.
 - **Ollama** — `:11434`, fail-safe path only, never the default route.
 
 ## Node names
-- **Sabretooth** — this box, and the only node. `C:\` = dev and agent
-  coordination, `C:\ANTIGRAVITY` = the one repo root. `D:\` = the DREAM ONLINE
-  drive (this root), labeled `DREAM ONLINE MMORPG`.
+- **Sabretooth** — `192.168.0.8`. Design, dispatch, and review. `C:\ANTIGRAVITY`
+  is its repo root.
+- **Alienware** — `192.168.0.40`. The game box; the game runs here and never on
+  Sabretooth. Repo root `C:\DREAM\dream-online`. Reached through `drift`.
 
 ## Retired / superseded terms
 These are dead. If a doc, prompt, or agent still asserts one, it is stale
 evidence, not an instruction — report it rather than acting on it.
 - **FCC** — permanently banned. There is no FCC lane, no `~/.claude-fcc` config
   dir, and nothing should listen on `127.0.0.1:8082`. Never reintroduce it.
-- **Agent Hub :3130** — never replaced Paperclip. Paperclip is Mission Control.
-- **T5500** and **9020** — not nodes. There is one node, Sabretooth.
+- **Agent Hub :3130** — never replaced Paperclip, and Paperclip itself is now
+  parked. Mission Control is JARVIS on Sabretooth (see Orchestration above).
+- **T5500** and **9020** — not nodes. There are two nodes, Sabretooth and
+  Alienware.
 - **`E:\` anything** — there has never been an E: drive on this machine. The
   DREAM root moved `D:` -> `E:` -> `F:` -> `D:` across rebuilds, and every doc
   that hardcoded a letter broke silently each time.
 
 ## Finding this root without guessing a letter
-Drive letters move. The label does not:
-
-```powershell
-$root = (Get-Volume | Where-Object FileSystemLabel -eq 'DREAM ONLINE MMORPG').DriveLetter + ":\CLAUDE's-N-Joshua's-Dream-Online-MMORPG"
-```
-
-`DREAM_ROOT` in `.env` should be set from that, not typed in. When a path in
-these docs disagrees with the machine, believe the machine.
+The root is fixed at `C:\DREAM\dream-online` on the Alienware node. `DREAM_ROOT`
+is set to that path. When a path in these docs disagrees with the machine, believe
+the machine.

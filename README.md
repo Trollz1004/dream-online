@@ -56,7 +56,7 @@ If founder access attempts to cross this boundary, the canonical response is:
 ### Live NPC Lab
 
 ```powershell
-cd "D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\server\live-npc-lab"
+cd "C:\DREAM\dream-online\game\server\live-npc-lab"
 npm start
 ```
 
@@ -69,7 +69,7 @@ http://127.0.0.1:9127/health
 ### DreamOps Bridge
 
 ```powershell
-cd "D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\server\dreamops-bridge"
+cd "C:\DREAM\dream-online\game\server\dreamops-bridge"
 npm start
 ```
 
@@ -116,7 +116,7 @@ The logo is a placeholder original mark and can be replaced by commissioned art 
 
 ## Repository status
 
-Private-first until Joshua intentionally makes it public.
+The repository `Trollz1004/dream-online` has been public on GitHub since 2026-09-20, by Joshua's ruling. Founder-only end-game material stays outside this repository.
 
 ---
 

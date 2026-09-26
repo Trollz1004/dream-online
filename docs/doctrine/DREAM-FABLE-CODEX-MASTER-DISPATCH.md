@@ -4,10 +4,12 @@
 **Primary senior builders:** Fable Ultra Code + OpenAI Codex  
 **Primary live-agent runtime:** Hermes  
 **Primary inference fabric:** OmniRoute  
-**Engine direction:** Unreal Engine  
+**Engine direction:** Unreal Engine (superseded 2026-09-20: Godot 4.7.2, see the reconciliation note below)  
 **Purpose:** Build DREAM as a living open-world action MMORPG without architectural drift.
 
 > This document captures the current founder-directed DREAM doctrine from the design sessions. Existing repository systems remain evidence to inspect and reconcile, not material to overwrite blindly.
+
+> Reconciliation note, written by the Claude judge lane on 2026-09-26; the doctrine text below is preserved as written. Two things changed after it was captured. The engine is Godot 4.7.2 since Joshua's ruling of 2026-09-20 (`docs/tech/engine-decision-2026-09-20.md`), with Unreal parked for cinematics and reference: read `UNREAL` in section 23 and "one Unreal test zone" in section 26 as the Godot slice at `game/godot/DreamSlice`, which is where the first vertical slice was built. Paperclip is parked (`docs/DREAM-MASTER-DIRECTIVE.md`, reconciliation header): where section 23 and section 27 say Paperclip for tracking, use Spec Kit specs under `specs/`, the JARVIS approval inbox on Sabretooth, and the judge lanes.
 
 ---
 
@@ -243,7 +245,7 @@ Hermes should normally call OmniRoute, with replaceable providers behind it. Can
 
 Every route needs timeout, health check, retry policy, circuit breaker, fallback and latency/usage telemetry where available. Failure chain should degrade to alternate model → safe fallback → canned response/silence. Combat and economy never wait on inference.
 
-The founder has a local model named `joshlcoleman/CFO-Until-No-Kid-In-Need:latest`; benchmark before assigning it duties.
+The founder has a local Ollama model whose name carries mission language; the name stays in the private drop-box copy of this doctrine, as `docs/DREAM-MASTER-DIRECTIVE.md`'s header already rules, and is not repeated in this public file. Benchmark it before assigning it duties.
 
 ## 21. Real-money separation
 

@@ -1,14 +1,11 @@
 name: Live NPC Lab
 
+# Runs on every push and pull request (no path filter) because it is a required
+# check on main since 2026-09-26: a required check that never reports would block
+# every merge that does not touch the lab. The whole job takes under a minute.
 on:
   push:
-    paths:
-      - "game/server/live-npc-lab/**"
-      - ".github/workflows/live-npc-lab.yml"
   pull_request:
-    paths:
-      - "game/server/live-npc-lab/**"
-      - ".github/workflows/live-npc-lab.yml"
 
 permissions:
   contents: read

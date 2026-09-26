@@ -11,7 +11,7 @@ This is the internal operations layer behind the in-world C0D3X recovery fantasy
 ## Run
 
 ```powershell
-$env:DREAM_ROOT="D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG"
+$env:DREAM_ROOT="C:\DREAM\dream-online"
 cd "$env:DREAM_ROOT\game\server\dreamops-bridge"
 npm start
 ```

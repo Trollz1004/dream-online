@@ -1,5 +1,7 @@
 # Unreal Engine Architecture
 
+**Status note (2026-09-26):** This is a parked Unreal reference, kept for the revisit terms recorded in `docs/tech/engine-decision-2026-09-20.md`. The current implementation is the Godot slice at `game/godot/DreamSlice`.
+
 ## Engine Direction
 
 Target Unreal Engine 5.5 or newer if available. Use UE5 open-world features but prototype with strict scope.
@@ -57,9 +59,9 @@ Prototype target:
 When Unreal is installed:
 
 ```text
-D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\unreal\DreamOnline.uproject
-D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\unreal\Source\DreamOnline\
-D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG\game\unreal\Content\DreamOnline\
+C:\DREAM\dream-online\game\unreal\DreamOnline.uproject
+C:\DREAM\dream-online\game\unreal\Source\DreamOnline\
+C:\DREAM\dream-online\game\unreal\Content\DreamOnline\
 ```
 
 Modules:
