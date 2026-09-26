@@ -82,6 +82,26 @@ production. Stylised is fine; cheap is not. The gameplay, systems and timeline o
   and briefcases on wet crosswalks. The knight wears his goggles down while walking and pushes
   them up in combat. Weapons come to hand only when a fight starts. The Night Dream city needs
   ambient pedestrian crowds for this to read.
+- **Boss scale in the night city** (Joshua, 2026-09-26, one still image and two ten-second
+  generated clips, kept outside the repo at `C:\DREAM\recon\concepts\2026-09-26\`; scale reference
+  only, never gameplay, per his own words "i know we need to make accurate no false game play
+  data"). The still shows the four class looks standing in the rain-lit neon street: the knight in
+  silver plate with the lion-crest shield and a long sword, the archer with a glowing blue
+  high-tech bow and visor, the dark knight (Myth@s) in jagged black-and-red plate with a glowing
+  red spear, and the mage on a rooftop ledge in violet robes with blue spell circles. The usable
+  clip shows Myth@s about three storeys tall in a narrow sign-lined street, the party of four
+  reaching his knee, a red ring telegraph on the ground before a spear slam, a mage's blue beam
+  with a hit number, and a red shockwave the party rides out under blue shield bubbles; the boss
+  bar sits top centre with the name, party frames stack at the left, and the hotbar with cooldown
+  numbers sits at the right. The other clip repeats the boss for six seconds then degenerates into
+  a cartoon kart driver and a respawn dialog, which is a generator artifact that reads as another
+  franchise's mascot, so it is excluded under the originality rule. What the slice takes: a boss
+  class at that scale needs a street-wide telegraph ring, attacks that read from knee height (a
+  slam ring, a sweep arc, an expanding shockwave) on the same wind-up, active, recovery frame model
+  the Sentinel's beam already uses, and a camera that pulls back on a large target; a boss beat
+  wants a narrow street or plaza rather than the wide night-city road; the shield bubbles are the
+  Defender's absorb and the Priest's Obli-type protection, already ruled; the wipe numbers, the
+  respawn dialog and the demo watermark are not taken.
 - Concept art is generated locally in ComfyUI (Z-Image Turbo, Apache 2.0) from generic words
   only. Reference pictures Joshua shares are read for mood, materials and proportion, and are
   never given to a generator or copied.
