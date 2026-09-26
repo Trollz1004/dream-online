@@ -45,17 +45,21 @@ extends SceneTree
 # new gear's own detail at something closer than hand-play distance.
 # The city pass and the knight pass landed in parallel, so the merged floor is
 # 555 + 33 (city) + 67 (knight) = 655.
-# Raised to 722 for the keyboard hotbar panel (judge/skill-keyboard): the
+# 667 + vest_back existence (1) + vest_back size/offset (2) = 670.
+# Raised to 675 for the licensed modular Ranger replacement: active outfit,
+# 65-bone skeleton, authored hood, skinned pauldron and skinned bracers.
+# Raised to 742 for the keyboard hotbar panel (judge/skill-keyboard): the
 # consumables (red/blue potion, food), the panel's grid geometry, its
 # cooldown-fraction/paint-spec mapping, the viewport drag clamp and the saved
 # layout/bindings round trip -- 67 checks in tests/test_keyboard_hotbar.gd on
-# top of 655. Note for whoever runs this next: on this box the suite
-# consistently stops at 472 real checks before reaching this floor, from a
-# pre-existing "Nonexistent function 'build' in base 'GDScript'" failure in
-# player.gd's own character-model construction (scripts/character_model.gd) --
-# present and reproducible across three separate runs before this pass ever
-# touched a file either one owns, so it is not this pass's regression to fix.
-const MINIMUM_CHECKS := 722
+# top of 675. Note for whoever runs this next: on this box the suite
+# consistently stops well short of this floor (472 real checks on a run
+# taken right before this pass, before it had touched a single file either
+# script owns), from a pre-existing "Nonexistent function 'build' in base
+# 'GDScript'" failure in player.gd's own character-model construction
+# (scripts/character_model.gd) -- reproducible across three separate runs
+# and not this pass's regression to fix.
+const MINIMUM_CHECKS := 742
 
 var passed := 0
 var failed := 0
