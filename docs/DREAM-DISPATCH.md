@@ -1,6 +1,8 @@
 # DREAM Dispatch
 
-Last updated: 2026-09-23
+Last updated: 2026-09-25
+
+**2026-09-25 about 21:40 EDT, Claude judge lane on Alienware.** Since the entries below, round two, the day polish, the outfit fix, the Night Dream city life and the chosen knight look were all merged to `main` (head `c5420b8`). A worker's uncommitted Ranger outfit (CC0) was rescued to `judge/prod-outfits-ranger` (`3894728`, 675 of 675 checks) and is waiting on Joshua's choice between it and the knight, which currently reads as a plain black figure at play distance. See the journal entry of the same date.
 
 **2026-09-23 about 16:20 EDT, Claude judge lane on Alienware.** The spec 002 integration card (the demo director and its recording) is merged to `main` as `6570bdd`, 327 of 327 headless checks. The 88-second recording is at `game/godot/DreamSlice/demo/dream-demo.mp4` (ignored by git; rebuild with `game/godot/Record-Demo.cmd`). Known flaw: a 1.5 s pale-orange washout right after the Dream Lunge at about 24 s. Spec 002 has no `tasks.md`; its work list is `integration-card.md`. Waiting on Joshua's view of the video.
 
