@@ -45,7 +45,10 @@ extends SceneTree
 # new gear's own detail at something closer than hand-play distance.
 # The city pass and the knight pass landed in parallel, so the merged floor is
 # 555 + 33 (city) + 67 (knight) = 655.
-const MINIMUM_CHECKS := 655
+# 667 + vest_back existence (1) + vest_back size/offset (2) = 670.
+# Raised to 675 for the licensed modular Ranger replacement: active outfit,
+# 65-bone skeleton, authored hood, skinned pauldron and skinned bracers.
+const MINIMUM_CHECKS := 675
 
 var passed := 0
 var failed := 0
