@@ -2,36 +2,41 @@
 
 This folder contains implementation-facing companion docs for the first playable slice.
 
-Canonical build root: `D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG`
+Canonical build root: `C:\DREAM\dream-online` on the Alienware node (`DREAM_ROOT` resolves there; the older `D:` drive root was folded in and removed on 2026-09-19).
 
-Primary design source of truth remains:
-
-`C:\antigravity\paperclip-tro\projects\PROJECT-2-DREAM-ONLINE.md`
+Primary design source of truth remains the canon document, kept local and ignored by git at `paperclip-tro/projects/PROJECT-2-DREAM-ONLINE.md` under the repo root.
 
 Classified founder-only material remains outside repo in the OneDrive do-not-commit vault. Do not copy it here, into git, into PR bodies, or into public docs.
 
 ## Read Order
 
-1. `CLAUDE.md`
-2. `TASKS.md`
-3. `memory/glossary.md`
-4. `docs/gdd/00-vision.md`
-5. `docs/gdd/00a-first-playable-promise.md`
-6. `docs/gdd/01-vertical-slice.md`
-7. `docs/gdd/01a-first-15-minute-journey.md`
-8. `docs/gdd/02-action-combat.md`
-9. `docs/gdd/03-life-skills-economy.md`
-10. `docs/gdd/04-pvp-flagging-durability.md`
-11. `docs/tech/prototype-architecture.md`
-12. `docs/tech/live-ai-runtime-architecture.md`
-13. `docs/tech/ai-failure-behavior.md`
-14. `docs/tech/local-prototype-ports.md`
-15. `docs/tech/local-command-reference.md`
-16. `docs/tech/c0d3x-world-recovery.md`
-17. `docs/planning/first-playable-risk-register.md`
-18. `docs/testing/test-plan.md`
-19. `docs/testing/first-playable-acceptance-checklist.md`
-20. `docs/testing/live-ai-load-test-plan.md`
+Read the live state first, then the design:
+
+1. `CLAUDE.md` (which loads `AGENTS.md`)
+2. `docs/tech/engine-decision-2026-09-20.md` (Godot 4.7.2; Unreal parked)
+3. `docs/DREAM-DISPATCH.md` and the newest entry of `ops/node/JOURNAL.md`
+4. `STATE.md` and `TASKS.md`
+5. `game/godot/DreamSlice/README.md`
+6. `memory/glossary.md`
+7. `docs/gdd/00-vision.md`
+8. `docs/gdd/00a-first-playable-promise.md`
+9. `docs/gdd/01-vertical-slice.md`
+10. `docs/gdd/01a-first-15-minute-journey.md`
+11. `docs/gdd/02-action-combat.md` (the combo grammar, the five classes and the awakening paths)
+12. `docs/gdd/08-day-dreams-night-dreams-world.md` and `docs/gdd/09-interface-style.md`
+13. `docs/gdd/10-crowdfunding-readiness.md`
+14. `docs/gdd/03-life-skills-economy.md`
+15. `docs/gdd/04-pvp-flagging-durability.md`
+16. `docs/tech/prototype-architecture.md`
+17. `docs/tech/live-ai-runtime-architecture.md`
+18. `docs/tech/ai-failure-behavior.md`
+19. `docs/tech/local-prototype-ports.md`
+20. `docs/tech/local-command-reference.md`
+21. `docs/tech/c0d3x-world-recovery.md`
+22. `docs/planning/first-playable-risk-register.md`
+23. `docs/testing/test-plan.md`
+24. `docs/testing/first-playable-acceptance-checklist.md`
+25. `docs/testing/live-ai-load-test-plan.md`
 
 ## Current Build Strategy
 
@@ -49,7 +54,8 @@ The slice must validate:
 
 ## Implementation Reality
 
-As of the current state note, no game server, game loop, or netcode exists yet. The folders under `game/` are scaffolding until implementation starts.
+As of 2026-09-26: the Godot combat slice under `game/godot/DreamSlice` is real and playable (see `STATE.md` for what it contains and its test floor). The Node services under `game/server` (Live NPC Lab, DreamOps Bridge) are real local prototypes. There is still no server-authoritative game server or netcode; invulnerability is decided on the client, which `docs/gdd/02-action-combat.md` already flags as wrong for player-versus-player and files under later. `game/unreal/` is the parked Unreal test-zone tooling.
+
 ## Day/Night Economy And Market
 
 - `docs/gdd/05-day-night-economy-market.md`: day/night XP rotation, Nightfall monster risk, PvE death EXP loss, level 20 combat shift, booster stacking, pets, Storage Runners, Market Runners, and marketplace requirements.

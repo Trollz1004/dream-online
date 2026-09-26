@@ -11,16 +11,21 @@ Two things were checked at the source rather than assumed, on 2026-09-22:
 
 ## What is actually built right now
 
-Be plain about this with anyone deciding whether to show the slice. As of this session:
+Be plain about this with anyone deciding whether to show the slice. As of 2026-09-26 (the 2026-09-22 state this section first recorded is in git history; every line below was checked against the journal and the code):
 
-- One Godot 4.7.2 vertical slice, `game/godot/DreamSlice`, runs in a window and in a browser, 128 of 128 headless checks passing.
-- One playable body: a capsule with a nose block for facing, no character art. Character visual design is Gemini's lane (`docs/handoffs/GEMINI-CHARACTER-DESIGN-2026-09-20.md`); nothing has landed from it yet.
-- Combat: a dash with invulnerability frames (the real defence, per Joshua's ruling), a three-step light attack chain, and, added this session, one heavy attack on right mouse. That is three working moves out of the roughly eighty the grammar in `02-action-combat.md` makes room for. Every other key combination in that grammar still falls through to a silent "Skill W+F"-style stub: recognised, not built.
-- One enemy: a training dummy that telegraphs a beam and can be perfect-dodged or fought down. One friendly NPC, Mireth, added this session, who says one line when talked to and nothing else; there is no dialogue tree, no quest, no reason to talk to her beyond the line itself.
-- One environment: a single flat field with a procedural sky, scattered stone-block scenery, and, added this session, plain depth fog plus a desktop-only bloom and contact-shadow pass. No ruin shapes, no second biome, no Night Dream. This is a test chamber with atmosphere, not a place.
-- No character creation (design draft only, `docs/gdd/07-character-creation.md`), no classes beyond an implicit unnamed one, no other combat paths (Hammer, Spear, Bow) named in that same draft.
+- One Godot 4.7.2 vertical slice, `game/godot/DreamSlice`, runs in a window and in a browser; the test floor is 789 checks, last run 789 of 789 on `main` (2026-09-25).
+- A real character: a rigged CC0 rig with animations, wearing the hooded ranger outfit Joshua chose on 2026-09-25 over the knight look. The knight and the other class looks are still design (`specs/003-production-look/spec.md`, `docs/gdd/02-action-combat.md`).
+- Combat: the dash with invulnerability frames, a three-step light attack chain, a heavy attack on right mouse, a guard stance on Q, the Dream Lunge and the Nightveil Burst (spec 002). That is six working moves out of the roughly eighty the grammar makes room for; every other key combination still falls through to a stub that prints its name. The hotbar is now a movable keyboard panel with a keycap readout, red and blue potions and food on 1 to 3; its icons are plain coloured dots.
+- One enemy: the Sentinel training dummy that telegraphs a beam and can be perfect-dodged or fought down. One friendly NPC, Mireth, who reacts to the player's perfect dodges and, at Nightfall, recalls them from world memory written to the Live NPC Lab (with a local fallback when the lab is down). There is still no dialogue tree or quest beyond that.
+- A companion: the GeminEYE timed looting pet, bought from a demo NEEDs shop on P (convenience only).
+- Two environments: the Day Dream field (CC0 textures, shaped terrain, wind grass, trees, ruins, a ridged mountain) and the Night Dream city (rain, crowds, traffic, lit windows, wet streets), both with depth fog and a desktop-only bloom and ambient-occlusion pass. Mountains still read pale and the ground plain in places.
+- No character creation (design draft only, `docs/gdd/07-character-creation.md`); the five classes and their awakening paths are ruled in `02-action-combat.md` but only the ranger look exists on the rig.
 - No server: invulnerability is decided on the client, which `02-action-combat.md` already flags as wrong for player-versus-player and files under "later."
-- No captured gif or clip of any of this for campaign use.
+- One captured clip: the 88-second spec 002 recording (`game/godot/Record-Demo.cmd`; the file itself is not committed), with a known 1.5 s pale-orange washout after the Dream Lunge at about 24 s. No recording has been made since the spec 003 look landed.
+
+### What the list below looked like on 2026-09-22, and what has moved since
+
+Items 1 (guard, more of the grammar), 2 (a reason to talk to Mireth), 4 (one more environment beat) and 5 (a captured clip) are done in the forms described above. Item 3, the combo list screen, is still open: the keyboard panel shows keycaps and cooldowns but there is no three-column combo list panel yet. Item 6 stands. The next visible steps, from the 2026-09-25 journal: icon and pet polish, then the melee dagger ranger's combat, then a fresh recording of the production look.
 
 ## What is missing before a backer should see this as "the game"
 
