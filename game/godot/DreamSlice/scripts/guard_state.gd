@@ -45,6 +45,10 @@ func advance(delta: float) -> void:
 	_cooldown_left = maxf(0.0, _cooldown_left - delta)
 
 
+func cooldown_left() -> float:
+	return _cooldown_left
+
+
 func phase() -> String:
 	if _t < 0.0:
 		return "cooling" if _cooldown_left > 0.0 else "ready"

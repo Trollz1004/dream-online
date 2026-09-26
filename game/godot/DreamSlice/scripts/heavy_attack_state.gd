@@ -56,6 +56,10 @@ func take_hit_window() -> bool:
 	return true
 
 
+func cooldown_left() -> float:
+	return _cooldown_left
+
+
 func phase() -> String:
 	if _t < 0.0:
 		return "cooling" if _cooldown_left > 0.0 else "ready"

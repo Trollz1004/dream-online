@@ -45,7 +45,17 @@ extends SceneTree
 # new gear's own detail at something closer than hand-play distance.
 # The city pass and the knight pass landed in parallel, so the merged floor is
 # 555 + 33 (city) + 67 (knight) = 655.
-const MINIMUM_CHECKS := 655
+# Raised to 722 for the keyboard hotbar panel (judge/skill-keyboard): the
+# consumables (red/blue potion, food), the panel's grid geometry, its
+# cooldown-fraction/paint-spec mapping, the viewport drag clamp and the saved
+# layout/bindings round trip -- 67 checks in tests/test_keyboard_hotbar.gd on
+# top of 655. Note for whoever runs this next: on this box the suite
+# consistently stops at 472 real checks before reaching this floor, from a
+# pre-existing "Nonexistent function 'build' in base 'GDScript'" failure in
+# player.gd's own character-model construction (scripts/character_model.gd) --
+# present and reproducible across three separate runs before this pass ever
+# touched a file either one owns, so it is not this pass's regression to fix.
+const MINIMUM_CHECKS := 722
 
 var passed := 0
 var failed := 0
@@ -84,6 +94,7 @@ func _init() -> void:
 	load("res://tests/test_skills_new.gd").new().run(self)
 	load("res://tests/test_demo_director.gd").new().run(self)
 	load("res://tests/test_side_screen.gd").new().run(self)
+	load("res://tests/test_keyboard_hotbar.gd").new().run(self)
 	var ran := passed + failed
 	if ran < MINIMUM_CHECKS:
 		failed += 1
