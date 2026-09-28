@@ -940,7 +940,12 @@ func _dirt_material(tint: Color) -> ORMMaterial3D:
 	m.normal_enabled = true
 	m.normal_texture = load(_DIRT_NORMAL)
 	m.orm_texture = load(_DIRT_ARM)
-	m.uv1_scale = Vector3(1.5, 1.0, 46.0)
+	# UV scale reads x and y (z is for triplanar only): 1.5 repeats across
+	# the 3.4 m track and 52 along its 118 m, square tiles of about 2.3 m.
+	# The old (1.5, 1.0, 46.0) put the 46 on the unused axis, so one tile ran
+	# the whole length of the track and read as long streaks (found by
+	# capture for spec 005, SB-06).
+	m.uv1_scale = Vector3(1.5, 52.0, 1.0)
 	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 	if _day_track_mat == null:
 		_day_track_mat = m

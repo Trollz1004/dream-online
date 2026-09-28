@@ -136,6 +136,9 @@ func _test_web_fallback_nodes_are_actually_built() -> void:
 	check("day web: haze bands stand between the field and the mountains", day.haze_card_count() >= 2)
 	check("day web: the ground blends to its larger tile toward the horizon",
 		float(day.day_ground_material().get_shader_parameter("detail_far_amount")) > 0.0)
+	var track: BaseMaterial3D = day.cart_track_material()
+	check("day: the track's texture tiles along its length, not stretched down all 118 m of it",
+		track.uv1_scale.y > 20.0 and absf(118.0 / track.uv1_scale.y - 3.4 / track.uv1_scale.x) < 1.0)
 	day.free()
 
 	var night = _build("night", true)
