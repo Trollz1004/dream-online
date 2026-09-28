@@ -709,6 +709,9 @@ func show_state(s: Dictionary) -> void:
 			colour = Color(1.0, 0.9, 0.55)
 		colour.a = clampf(1.0 - (age - 1.2) / 0.8, 0.0, 1.0)
 		_event.add_theme_color_override("font_color", colour)
+		# The outline fades with the text, or a fading line reads as black
+		# lettering for its last moments (seen in a spec 005 capture).
+		_event.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, colour.a * 0.9))
 	elif _event.text != "":
 		_event.text = ""
 		_reflow_column()
