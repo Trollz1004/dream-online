@@ -63,7 +63,11 @@ extends SceneTree
 # text-wall sweep, the hero's framing and rim, the dream query string
 # (tests/test_play_screen.gd), the combo list screen checked against a real
 # player (tests/test_combo_list.gd) and the copy check (tests/test_copy.gd).
-const MINIMUM_CHECKS := 1066
+# Raised to 1078 for the pull request 19 review fixes (12 checks): the day
+# web profile's emitter halos on the Sentinel's eye and the pet's eye (9)
+# and the combo list screen clearing the real-slice label (3). The copy
+# check's name list moved from base64 to SHA-256 with the same count.
+const MINIMUM_CHECKS := 1078
 
 var passed := 0
 var failed := 0
