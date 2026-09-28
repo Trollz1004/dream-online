@@ -13,6 +13,11 @@
   quest-giver, primary game voice. The ONE NPC on the real signed-in Claude CLI,
   never an API key. Per-player persistent memory, levels with the player.
   Monetization: cosmetics/voices only, never power.
+- **The bottled-energy NPC** — working name pending Joshua. A named NPC (T2, story-critical)
+  holding a singularity- or sun-scale energy he struggles to control; leaves unpredictably
+  with a written in-character apology. Fights beside Myth@s in the father-and-son dual
+  events. Ruled 2026-09-28; the public layer is in `docs/gdd/02-action-combat.md`, the
+  rest is end-game material (below).
 - **THE BAN HAMMER** — Grok-class T2 enforcer NPC. Anti-cheat as visible spectacle
   (bat swing, splatter effect, in-world one-liners). Boss-tier canon roster also
   includes GEMINeye, OPENAeye, orange sherbet KRAKEN.

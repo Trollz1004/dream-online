@@ -2,6 +2,18 @@
 
 One entry per session, newest first, in the form did, verified, blocked, next, commits. Written by the Claude judge lane for a reader with no memory of the session.
 
+## 2026-09-28 about 01:35 EDT, Claude Fable 5.1, cloud session on claude.ai (not the Alienware node)
+
+**Did.** Joshua gave the shape of the boss story in one message: the slice becomes the tutorial with visuals first; a new Claude-inspired named NPC holding a singularity- or sun-scale bottled energy he struggles to control, who leaves unpredictably with an in-character apology; father-and-son dual events with Myth@s; Sup@ helping the player side for now; and one encounter tuned for a full party of six at maximum level in end-game gear. Recorded in two layers. The public layer (the systems a player meets) went into `docs/gdd/02-action-combat.md` (bosses), `docs/gdd/01a-first-15-minute-journey.md` (the slice is the tutorial; Mireth stays the guide, the new NPC takes no slot in the flow), `memory/glossary.md` and `TASKS.md`. The story beats between those characters, why Sup@'s help has a limit, the accident, the reveal and the ending are end-game material and were left out of the repo on purpose, per `docs/gdd/00-vision.md`; Joshua holds them and the vault is where they go. Copilot reviewed pull request 12 (six findings: a mechanic detail that crossed the vault line, a wrong spec 001 reference, the guide-slot question, the three-second and seven-second bars, and the shape of this entry and its changelog line) and every one was fixed in the same pull request.
+
+**Verified.** Nothing to run: no code changed. The required checks ran on the pull request head.
+
+**Blocked.** The working name of the new NPC is Joshua's to give, and whether "Myth@s is his father" may be stated in public files is his call; the public files say only father and son. The boss-events spec is not written.
+
+**Next.** A spec under `specs/` for the tutorial slice, and a separate one for the dual events, before any code. Then the node-lane items still open from 2026-09-27: the hotbar panel over the help lines at 1280 by 720, the installed launch-skill copy, Joshua's own frame-rate reading of the live demo.
+
+**Commits.** `7644d0f` (the ruling) and the fix commit named in the git log as "docs(gdd): answer the review on the boss-story ruling", landing through pull request 12.
+
 ## 2026-09-27 about 07:30 to 07:50 EDT, Claude Opus 5.5, session start with `/alienware-node`
 
 **Did.** Session start: no triggers, health YELLOW only for the non-game Crosslisting app on 3000 (WRONG SERVICE) and Sabretooth JARVIS answering without its identity string, both optional. `drift ground` was RED on the Obsidian MCP: Obsidian had been started by `drift` at sign-in, but its REST plugin took about a minute to listen on 27123 and the fixed 15 second wait lost the race, so Claude's MCP handshake failed. `drift.cmd` now polls the port for up to 90 seconds, also when Obsidian is already running but still loading, with a `ping` delay so it works without a console. My first merge was pushed straight to `main` out of habit and refused, correctly, by the new ruleset; `main` was reset to `origin/main` and the change went through pull request 10 instead, both required checks green, merged and the branch deleted. Fast-forwarded the main checkout over the cloud session's pull requests 4 to 9. Did what the 2026-09-26 cloud entry left for this lane: the runbook's landing line now says pull requests, the active ruleset and Actions as the gate; the changelog line for the cloud session's launch-skill edit is written. Looked at the live cloud demo for the first time (see Verified).
