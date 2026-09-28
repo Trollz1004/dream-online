@@ -215,6 +215,15 @@ Joshua gave the pet design in one message on 2026-09-28. Recorded here in his sh
 - Players eventually ask him to finish the joke. He stops the cart and answers in character, and the answer is another swerve. The founder's example: "Dirty joke? What is dirty? You make me loot and scoot all day. I'm guessing bedroom, bathroom, kitchen?" Dirty means housework. It never lands anywhere else.
 - The bait lines play only for accounts in the age band the founder sets for them; younger accounts get straight dad jokes and the same silence. Every line is written and approved in the lab's language rules; the lab picks, times and remembers, it does not invent.
 
+**Founder addendum, later on 2026-09-28: who buys the stat, what a skin is, pet death, and the six-month rule.**
+
+- **The stat is bought with in-game currency, by everyone.** A pet with the three boosts above is a shop item priced in in-game currency, open to every player; the stat is the same on every pet, so no pet outranks another. The earnable path the table in `docs/gdd/03-life-skills-economy.md` requires still stands beside the shop.
+- **Skins are cosmetic, everywhere.** Pet skins, character skins, armor skins, house skins and furniture skins change the look and nothing else. This is the lane the shop lives in.
+- **Pets can die, and the player who lets it happen owns it.** A dead pet is the player's doing, not the game's. Revival tickets are close to free. The founder's limit is two revivals, three deaths at most, and then the pet is gone for good; he is between two and three and has not settled it. A paid revival past that limit exists as a cash item, the founder's number 20 dollars, [PLACEHOLDER] and undecided.
+- **The six-month rule.** Every cash-shop skin becomes obtainable in-game six months after it goes on sale, no exceptions. Two things never do: the founder-funding limited edition pet above, and items tied to a limited event.
+
+What this addendum does not carry: the founder's reasons for wanting NEEDs bought, and any split of a cash item's price with an outside cause. Both are business matters and stay in his own records; the compliance wall in `AGENTS.md` and `memory/glossary.md` keeps them out of game-facing files.
+
 ## Storage And Market Runners
 
 No fast travel means item logistics become meaningful. Convenience can exist without
