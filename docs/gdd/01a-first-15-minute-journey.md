@@ -4,6 +4,8 @@ Purpose: define the first playable route from login to movement, first combat, f
 
 This is a prototype journey, not a full launch tutorial. It should prove that the smallest Dream ONLINE loop is understandable, repeatable, and worth expanding.
 
+**Founder ruling, 2026-09-28: the slice is the tutorial.** Joshua ruled that the playable slice (`game/godot/DreamSlice`, the build published from `main`) is to be built out as the game's tutorial, and that visuals come first: the first seven seconds on screen decide whether anyone stays, so the slice teaches by showing, with the look of `specs/003-production-look` ahead of any new system. The minute-by-minute flow below is the spine of that tutorial. GeminEYE stays; the new bottled-energy NPC (`docs/gdd/02-action-combat.md`, bosses) is introduced here as a guide figure and never explained.
+
 ## Player Promise
 
 In the first 15 minutes, a new player should understand:

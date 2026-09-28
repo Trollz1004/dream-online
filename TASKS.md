@@ -1,6 +1,6 @@
 # DREAM ONLINE Tasks
 
-Last updated: 2026-09-26.
+Last updated: 2026-09-28.
 
 Queues:
 
@@ -10,7 +10,7 @@ Queues:
 
 Current priority order (from the dispatch and the 2026-09-25 journal):
 
-1. The Godot slice, `game/godot/DreamSlice`: icon and pet polish, then the melee dagger ranger's combat (the archer line's second awakening, ruled 2026-09-25).
+1. The Godot slice, `game/godot/DreamSlice`, as the tutorial (ruled 2026-09-28, `docs/gdd/01a-first-15-minute-journey.md`): visuals first, the first-15-minute flow as its spine, the bottled-energy NPC placed as a guide figure; then icon and pet polish and the melee dagger ranger's combat (ruled 2026-09-25). Wants a spec under `specs/` before the code starts.
 2. More of the combo grammar doing something, and the combo list screen (`docs/gdd/10-crowdfunding-readiness.md`).
 3. Spec 001: the visible slice and Mireth's memory link into the Live NPC Lab exist; what remains is the wider event catalog, the Encounter Director, and the CrossEyed spawns.
 4. Day/Night and Nightfall economy rules.

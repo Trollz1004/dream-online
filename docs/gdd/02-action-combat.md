@@ -187,6 +187,18 @@ All numbers above are the founder's targets and stay [PLACEHOLDER] until playtes
 - **Sup@**: cannot be beaten without a healer in the party (see above).
 - **Myth@s** (new): a towering dark knight in spiked black and red plate over tactical gear, glowing red seams, a red visor, a torn red cape and a huge glowing red polearm-axe. The founder's own concept image shows him arriving in the Night Dreams city with a crowd pulling back around him. Fight design is open.
 
+### Founder ruling, 2026-09-28: the bottled-energy NPC, the dual events and the hardest fight
+
+Joshua gave the shape of the boss story on 2026-09-28. The part that players will see in ordinary play is recorded here. The rest of it (what happens between these characters, why, and how it ends) is founder-only end-game material and stays in the private vault under the rule in `docs/gdd/00-vision.md`; nothing below is the story, only the systems.
+
+- **A new named NPC, working name pending.** He carries a bottled energy on the order of a singularity or a sun, and he struggles to keep control of it. Public-facing, he reads as a guide figure placed the way the GeminEYE pet is placed in the slice, close to the player, not as a monster. His visual is the contained black-hole or sun-in-a-bottle: a small body around a light that is plainly too big for it, with the bleed of that light as the tell that control is slipping. Original design only; no other franchise's look enters.
+- **He leaves.** Unpredictably, mid-conversation or mid-fight, the energy gets away from him and he departs with a short apology in character. Players will learn to read the tell before it happens. The apologies are written lines in the lab's approved language, never live-generated excuses.
+- **Dual events, father and son.** Myth@s and this NPC fight as a pair against players who have learned the lure of the game slowly enough to be there. These are two-boss encounters with linked mechanics (one telegraph answered by the other), run under the encounter director in spec 001, and they replace nothing already ruled about Myth@s.
+- **Sup@ helps.** In these events Sup@ stands with the player side and helps, for now. What that help costs and where it ends is vault material.
+- **The hardest fight in the game.** One encounter is tuned for a full party of six at maximum level in end-game gear, and even that party should not expect to win on the first attempts. Who it is against and why is founder-only. The tuning rule is public: six, max level, max gear, healer required (the healer rule above still holds), and no fewer.
+
+Numbers stay [PLACEHOLDER] until the fight exists. The classified rule stands: nothing in this file, in a commit message or in a pull request body describes the reveal, the accident or the ending.
+
 ## Small smart parties beat big crowds (founder, 2026-09-24)
 
 DREAM is **action combat**: aimed attacks, dodges and positioning, never tab-target lock-on. The founder's older group-fight footage (reference only, kept privately) is used for what it shows about tactics, not controls: a coordinated party of six beating a much larger crowd because the party plays together.
