@@ -20,8 +20,9 @@
   rest is end-game material (below).
 - **TrollinlootNScoot** — working name for the founder-funding limited-edition pet skin
   (no play bonus, ruled 2026-09-28): a troll riding a drift cart, voiced, interactive,
-  with owner memory on the Live NPC Lab's named tier (T1). Loots and scoots, heckles mobs with dad jokes, and runs the swerve bit (a line
-  that sounds dirty, then turns out to be housework). The design is in `docs/gdd/05-day-night-economy-market.md`.
+  with owner memory on the Live NPC Lab's named tier (T1). Loots and scoots, heckles mobs with dad jokes, runs the swerve bit (a line
+  that sounds dirty, then turns out to be housework), sings, and is the only pet
+  that talks to players, mobs and Sup@ from day one. The design is in `docs/gdd/05-day-night-economy-market.md`.
 - **THE BAN HAMMER** — Grok-class T2 enforcer NPC. Anti-cheat as visible spectacle
   (bat swing, splatter effect, in-world one-liners). Boss-tier canon roster also
   includes GEMINeye, OPENAeye, orange sherbet KRAKEN.
