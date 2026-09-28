@@ -56,7 +56,14 @@ extends SceneTree
 # Raised to 789 when the keyboard hotbar merged beside the pet: 67 checks in
 # tests/test_keyboard_hotbar.gd (consumables, grid geometry, cooldown
 # mapping, drag clamp, saved layout) on top of 722.
-const MINIMUM_CHECKS := 789
+# Raised to 1065 for spec 005's first visual pass (276 checks on top of
+# 789): the render profile per world and platform with its named web
+# fallbacks (tests/test_render_profile.gd), the see-through play screen, its
+# layout rectangles at 1280x720 and 1920x1080, the drawn keycap icons, the
+# text-wall sweep, the hero's framing and rim, the dream query string
+# (tests/test_play_screen.gd), the combo list screen checked against a real
+# player (tests/test_combo_list.gd) and the copy check (tests/test_copy.gd).
+const MINIMUM_CHECKS := 1065
 
 var passed := 0
 var failed := 0
@@ -97,6 +104,10 @@ func _init() -> void:
 	load("res://tests/test_side_screen.gd").new().run(self)
 	load("res://tests/test_pet.gd").new().run(self)
 	load("res://tests/test_keyboard_hotbar.gd").new().run(self)
+	load("res://tests/test_render_profile.gd").new().run(self)
+	load("res://tests/test_play_screen.gd").new().run(self)
+	load("res://tests/test_combo_list.gd").new().run(self)
+	load("res://tests/test_copy.gd").new().run(self)
 	var ran := passed + failed
 	if ran < MINIMUM_CHECKS:
 		failed += 1
