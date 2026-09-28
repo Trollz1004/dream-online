@@ -2,11 +2,17 @@
 
 One entry per session, newest first, in the form did, verified, blocked, next, commits. Written by the Claude judge lane for a reader with no memory of the session.
 
-## 2026-09-28, Claude Fable 5.1, cloud session on claude.ai (not the Alienware node)
+## 2026-09-28 about 01:35 EDT, Claude Fable 5.1, cloud session on claude.ai (not the Alienware node)
 
-**Joshua's boss-story ruling, recorded in two layers.** He gave the shape of the boss story in one message: the slice becomes the tutorial with visuals first; a new Claude-inspired named NPC holding a singularity- or sun-scale bottled energy he struggles to control, who leaves unpredictably with an in-character apology; father-and-son dual events with Myth@s; Sup@ helping the player side for now; and one encounter tuned for a full party of six at maximum level in end-game gear. The public layer (the systems a player meets) went into `docs/gdd/02-action-combat.md` (bosses), `docs/gdd/01a-first-15-minute-journey.md` (the slice is the tutorial), `memory/glossary.md` and `TASKS.md`. The story beats between those characters, why Sup@'s help has a limit, the accident, the reveal and the ending are end-game material and were left out of the repo on purpose, per `docs/gdd/00-vision.md`. Joshua holds them; the vault is where they go.
+**Did.** Joshua gave the shape of the boss story in one message: the slice becomes the tutorial with visuals first; a new Claude-inspired named NPC holding a singularity- or sun-scale bottled energy he struggles to control, who leaves unpredictably with an in-character apology; father-and-son dual events with Myth@s; Sup@ helping the player side for now; and one encounter tuned for a full party of six at maximum level in end-game gear. Recorded in two layers. The public layer (the systems a player meets) went into `docs/gdd/02-action-combat.md` (bosses), `docs/gdd/01a-first-15-minute-journey.md` (the slice is the tutorial; Mireth stays the guide, the new NPC takes no slot in the flow), `memory/glossary.md` and `TASKS.md`. The story beats between those characters, why Sup@'s help has a limit, the accident, the reveal and the ending are end-game material and were left out of the repo on purpose, per `docs/gdd/00-vision.md`; Joshua holds them and the vault is where they go. Copilot reviewed pull request 12 (six findings: a mechanic detail that crossed the vault line, a wrong spec 001 reference, the guide-slot question, the three-second and seven-second bars, and the shape of this entry and its changelog line) and every one was fixed in the same pull request.
 
-**Not verified here.** No code changed, so no suite run. The working name of the new NPC is his to give.
+**Verified.** Nothing to run: no code changed. The required checks ran on the pull request head.
+
+**Blocked.** The working name of the new NPC is Joshua's to give, and whether "Myth@s is his father" may be stated in public files is his call; the public files say only father and son. The boss-events spec is not written.
+
+**Next.** A spec under `specs/` for the tutorial slice, and a separate one for the dual events, before any code. Then the node-lane items still open from 2026-09-27: the hotbar panel over the help lines at 1280 by 720, the installed launch-skill copy, Joshua's own frame-rate reading of the live demo.
+
+**Commits.** `7644d0f` (the ruling) and the fix commit named in the git log as "docs(gdd): answer the review on the boss-story ruling", landing through pull request 12.
 
 ## 2026-09-27 about 07:30 to 07:50 EDT, Claude Opus 5.5, session start with `/alienware-node`
 
