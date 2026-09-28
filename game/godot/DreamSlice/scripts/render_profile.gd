@@ -19,8 +19,12 @@ const WORLD_DAY := "day"
 const WORLD_NIGHT := "night"
 
 # The render table's web column, as measured by exporting the browser build
-# and capturing it under software WebGL 2 on 2026-09-28 (spec 005, T003).
-# true: the Compatibility renderer drew it in the captured frame.
+# and capturing it under software WebGL 2 on 2026-09-28 (spec 005, T003),
+# with a native Compatibility-renderer capture to try the reflection probe.
+# true: the Compatibility renderer drew it in the captured frame. The
+# reflection probe did draw, but only as a faint smear on the street at any
+# roughness, too weak to read as a wet reflection, so it counts as not drawn
+# and the web keeps its named fallback.
 const WEB_DRAWS := {
 	"key_light_shadows": true,
 	"sky_gradient": true,
@@ -37,21 +41,27 @@ const WEB_DRAWS := {
 	"ssr": false,
 }
 
-# Every look the browser renderer cannot draw, and what the web profile
-# draws in its place (plan, render table, last column).
+# Every look the browser renderer cannot draw, per world, and what the web
+# profile draws in its place (plan, render table, last column).
 const WEB_FALLBACKS := {
-	"ssao": "contact_darkening",
-	"volumetric_fog": "light_shaft_cards",
-	"ssr": "mirrored_reflection_layer",
-	"reflection_probe": "mirrored_reflection_layer",
+	WORLD_DAY: {
+		"ssao": "contact_darkening",
+		"volumetric_fog": "haze_cards",
+	},
+	WORLD_NIGHT: {
+		"ssao": "contact_darkening",
+		"volumetric_fog": "light_shaft_cards",
+		"ssr": "mirrored_reflection_layer",
+		"reflection_probe": "mirrored_reflection_layer",
+	},
 }
 
 # The profile key that switches each named fallback on.
 const FALLBACK_KEYS := {
 	"contact_darkening": "contact_darkening",
+	"haze_cards": "haze_cards",
 	"light_shaft_cards": "light_shafts",
 	"mirrored_reflection_layer": "mirror_layer",
-	"halo_billboards": "halos",
 }
 
 
@@ -150,7 +160,7 @@ static func _day(web: bool) -> Dictionary:
 		"material_rim_tint": 0.35,
 
 		"halos": false,
-		"haze_cards": false,
+		"haze_cards": web,
 		"light_shafts": false,
 		"contact_darkening": web,
 		"reflection_probe": false,
@@ -185,7 +195,7 @@ static func _night(web: bool) -> Dictionary:
 		"cloud_coverage": 0.58,
 		"cloud_opacity": 0.85,
 		"stars": true,
-		"star_count": 1600,
+		"star_count": 4200,
 
 		"ambient_energy": 0.30,
 		"tonemap": Environment.TONE_MAPPER_AGX,
@@ -232,7 +242,7 @@ static func _night(web: bool) -> Dictionary:
 		"halos": true,
 		"haze_cards": false,
 		"light_shafts": web,
-		"contact_darkening": false,
+		"contact_darkening": web,
 		"reflection_probe": false,
 		"mirror_layer": web,
 		"ground_detail_blend": false,

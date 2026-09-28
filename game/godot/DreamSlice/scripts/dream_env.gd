@@ -293,6 +293,9 @@ var _mirror_layer: Node3D = null
 var _mirror_copy_count := 0
 var _halo_count := 0
 var _contact_footprint_count := 0
+var _haze_card_count := 0
+var _wet_streak_count := 0
+var _contact_shadow_count := 0
 var _light_shaft_count := 0
 
 var _environment: Environment = null
@@ -643,6 +646,8 @@ func _build_day_scenery() -> void:
 	_build_brush_clumps()
 	_build_mountain()
 	_build_dust_motes()
+	if bool(_profile.get("haze_cards", false)):
+		_build_haze_cards()
 
 
 func _build_night_scenery() -> void:
@@ -661,6 +666,8 @@ func _build_night_scenery() -> void:
 	_build_steam_vents()
 	if bool(_profile.get("mirror_layer", false)):
 		_build_wet_street_mirror()
+	if bool(_profile.get("contact_darkening", false)):
+		_build_contact_shadows()
 	_build_pedestrians()
 	_build_traffic()
 
@@ -2360,7 +2367,7 @@ func _build_wet_street_mirror() -> void:
 	# not as a wet sheen. Signs, blade signs and the lamps' soft halos carry
 	# the reflection instead.
 	for child in get_children():
-		if child is MeshInstance3D and (_is_street_light_source(child) or child.name.begins_with("Halo")):
+		if child is MeshInstance3D and (_is_street_light_source(child) or child.has_meta("halo")):
 			var copy := MeshInstance3D.new()
 			copy.mesh = child.mesh
 			copy.transform = child.transform
@@ -2430,35 +2437,154 @@ func _add_halo(pos: Vector3, color: Color, size: float, strength: float) -> Mesh
 	mesh.material_override = mat
 	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mesh.position = pos
+	mesh.set_meta("halo", true)
 	add_child(mesh)
 	_halo_count += 1
 	return mesh
 
 
 # A shaft of lamp light falling through the rain (the render table's
-# fallback for volumetric fog on the web): an additive quad that turns about
-# the vertical axis to face the camera, bright under the lamp and fading
-# toward the ground and its own edges.
+# fallback for volumetric fog on the web): an open, additive cone under the
+# lamp, brightest at the lamp and fading to nothing at the pavement, its
+# fade carried in vertex colours. A textured camera-facing quad was tried
+# first and drew nothing in the Compatibility renderer (measured by capture,
+# 2026-09-28); plain vertex colours draw on every renderer.
 func _add_light_shaft(lamp_pos: Vector3, color: Color) -> MeshInstance3D:
 	var mesh := MeshInstance3D.new()
 	mesh.name = "LightShaft"
-	var quad := QuadMesh.new()
-	quad.size = Vector2(2.6, lamp_pos.y)
-	mesh.mesh = quad
+	mesh.mesh = _light_cone_mesh(lamp_pos.y - 0.1, 0.22, 1.7, color, 0.26)
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
-	mat.albedo_texture = _shaft_texture()
-	mat.albedo_color = Color(color.r, color.g, color.b, 0.22)
+	mat.vertex_color_use_as_albedo = true
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
 	mesh.material_override = mat
 	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	mesh.position = Vector3(lamp_pos.x, lamp_pos.y * 0.5, lamp_pos.z)
+	mesh.position = Vector3(lamp_pos.x, 0.0, lamp_pos.z)
 	add_child(mesh)
 	_light_shaft_count += 1
 	return mesh
+
+
+# An open cone from `top_r` at height `h` down to `bottom_r` at the ground,
+# coloured `color` with alpha `top_a` at the top fading to 0 at the bottom.
+func _light_cone_mesh(h: float, top_r: float, bottom_r: float, color: Color, top_a: float) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var segments := 14
+	var top_c := Color(color.r, color.g, color.b, top_a)
+	var mid_c := Color(color.r, color.g, color.b, top_a * 0.35)
+	var bot_c := Color(color.r, color.g, color.b, 0.0)
+	var mid_h: float = h * 0.55
+	var mid_r: float = lerpf(bottom_r, top_r, 0.55)
+	for i in range(segments):
+		var a0: float = TAU * float(i) / float(segments)
+		var a1: float = TAU * float(i + 1) / float(segments)
+		var d0 := Vector3(cos(a0), 0.0, sin(a0))
+		var d1 := Vector3(cos(a1), 0.0, sin(a1))
+		var t0 := d0 * top_r + Vector3(0.0, h, 0.0)
+		var t1 := d1 * top_r + Vector3(0.0, h, 0.0)
+		var m0 := d0 * mid_r + Vector3(0.0, mid_h, 0.0)
+		var m1 := d1 * mid_r + Vector3(0.0, mid_h, 0.0)
+		var b0 := d0 * bottom_r
+		var b1 := d1 * bottom_r
+		for tri in [[t0, top_c, m0, mid_c, t1, top_c], [t1, top_c, m0, mid_c, m1, mid_c],
+				[m0, mid_c, b0, bot_c, m1, mid_c], [m1, mid_c, b0, bot_c, b1, bot_c]]:
+			for k in range(3):
+				st.set_color(tri[k * 2 + 1])
+				st.add_vertex(tri[k * 2])
+	return st.commit()
+
+
+# The web's stand-in for volumetric fog by day (render table: haze cards):
+# a few very large, soft, see-through bands of dusty air standing between
+# the field and the mountains, so the near, middle and far ground separate
+# into planes the way light shafts through dust would separate them.
+func _build_haze_cards() -> void:
+	var fog_c: Color = _profile["fog_color"]
+	var tint := Color(fog_c.r * 1.12, fog_c.g * 1.12, fog_c.b * 1.16)
+	var cards := [
+		{"z": -95.0, "w": 520.0, "h": 34.0, "a": 0.30},
+		{"z": -175.0, "w": 760.0, "h": 70.0, "a": 0.34},
+		{"z": -255.0, "w": 980.0, "h": 110.0, "a": 0.30},
+	]
+	for c in cards:
+		var mesh := MeshInstance3D.new()
+		mesh.name = "HazeCard"
+		mesh.mesh = _haze_card_mesh(c["w"], c["h"], tint, c["a"])
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.vertex_color_use_as_albedo = true
+		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+		mesh.material_override = mat
+		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mesh.position = Vector3(0.0, -2.0, c["z"])
+		add_child(mesh)
+		_haze_card_count += 1
+
+
+# A vertical band, `w` wide and `h` tall from its base, densest a little
+# above the ground and thinning to nothing at the top and at both ends; the
+# fade lives in vertex colours (see _add_light_shaft for why not a texture).
+func _haze_card_mesh(w: float, h: float, tint: Color, peak_a: float) -> ArrayMesh:
+	var xs := [-0.5, -0.38, 0.38, 0.5]
+	var x_alpha := [0.0, 1.0, 1.0, 0.0]
+	var ys := [0.0, 0.18, 0.55, 1.0]
+	var y_alpha := [0.55, 1.0, 0.45, 0.0]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in range(3):
+		for j in range(3):
+			var corners := [[i, j], [i + 1, j], [i, j + 1], [i + 1, j], [i + 1, j + 1], [i, j + 1]]
+			for cxy in corners:
+				var xi: int = cxy[0]
+				var yi: int = cxy[1]
+				st.set_color(Color(tint.r, tint.g, tint.b, peak_a * float(x_alpha[xi]) * float(y_alpha[yi])))
+				st.add_vertex(Vector3(float(xs[xi]) * w, float(ys[yi]) * h, 0.0))
+	return st.commit()
+
+
+func haze_card_count() -> int:
+	return _haze_card_count
+
+
+# The web's stand-in for ambient occlusion at night (render table: contact
+# darkening): a soft dark pool on the pavement at the foot of each tower,
+# bench, bin and lamp that registered a footprint, so nothing reads as
+# pasted onto the ground. Long thin footprints (the kerbs) and anything on
+# the street itself are left alone.
+func _build_contact_shadows() -> void:
+	var tex := _soft_disc_texture()
+	for f in _footprints:
+		var pos: Vector3 = f["position"]
+		var r: float = f["radius"]
+		if r > 9.0 or absf(pos.x) < STREET_HALF_WIDTH + 0.5:
+			continue
+		var mesh := MeshInstance3D.new()
+		mesh.name = "ContactShadow"
+		var plane := PlaneMesh.new()
+		var span: float = r * 2.0 + 2.6
+		plane.size = Vector2(span, span)
+		mesh.mesh = plane
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.albedo_texture = tex
+		mat.albedo_color = Color(0.0, 0.0, 0.0, 0.55)
+		mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+		mesh.material_override = mat
+		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mesh.position = Vector3(pos.x, 0.035, pos.z)
+		add_child(mesh)
+		_contact_shadow_count += 1
+
+
+func contact_shadow_count() -> int:
+	return _contact_shadow_count
 
 
 func halo_count() -> int:
@@ -2470,7 +2596,6 @@ func light_shaft_count() -> int:
 
 
 var _soft_disc_tex: Texture2D = null
-var _shaft_tex: Texture2D = null
 
 
 func _soft_disc_texture() -> Texture2D:
@@ -2487,25 +2612,6 @@ func _soft_disc_texture() -> Texture2D:
 		t.height = 128
 		_soft_disc_tex = t
 	return _soft_disc_tex
-
-
-# Bright at the top centre (under the lamp), fading down and to both sides.
-func _shaft_texture() -> Texture2D:
-	if _shaft_tex == null:
-		var w := 64
-		var h := 128
-		var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
-		for y in range(h):
-			var v: float = float(y) / float(h - 1)
-			# The cone widens as it falls.
-			var half_width: float = lerpf(0.18, 0.5, v)
-			for x in range(w):
-				var u: float = absf(float(x) / float(w - 1) - 0.5)
-				var across: float = clampf(1.0 - u / half_width, 0.0, 1.0)
-				var a: float = pow(1.0 - v, 1.3) * across * across
-				img.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
-		_shaft_tex = ImageTexture.create_from_image(img)
-	return _shaft_tex
 
 
 # A small unshaded disc, parented to the moonlight itself so it always sits in
@@ -2984,26 +3090,55 @@ func _build_lamps() -> void:
 
 
 # A cheap stand-in for a screen-space reflection that a still frame cannot be
-# relied on to catch: a soft translucent streak on the ground stretching from
-# the light toward the lane, coloured like the light above it. A judge review
-# of night.png on 2026-09-23 asked for the wet street to visibly reflect its
-# lamps and signs.
+# relied on to catch: light on a wet road smears into a long streak running
+# from under the light toward the viewer. Spec 005 (SB-08) moved it off the
+# pavement and onto the street itself, as an additive band whose glow fades
+# along its length and across its width (vertex colours, which every
+# renderer draws), pointing down the street toward the spawn -- the way the
+# chase camera looks at it.
 func _place_reflection_streak(pos: Vector3, color: Color) -> void:
 	var mesh := MeshInstance3D.new()
-	var plane := PlaneMesh.new()
-	plane.size = Vector2(0.9, 4.2)
-	mesh.mesh = plane
+	mesh.name = "WetStreak"
+	var length := 13.0
+	var width := 1.3
+	var x: float = signf(pos.x) * minf(absf(pos.x) * 0.55, STREET_HALF_WIDTH - 0.7)
+	mesh.mesh = _streak_mesh(width, length, Color(color.r, color.g, color.b), minf(1.0, maxf(color.a, 0.3) * 2.8))
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = color
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.vertex_color_use_as_albedo = true
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
 	mesh.material_override = mat
-	var toward_lane := -pos
-	toward_lane.y = 0.0
-	var lane_dir := toward_lane.normalized() if toward_lane.length() > 0.01 else Vector3.FORWARD
-	mesh.position = Vector3(pos.x, 0.025, pos.z) + lane_dir * 1.6
-	mesh.rotation_degrees = Vector3(0.0, rad_to_deg(atan2(lane_dir.x, lane_dir.z)), 0.0)
+	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mesh.position = Vector3(x, 0.03, pos.z + 0.6)
 	add_child(mesh)
+	_wet_streak_count += 1
+
+
+# A flat band on the ground from z = 0 to z = +length: brightest at its
+# start and along its centre line, fading to nothing at its far end and
+# both edges.
+func _streak_mesh(width: float, length: float, tint: Color, peak_a: float) -> ArrayMesh:
+	var xs := [-0.5, 0.0, 0.5]
+	var x_alpha := [0.0, 1.0, 0.0]
+	var zs := [0.0, 0.25, 1.0]
+	var z_alpha := [0.7, 1.0, 0.0]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in range(2):
+		for j in range(2):
+			for cxy in [[i, j], [i + 1, j], [i, j + 1], [i + 1, j], [i + 1, j + 1], [i, j + 1]]:
+				var xi: int = cxy[0]
+				var zi: int = cxy[1]
+				st.set_color(Color(tint.r, tint.g, tint.b, peak_a * float(x_alpha[xi]) * float(z_alpha[zi])))
+				st.add_vertex(Vector3(float(xs[xi]) * width, 0.0, float(zs[zi]) * length))
+	return st.commit()
+
+
+func wet_streak_count() -> int:
+	return _wet_streak_count
 
 
 # Abstract glowing panels on some of the near towers: flat colour blocks in
@@ -3116,6 +3251,8 @@ func _build_street_signs() -> void:
 		panel.material_override = mat
 		panel.transform = Transform3D(basis, panel_pos)
 		add_child(panel)
+		var sign_c: Color = colors[i % colors.size()]
+		_place_reflection_streak(pos, Color(minf(sign_c.r, 1.0), minf(sign_c.g, 1.0), minf(sign_c.b, 1.0), 0.32))
 		i += 1
 
 
