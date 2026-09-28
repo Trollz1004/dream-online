@@ -1159,13 +1159,22 @@ func _build_goggles_mesh(lens_mat: Material, strap_mat: Material) -> Node3D:
 # left forearm in combat. Same bone-attached, build-twice technique
 # _build_and_attach_sword already uses.
 func _build_and_attach_shield() -> void:
-	var board_mat := StandardMaterial3D.new()
-	board_mat.albedo_color = Color(0.30, 0.36, 0.16)
+	# Olive-painted leather over the board, mapped triplanar (the tapered
+	# panel carries no UVs) so the chase camera reads grain and wear rather
+	# than a flat-coloured cut-out (spec 005, SB-11 and T032). It used to be
+	# unshaded to stay olive when back-lit; the player's camera fill and rim
+	# lights now reach it in both worlds, so it can take real light.
+	var board_mat := ORMMaterial3D.new()
+	board_mat.albedo_texture = load(_LEATHER_ALBEDO)
+	board_mat.albedo_color = Color(0.40, 0.58, 0.26)
+	board_mat.normal_enabled = true
+	board_mat.normal_texture = load(_LEATHER_NORMAL)
+	board_mat.orm_texture = load(_LEATHER_ARM)
 	board_mat.metallic = 0.0
-	board_mat.roughness = 0.72
-	# Keep the reverse face consistently olive in the dark chase view. This
-	# does not cast light or bloom; it only avoids black backlighting.
-	board_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	board_mat.roughness = 0.7
+	board_mat.uv1_triplanar = true
+	board_mat.uv1_scale = Vector3(2.2, 2.2, 2.2)
+	board_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	var boss_mat := StandardMaterial3D.new()
 	boss_mat.albedo_color = Color(0.72, 0.74, 0.78)
 	boss_mat.metallic = 0.85
@@ -1420,10 +1429,111 @@ func set_time_of_day(t: String) -> void:
 	_accent_material.albedo_color = color
 	_accent_material.emission = color
 	_accent_material.emission_energy_multiplier = energy
+	_refresh_glow_halo()
 	if _accent_light != null:
 		_accent_light.light_energy = energy
 		if kind == KIND_SENTINEL:
 			_accent_light.light_color = color
+
+
+# A soft halo around this model's glowing accent -- the Sentinel's eye,
+# Mireth's lantern orb -- when the render profile asks for one (spec 005,
+# SB-09; scripts/glow_halo.gd). `strength` is the halo's resting alpha; the
+# Sentinel's charge (set_glow_charge) lifts it while its beam winds up.
+const GlowHalo := preload("res://scripts/glow_halo.gd")
+const HALO_SIZE := {KIND_SENTINEL: 1.4, KIND_KEEPER: 0.7, KIND_DREAMWALKER: 0.4}
+var _glow_halo: MeshInstance3D = null
+var _glow_strength := 0.0
+var _glow_charge := 0.0
+
+
+func set_glow_halo(enabled: bool, strength: float) -> void:
+	_glow_strength = strength
+	var bead: Node3D = pivots.get("accent_bead")
+	if not enabled or bead == null or _accent_material == null:
+		if _glow_halo != null:
+			_glow_halo.visible = false
+		return
+	if _glow_halo == null:
+		_glow_halo = GlowHalo.make(_accent_material.albedo_color, float(HALO_SIZE.get(kind, 0.5)), strength)
+		bead.add_child(_glow_halo)
+		pivots["glow_halo"] = _glow_halo
+	_glow_halo.visible = true
+	_refresh_glow_halo()
+
+
+## 0..1: how far the Sentinel's beam has wound up; the halo swells with it.
+func set_glow_charge(progress: float) -> void:
+	_glow_charge = clampf(progress, 0.0, 1.0)
+	_refresh_glow_halo()
+
+
+func glow_halo() -> MeshInstance3D:
+	return _glow_halo
+
+
+func _refresh_glow_halo() -> void:
+	if _glow_halo == null or _accent_material == null:
+		return
+	GlowHalo.set_strength(_glow_halo, _accent_material.albedo_color, _glow_strength * (1.0 + 1.4 * _glow_charge))
+	_glow_halo.scale = Vector3.ONE * (1.0 + 0.6 * _glow_charge)
+
+
+# The hero's material rim (spec 005, FR-006, SB-05): every lit, opaque,
+# non-glowing material on this model gets Godot's own rim term, which the
+# browser's Compatibility renderer draws too, so every light in the scene
+# (the key light, the camera fill and the player's rim light) catches the
+# silhouette's grazing edge. The materials are duplicated on first use so a
+# shared imported material (the same outfit on a night pedestrian) never
+# picks the rim up by accident. Only player.gd calls this, for the hero.
+var _rim_materials: Array = []
+const RIM_MAX_ROUGHNESS := 0.72
+
+
+func apply_rim(amount: float, tint: float) -> void:
+	if _rim_materials.is_empty():
+		_collect_rim_materials(self)
+	for m in _rim_materials:
+		m.rim_enabled = amount > 0.0
+		m.rim = clampf(amount, 0.0, 1.0)
+		m.rim_tint = clampf(tint, 0.0, 1.0)
+		# Godot narrows the rim by (1 - roughness): a fully rough material
+		# (the imported outfit's cloth reads 1.0) would take the rim across
+		# its whole surface as a flat wash instead of a lit edge, so a rim
+		# material is held just below that.
+		m.roughness = minf(m.roughness, RIM_MAX_ROUGHNESS)
+
+
+func rim_materials() -> Array:
+	return _rim_materials
+
+
+static func _takes_rim(m: Material) -> bool:
+	if not (m is BaseMaterial3D):
+		return false
+	var b := m as BaseMaterial3D
+	return b.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED \
+		and not b.emission_enabled \
+		and b.transparency == BaseMaterial3D.TRANSPARENCY_DISABLED
+
+
+func _collect_rim_materials(node: Node) -> void:
+	if node is MeshInstance3D:
+		var mi := node as MeshInstance3D
+		if mi.material_override != null:
+			if _takes_rim(mi.material_override):
+				var dup: BaseMaterial3D = mi.material_override.duplicate()
+				mi.material_override = dup
+				_rim_materials.append(dup)
+		elif mi.mesh != null:
+			for i in range(mi.mesh.get_surface_count()):
+				var m: Material = mi.get_active_material(i)
+				if _takes_rim(m):
+					var dup2: BaseMaterial3D = m.duplicate()
+					mi.set_surface_override_material(i, dup2)
+					_rim_materials.append(dup2)
+	for child in node.get_children():
+		_collect_rim_materials(child)
 
 
 # 0..1. Drives the violet glow at the Dreamwalker's sword hand; a no-op on

@@ -36,3 +36,7 @@ From the founder's own recorded gameplay as a healer-line character in an older 
 - A party-buff tray: every active buff from the party shown as an icon near the top of the screen, grouped by source, with its remaining time. Party-only buffs are the heart of group play, so the player must see at a glance what the party is giving them.
 - A combat log that reports damage dealt and what drain effects returned (mana and health), because the healer line's hidden damage shows up there first.
 - Protective effects such as a party shield read as a large, obvious shape around the protected players, not as a small icon alone (accessibility: never colour alone).
+
+## GeminEYE is the interface (founder, 2026-09-28)
+
+GeminEYE, the eye that already follows the player as the looting pet, becomes the game's interface: the HUD, the search, the maps. The player chooses how they see through it at character creation and any time after: a first-person view through the eye, an eye patch, a lens, or a contact, each a look and never a stat, with voice options for how it speaks. Through it the player can search for anything, in the world and on the web through a search partner named in the adapter config rather than here, and read the map. It also watches chat on the player's behalf and hands what it sees to the conduct pipeline in `docs/gdd/11-chat-conduct.md`. Every panel it opens keeps the rules above: dark, see-through, plain words, white on dark.

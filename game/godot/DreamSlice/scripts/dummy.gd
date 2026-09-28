@@ -111,6 +111,7 @@ func _process(delta: float) -> void:
 func _idle(delta: float) -> void:
 	_resolved = false
 	if model != null:
+		model.set_glow_charge(0.0)
 		model.update_pose(delta, {"action": "hit" if _flinch > 0.0 else "", "progress": 0.2})
 
 
@@ -118,7 +119,15 @@ func _eye_position() -> Vector3:
 	return global_position + Vector3(0.0, 2.15, 0.0)
 
 
+## The halo round its eye (spec 005, SB-09), from the world's render profile.
+func set_glow_halo(enabled: bool, strength: float) -> void:
+	if model != null:
+		model.set_glow_halo(enabled, strength)
+
+
 func _wind_up(delta: float, progress: float) -> void:
+	if model != null:
+		model.set_glow_charge(progress)
 	if progress < 0.05:
 		# Aim is locked at the start of the wind-up, so moving or dashing out
 		# of the line after it starts is a real answer, not luck.
