@@ -1429,10 +1429,54 @@ func set_time_of_day(t: String) -> void:
 	_accent_material.albedo_color = color
 	_accent_material.emission = color
 	_accent_material.emission_energy_multiplier = energy
+	_refresh_glow_halo()
 	if _accent_light != null:
 		_accent_light.light_energy = energy
 		if kind == KIND_SENTINEL:
 			_accent_light.light_color = color
+
+
+# A soft halo around this model's glowing accent -- the Sentinel's eye,
+# Mireth's lantern orb -- when the render profile asks for one (spec 005,
+# SB-09; scripts/glow_halo.gd). `strength` is the halo's resting alpha; the
+# Sentinel's charge (set_glow_charge) lifts it while its beam winds up.
+const GlowHalo := preload("res://scripts/glow_halo.gd")
+const HALO_SIZE := {KIND_SENTINEL: 0.95, KIND_KEEPER: 0.6, KIND_DREAMWALKER: 0.4}
+var _glow_halo: MeshInstance3D = null
+var _glow_strength := 0.0
+var _glow_charge := 0.0
+
+
+func set_glow_halo(enabled: bool, strength: float) -> void:
+	_glow_strength = strength
+	var bead: Node3D = pivots.get("accent_bead")
+	if not enabled or bead == null or _accent_material == null:
+		if _glow_halo != null:
+			_glow_halo.visible = false
+		return
+	if _glow_halo == null:
+		_glow_halo = GlowHalo.make(_accent_material.albedo_color, float(HALO_SIZE.get(kind, 0.5)), strength)
+		bead.add_child(_glow_halo)
+		pivots["glow_halo"] = _glow_halo
+	_glow_halo.visible = true
+	_refresh_glow_halo()
+
+
+## 0..1: how far the Sentinel's beam has wound up; the halo swells with it.
+func set_glow_charge(progress: float) -> void:
+	_glow_charge = clampf(progress, 0.0, 1.0)
+	_refresh_glow_halo()
+
+
+func glow_halo() -> MeshInstance3D:
+	return _glow_halo
+
+
+func _refresh_glow_halo() -> void:
+	if _glow_halo == null or _accent_material == null:
+		return
+	GlowHalo.set_strength(_glow_halo, _accent_material.albedo_color, _glow_strength * (1.0 + 1.4 * _glow_charge))
+	_glow_halo.scale = Vector3.ONE * (1.0 + 0.6 * _glow_charge)
 
 
 # The hero's material rim (spec 005, FR-006, SB-05): every lit, opaque,

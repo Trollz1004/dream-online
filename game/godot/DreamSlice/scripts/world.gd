@@ -25,6 +25,7 @@ const PetShopPanelScript := preload("res://scripts/pet_shop_panel.gd")
 const PetState := preload("res://scripts/pet_state.gd")
 const KeyboardPanelScript := preload("res://scripts/keyboard_panel.gd")
 const ComboListPanelScript := preload("res://scripts/combo_list_panel.gd")
+const RenderProfileScript := preload("res://scripts/render_profile.gd")
 
 const MIRETH_WITNESS_RADIUS := 40.0
 const DEFAULT_LAB_URL := "http://127.0.0.1:9127"
@@ -181,6 +182,8 @@ func _ready() -> void:
 	if _pet_shop_open_demo:
 		pet_shop_panel.toggle()
 
+	_apply_emitter_halos()
+
 	# The combo list screen on L (spec 005, FR-016): where the long help
 	# block lives now that it has left the play screen.
 	combo_list_panel = ComboListPanelScript.new()
@@ -288,6 +291,20 @@ func _reset_frame_ready() -> void:
 	_frame_ready_reported = false
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("window.dreamFrameReady = false;", true)
+
+
+# Soft halos on the small emitters -- the Sentinel's eye, the pet's eye,
+# Mireth's orb -- when the current world's render profile asks for them
+# (spec 005, SB-09; the web profile's emitter_halos fallback).
+func _apply_emitter_halos() -> void:
+	var p: Dictionary = RenderProfileScript.profile(_dream_mode, _web_profile)
+	var on: bool = bool(p.get("emitter_halos", false))
+	var strength: float = float(p.get("emitter_halo_strength", 0.0))
+	for who in [sentinel, pet]:
+		if who != null and who.has_method("set_glow_halo"):
+			who.set_glow_halo(on, strength)
+	if npc != null and npc.get("model") != null and npc.model.has_method("set_glow_halo"):
+		npc.model.set_glow_halo(on, strength)
 
 
 # The combo list screen is a full panel: the play HUD steps out from behind
@@ -429,6 +446,8 @@ func nightfall(duration: float) -> void:
 	_env.demo_quality = _demo_mode
 	_env.web_profile = _web_profile
 	add_child(_env)
+
+	_apply_emitter_halos()
 
 	npc_memory.recalled.connect(_on_recalled_for_night, CONNECT_ONE_SHOT)
 	npc_memory.recall("mireth")

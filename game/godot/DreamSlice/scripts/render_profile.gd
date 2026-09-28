@@ -39,6 +39,10 @@ const WEB_DRAWS := {
 	"ssao": false,
 	"volumetric_fog": false,
 	"ssr": false,
+	# Glow does draw, but a small emitter in full daylight (an eye, an orb)
+	# never gets bright enough to cross the bloom threshold, so by day it
+	# read as a hard flat disc in the graded frame (judge review, PR 19).
+	"daylight_glow_on_small_emitters": false,
 }
 
 # Every look the browser renderer cannot draw, per world, and what the web
@@ -47,6 +51,7 @@ const WEB_FALLBACKS := {
 	WORLD_DAY: {
 		"ssao": "contact_darkening",
 		"volumetric_fog": "haze_cards",
+		"daylight_glow_on_small_emitters": "emitter_halo_billboards",
 	},
 	WORLD_NIGHT: {
 		"ssao": "contact_darkening",
@@ -62,6 +67,7 @@ const FALLBACK_KEYS := {
 	"haze_cards": "haze_cards",
 	"light_shaft_cards": "light_shafts",
 	"mirrored_reflection_layer": "mirror_layer",
+	"emitter_halo_billboards": "emitter_halos",
 }
 
 
@@ -160,6 +166,10 @@ static func _day(web: bool) -> Dictionary:
 		"material_rim_tint": 0.35,
 
 		"halos": false,
+		# Soft billboard halos on the small emitters (the Sentinel's eye,
+		# the pet's eye, Mireth's orb), web only, at a daylight strength.
+		"emitter_halos": web,
+		"emitter_halo_strength": 0.42,
 		"haze_cards": web,
 		"light_shafts": false,
 		"contact_darkening": web,
@@ -240,6 +250,10 @@ static func _night(web: bool) -> Dictionary:
 		"material_rim_tint": 0.2,
 
 		"halos": true,
+		# The same emitter halos the day web profile draws, stronger in the
+		# dark, alongside the lamps' halos.
+		"emitter_halos": web,
+		"emitter_halo_strength": 0.6,
 		"haze_cards": false,
 		"light_shafts": web,
 		"contact_darkening": web,

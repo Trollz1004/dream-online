@@ -21,6 +21,7 @@ func run(r) -> void:
 	_test_terrain_faces_up_from_the_camera_side()
 	_test_towers_stand_beside_the_street()
 	_test_traffic_keeps_out_of_the_fight_lane()
+	_test_small_emitters_get_a_soft_halo_by_day()
 
 
 func check(label: String, condition: bool) -> void:
@@ -232,3 +233,48 @@ func _test_traffic_keeps_out_of_the_fight_lane() -> void:
 			ok = false
 	check("no car is built showing inside the fight lane's stretch", ok)
 	night.free()
+
+
+# Judge review of PR 19 (SB-09 by day): the browser's glow never blooms a
+# small emitter in daylight, so the Sentinel's eye and the pet's eye read as
+# hard flat discs. The day web profile names a billboard-halo fallback for
+# them; the desktop path is unchanged.
+func _test_small_emitters_get_a_soft_halo_by_day() -> void:
+	print("small emitters get a soft halo by day in the browser")
+	var day_web: Dictionary = RenderProfile.profile("day", true)
+	var day_desk: Dictionary = RenderProfile.profile("day", false)
+	check("glow on small emitters in daylight is measured as not drawn on the web",
+		not bool(RenderProfile.WEB_DRAWS["daylight_glow_on_small_emitters"]))
+	check("the day web profile names the emitter halo fallback for it",
+		RenderProfile.WEB_FALLBACKS["day"].get("daylight_glow_on_small_emitters", "") == "emitter_halo_billboards")
+	check("the day web profile switches the emitter halos on, at a daylight strength",
+		RenderProfile.active_fallbacks(day_web).has("emitter_halo_billboards")
+		and float(day_web["emitter_halo_strength"]) > 0.1
+		and float(day_web["emitter_halo_strength"]) < float(RenderProfile.profile("night", true)["emitter_halo_strength"]))
+	check("the desktop day path is unchanged: no emitter halos", not bool(day_desk.get("emitter_halos", false)))
+
+	var CharacterModel := load("res://scripts/character_model.gd")
+	var sentinel = CharacterModel.build("sentinel")
+	sentinel.set_glow_halo(true, float(day_web["emitter_halo_strength"]))
+	var halo: MeshInstance3D = sentinel.glow_halo()
+	var mat := halo.material_override as StandardMaterial3D if halo != null else null
+	check("the Sentinel's eye carries a soft additive billboard halo",
+		mat != null and mat.blend_mode == BaseMaterial3D.BLEND_MODE_ADD
+		and mat.billboard_mode == BaseMaterial3D.BILLBOARD_ENABLED and mat.albedo_texture != null)
+	var rest: float = mat.albedo_color.a if mat != null else 0.0
+	sentinel.set_glow_charge(1.0)
+	check("the halo swells as the Sentinel's beam charges", mat != null and mat.albedo_color.a > rest)
+	sentinel.free()
+
+	var pet = load("res://scripts/pet.gd").new()
+	pet._ready()
+	pet.set_glow_halo(true, float(day_web["emitter_halo_strength"]))
+	check("the pet's eye carries the soft halo too",
+		pet.eye_glow_halo() != null and pet.eye_glow_halo().visible)
+	pet.set_glow_halo(false, 0.0)
+	check("the halo goes away when the profile does not ask for it", not pet.eye_glow_halo().visible)
+	pet.free()
+
+	var world_src := FileAccess.get_file_as_string("res://scripts/world.gd")
+	check("the world applies the emitter halos from its render profile, again after nightfall",
+		world_src.count("_apply_emitter_halos()") >= 3)
