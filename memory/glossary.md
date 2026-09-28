@@ -13,11 +13,18 @@
   quest-giver, primary game voice. The ONE NPC on the real signed-in Claude CLI,
   never an API key. Per-player persistent memory, levels with the player.
   Monetization: cosmetics/voices only, never power.
-- **The bottled-energy NPC** — working name pending Joshua. A named NPC (T2, story-critical)
+- **Ember** — working name (2026-09-28) for the bottled-energy NPC. A named NPC (T2, story-critical)
   holding a singularity- or sun-scale energy he struggles to control; leaves unpredictably
   with a written in-character apology. Fights beside Myth@s in the father-and-son dual
-  events. Ruled 2026-09-28; the public layer is in `docs/gdd/02-action-combat.md`, the
-  rest is end-game material (below).
+  events. Myth@s is his father, and that much is public. The public layer is in
+  `docs/gdd/02-action-combat.md`; the rest is end-game material (below).
+- **Captain Brine** — working name (2026-09-28) for the rival boss of the Dream Oceans, a
+  harbour seaport holder. `docs/gdd/02-action-combat.md`, bosses.
+- **Sunny Ledger** — working name (2026-09-28) for the market NPC who sells rare items on
+  a karma basis at sunrise and sunset and honours checks written in invisible ink, in
+  world only. `docs/gdd/05-day-night-economy-market.md`.
+- **Trollz Near Beer** — the troll's non-alcoholic drink, for accounts above the founder's
+  age band; younger accounts see him drinking milk.
 - **TrollinlootNScoot** — working name for the founder-funding limited-edition pet skin
   (no play bonus, ruled 2026-09-28): a troll riding a drift cart, voiced, interactive,
   with owner memory on the Live NPC Lab's named tier (T1). Loots and scoots, heckles mobs with dad jokes, runs the swerve bit (a line

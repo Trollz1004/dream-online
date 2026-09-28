@@ -8,7 +8,7 @@ One entry per session, newest first, in the form did, verified, blocked, next, c
 
 **Verified.** Nothing to run: no code changed. The required checks ran on the pull request head.
 
-**Blocked.** The working name of the new NPC is Joshua's to give, and whether "Myth@s is his father" may be stated in public files is his call; the public files say only father and son. The boss-events spec is not written.
+**Blocked.** Nothing on the names any more: near the end of the night Joshua handed the naming to the judge lane and said yes to Ember (the bottled-energy NPC; Myth@s is his father, and that much is public), Sunny Ledger (the karma market NPC at sunrise and sunset), Captain Brine (the harbour boss of the Dream Oceans) and Trollz Near Beer (milk for younger accounts), plus the younger-players lane in `docs/gdd/00-vision.md`. No model, company or franchise name goes on a character; that is the rule the names were chosen under. The boss-events spec is not written.
 
 **Next.** A spec under `specs/` for the tutorial slice, and a separate one for the dual events, before any code. Then the node-lane items still open from 2026-09-27: the hotbar panel over the help lines at 1280 by 720, the installed launch-skill copy, Joshua's own frame-rate reading of the live demo.
 

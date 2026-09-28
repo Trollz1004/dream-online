@@ -40,3 +40,7 @@ Founder-only end-game material stays in the private OneDrive do-not-commit vault
 ## First Fun Hypothesis
 
 If combat feels good in a small field, and the same field also supports gathering, fishing, crafting, durability repair, PvP flagging, and a night-state event, the MMO foundation is real.
+
+## Younger Players (founder, 2026-09-28)
+
+Content for younger accounts is a separate lane, always extra clean, with its own age band that the founder sets and the game enforces. The direction is that one day, when the game is large enough, age-gated services exist for that lane, and the live NPCs are used in education in ways that are fun and built by play, designed just for those players. Any AI partner working in that lane works under the same rules as the rest of the game: written and approved lines, the lab's allowlist and fallback authority, and never a claim outside the game.
