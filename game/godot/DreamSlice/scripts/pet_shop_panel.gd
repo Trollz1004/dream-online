@@ -62,10 +62,12 @@ func _set_open(value: bool) -> void:
 	# help paragraph. hud.gd already exposes help_label() publicly for
 	# exactly this kind of reach-in, so this needs no edit to hud.gd itself
 	# -- only hidden while the shop is actually open, restored on close.
-	if hud != null and hud.has_method("help_label"):
+	# Spec 005: the help paragraph has left the play screen for the combo
+	# list screen, so it is only ever hidden here, never shown again.
+	if value and hud != null and hud.has_method("help_label"):
 		var help: Label = hud.help_label()
 		if help != null:
-			help.visible = not value
+			help.visible = false
 	# A headless test build has no DisplayServer to ask for a mouse mode, and
 	# capture runs manage Input.mouse_mode entirely on their own (player.gd's
 	# own capture_mode); this panel only ever touches it in a live, non-web,

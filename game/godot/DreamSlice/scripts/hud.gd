@@ -4,12 +4,36 @@ extends CanvasLayer
 # in plain words, and the state that matters in a fight is said outright rather
 # than shown as a thin bar. His skill bar ruling of 2026-09-20 applies: a bar on
 # screen exists to show what is ready and what is cooling down.
+#
+# Spec 005 (FR-007, SB-10, SB-14), 2026-09-28: the play screen now follows
+# docs/gdd/09-interface-style.md -- calm, dark, see-through panels in plain
+# words. The default play HUD is a health and stamina bar on a see-through
+# panel at the bottom centre, a target frame at the top left, a one-line
+# prompt band just above the bar and a small frame-rate line at the bottom
+# right. The old text column is still built and still kept up to date (every
+# getter below reads it, and set_text_readout_visible(true) brings it back),
+# but its lines are hidden by default, and the five-line help block has left
+# the play screen for the combo list screen (L, scripts/combo_list_panel.gd).
+
+const HotbarLayout := preload("res://scripts/hotbar_layout.gd")
 
 const BIG := 30
 const HUGE := 54
 const SMALL := 22
 const HELP_SIZE := 17
+const PROMPT_SIZE := 24
+const EVENT_SIZE := 40
+const BAR_LABEL_SIZE := 16
+const FPS_SIZE := 14
+const PROMPT_MAX_CHARS := 90
 const CINE_SLOT_ORDER := ["Dash", "Swing", "Heavy", "Guard", "Lunge", "Burst"]
+
+# The panel look of docs/gdd/09-interface-style.md, shared by every element
+# on the play screen: dark, see-through, a fine light border, white on dark.
+const PANEL_BG := Color(0.035, 0.04, 0.065, 0.58)
+const PANEL_BORDER := Color(1.0, 1.0, 1.0, 0.13)
+const TEXT_MAIN := Color(0.94, 0.95, 0.97)
+const TEXT_DIM := Color(0.80, 0.83, 0.88, 0.85)
 
 var _box: VBoxContainer
 var _hint: Label
@@ -29,6 +53,22 @@ var _help: Label
 var _fps: Label
 var _last := {}
 var _cinematic := false
+var _text_readout := false
+
+# The default play HUD (spec 005): see _build_play_hud.
+var _prompt: Label
+var _play_root: PanelContainer
+var _play_health: ProgressBar
+var _play_stamina: ProgressBar
+var _play_health_label: Label
+var _play_stamina_label: Label
+var _target_root: PanelContainer
+var _target_name: Label
+var _target_value: Label
+var _target_bar: ProgressBar
+var _fps_root: PanelContainer
+var _fps_corner: Label
+var _prompt_rect := Rect2()
 
 # A slim bottom-centre bar for the recorded demo (integration-card judge
 # note, 2026-09-23): a thin health bar, a thin stamina bar, and the six
@@ -45,6 +85,8 @@ func _ready() -> void:
 	_box = VBoxContainer.new()
 	_box.position = Vector2(28.0, 18.0)
 	_box.add_theme_constant_override("separation", 8)
+	_box.alignment = BoxContainer.ALIGNMENT_END
+	_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_box)
 
 	# A browser will not hand the game the mouse until the player clicks, so the
@@ -110,7 +152,253 @@ func _ready() -> void:
 		+ "The Sentinel winds up for 1.4 seconds, then fires. Dash through the beam while you are yellow to take nothing.")
 	_box.add_child(_help)
 
+	# The one-line prompt (spec 005, FR-007): owned by the tutorial director
+	# later, at most PROMPT_MAX_CHARS long, on the see-through panel.
+	_prompt = Label.new()
+	_box.add_child(_prompt)
+	_prompt.visible = false
+
 	_build_cinematic_bar()
+	_build_play_hud()
+	_style_play_column()
+	apply_layout()
+	if is_inside_tree() and get_viewport() != null:
+		get_viewport().size_changed.connect(apply_layout)
+
+
+# ---------------------------------------------------------------------------
+# The default play HUD (spec 005, FR-007)
+# ---------------------------------------------------------------------------
+
+static func panel_style(radius: float = 10.0, pad_h: float = 16.0, pad_v: float = 8.0) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = PANEL_BG
+	style.border_color = PANEL_BORDER
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(int(radius))
+	style.content_margin_left = pad_h
+	style.content_margin_right = pad_h
+	style.content_margin_top = pad_v
+	style.content_margin_bottom = pad_v
+	return style
+
+
+func _build_play_hud() -> void:
+	# Health and stamina, bottom centre: a thin bar each under a small plain
+	# label, on one see-through panel.
+	_play_root = PanelContainer.new()
+	_play_root.add_theme_stylebox_override("panel", panel_style(12.0, 18.0, 9.0))
+	_play_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_play_root)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 22)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_play_root.add_child(row)
+	var health_col := _bar_column(row)
+	_play_health_label = health_col[0]
+	_play_health = health_col[1]
+	_tint_bar(_play_health, Color(0.86, 0.34, 0.34))
+	var stamina_col := _bar_column(row)
+	_play_stamina_label = stamina_col[0]
+	_play_stamina = stamina_col[1]
+	_tint_bar(_play_stamina, Color(0.44, 0.68, 1.0))
+
+	# The target frame, top left: the one enemy the slice has, by name, with
+	# its health -- real numbers only (no false gameplay data, 2026-09-26).
+	_target_root = PanelContainer.new()
+	_target_root.add_theme_stylebox_override("panel", panel_style(10.0, 16.0, 8.0))
+	_target_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_target_root.visible = false
+	add_child(_target_root)
+	var tcol := VBoxContainer.new()
+	tcol.add_theme_constant_override("separation", 5)
+	_target_root.add_child(tcol)
+	var trow := HBoxContainer.new()
+	tcol.add_child(trow)
+	_target_name = _small_label(18, TEXT_MAIN)
+	_target_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	trow.add_child(_target_name)
+	_target_value = _small_label(BAR_LABEL_SIZE, TEXT_DIM)
+	trow.add_child(_target_value)
+	_target_bar = _thin_bar(Vector2(0.0, 7.0))
+	_tint_bar(_target_bar, Color(0.95, 0.55, 0.30))
+	tcol.add_child(_target_bar)
+
+	# The frame-rate line (spec 004, FR-006): true data, kept on screen, small
+	# and out of the way at the bottom right.
+	_fps_root = PanelContainer.new()
+	_fps_root.add_theme_stylebox_override("panel", panel_style(7.0, 10.0, 3.0))
+	_fps_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_fps_root)
+	_fps_corner = _small_label(FPS_SIZE, TEXT_DIM)
+	_fps_corner.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_fps_root.add_child(_fps_corner)
+
+
+func _bar_column(parent: Control) -> Array:
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 5)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(col)
+	var label := _small_label(BAR_LABEL_SIZE, TEXT_MAIN)
+	col.add_child(label)
+	var bar := _thin_bar(Vector2(220.0, 8.0))
+	col.add_child(bar)
+	return [label, bar]
+
+
+func _small_label(size: int, colour: Color) -> Label:
+	var label := Label.new()
+	label.add_theme_font_size_override("font_size", size)
+	label.add_theme_color_override("font_color", colour)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return label
+
+
+func _thin_bar(min_size: Vector2) -> ProgressBar:
+	var bar := ProgressBar.new()
+	bar.custom_minimum_size = min_size
+	bar.show_percentage = false
+	bar.min_value = 0.0
+	bar.max_value = 100.0
+	bar.value = 100.0
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(1.0, 1.0, 1.0, 0.10)
+	bg.set_corner_radius_all(4)
+	bar.add_theme_stylebox_override("background", bg)
+	return bar
+
+
+func _tint_bar(bar: ProgressBar, colour: Color) -> void:
+	var fg := StyleBoxFlat.new()
+	fg.bg_color = colour
+	fg.set_corner_radius_all(4)
+	bar.add_theme_stylebox_override("fill", fg)
+
+
+# The column that used to be the whole readout now carries only the lines
+# that come and go: the click hint, the talk prompt, the tutorial prompt and
+# the big event line, stacked from the bottom up just above the play bar.
+# Every other line of it stays built, and kept current, but hidden.
+func _style_play_column() -> void:
+	for label in [_hint, _interact, _prompt]:
+		label.add_theme_font_size_override("font_size", PROMPT_SIZE)
+		label.add_theme_color_override("font_color", TEXT_MAIN)
+		label.add_theme_constant_override("outline_size", 0)
+		label.add_theme_stylebox_override("normal", panel_style(10.0, 18.0, 6.0))
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_prompt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_event.add_theme_font_size_override("font_size", EVENT_SIZE)
+	_event.add_theme_constant_override("outline_size", 8)
+	_event.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_event.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_help.visible = false
+	set_text_readout_visible(false)
+	# The column's own children run top to bottom: the event line first, so
+	# it floats above the steady prompts instead of pushing them around.
+	_box.move_child(_event, 0)
+
+
+## Brings the old full text column back (every line large, in plain words)
+## or hides it again. Hidden by default on the play screen (spec 005).
+func set_text_readout_visible(v: bool) -> void:
+	_text_readout = v
+	for label in [_health, _stamina, _target, _events, _fps]:
+		label.visible = v
+	set_skill_labels_visible(v)
+	_reflow_column()
+
+
+func is_text_readout_visible() -> bool:
+	return _text_readout
+
+
+## The one tutorial prompt line (spec 005, FR-007, FR-010): "" hides it.
+## Longer text is cut at PROMPT_MAX_CHARS so the band never becomes a wall.
+func set_prompt(text: String) -> void:
+	var t := text.strip_edges()
+	if t.length() > PROMPT_MAX_CHARS:
+		t = t.substr(0, PROMPT_MAX_CHARS)
+	_prompt.text = t
+	_prompt.visible = t != ""
+	_reflow_column()
+
+
+func prompt_label() -> Label:
+	return _prompt
+
+
+func play_bar() -> PanelContainer:
+	return _play_root
+
+
+func play_health_bar() -> ProgressBar:
+	return _play_health
+
+
+func play_stamina_bar() -> ProgressBar:
+	return _play_stamina
+
+
+func target_frame() -> PanelContainer:
+	return _target_root
+
+
+func fps_label() -> Label:
+	return _fps_corner
+
+
+func _viewport_size() -> Vector2:
+	if is_inside_tree() and get_viewport() != null:
+		return get_viewport().get_visible_rect().size
+	return HotbarLayout.BASE_CANVAS
+
+
+## Places every play-screen element from the shared rectangles in
+## scripts/hotbar_layout.gd (hud_rects), for the current viewport size.
+func apply_layout() -> void:
+	var rects: Dictionary = HotbarLayout.hud_rects(_viewport_size())
+	_place(_play_root, rects["play_bar"])
+	_place(_target_root, rects["target"])
+	_place(_fps_root, rects["fps"])
+	_prompt_rect = rects["prompt"]
+	_reflow_column()
+
+
+func _place(c: Control, r: Rect2) -> void:
+	if c == null:
+		return
+	c.position = r.position
+	c.size = r.size
+	c.custom_minimum_size = r.size
+
+
+# The column is laid out bottom-up: its bottom edge stays on the prompt
+# band's bottom edge however many lines are showing. The text column mode
+# puts it back where it always was, at the top left.
+func _reflow_column() -> void:
+	if _box == null:
+		return
+	if _text_readout:
+		_box.position = Vector2(28.0, 18.0)
+		_box.size = Vector2.ZERO
+		return
+	if _prompt_rect.size == Vector2.ZERO:
+		return
+	var w: float = _prompt_rect.size.x
+	# A wrapping label has no width of its own, so the prompt is given the
+	# width its text needs, never more than the band.
+	var prompt_w := 0.0
+	if _prompt.visible and _prompt.text != "":
+		var font: Font = ThemeDB.fallback_font
+		prompt_w = minf(font.get_string_size(_prompt.text, HORIZONTAL_ALIGNMENT_LEFT, -1, PROMPT_SIZE).x + 40.0, w)
+	_prompt.custom_minimum_size = Vector2(prompt_w, 0.0)
+	var needed: Vector2 = _box.get_combined_minimum_size()
+	_box.size = Vector2(w, needed.y)
+	_box.position = Vector2(_prompt_rect.position.x, _prompt_rect.end.y - needed.y)
 
 
 # A thin health bar, a thin stamina bar, and the six skill cooldown slots,
@@ -266,6 +554,11 @@ func set_cinematic(enabled: bool) -> void:
 	_box.visible = not enabled
 	if _cine_root != null:
 		_cine_root.visible = enabled
+	for c in [_play_root, _fps_root]:
+		if c != null:
+			c.visible = not enabled
+	if _target_root != null and enabled:
+		_target_root.visible = false
 
 
 func is_cinematic() -> bool:
@@ -276,12 +569,17 @@ func show_state(s: Dictionary) -> void:
 	# Only the visibility is touched, never the text or a theme override, so this
 	# costs nothing on the frames where the answer has not changed.
 	if not _cinematic:
-		_hint.visible = not bool(s.get("mouse_captured", true))
-
+		var hint_now := not bool(s.get("mouse_captured", true))
 		var nearby_npc_name: String = s.get("nearby_npc_name", "")
-		_interact.visible = nearby_npc_name != ""
-		if _interact.visible:
+		var interact_now := nearby_npc_name != ""
+		var reflow := hint_now != _hint.visible or interact_now != _interact.visible
+		_hint.visible = hint_now
+		_interact.visible = interact_now
+		if _interact.visible and _interact.text != "Press E to talk to %s." % nearby_npc_name:
 			_interact.text = "Press E to talk to %s." % nearby_npc_name
+			reflow = true
+		if reflow:
+			_reflow_column()
 
 	_paint(_health, "Health  %d / %d" % [int(s["health"]), int(s["health_max"])], Color(1.0, 0.85, 0.85))
 	_paint(_stamina, "Stamina  %d / %d%s" % [
@@ -378,7 +676,9 @@ func show_state(s: Dictionary) -> void:
 	var age: float = s["event_age"]
 	if age < 2.0:
 		var text: String = s["event"]
-		_event.text = text
+		if _event.text != text:
+			_event.text = text
+			_reflow_column()
 		var colour := Color(1.0, 1.0, 1.0)
 		if text.begins_with("PERFECT"):
 			colour = Color(0.55, 1.0, 0.6)
@@ -388,8 +688,11 @@ func show_state(s: Dictionary) -> void:
 			colour = Color(1.0, 0.9, 0.55)
 		colour.a = clampf(1.0 - (age - 1.2) / 0.8, 0.0, 1.0)
 		_event.add_theme_color_override("font_color", colour)
-	else:
+	elif _event.text != "":
 		_event.text = ""
+		_reflow_column()
+
+	_paint_play_hud(s)
 
 	if _cine_health != null:
 		_cine_health.value = clampf(float(s["health"]) / maxf(1.0, float(s["health_max"])) * 100.0, 0.0, 100.0)
@@ -402,6 +705,37 @@ func show_state(s: Dictionary) -> void:
 			_update_cine_slot("Lunge", s["lunge"])
 		if s.has("burst"):
 			_update_cine_slot("Burst", s["burst"])
+
+
+func _paint_play_hud(s: Dictionary) -> void:
+	if _play_root == null:
+		return
+	var hp := float(s["health"])
+	var hp_max := maxf(1.0, float(s["health_max"]))
+	var st := float(s["stamina"])
+	var st_max := maxf(1.0, float(s["stamina_max"]))
+	_play_health.value = clampf(hp / hp_max * 100.0, 0.0, 100.0)
+	_play_stamina.value = clampf(st / st_max * 100.0, 0.0, 100.0)
+	_set_text(_play_health_label, "Health  %d / %d" % [int(hp), int(hp_max)])
+	_set_text(_play_stamina_label, "Stamina  %d / %d%s" % [int(st), int(st_max),
+		"   auto-sprint" if bool(s.get("auto_sprint", false)) else ""])
+	_set_text(_fps_corner, "%d frames per second" % int(Engine.get_frames_per_second()))
+
+	var target_max := float(s.get("target_health_max", 0.0))
+	var show_target: bool = target_max > 0.0 and not _cinematic
+	_target_root.visible = show_target
+	if show_target:
+		var target_hp := float(s["target_health"])
+		var target_name: String = s.get("target_name", "")
+		_set_text(_target_name, target_name if target_name != "" else "Target")
+		_set_text(_target_value, "%d / %d%s" % [int(target_hp), int(target_max),
+			"   down" if target_hp <= 0.0 else ""])
+		_target_bar.value = clampf(target_hp / target_max * 100.0, 0.0, 100.0)
+
+
+func _set_text(label: Label, text: String) -> void:
+	if label.text != text:
+		label.text = text
 
 
 # One colour rule for every skill's cooldown slot: bright while it is

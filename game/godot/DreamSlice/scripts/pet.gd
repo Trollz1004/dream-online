@@ -148,7 +148,10 @@ func _ready() -> void:
 	_eye = _build_eye()
 	_eye_rig.add_child(_eye)
 
-	_name_label = _build_label(0.62, 26, Color(0.85, 0.95, 1.0))
+	# Kept small and soft (spec 005, SB-10): a quiet nameplate with the pet's
+	# real remaining time, not a line of debug text across the frame.
+	_name_label = _build_label(0.58, 17, Color(0.90, 0.94, 1.0, 0.82))
+	_name_label.outline_size = 6
 
 	_build_bubble_ui()
 
