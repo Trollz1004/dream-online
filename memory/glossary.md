@@ -8,7 +8,10 @@
   pay-for-convenience never pay-to-win. Moat: LIVE NPCs with persistent memory.
 - **NEEDs** — in-game currency. Sold publicly as currency/product ONLY — no
   customer-facing mission/benefit framing (FL §496.405 compliance wall applies).
-- **Sup@** — ("Opus" backwards + @) the companion sphere NPC, Destiny-Ghost archetype.
+- **Sup@** — ("Opus" backwards + @) the companion sphere NPC, Destiny-Ghost archetype;
+  a sphere in full counter-rotating rings, Kraken form at 4 in the morning world time,
+  the voice of the chat-conduct ladder (`docs/gdd/11-chat-conduct.md`), and its one reply
+  to the troll in the cart is "Keep dreaming."
   Orange spark visual. Every player gets one at character creation. Narrator,
   quest-giver, primary game voice. The ONE NPC on the real signed-in Claude CLI,
   never an API key. Per-player persistent memory, levels with the player.
@@ -23,6 +26,9 @@
 - **Sunny Ledger** — working name (2026-09-28) for the market NPC who sells rare items on
   a karma basis at sunrise and sunset and honours checks written in invisible ink, in
   world only. `docs/gdd/05-day-night-economy-market.md`.
+- **GeminEYE, the interface** — ruled 2026-09-28: the looting eye becomes the HUD, the
+  search and the maps, seen through as first person, eye patch, lens or contact, with voice
+  options; it feeds chat to the conduct pipeline. `docs/gdd/09-interface-style.md`.
 - **Trollz Near Beer** — the troll's non-alcoholic drink, for accounts above the founder's
   age band; younger accounts see him drinking milk.
 - **TrollinlootNScoot** — working name for the founder-funding limited-edition pet skin

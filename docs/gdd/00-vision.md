@@ -27,7 +27,7 @@ The player is not only a fighter. The player is a worker, fisher, cook, hunter, 
 
 ## Canon To Preserve
 
-- Sup@ is the companion sphere and primary game voice.
+- Sup@ is the companion sphere and primary game voice. Its look (founder, 2026-09-28): a sphere inside rings that turn in full counter-rotation, in the spirit of the founder's own pixel-art sphere, original design only; at 4 in the morning, world time, it takes its Kraken form (the MyThOsKraken of the world-engine dispatch). Its one reply to the troll in the cart, for a long time, is two words: "Keep dreaming."
 - THE BAN HAMMER turns anti-cheat into visible server lore.
 - C0D3X is the rollback rider and represents verified world-state recovery.
 - NEEDs are in-game currency/product only.
