@@ -169,7 +169,7 @@ static func _day(web: bool) -> Dictionary:
 		# Soft billboard halos on the small emitters (the Sentinel's eye,
 		# the pet's eye, Mireth's orb), web only, at a daylight strength.
 		"emitter_halos": web,
-		"emitter_halo_strength": 0.42,
+		"emitter_halo_strength": 0.6,
 		"haze_cards": web,
 		"light_shafts": false,
 		"contact_darkening": web,
@@ -253,7 +253,7 @@ static func _night(web: bool) -> Dictionary:
 		# The same emitter halos the day web profile draws, stronger in the
 		# dark, alongside the lamps' halos.
 		"emitter_halos": web,
-		"emitter_halo_strength": 0.6,
+		"emitter_halo_strength": 0.85,
 		"haze_cards": false,
 		"light_shafts": web,
 		"contact_darkening": web,

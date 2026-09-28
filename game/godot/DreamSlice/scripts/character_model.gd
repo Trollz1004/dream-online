@@ -1441,7 +1441,7 @@ func set_time_of_day(t: String) -> void:
 # SB-09; scripts/glow_halo.gd). `strength` is the halo's resting alpha; the
 # Sentinel's charge (set_glow_charge) lifts it while its beam winds up.
 const GlowHalo := preload("res://scripts/glow_halo.gd")
-const HALO_SIZE := {KIND_SENTINEL: 0.95, KIND_KEEPER: 0.6, KIND_DREAMWALKER: 0.4}
+const HALO_SIZE := {KIND_SENTINEL: 1.4, KIND_KEEPER: 0.7, KIND_DREAMWALKER: 0.4}
 var _glow_halo: MeshInstance3D = null
 var _glow_strength := 0.0
 var _glow_charge := 0.0

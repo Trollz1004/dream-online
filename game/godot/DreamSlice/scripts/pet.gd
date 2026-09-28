@@ -703,7 +703,7 @@ func set_glow_halo(enabled: bool, strength: float) -> void:
 			_eye_glow.visible = false
 		return
 	if _eye_glow == null:
-		_eye_glow = GlowHaloScript.make(_eye_alive_colour, 0.75, strength)
+		_eye_glow = GlowHaloScript.make(_eye_alive_colour, 1.0, strength)
 		_eye.add_child(_eye_glow)
 	_eye_glow.visible = true
 	GlowHaloScript.set_strength(_eye_glow, _eye_alive_colour, strength)
