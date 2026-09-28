@@ -191,6 +191,30 @@ Hard boundary:
 - Preferred paid value is pickup speed, pickup range, sorting, alerting, durability support,
   and style.
 
+### Founder ruling, 2026-09-28: what every pet does, the roster, and the troll in the cart
+
+Joshua gave the pet design in one message on 2026-09-28. Recorded here in his shape, with one judge note where it meets the hard boundary above.
+
+**What every pet does.** Three things, the same for every pet in the roster:
+
+- **Looter.** Picks up drops for the player (the GeminEYE pet in the slice already does this).
+- **Weight boost.** More carry weight before the player slows.
+- **A class-branded boost.** One number, identical for every pet and every class, wearing the label of the owner's class: melee attack for a melee class, magic attack for a caster, health for a defender, and so on. The label is branding; the size is the same.
+
+**The only edge between players.** A pet gives its owner a ten percent advantage only against a player whose own pet is not out. Two players with pets out are even. The founder's number is a target and stays [PLACEHOLDER] until playtested.
+
+> **Judge note (Claude judge lane, 2026-09-28).** As written, the class-branded boost and the ten percent edge are combat power, and the hard boundary in this file and the table in `docs/gdd/03-life-skills-economy.md` say paid pets never sell combat power or an exclusive PvP advantage. The design holds inside the wall in exactly one form: **every character has a pet with the full boost from the start, free, earned by play or handed out at creation**, so the boost and the edge belong to "pet out or not", a choice every player has, and never to a purchase. What is then sold is everything else a pet can be: looting speed and range, weight, looks, voice, memory and the interactive character. The ruling is recorded in that form. If Joshua rules that the boost is paid-only, it is blocked by the wall until he changes the wall itself, and this note says so.
+
+**The roster.** Monkeys, lions, baby tigers, and a troll riding a drift cart as the special edition. Original creatures and an original cart; no other franchise's kart, character or voice is referenced in the game or in the copy (the cart is the founder's own drift cart from the governance lock in the README, always updated, always new).
+
+**The troll in the cart, working name TrollinlootNScoot.** The special edition. Voiced, interactive, and with a memory of its owner, which no other pet has; the memory runs through the Live NPC Lab on the named tier (T1), never on Claude CLI auth, which is Sup@'s alone. Its content is kept fresh with the founder's cart updates, and it is not cheap: the founder's number is 99 dollars, a [PLACEHOLDER] for the shop, and what it buys is the character, the voice, the memory and the loot-and-scoot convenience, never a bigger boost than the free pet.
+
+**How it talks.** He loots and scoots, heckling mobs with dad jokes on the way. His running bit is the swerve:
+
+- He starts a line that sounds as if it is heading somewhere dirty, then swerves: a dad joke, a "nah, trollin'", or he just goes quiet and keeps looting.
+- Players eventually ask him to finish the joke. He stops the cart and answers in character, and the answer is another swerve. The founder's example: "Dirty joke? What is dirty? You make me loot and scoot all day. I'm guessing bedroom, bathroom, kitchen?" Dirty means housework. It never lands anywhere else.
+- The bait lines play only for accounts in the age band the founder sets for them; younger accounts get straight dad jokes and the same silence. Every line is written and approved in the lab's language rules; the lab picks, times and remembers, it does not invent.
+
 ## Storage And Market Runners
 
 No fast travel means item logistics become meaningful. Convenience can exist without

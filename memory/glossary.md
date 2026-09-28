@@ -18,6 +18,11 @@
   with a written in-character apology. Fights beside Myth@s in the father-and-son dual
   events. Ruled 2026-09-28; the public layer is in `docs/gdd/02-action-combat.md`, the
   rest is end-game material (below).
+- **TrollinlootNScoot** — working name for the special-edition pet: a troll riding a
+  drift cart, voiced, interactive, with owner memory on the Live NPC Lab's named tier
+  (T1). Loots and scoots, heckles mobs with dad jokes, and runs the swerve bit (a line
+  that sounds dirty, then turns out to be housework). Ruled 2026-09-28; the design and
+  the judge note on the pay-for-convenience wall are in `docs/gdd/05-day-night-economy-market.md`.
 - **THE BAN HAMMER** — Grok-class T2 enforcer NPC. Anti-cheat as visible spectacle
   (bat swing, splatter effect, in-world one-liners). Boss-tier canon roster also
   includes GEMINeye, OPENAeye, orange sherbet KRAKEN.
