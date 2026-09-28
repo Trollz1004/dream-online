@@ -323,8 +323,28 @@ func set_prompt(text: String) -> void:
 	if t.length() > PROMPT_MAX_CHARS:
 		t = t.substr(0, PROMPT_MAX_CHARS)
 	_prompt.text = t
-	_prompt.visible = t != ""
 	_reflow_column()
+
+
+## The steady lines the column may show at once (spec 005, SB-14): the click
+## hint, the talk prompt and the tutorial prompt share at most two lines, so
+## when both of the others are up the tutorial prompt waits its turn.
+const MAX_STEADY_LINES := 2
+
+
+func _update_prompt_visibility() -> void:
+	var others := int(_hint.visible) + int(_interact.visible)
+	_prompt.visible = _prompt.text != "" and others < MAX_STEADY_LINES
+
+
+## The lines the prompt band is showing right now, top to bottom, not
+## counting the transient event line.
+func steady_lines() -> Array:
+	var out: Array = []
+	for label in [_hint, _interact, _prompt]:
+		if label.visible and label.text != "":
+			out.append(label.text)
+	return out
 
 
 func prompt_label() -> Label:
@@ -382,6 +402,7 @@ func _place(c: Control, r: Rect2) -> void:
 func _reflow_column() -> void:
 	if _box == null:
 		return
+	_update_prompt_visibility()
 	if _text_readout:
 		_box.position = Vector2(28.0, 18.0)
 		_box.size = Vector2.ZERO
