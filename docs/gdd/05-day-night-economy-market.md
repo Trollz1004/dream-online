@@ -191,6 +191,30 @@ Hard boundary:
 - Preferred paid value is pickup speed, pickup range, sorting, alerting, durability support,
   and style.
 
+### Founder ruling, 2026-09-28: what every pet does, the roster, and the troll in the cart
+
+Joshua gave the pet design in one message on 2026-09-28. Recorded here in his shape, with one judge note where it meets the hard boundary above.
+
+**What every pet does.** Three things, the same for every pet in the roster:
+
+- **Looter.** Picks up drops for the player (the GeminEYE pet in the slice already does this).
+- **Weight boost.** More carry weight before the player slows.
+- **A class-branded boost.** One number, identical for every pet and every class, wearing the label of the owner's class: melee attack for a melee class, magic attack for a caster, health for a defender, and so on. The label is branding; the size is the same.
+
+**The only edge between players.** A pet gives its owner a ten percent advantage only against a player whose own pet is not out. Two players with pets out are even. The founder's number is a target and stays [PLACEHOLDER] until playtested.
+
+> **Judge note and the founder's answer (2026-09-28).** The judge lane flagged that the class-branded boost and the ten percent edge are combat power, which the hard boundary in this file and the table in `docs/gdd/03-life-skills-economy.md` forbid selling. Joshua answered the same day, in his words: "Founder funding limited edition no play bonuses from 99 dollars pet skin of skins." So the wall stands unchanged. The looter, the weight boost, the class-branded boost and the ten percent edge belong to the pets every player can have without paying: earned through play or given at creation, per the table in `docs/gdd/03`. The paid special edition carries **no play bonus of any kind**; it is a skin, the skin of skins, sold once as a founder-funding limited edition.
+
+**The roster.** Monkeys, lions, baby tigers, and a troll riding a drift cart as the special edition. Original creatures and an original cart; no other franchise's kart, character or voice is referenced in the game or in the copy (the cart is the founder's own drift cart from the governance lock in the README, always updated, always new).
+
+**The troll in the cart, working name TrollinlootNScoot.** The founder-funding limited edition: a skin, the skin of skins, with no play bonus. It loots, carries and boosts exactly as the free pet does, no more. What the money buys is the character: voiced, interactive, and with a memory of its owner, which no other pet has; the memory runs through the Live NPC Lab on the named tier (T1), never on Claude CLI auth, which is Sup@'s alone. Its content is kept fresh with the founder's cart updates. The founder's number is 99 dollars, a [PLACEHOLDER] for the funding window, and it is a limited edition: sold during founder funding and not again.
+
+**How it talks.** He loots and scoots, heckling mobs with dad jokes on the way. His running bit is the swerve:
+
+- He starts a line that sounds as if it is heading somewhere dirty, then swerves: a dad joke, a "nah, trollin'", or he just goes quiet and keeps looting.
+- Players eventually ask him to finish the joke. He stops the cart and answers in character, and the answer is another swerve. The founder's example: "Dirty joke? What is dirty? You make me loot and scoot all day. I'm guessing bedroom, bathroom, kitchen?" Dirty means housework. It never lands anywhere else.
+- The bait lines play only for accounts in the age band the founder sets for them; younger accounts get straight dad jokes and the same silence. Every line is written and approved in the lab's language rules; the lab picks, times and remembers, it does not invent.
+
 ## Storage And Market Runners
 
 No fast travel means item logistics become meaningful. Convenience can exist without
