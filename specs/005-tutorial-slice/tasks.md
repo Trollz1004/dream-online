@@ -14,46 +14,46 @@ description: "Task list for the tutorial slice, worthy of the judge lane's name"
 
 ## Phase 0: Baseline capture
 
-- [ ] T001 [Judge] Run the headless suite on current `main`; record the count (expected 789 of 789).
-- [ ] T002 [Judge] Export the web build and shoot day and night at 1920x1080 and 1280x720 with the plan's capture procedure; until `shoot_demo.mjs` exists (T055), use a one-off Playwright call with a fixed wait and switch worlds with N. Grade all four frames against SB-01 to SB-15 and journal the baseline grade. (SB-01 to SB-15)
-- [ ] T003 [Judge] Measure the Compatibility renderer: export a throwaway build that turns on, one at a time, sun shadows, glow, AgX, adjustments, FXAA and a ReflectionProbe over the street; capture each; fill the plan's render table's web column with drawn or not drawn. Nothing from this build is merged. (FR-005)
-- [ ] T004 [Opus] Add `.github/scripts/shoot_demo.mjs` skeleton and the `dreamFrameReady` flag plus the `dream` query-string read in `scripts/world.gd` (web only, `JavaScriptBridge`), with checks that the non-web path ignores it. (FR-001)
+- [x] T001 [Judge] Run the headless suite on current `main`; record the count (expected 789 of 789).
+- [x] T002 [Judge] (graded 2026-09-28: day 3 of 13, night 3 of 13 on main 71e482b) Export the web build and shoot day and night at 1920x1080 and 1280x720 with the plan's capture procedure; until `shoot_demo.mjs` exists (T055), use a one-off Playwright call with a fixed wait and switch worlds with N. Grade all four frames against SB-01 to SB-15 and journal the baseline grade. (SB-01 to SB-15)
+- [x] T003 [Judge] (measured 2026-09-28 by capture during the build; the web column is in the journal entry and plan) Measure the Compatibility renderer: export a throwaway build that turns on, one at a time, sun shadows, glow, AgX, adjustments, FXAA and a ReflectionProbe over the street; capture each; fill the plan's render table's web column with drawn or not drawn. Nothing from this build is merged. (FR-005)
+- [x] T004 [Opus] Add `.github/scripts/shoot_demo.mjs` skeleton and the `dreamFrameReady` flag plus the `dream` query-string read in `scripts/world.gd` (web only, `JavaScriptBridge`), with checks that the non-web path ignores it. (FR-001)
 
 **Checkpoint**: the baseline grade and the web capability table exist; every later grade is compared with T002.
 
 ## Phase 1: Render settings, day
 
-- [ ] T010 [Opus] Create `scripts/render_profile.gd` (pure `profile(world, web)`), move every day setting out of `_build_day_environment` in `scripts/dream_env.gd` into it, with no visual change yet; add `tests/test_render_profile.gd` for the day profile on both platforms. (FR-002)
-- [ ] T011 [Opus] Day key light: shadows on in the web profile at the plan's low-cost settings, or blob shadows if T003 says no; long golden shadows across the lane. (FR-003; SB-01)
-- [ ] T012 [Opus] Day sky: keep the gradient, strengthen the cloud plane so clouds read at 1920x1080 in the web frame. (FR-003; SB-02)
-- [ ] T013 [Opus] Day air: tune depth and height fog and aerial perspective so near, mid and far planes separate; add haze cards if the web frame needs them. (FR-003, FR-005; SB-03)
-- [ ] T014 [Opus] Day glow and grade: glow in the web profile if T003 says drawn, else soft billboards; AgX or its Filmic fallback. (FR-003, FR-005; SB-09)
-- [ ] T015 [Opus] Day ground: break tiling toward the horizon (macro noise already in the ground shader, distance blend to a second scale) and add contact darkening around footprints. (FR-003; SB-06)
-- [ ] T016 [Judge] Capture and grade the day frames; send back any failing item with the frame. (SB-01 to SB-07, SB-09)
+- [x] T010 [Opus] Create `scripts/render_profile.gd` (pure `profile(world, web)`), move every day setting out of `_build_day_environment` in `scripts/dream_env.gd` into it, with no visual change yet; add `tests/test_render_profile.gd` for the day profile on both platforms. (FR-002)
+- [x] T011 [Opus] Day key light: shadows on in the web profile at the plan's low-cost settings, or blob shadows if T003 says no; long golden shadows across the lane. (FR-003; SB-01)
+- [x] T012 [Opus] Day sky: keep the gradient, strengthen the cloud plane so clouds read at 1920x1080 in the web frame. (FR-003; SB-02)
+- [x] T013 [Opus] Day air: tune depth and height fog and aerial perspective so near, mid and far planes separate; add haze cards if the web frame needs them. (FR-003, FR-005; SB-03)
+- [x] T014 [Opus] Day glow and grade: glow in the web profile if T003 says drawn, else soft billboards; AgX or its Filmic fallback. (FR-003, FR-005; SB-09)
+- [x] T015 [Opus] Day ground: break tiling toward the horizon (macro noise already in the ground shader, distance blend to a second scale) and add contact darkening around footprints. (FR-003; SB-06)
+- [x] T016 [Judge] (2026-09-28 on 743821a: SB-09 no by day, the rest yes) Capture and grade the day frames; send back any failing item with the frame. (SB-01 to SB-07, SB-09)
 
 ## Phase 2: Render settings, night
 
-- [ ] T020 [Opus] Move every night setting from `_build_night_environment` into `render_profile.gd`; extend `tests/test_render_profile.gd`. (FR-002)
-- [ ] T021 [Opus] Night sky: add the star field and keep the horizon glow. (FR-004; SB-02)
-- [ ] T022 [Opus] Moon shadows in the web profile, or blob shadows per T003. (FR-004, FR-005; SB-03, SB-04)
-- [ ] T023 [Opus] Wet street for the web: the ReflectionProbe if T003 says drawn, else the mirrored reflection layer under a streaked overlay; SSR stays on the desktop. (FR-004, FR-005; SB-08)
-- [ ] T024 [Opus] Lamp and sign glow and night light-shaft cards; haze between near and far towers. (FR-004, FR-005; SB-03, SB-09)
-- [ ] T025 [Judge] Capture and grade the night frames. (SB-02 to SB-09)
+- [x] T020 [Opus] Move every night setting from `_build_night_environment` into `render_profile.gd`; extend `tests/test_render_profile.gd`. (FR-002)
+- [x] T021 [Opus] Night sky: add the star field and keep the horizon glow. (FR-004; SB-02)
+- [x] T022 [Opus] Moon shadows in the web profile, or blob shadows per T003. (FR-004, FR-005; SB-03, SB-04)
+- [x] T023 [Opus] Wet street for the web: the ReflectionProbe if T003 says drawn, else the mirrored reflection layer under a streaked overlay; SSR stays on the desktop. (FR-004, FR-005; SB-08)
+- [x] T024 [Opus] Lamp and sign glow and night light-shaft cards; haze between near and far towers. (FR-004, FR-005; SB-03, SB-09)
+- [x] T025 [Judge] (2026-09-28 on 743821a: 14 of 14, SB-05 and SB-08 thin) Capture and grade the night frames. (SB-02 to SB-09)
 
 ## Phase 3: Camera and character read
 
-- [ ] T030 [Opus] `scripts/player.gd`: new default chase framing and spawn yaw toward the landmark; keep `set_camera_distance` and every capture flag working; checks for the spring values and spawn yaw. (FR-006; SB-07)
-- [ ] T031 [Opus] Hero rim: material rim in `scripts/character_model.gd` and a weak back light on the camera rig; checks that both exist. (FR-006; SB-05)
-- [ ] T032 [Opus] Separate the hero's value from the ground at spawn in both worlds (cloak edge or ground around camp), guided by the T016 and T025 frames. (FR-006; SB-04)
-- [ ] T033 [Judge] Grade SB-04, SB-05 and SB-07 on fresh day and night frames.
+- [x] T030 [Opus] `scripts/player.gd`: new default chase framing and spawn yaw toward the landmark; keep `set_camera_distance` and every capture flag working; checks for the spring values and spawn yaw. (FR-006; SB-07)
+- [x] T031 [Opus] Hero rim: material rim in `scripts/character_model.gd` and a weak back light on the camera rig; checks that both exist. (FR-006; SB-05)
+- [x] T032 [Opus] Separate the hero's value from the ground at spawn in both worlds (cloak edge or ground around camp), guided by the T016 and T025 frames. (FR-006; SB-04)
+- [x] T033 [Judge] Grade SB-04, SB-05 and SB-07 on fresh day and night frames.
 
 ## Phase 4: HUD cleanup
 
-- [ ] T040 [Opus] `scripts/hud.gd`: the bottom bar becomes the default HUD on a dark see-through panel; the text column hidden by default (getters kept); the frame-rate line small at bottom right; the help block no longer on the play screen; the one-line prompt label added. Update `tests/test_hud.gd`. (FR-007; SB-10, SB-14)
-- [ ] T041 [Opus] `scripts/hotbar_layout.gd` and `scripts/keyboard_panel.gd`: bottom-left default, `layout_rects(viewport_size)`, and a clamp that keeps a restored saved position clear of the prompt; overlap checks at 1280x720 and 1920x1080 in `tests/test_keyboard_hotbar.gd`. (FR-008; SB-13)
-- [ ] T042 [P] [Opus] `scripts/keycap.gd`: real code-drawn icons (red bottle, blue bottle, bread, skill glyphs); a check that no keycap uses the dot. (FR-009; SB-11)
-- [ ] T043 [P] [Opus] `scripts/combo_list_panel.gd` on L, the three-column see-through screen; `tests/test_combo_list.gd` checks one row per resolved skill with its tag and honest stubs. (FR-016; SB-10, SB-13) (User Story 4)
-- [ ] T044 [Judge] Grade SB-10 to SB-15 at both resolutions, the combo list screen open and closed.
+- [x] T040 [Opus] `scripts/hud.gd`: the bottom bar becomes the default HUD on a dark see-through panel; the text column hidden by default (getters kept); the frame-rate line small at bottom right; the help block no longer on the play screen; the one-line prompt label added. Update `tests/test_hud.gd`. (FR-007; SB-10, SB-14)
+- [x] T041 [Opus] `scripts/hotbar_layout.gd` and `scripts/keyboard_panel.gd`: bottom-left default, `layout_rects(viewport_size)`, and a clamp that keeps a restored saved position clear of the prompt; overlap checks at 1280x720 and 1920x1080 in `tests/test_keyboard_hotbar.gd`. (FR-008; SB-13)
+- [x] T042 [P] [Opus] `scripts/keycap.gd`: real code-drawn icons (red bottle, blue bottle, bread, skill glyphs); a check that no keycap uses the dot. (FR-009; SB-11)
+- [x] T043 [P] [Opus] `scripts/combo_list_panel.gd` on L, the three-column see-through screen; `tests/test_combo_list.gd` checks one row per resolved skill with its tag and honest stubs. (FR-016; SB-10, SB-13) (User Story 4)
+- [x] T044 [Judge] Grade SB-10 to SB-15 at both resolutions, the combo list screen open and closed.
 
 ## Phase 5: Tutorial director beats
 
@@ -73,9 +73,9 @@ description: "Task list for the tutorial slice, worthy of the judge lane's name"
 
 ## Phase 7: Tests
 
-- [ ] T070 [Opus] Load every new test file from `tests/run_tests.gd`; raise `MINIMUM_CHECKS` by exactly the checks added; run a headless import so every new `.gd` has its `.uid`. (FR-018)
-- [ ] T071 [Opus] A text-wall sweep check: walk every visible Label under the HUD, tutorial and prompt layers at each beat; at most two tutorial lines, none over 90 characters. (FR-010; SB-14; SC-006)
-- [ ] T072 [Opus] A copy check over every new prompt, Ember line and Mireth line against the competitor, real-money and mocking word lists kept in the test. (FR-017, FR-020)
+- [x] T070 [Opus] Load every new test file from `tests/run_tests.gd`; raise `MINIMUM_CHECKS` by exactly the checks added; run a headless import so every new `.gd` has its `.uid`. (FR-018)
+- [x] T071 [Opus] A text-wall sweep check: walk every visible Label under the HUD, tutorial and prompt layers at each beat; at most two tutorial lines, none over 90 characters. (FR-010; SB-14; SC-006)
+- [x] T072 [Opus] A copy check over every new prompt, Ember line and Mireth line against the competitor, real-money and mocking word lists kept in the test. (FR-017, FR-020)
 - [ ] T073 [Judge] Run the full suite; it passes every check at or above the new floor; both required GitHub checks green on the pull request. (SC-003)
 
 ## Phase 8: Export and screenshot review
