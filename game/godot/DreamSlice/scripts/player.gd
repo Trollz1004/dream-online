@@ -44,10 +44,10 @@ const CLOSE_CAPTURE_HEIGHT := 1.5
 # horizon sits well above the midline. The spawn yaw faces the fight lane
 # and the landmark beyond it.
 const DEFAULT_SPRING_LENGTH := 5.0
-const DEFAULT_MOUNT_HEIGHT := 1.7
-const DEFAULT_PITCH := -0.19
+const DEFAULT_MOUNT_HEIGHT := 1.15
+const DEFAULT_PITCH := -0.25
 const DEFAULT_FOV := 62.0
-const SHOULDER_OFFSET := 0.62     # metres of sideways camera shift (Camera3D.h_offset)
+const SHOULDER_OFFSET := 0.8     # metres of sideways camera shift (Camera3D.h_offset)
 const SPAWN_YAW := 0.0
 
 # The hero's rim light (FR-006, SB-05): a light on the far side of the hero

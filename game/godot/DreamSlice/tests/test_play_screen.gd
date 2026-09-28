@@ -299,7 +299,10 @@ func _test_hero_chase_framing() -> void:
 	check("the spring arm pulls back to the chase distance",
 		absf(player._spring.spring_length - PlayerScript.DEFAULT_SPRING_LENGTH) < 0.001
 		and PlayerScript.DEFAULT_SPRING_LENGTH >= 4.5 and PlayerScript.DEFAULT_SPRING_LENGTH <= 6.0)
-	check("the camera mounts above the shoulder", player._spring.position.y >= 1.5)
+	# The body's origin sits at its hips (the capsule's centre), so a pivot a
+	# little over a metre above it is at the shoulder.
+	check("the camera pivots at the hero's shoulder, above the hips",
+		player._spring.position.y >= 1.0 and player._spring.position.y <= 1.8)
 	check("the camera looks a little down, so the horizon sits above the midline",
 		player._pitch < -0.1 and player._pitch > -0.35)
 	check("the field of view is a grounded 55 to 65 degrees", player._camera.fov >= 55.0 and player._camera.fov <= 65.0)
