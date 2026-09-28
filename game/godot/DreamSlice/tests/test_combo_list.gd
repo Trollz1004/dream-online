@@ -166,6 +166,14 @@ func _test_the_screen_builds_one_row_per_move_and_a_back_control() -> void:
 		if PanelScript.PANEL_SIZE.x > vp.x or PanelScript.PANEL_SIZE.y > vp.y:
 			fits = false
 	check("the screen fits the 1920x1080 and the 1280x720 frame", fits)
+	for window in [Vector2(1920.0, 1080.0), Vector2(1280.0, 720.0)]:
+		var vp: Vector2 = HotbarLayout.canvas_size_for_window(window)
+		var r: Rect2 = PanelScript.panel_rect(vp)
+		check("in a %dx%d window the screen clears the real-slice label at the top right and stays on screen"
+			% [int(window.x), int(window.y)],
+			not r.intersects(HotbarLayout.hud_rects(vp)["stamp"]) and Rect2(Vector2.ZERO, vp).encloses(r))
+	check("the built screen sits on its rectangle",
+		panel.panel().position.is_equal_approx(PanelScript.panel_rect(HotbarLayout.BASE_CANVAS).position))
 	var last: Control = panel.row_nodes()[panel.row_nodes().size() - 1]
 	check("the last row ends above the Back control", last.position.y + last.size.y <= back.position.y)
 	panel.select(3)

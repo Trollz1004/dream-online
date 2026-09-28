@@ -65,16 +65,11 @@ func _build() -> void:
 	var style := HudScript.panel_style(14.0, 0.0, 0.0)
 	style.bg_color = Color(0.03, 0.035, 0.055, 0.78)
 	_panel.add_theme_stylebox_override("panel", style)
-	_panel.anchor_left = 0.5
-	_panel.anchor_right = 0.5
-	_panel.anchor_top = 0.5
-	_panel.anchor_bottom = 0.5
-	_panel.offset_left = -PANEL_SIZE.x * 0.5
-	_panel.offset_right = PANEL_SIZE.x * 0.5
-	_panel.offset_top = -PANEL_SIZE.y * 0.5
-	_panel.offset_bottom = PANEL_SIZE.y * 0.5
 	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_panel)
+	_place_panel()
+	if is_inside_tree() and get_viewport() != null:
+		get_viewport().size_changed.connect(_place_panel)
 
 	var title := Label.new()
 	title.text = "Combo list"
@@ -194,6 +189,31 @@ func _build() -> void:
 	_back.position = Vector2((PANEL_SIZE.x - _back.size.x) * 0.5, PANEL_SIZE.y - 44.0 - 24.0)
 	_back.pressed.connect(close)
 	_panel.add_child(_back)
+
+
+const HotbarLayout := preload("res://scripts/hotbar_layout.gd")
+const TOP_GAP := 14.0
+
+
+## Where the screen sits on a canvas of `viewport_size`: centred across, and
+## low enough that the browser build's real-slice label (a fixed strip at the
+## top right, scripts/hotbar_layout.gd's "stamp" rectangle) never covers its
+## top edge, while its bottom stays on screen.
+static func panel_rect(viewport_size: Vector2) -> Rect2:
+	var stamp: Rect2 = HotbarLayout.hud_rects(viewport_size)["stamp"]
+	var x: float = (viewport_size.x - PANEL_SIZE.x) * 0.5
+	var y: float = maxf((viewport_size.y - PANEL_SIZE.y) * 0.5, stamp.end.y + TOP_GAP)
+	y = minf(y, viewport_size.y - TOP_GAP - PANEL_SIZE.y)
+	return Rect2(Vector2(x, y), PANEL_SIZE)
+
+
+func _place_panel() -> void:
+	var vp := HotbarLayout.BASE_CANVAS
+	if is_inside_tree() and get_viewport() != null:
+		vp = get_viewport().get_visible_rect().size
+	var r := panel_rect(vp)
+	_panel.position = r.position
+	_panel.size = r.size
 
 
 ## Marks one row chosen: its highlight bar lights and the help panel
