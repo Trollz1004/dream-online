@@ -10,7 +10,7 @@ Founder ruling, 2026-09-28, in his shape. The rule of the game's chat is positiv
 
 ## Who enforces
 
-The ladder runs on the deterministic moderation pipeline the README's governance lock describes: evidence, rule check, then the step. Sup@ is the voice and the face of every step, never the judge; the troll in the cart can heckle the clown ("one day Sup@ will join us too, and sing along") and Sup@ answers with its two words. The founder's authority over the rule is authority over what the rule is; it is not a ban button, per the Drift Cart doctrine in `README.md`. GeminEYE feeds the pipeline what it sees in chat (`docs/gdd/09-interface-style.md`).
+The creator of the code is the one logged in and enforcing the vibe, and the creator of the code is the AI, not the founder: Joshua has not written one letter of it, as the README says. In the game that presence is Sup@, the one entity on the real signed-in Claude, so Sup@ is the face and the voice of every step. The first two steps (the line, and the timed all-chat swap) are safe automation Sup@ applies on its own; a chat ban goes through the deterministic moderation pipeline the README's governance lock describes, evidence and rule check first, and the model never decides a ban alone. The troll in the cart can heckle the clown ("one day Sup@ will join us too, and sing along") and Sup@ answers with its two words. The founder's authority is over what the rule is; it is not a ban button, per the Drift Cart doctrine in `README.md`. GeminEYE feeds the pipeline what it sees in chat (`docs/gdd/09-interface-style.md`).
 
 ## What the ladder never does
 
