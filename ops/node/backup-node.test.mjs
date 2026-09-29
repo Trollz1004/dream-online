@@ -5,7 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { walkTree, copyVault, applyRetention, verifyDump, summarize, runBackup, dbHost, stampOf } from './backup-node.mjs'
+import { walkTree, copyVault, applyRetention, verifyDump, summarize, runBackup, dbHost, stampOf, splitDbUrl, isUsableSet, HEARTBEAT_REL, MANIFEST } from './backup-node.mjs'
 
 // Small expect() over node:assert so the cases read the same as the mission-control suite.
 function expect(actual) {
@@ -82,16 +82,33 @@ describe('verifyDump', () => {
 })
 
 describe('applyRetention', () => {
-  it('removes the oldest stamped sets beyond keep and ignores other names', () => {
-    const dir = path.join(tmp, 'backups')
-    const names = ['2026-09-01T01-00-00', '2026-09-02T01-00-00', '2026-09-03T01-00-00', '2026-09-04T01-00-00']
-    for (const n of names) fs.mkdirSync(path.join(dir, n), { recursive: true })
-    fs.mkdirSync(path.join(dir, 'notes-folder'))
-    write(path.join(dir, '2026-09-00T00-00-00.txt'), 'file')
-    expect(applyRetention(dir, 2)).toBe(2)
-    expect(fs.readdirSync(dir).sort()).toEqual(['2026-09-00T00-00-00.txt', names[2], names[3], 'notes-folder'].sort())
-    expect(applyRetention(dir, 2)).toBe(0)
-    expect(applyRetention(dir, 0)).toBe(1)
+  const dir = () => path.join(tmp, 'backups')
+  const mk = (name, manifest) => {
+    fs.mkdirSync(path.join(dir(), name), { recursive: true })
+    if (manifest) fs.writeFileSync(path.join(dir(), name, MANIFEST), JSON.stringify(manifest))
+  }
+  const good = { overall: 'GREEN', items: [{ id: 'vault', status: 'DONE' }] }
+  const yellowUsable = { overall: 'YELLOW', items: [{ id: 'supabase', status: 'NOT CONFIGURED' }, { id: 'vault', status: 'DONE' }] }
+  const yellowEmpty = { overall: 'YELLOW', items: [{ id: 'supabase', status: 'NOT CONFIGURED' }, { id: 'vault', status: 'NOT CONFIGURED' }] }
+  const red = { overall: 'RED', items: [{ id: 'vault', status: 'FAILED' }] }
+  it('isUsableSet: manifest present, not RED, at least one DONE', () => {
+    mk('2026-09-01T01-00-00', good); mk('2026-09-02T01-00-00', yellowUsable); mk('2026-09-03T01-00-00', yellowEmpty); mk('2026-09-04T01-00-00', red); mk('2026-09-05T01-00-00', null)
+    fs.writeFileSync(path.join(dir(), '2026-09-05T01-00-00', MANIFEST), '{broken')
+    expect(['2026-09-01T01-00-00', '2026-09-02T01-00-00', '2026-09-03T01-00-00', '2026-09-04T01-00-00', '2026-09-05T01-00-00'].map((n) => isUsableSet(path.join(dir(), n)))).toEqual([true, true, false, false, false])
+  })
+  it('keeps the newest usable sets, drops failed and interrupted ones, ignores other names', () => {
+    mk('2026-09-01T01-00-00', good); mk('2026-09-02T01-00-00', good); mk('2026-09-03T01-00-00', red); mk('2026-09-04T01-00-00', null); mk('2026-09-05T01-00-00', good)
+    fs.mkdirSync(path.join(dir(), 'notes-folder'))
+    write(path.join(dir(), '2026-09-00T00-00-00.txt'), 'file')
+    expect(applyRetention(dir(), 2)).toBe(3)
+    expect(fs.readdirSync(dir()).sort()).toEqual(['2026-09-00T00-00-00.txt', '2026-09-02T01-00-00', '2026-09-05T01-00-00', 'notes-folder'].sort())
+    expect(applyRetention(dir(), 2)).toBe(0)
+    expect(applyRetention(dir(), 0)).toBe(1)
+  })
+  it('never deletes the protected set, even when it is RED', () => {
+    mk('2026-09-01T01-00-00', good); mk('2026-09-02T01-00-00', red); mk('2026-09-03T01-00-00', red)
+    expect(applyRetention(dir(), 5, { protect: '2026-09-03T01-00-00' })).toBe(1)
+    expect(fs.readdirSync(dir()).sort()).toEqual(['2026-09-01T01-00-00', '2026-09-03T01-00-00'])
   })
 })
 
@@ -113,6 +130,14 @@ describe('helpers', () => {
     expect(dbHost(URL_SECRET)).toBe('db.example.supabase.co:5432')
     expect(dbHost('nohost')).toBe('nohost')
   })
+  it('splitDbUrl keeps the password off the command line', () => {
+    expect(splitDbUrl(URL_SECRET)).toEqual({ safeUrl: 'postgresql://postgres@db.example.supabase.co:5432/postgres', password: 'hunter2secret' })
+    expect(splitDbUrl('postgresql://u:p%40ss@h/db').password).toBe('p@ss')
+    expect(splitDbUrl('not a url')).toEqual({ safeUrl: 'not a url', password: '' })
+  })
+  it('heartbeat folder follows where the script lives', () => {
+    expect(HEARTBEAT_REL).toEqual(['ops', 'node', 'heartbeat'])
+  })
 })
 
 describe('runBackup', () => {
@@ -120,8 +145,8 @@ describe('runBackup', () => {
     const r = runBackup({ env: env({ SUPABASE_DB_URL: URL_SECRET }), exec: okExec, now: () => NOW, root })
     expect(r.overall).toBe('GREEN')
     expect(r.set).toBe(path.join(root, 'ops', 'backups', '2026-09-29T03-04-05'))
-    const json = fs.readFileSync(path.join(root, 'ops', 'heartbeat', 'backup-node.json'), 'utf8')
-    const log = fs.readFileSync(path.join(root, 'ops', 'heartbeat', 'backup-node.log'), 'utf8')
+    const json = fs.readFileSync(path.join(root, 'ops', 'node', 'heartbeat', 'backup-node.json'), 'utf8')
+    const log = fs.readFileSync(path.join(root, 'ops', 'node', 'heartbeat', 'backup-node.log'), 'utf8')
     expect(JSON.parse(json)).toMatchObject({ overall: 'GREEN', removed: 0 })
     expect(log.trim()).toBe(`2026-09-29T03:04:05.000Z GREEN supabase=DONE vault=DONE set=${r.set}`)
     expect(r.line + json + log).not.toContain('hunter2secret')
@@ -129,20 +154,30 @@ describe('runBackup', () => {
   })
   it('passes the exact pg_dump arguments', () => {
     let seen
-    runBackup({ env: env({ SUPABASE_DB_URL: URL_SECRET }), exec: (c, a) => { seen = [c, a]; return okExec(c, a) }, now: () => NOW, root })
+    runBackup({ env: env({ SUPABASE_DB_URL: URL_SECRET }), exec: (c, a, o) => { seen = [c, a, o]; return okExec(c, a) }, now: () => NOW, root })
     expect(seen[0]).toBe('pg_dump')
     expect(seen[1].slice(0, 3)).toEqual(['--no-owner', '--no-privileges', '--format=custom'])
     expect(seen[1][3]).toMatch(/supabase\.dump$/)
-    expect(seen[1][4]).toBe(URL_SECRET)
+    expect(seen[1][4]).toBe('postgresql://postgres@db.example.supabase.co:5432/postgres')
+    expect(seen[2].env.PGPASSWORD).toBe('hunter2secret')
+    expect(JSON.stringify(seen[1])).not.toContain('hunter2secret')
   })
-  it('garbage dump is FAILED and RED, exits nonzero semantics, no retention', () => {
+  it('a dump ended by a signal or without a status is FAILED, not DONE', () => {
+    const sig = runBackup({ env: env({ SUPABASE_DB_URL: URL_SECRET }), exec: (c, a) => { okExec(c, a); return { status: null, signal: 'SIGTERM' } }, now: () => NOW, root })
+    expect(sig.items[0].status).toBe('FAILED')
+    expect(sig.items[0].detail).toContain('SIGTERM')
+    const none = runBackup({ env: env({ SUPABASE_DB_URL: URL_SECRET }), exec: (c, a) => { okExec(c, a); return {} }, now: () => new Date(NOW.getTime() + 1000), root })
+    expect(none.items[0].status).toBe('FAILED')
+  })
+  it('garbage dump is FAILED and RED; retention drops unusable older sets and keeps this one', () => {
     const backups = path.join(root, 'ops', 'backups')
     for (const n of ['2026-01-01T00-00-00', '2026-01-02T00-00-00']) fs.mkdirSync(path.join(backups, n), { recursive: true })
     const r = runBackup({ env: env({ SUPABASE_DB_URL: URL_SECRET, BACKUP_KEEP: '1' }), exec: garbageExec, now: () => NOW, root })
     expect(r.overall).toBe('RED')
     expect(r.items[0]).toMatchObject({ id: 'supabase', status: 'FAILED' })
-    expect(r.removed).toBe(0)
-    expect(fs.readdirSync(backups)).toHaveLength(3)
+    expect(r.removed).toBe(2)
+    expect(fs.readdirSync(backups)).toEqual(['2026-09-29T03-04-05'])
+    expect(JSON.parse(fs.readFileSync(path.join(r.set, MANIFEST), 'utf8')).overall).toBe('RED')
   })
   it('pg_dump missing is NOT CONFIGURED, overall YELLOW', () => {
     const r = runBackup({ env: env({ SUPABASE_DB_URL: URL_SECRET }), exec: enoentExec, now: () => NOW, root })
@@ -150,7 +185,7 @@ describe('runBackup', () => {
     expect(r.overall).toBe('YELLOW')
   })
   it('non-zero pg_dump exit and other spawn errors are FAILED with the URL scrubbed', () => {
-    const bad = runBackup({ env: env({ SUPABASE_DB_URL: URL_SECRET }), exec: () => ({ status: 1, stderr: `connection to ${URL_SECRET} refused\nmore` }), now: () => NOW, root })
+    const bad = runBackup({ env: env({ SUPABASE_DB_URL: URL_SECRET }), exec: () => ({ status: 1, stderr: `connection to ${URL_SECRET} refused, password hunter2secret\nmore` }), now: () => NOW, root })
     expect(bad.items[0].status).toBe('FAILED')
     expect(JSON.stringify(bad)).not.toContain('hunter2secret')
     const err = runBackup({ env: env({ SUPABASE_DB_URL: URL_SECRET }), exec: () => ({ error: { code: 'EACCES', message: 'denied ' + URL_SECRET } }), now: () => new Date(NOW.getTime() + 1000), root })
@@ -186,6 +221,11 @@ describe('runBackup', () => {
     const r = runBackup({ env: env({ BACKUP_KEEP: '2', BACKUP_DIR: path.join(root, 'ops', 'backups') }), now: () => t(4), root })
     expect(r.removed).toBe(3)
     expect(fs.readdirSync(path.join(root, 'ops', 'backups'))).toHaveLength(2)
+  })
+  it('HEARTBEAT_DIR overrides the heartbeat folder', () => {
+    const hb = path.join(tmp, 'hb')
+    runBackup({ env: env({ HEARTBEAT_DIR: hb }), now: () => NOW, root })
+    expect(fs.existsSync(path.join(hb, 'backup-node.json'))).toBe(true)
   })
   it('defaults keep to 14 and repo root from env REPO_ROOT', () => {
     const r = runBackup({ env: env({ REPO_ROOT: root, BACKUP_KEEP: '' }), now: () => NOW })

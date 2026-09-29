@@ -2,24 +2,35 @@
 /**
  * Node backup runner. One dated set per run under BACKUP_DIR: a pg_dump of the
  * database (when SUPABASE_DB_URL is set) and a verified copy of the Obsidian
- * vault. Writes ops/heartbeat/backup-node.json plus one line in
- * ops/heartbeat/backup-node.log. JARVIS reads the JSON at /api/backup-health.
- * Run it nightly from cron or Task Scheduler:
+ * vault. Writes backup-node.json plus one line in backup-node.log to the node's
+ * heartbeat folder; JARVIS reads the JSON at /api/backup-health.
  *
- *   node C:\ANTIGRAVITY\mission-control\scripts\backup-node.mjs
+ * The same file lives in two repositories and picks its heartbeat folder from
+ * where it sits:
+ *   ANTIGRAVITY  mission-control/scripts/backup-node.mjs  ->  ops/heartbeat/
+ *   dream-online ops/node/backup-node.mjs                ->  ops/node/heartbeat/
+ * HEARTBEAT_DIR overrides both. Run it nightly from the Hermes cron or Task
+ * Scheduler with plain `node <path to this file>`.
  *
  * Honesty rules:
  *   - An item that is not set up says NOT CONFIGURED. It is never a fake DONE.
- *   - A database dump is DONE only when the file is non-empty and starts with
+ *   - A database dump is DONE only when pg_dump exited 0 (a signal or a
+ *     missing status is a failure) and the file is non-empty and starts with
  *     the custom-format magic "PGDMP".
  *   - A vault copy is DONE only when a re-walk of the copy matches the source
  *     file count and byte total.
- *   - The database URL carries a password. It is never printed or logged;
- *     only the host after the @ is.
+ *   - The database password never reaches a command line: pg_dump gets the
+ *     URL with the password removed and the password through PGPASSWORD in
+ *     its own environment. Neither the URL nor the password is printed or
+ *     logged; only the host after the @ is.
+ *   - Every set carries a manifest.json. Retention keeps the newest
+ *     BACKUP_KEEP usable sets (a manifest, not RED, at least one item DONE),
+ *     deletes every other set except the one just written, so failed and
+ *     interrupted sets never crowd out good ones and never pile up.
  *   - Exit code 1 on RED (any item FAILED). YELLOW and GREEN exit 0.
  *
  * Env: REPO_ROOT, BACKUP_DIR, BACKUP_KEEP (default 14), OBSIDIAN_VAULT_PATH,
- *      SUPABASE_DB_URL.
+ *      SUPABASE_DB_URL, HEARTBEAT_DIR.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -28,8 +39,11 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_ROOT = path.resolve(HERE, '..', '..');
+const UNDER_OPS_NODE = path.basename(HERE) === 'node' && path.basename(path.dirname(HERE)) === 'ops';
+export const HEARTBEAT_REL = UNDER_OPS_NODE ? ['ops', 'node', 'heartbeat'] : ['ops', 'heartbeat'];
 export const STAMP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}$/;
 export const DUMP_MAGIC = 'PGDMP';
+export const MANIFEST = 'manifest.json';
 
 export function stampOf(date) {
   return date.toISOString().slice(0, 19).replace(/:/g, '-');
@@ -90,16 +104,47 @@ export function copyVault(src, dst) {
   };
 }
 
-/** Delete the oldest dated sets beyond keep. Returns how many were removed. */
-export function applyRetention(dir, keep, fsMod = fs) {
+/** A set is usable when its manifest says so: not RED and at least one item DONE. */
+export function readManifest(setDir, fsMod = fs) {
+  try {
+    const m = JSON.parse(fsMod.readFileSync(path.join(setDir, MANIFEST), 'utf8'));
+    return m && typeof m === 'object' ? m : null;
+  } catch {
+    return null;
+  }
+}
+
+export function isUsableSet(setDir, fsMod = fs) {
+  const m = readManifest(setDir, fsMod);
+  if (!m || m.overall === 'RED') return false;
+  return Array.isArray(m.items) && m.items.some((i) => i && i.status === 'DONE');
+}
+
+/**
+ * Keep the newest `keep` usable sets. Delete every other stamped set (older
+ * usable ones beyond keep, and every set without a usable manifest: failed,
+ * interrupted, or written by an older version) except `protect`, the set the
+ * current run just wrote. Returns how many were removed.
+ */
+export function applyRetention(dir, keep, { fsMod = fs, protect = null } = {}) {
   const limit = Math.max(1, Math.floor(Number(keep)) || 1);
   const sets = fsMod.readdirSync(dir, { withFileTypes: true })
     .filter((e) => e.isDirectory() && STAMP_RE.test(e.name))
     .map((e) => e.name)
-    .sort();
-  const doomed = sets.slice(0, Math.max(0, sets.length - limit));
-  for (const name of doomed) fsMod.rmSync(path.join(dir, name), { recursive: true, force: true });
-  return doomed.length;
+    .sort()
+    .reverse(); // newest first
+  const kept = new Set();
+  for (const name of sets) {
+    if (kept.size >= limit) break;
+    if (isUsableSet(path.join(dir, name), fsMod)) kept.add(name);
+  }
+  let removed = 0;
+  for (const name of sets) {
+    if (kept.has(name) || name === protect) continue;
+    fsMod.rmSync(path.join(dir, name), { recursive: true, force: true });
+    removed += 1;
+  }
+  return removed;
 }
 
 /** A dump is good only when non-empty and it starts with "PGDMP". */
@@ -128,27 +173,55 @@ export function dbHost(url) {
   return after.split(/[/?]/)[0] || 'unknown';
 }
 
-function scrub(text, url) {
-  return String(text || '').split(url).join('<db url>').split('\n')[0].slice(0, 300);
+/**
+ * Split the password out of a connection URL. pg_dump gets `safeUrl` on its
+ * command line and `password` through PGPASSWORD, so the secret is never in a
+ * process list. A URL that does not parse is passed through untouched with no
+ * password (pg_dump then fails on it, which is reported).
+ */
+export function splitDbUrl(url) {
+  try {
+    const u = new URL(String(url));
+    const password = decodeURIComponent(u.password || '');
+    u.password = '';
+    return { safeUrl: u.toString(), password };
+  } catch {
+    return { safeUrl: String(url), password: '' };
+  }
 }
 
-function backupDatabase(url, setDir, exec) {
+function scrub(text, ...secrets) {
+  let out = String(text || '');
+  for (const s of secrets) if (s) out = out.split(s).join('<redacted>');
+  return out.split('\n')[0].slice(0, 300);
+}
+
+function backupDatabase(url, setDir, exec, baseEnv) {
   const file = path.join(setDir, 'supabase.dump');
-  const res = exec('pg_dump', ['--no-owner', '--no-privileges', '--format=custom', `--file=${file}`, url], { encoding: 'utf8' }) || {};
+  const { safeUrl, password } = splitDbUrl(url);
+  const childEnv = { ...baseEnv };
+  if (password) childEnv.PGPASSWORD = password;
+  const res = exec('pg_dump', ['--no-owner', '--no-privileges', '--format=custom', `--file=${file}`, safeUrl], { encoding: 'utf8', env: childEnv }) || {};
+  const host = dbHost(url);
   if (res.error) {
     if (res.error.code === 'ENOENT') return { id: 'supabase', status: 'NOT CONFIGURED', detail: 'pg_dump not on PATH' };
-    return { id: 'supabase', status: 'FAILED', detail: scrub(res.error.message || res.error.code, url) };
+    return { id: 'supabase', status: 'FAILED', detail: scrub(res.error.message || res.error.code, url, password) };
   }
-  if (typeof res.status === 'number' && res.status !== 0) {
-    return { id: 'supabase', status: 'FAILED', detail: `pg_dump exited ${res.status} for host ${dbHost(url)}: ${scrub(res.stderr, url)}` };
+  if (res.status !== 0) {
+    const how = typeof res.status === 'number' ? `exited ${res.status}` : `ended by signal ${res.signal || 'unknown'}`;
+    return { id: 'supabase', status: 'FAILED', detail: `pg_dump ${how} for host ${host}: ${scrub(res.stderr, url, password)}` };
   }
   const v = verifyDump(file);
-  return { id: 'supabase', status: v.ok ? 'DONE' : 'FAILED', detail: `${v.detail} (host ${dbHost(url)})`, bytes: v.bytes };
+  return { id: 'supabase', status: v.ok ? 'DONE' : 'FAILED', detail: `${v.detail} (host ${host})`, bytes: v.bytes };
 }
 
 function vaultPath(env, root) {
   if (env.OBSIDIAN_VAULT_PATH) return env.OBSIDIAN_VAULT_PATH;
   return ['Antigravity', 'DREAM-ONLINE'].map((n) => path.join(root, n)).find((p) => fs.existsSync(p)) || null;
+}
+
+export function heartbeatDir(env, repo) {
+  return env.HEARTBEAT_DIR || path.join(repo, ...HEARTBEAT_REL);
 }
 
 export function runBackup({ env = process.env, exec = spawnSync, now = () => new Date(), root } = {}) {
@@ -157,12 +230,13 @@ export function runBackup({ env = process.env, exec = spawnSync, now = () => new
   const keep = env.BACKUP_KEEP === undefined || env.BACKUP_KEEP === '' ? 14 : Number(env.BACKUP_KEEP);
   const date = now();
   const at = date.toISOString();
-  const setDir = path.join(backupDir, stampOf(date));
+  const setName = stampOf(date);
+  const setDir = path.join(backupDir, setName);
   fs.mkdirSync(setDir, { recursive: true });
 
   const items = [];
   if (env.SUPABASE_DB_URL) {
-    items.push(backupDatabase(env.SUPABASE_DB_URL, setDir, exec));
+    items.push(backupDatabase(env.SUPABASE_DB_URL, setDir, exec, env));
   } else {
     items.push({ id: 'supabase', status: 'NOT CONFIGURED', detail: 'SUPABASE_DB_URL is not set' });
   }
@@ -176,13 +250,13 @@ export function runBackup({ env = process.env, exec = spawnSync, now = () => new
   }
 
   const overall = summarize(items);
-  let removed = 0;
-  if (overall !== 'RED') removed = applyRetention(backupDir, keep);
+  fs.writeFileSync(path.join(setDir, MANIFEST), JSON.stringify({ at, overall, items }, null, 2) + '\n');
+  const removed = applyRetention(backupDir, keep, { protect: setName });
 
   const result = { at, overall, set: setDir, items, removed };
   const st = (id) => items.find((i) => i.id === id).status;
   const line = `${at} ${overall} supabase=${st('supabase')} vault=${st('vault')} set=${setDir}`;
-  const hb = path.join(repo, 'ops', 'heartbeat');
+  const hb = heartbeatDir(env, repo);
   fs.mkdirSync(hb, { recursive: true });
   fs.writeFileSync(path.join(hb, 'backup-node.json'), JSON.stringify(result, null, 2) + '\n');
   fs.appendFileSync(path.join(hb, 'backup-node.log'), line + '\n');
