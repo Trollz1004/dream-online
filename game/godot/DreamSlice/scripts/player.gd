@@ -21,6 +21,7 @@ const WorldEvent := preload("res://scripts/world_event.gd")
 const EventLog := preload("res://scripts/event_log.gd")
 const Vfx := preload("res://scripts/vfx.gd")
 const CharacterModelScript := preload("res://scripts/character_model.gd")
+const RenderProfileScript := preload("res://scripts/render_profile.gd")
 
 const WALK_SPEED := 5.5
 const SPRINT_SPEED := 9.5
@@ -36,6 +37,26 @@ const FORCE_COMBAT_ARG := "--force-combat"   # capture-only, see _ready()
 const CLOSE_CAPTURE_ARG := "--close-up"      # capture-only, see _ready()
 const CLOSE_CAPTURE_LENGTH := 2.6
 const CLOSE_CAPTURE_HEIGHT := 1.5
+
+# The default chase framing (spec 005, FR-006, SB-07): behind and above the
+# shoulder, the hero low and a little left of the frame's centre so the road,
+# the Sentinel and the mountains ahead stay readable to the right, and the
+# horizon sits well above the midline. The spawn yaw faces the fight lane
+# and the landmark beyond it.
+const DEFAULT_SPRING_LENGTH := 5.0
+const DEFAULT_MOUNT_HEIGHT := 1.15
+const DEFAULT_PITCH := -0.25
+const DEFAULT_FOV := 62.0
+const SHOULDER_OFFSET := 0.8     # metres of sideways camera shift (Camera3D.h_offset)
+const SPAWN_YAW := 0.0
+
+# The hero's rim light (FR-006, SB-05): a light on the far side of the hero
+# from the camera, turning with the camera's yaw, that lights only the hero's
+# own layer so it draws an edge around the silhouette without a bright patch
+# on the ground.
+const HERO_LAYER := 2
+const RIM_OFFSET := Vector3(0.45, 1.85, -3.0)
+const RIM_AIM := Vector3(0.0, 1.2, 0.0)
 
 ## Emitted once a perfect dodge is confirmed: an i-frame dodge of a
 ## telegraphed attack. World memory records perfect_dodge from here; this
@@ -69,15 +90,18 @@ var stamina := STAMINA_MAX
 var health := HEALTH_MAX
 var hud: Node = null
 var time_of_day := "day"           # kept in step by world.gd, alongside dream_env's own mode
+var web_profile := OS.has_feature("web")   # which render profile shapes the hero's rim, set by world.gd
 
 var _yaw := 0.0
-var _pitch := -0.22
+var _pitch := DEFAULT_PITCH
 var _spring: SpringArm3D
 var _camera: Camera3D
 var _visual: Node3D
 var _model: Node3D = null
 var _gold_rim: MeshInstance3D
 var _fill_light: SpotLight3D = null
+var _rim_pivot: Node3D = null
+var _rim_light: SpotLight3D = null
 var _auto_sprint := false
 var _last_tap := {}
 var _dash_dir := Vector3.ZERO
@@ -124,20 +148,32 @@ func _ready() -> void:
 	_model = CharacterModelScript.build(CharacterModelScript.KIND_DREAMWALKER)
 	_model.set_time_of_day(time_of_day)
 	_visual.add_child(_model)
+	_put_on_hero_layer(_model)
 
 	_gold_rim = _build_gold_rim()
 	_visual.add_child(_gold_rim)
 
 	_spring = SpringArm3D.new()
-	_spring.spring_length = 4.2
-	_spring.position = Vector3(0.0, 1.4, 0.0)
+	_spring.spring_length = DEFAULT_SPRING_LENGTH
+	_spring.position = Vector3(0.0, DEFAULT_MOUNT_HEIGHT, 0.0)
 	add_child(_spring)
 	_camera = Camera3D.new()
 	_camera.current = true
+	_camera.fov = DEFAULT_FOV
+	_camera.h_offset = SHOULDER_OFFSET
 	_spring.add_child(_camera)
 
 	_fill_light = _build_fill_light()
 	_camera.add_child(_fill_light)
+
+	# Not a child of the spring arm: a SpringArm3D moves every direct child to
+	# the end of its arm, which would carry the rim light round to the
+	# camera's own side of the hero.
+	_rim_pivot = Node3D.new()
+	add_child(_rim_pivot)
+	_rim_light = _build_rim_light()
+	_rim_pivot.add_child(_rim_light)
+	_apply_look_profile()
 
 	events.open(event_path)
 
@@ -162,7 +198,9 @@ func _ready() -> void:
 
 	if capture_mode:
 		_yaw = demo_yaw
-	elif not OS.has_feature("web"):
+	else:
+		_yaw = SPAWN_YAW
+	if not capture_mode and not OS.has_feature("web"):
 		# Asking here works in a window. In a browser it cannot: pointer lock is
 		# only granted from a user gesture, so the request is refused on load
 		# (measured on 2026-09-21, document.pointerLockElement was null after
@@ -224,6 +262,48 @@ func set_time_of_day(t: String) -> void:
 	time_of_day = t
 	if _model != null:
 		_model.set_time_of_day(t)
+	_apply_look_profile()
+
+
+# A SpotLight3D behind the hero as the camera sees it, aimed back at the
+# chest. Its cull mask holds only HERO_LAYER, so it lights the character and
+# nothing else: the ground and scenery never see it.
+func _build_rim_light() -> SpotLight3D:
+	var light := SpotLight3D.new()
+	light.transform = Transform3D(Basis(), RIM_OFFSET).looking_at(RIM_AIM, Vector3.UP)
+	light.spot_range = 6.5
+	light.spot_angle = 34.0
+	light.spot_angle_attenuation = 0.8
+	light.shadow_enabled = false
+	light.light_cull_mask = 1 << (HERO_LAYER - 1)
+	return light
+
+
+# Every mesh of the hero draws on the ordinary layer and on HERO_LAYER, so
+# the rim light (culled to HERO_LAYER) reaches the hero alone.
+func _put_on_hero_layer(node: Node) -> void:
+	if node is VisualInstance3D:
+		node.layers = node.layers | (1 << (HERO_LAYER - 1))
+	for child in node.get_children():
+		_put_on_hero_layer(child)
+
+
+# The rim light's colour and strength, and the material rim on the hero's
+# own materials, come from the render profile of the world now showing
+# (scripts/render_profile.gd), so day and night each shape the hero in their
+# own light.
+func _apply_look_profile() -> void:
+	var p: Dictionary = RenderProfileScript.profile(time_of_day, web_profile)
+	if _rim_light != null:
+		_rim_light.visible = bool(p.get("rim_light", true))
+		_rim_light.light_color = p["rim_color"]
+		_rim_light.light_energy = p["rim_energy"]
+	if _model != null and _model.has_method("apply_rim"):
+		_model.apply_rim(float(p["material_rim"]), float(p["material_rim_tint"]))
+
+
+func rim_light() -> SpotLight3D:
+	return _rim_light
 
 
 # The player's own over-the-shoulder camera, for the demo director to cut
@@ -500,6 +580,8 @@ func _physics_process(delta: float) -> void:
 	_update_model(delta, sprinting)
 	_update_camera_shake(delta)
 	_spring.rotation = Vector3(_pitch, _yaw, 0.0)
+	if _rim_pivot != null:
+		_rim_pivot.rotation = Vector3(0.0, _yaw, 0.0)
 	if hud:
 		hud.show_state({
 			"health": health, "health_max": HEALTH_MAX,
@@ -574,6 +656,7 @@ func _update_camera_shake(delta: float) -> void:
 	else:
 		_camera.h_offset = 0.0
 		_camera.v_offset = 0.0
+	_camera.h_offset += SHOULDER_OFFSET
 
 
 func _trigger_shake(amount: float, duration: float) -> void:

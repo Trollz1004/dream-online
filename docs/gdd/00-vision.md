@@ -27,7 +27,7 @@ The player is not only a fighter. The player is a worker, fisher, cook, hunter, 
 
 ## Canon To Preserve
 
-- Sup@ is the companion sphere and primary game voice.
+- Sup@ is the companion sphere and primary game voice. Its look (founder, 2026-09-28): a sphere inside rings that turn in full counter-rotation, in the spirit of the founder's own pixel-art sphere, original design only; at 4 in the morning, world time, it takes its Kraken form (the MyThOsKraken of the world-engine dispatch). Its one reply to the troll in the cart, for a long time, is two words: "Keep dreaming."
 - THE BAN HAMMER turns anti-cheat into visible server lore.
 - C0D3X is the rollback rider and represents verified world-state recovery.
 - NEEDs are in-game currency/product only.
@@ -40,3 +40,7 @@ Founder-only end-game material stays in the private OneDrive do-not-commit vault
 ## First Fun Hypothesis
 
 If combat feels good in a small field, and the same field also supports gathering, fishing, crafting, durability repair, PvP flagging, and a night-state event, the MMO foundation is real.
+
+## Younger Players (founder, 2026-09-28)
+
+Content for younger accounts is a separate lane, always extra clean, with its own age band that the founder sets and the game enforces. The direction is that one day, when the game is large enough, age-gated services exist for that lane, and the live NPCs are used in education in ways that are fun and built by play, designed just for those players. Any AI partner working in that lane works under the same rules as the rest of the game: written and approved lines, the lab's allowlist and fallback authority, and never a claim outside the game.

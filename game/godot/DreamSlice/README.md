@@ -23,10 +23,15 @@ stop. If the folder is empty, run `game\godot\Export-DreamSlice-Web.cmd` first;
 it takes about a minute.
 
 The browser build is deliberately single-threaded, so it runs on any plain
-static host with no cross-origin isolation headers, and it drops the sun's
-shadows and multisampling because a browser pays for both every frame on one
-thread. The readout says the frame rate, so any change that costs something can
-be read off the screen.
+static host with no cross-origin isolation headers. It runs on Godot's
+Compatibility renderer, and since spec 005 (2026-09-28) every visual setting
+comes from `scripts/render_profile.gd`, one profile per world and platform: the
+browser keeps the sun and moon shadows, the sky, the fog, glow and the hero's
+rim, and the effects that renderer cannot draw (ambient occlusion, volumetric
+fog, screen-space reflections) are replaced by named fallbacks (contact
+darkening, haze bands, light cones, a mirrored wet-street layer) rather than
+dropped. The frame-rate pill at the bottom right says the frame rate, so any
+change that costs something can be read off the screen.
 
 ## Controls
 
@@ -48,8 +53,13 @@ They follow the rulings in `docs/gdd/02-action-combat.md`.
   1 to 3 for the red potion, the blue potion and food; the keyboard panel can be
   dragged.
 
-The on-screen help text in `scripts/hud.gd` is the source of truth when this list
-and the screen disagree.
+- **Combo list**: L opens the dark see-through three-column screen that lists
+  every combination the build resolves, in plain words, with its defensive tag,
+  and marks the stubs honestly. The play screen itself carries no help block any
+  more; a short prompt band under the character says at most two lines.
+
+`scripts/combo_list.gd` is the source of truth when this list and the screen
+disagree.
 
 The dummy winds up for 1.4 seconds, then fires along the line it locked at the
 start of the wind-up. Dash through the beam while the character is bright yellow
@@ -97,8 +107,10 @@ the server later, which is where invulnerability has to be decided.
 Real since spec 003 (2026-09-24 and 2026-09-25): a rigged CC0 character with
 animations and the ranger outfit Joshua chose, CC0 ground textures, trees and
 ruins, a ridged mountain, and the Night Dream city with rain, crowds and traffic
-(`assets/third_party/LICENSES.md` names every source). Still placeholder: the
-hotbar icons (plain coloured dots), the pet's loot gems and eye, the Sentinel's
-beam and charge orb, the single dummy, and the skills that only print their
-name. Art keeps arriving under the originality rule in
+(`assets/third_party/LICENSES.md` names every source). Real since spec 005 (2026-09-28): the render profiles with their browser
+fallbacks, a chase camera with the hero off centre, a rim light and a leather
+shield, code-drawn hotbar icons, the calm play screen and the combo list on L.
+Still placeholder: the pet's loot gems and eye, the Sentinel's beam and charge
+orb, the single dummy, the cone mountains and stick trees of the day field, the
+box towers of the night city, and the skills that only print their name. Art keeps arriving under the originality rule in
 `docs/gdd/08-day-dreams-night-dreams-world.md`.

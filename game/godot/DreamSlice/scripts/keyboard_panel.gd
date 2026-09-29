@@ -26,7 +26,9 @@ const LungeState := preload("res://scripts/lunge_state.gd")
 const BurstState := preload("res://scripts/burst_state.gd")
 
 const LAYOUT_PATH := "user://hud_layout.cfg"
-const DEFAULT_POSITION := Vector2(24.0, 460.0)
+# Where the panel sat by default before spec 005 -- over the old help text.
+# A saved layout from then may still carry it; _load_layout clamps it clear.
+const LEGACY_DEFAULT_POSITION := Vector2(24.0, 460.0)
 const NUMBER_KEYS := ["1", "2", "3", "4", "5", "6"]
 const NUMBER_KEYCODES := {
 	KEY_1: "1", KEY_2: "2", KEY_3: "3", KEY_4: "4", KEY_5: "5", KEY_6: "6",
@@ -50,12 +52,21 @@ var _mouse_was_captured_for_alt := false
 func _ready() -> void:
 	layer = 5   # above hud.gd's default CanvasLayer, so keycaps draw over the plain readout
 	_build_ui()
-	var had_saved_position := _load_layout()
+	_load_layout()
 	if hud != null and hud.has_method("set_skill_labels_visible"):
 		hud.set_skill_labels_visible(false)
-	if not had_saved_position:
-		await get_tree().process_frame
-		_place_below_help_text()
+	if is_inside_tree() and get_viewport() != null:
+		get_viewport().size_changed.connect(_on_viewport_resized)
+
+
+# The window changed size: keep the panel on screen and clear of the play
+# screen's own rectangles (scripts/hotbar_layout.gd, clamp_clear_of_hud).
+func _on_viewport_resized() -> void:
+	_root.position = HotbarLayout.clamp_clear_of_hud(_root.position, _viewport_size())
+
+
+func panel_position() -> Vector2:
+	return _root.position
 
 
 func _build_ui() -> void:
@@ -85,7 +96,7 @@ func _build_ui() -> void:
 	_root.add_child(_grip)
 
 	var grip_label := Label.new()
-	grip_label.text = "HOTBAR   (drag here; Alt frees the mouse)"
+	grip_label.text = "HOTBAR   drag here to move, Alt frees the mouse"
 	grip_label.add_theme_font_size_override("font_size", 12)
 	grip_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 0.6))
 	grip_label.position = Vector2(8.0, 2.0)
@@ -182,7 +193,7 @@ func _update_consumable_keys() -> void:
 					"fraction": HotbarLayout.cooldown_fraction(
 						consumables.potion_cooldown_left(), ConsumablesScript.POTION_COOLDOWN),
 					"seconds_left": consumables.potion_cooldown_left(), "show_seconds": true,
-					"ready_now": consumables.can_use_red(), "locked": false,
+					"ready_now": consumables.can_use_red(), "locked": false, "empty": false,
 				})
 			"blue":
 				cap.configure({
@@ -191,7 +202,7 @@ func _update_consumable_keys() -> void:
 						consumables.potion_cooldown_left(), ConsumablesScript.POTION_COOLDOWN),
 					"seconds_left": consumables.potion_cooldown_left(), "show_seconds": true,
 					"ready_now": consumables.can_use_blue(),
-					"locked": false,
+					"locked": false, "empty": false,
 				})
 			"food":
 				cap.configure({
@@ -200,12 +211,12 @@ func _update_consumable_keys() -> void:
 						consumables.food_cooldown_left(), ConsumablesScript.FOOD_COOLDOWN),
 					"seconds_left": consumables.food_cooldown_left(),
 					"show_seconds": consumables.food_cooldown_left() > 0.0,
-					"ready_now": consumables.can_use_food(), "locked": false,
+					"ready_now": consumables.can_use_food(), "locked": false, "empty": false,
 				})
 			_:
 				cap.configure({
 					"icon_kind": "", "count": -1, "fraction": 0.0, "show_seconds": false,
-					"ready_now": true, "locked": false,
+					"ready_now": true, "locked": false, "empty": true,
 				})
 
 
@@ -225,16 +236,29 @@ func _update_skill_keys() -> void:
 	_paint_nightfall()
 
 
+# W and E are never slots: W walks forward and E talks, so each shows what it
+# does (a forward chevron, a speech mark) in the muted locked style.
+const LOCKED_ICONS := {"W": "move", "E": "talk"}
+
+
 func _paint_locked(key_name: String) -> void:
 	var cap: Control = _keycaps.get(key_name)
 	if cap != null:
-		cap.configure({"locked": true, "icon_kind": "", "fraction": 0.0, "count": -1, "show_seconds": false, "ready_now": true})
+		cap.configure({"locked": true, "icon_kind": LOCKED_ICONS.get(key_name, ""), "fraction": 0.0,
+			"count": -1, "show_seconds": false, "ready_now": true, "empty": false})
 
 
+# A key with nothing on it yet reads as an open socket, not a blank tile.
 func _paint_free(key_name: String) -> void:
 	var cap: Control = _keycaps.get(key_name)
 	if cap != null:
-		cap.configure({"locked": false, "icon_kind": "", "fraction": 0.0, "count": -1, "show_seconds": false, "ready_now": true})
+		cap.configure({"locked": false, "icon_kind": "", "fraction": 0.0, "count": -1,
+			"show_seconds": false, "ready_now": true, "empty": true})
+
+
+## Every keycap on the panel, by id, for tests/test_hud_layout.gd.
+func keycaps() -> Dictionary:
+	return _keycaps
 
 
 func _paint_state(key_name: String, icon_kind: String, state, cooldown_total: float) -> void:
@@ -245,6 +269,7 @@ func _paint_state(key_name: String, icon_kind: String, state, cooldown_total: fl
 	spec["icon_kind"] = icon_kind
 	spec["count"] = -1
 	spec["locked"] = false
+	spec["empty"] = false
 	cap.configure(spec)
 
 
@@ -258,7 +283,7 @@ func _paint_nightfall() -> void:
 	var used: bool = player.time_of_day == "night"
 	cap.configure({
 		"icon_kind": "nightfall", "fraction": 1.0 if used else 0.0,
-		"show_seconds": false, "ready_now": not used, "count": -1, "locked": false,
+		"show_seconds": false, "ready_now": not used, "count": -1, "locked": false, "empty": false,
 	})
 
 
@@ -295,6 +320,9 @@ func _input(event: InputEvent) -> void:
 
 	if event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT and _dragging:
 		_dragging = false
+		# A drop onto the prompt, the play bar or the frame-rate line is
+		# lifted clear of it (spec 005, FR-008).
+		_root.position = HotbarLayout.clamp_clear_of_hud(_root.position, _viewport_size())
 		_save_layout()
 
 
@@ -352,41 +380,27 @@ func _use_slot(key_name: String) -> void:
 # Saved layout: user://hud_layout.cfg
 # ---------------------------------------------------------------------------
 
-# Returns true when a saved position was actually found, so _ready() knows
-# whether it still needs to work out a first-run default that clears hud.gd's
-# own text (see _place_below_help_text below).
+# Returns true when a saved position was actually found. A first run sits
+# at the bottom-left default (scripts/hotbar_layout.gd,
+# default_hotbar_position); a saved position -- including one written by an
+# older build, whose default sat over the old help text -- is clamped on
+# screen and clear of the prompt band, the play bar and the frame-rate line
+# (spec 005, FR-008).
 func _load_layout() -> bool:
-	var pos := DEFAULT_POSITION
+	var vp := _viewport_size()
+	var pos := HotbarLayout.default_hotbar_position(vp)
 	var cfg := ConfigFile.new()
 	var found := false
 	if cfg.load(LAYOUT_PATH) == OK:
 		found = true
 		var data := {"x": cfg.get_value("panel", "x", pos.x), "y": cfg.get_value("panel", "y", pos.y)}
-		pos = HotbarLayout.position_from_dict(data, DEFAULT_POSITION)
+		pos = HotbarLayout.position_from_dict(data, pos)
 		var bindings_str: String = cfg.get_value("panel", "bindings", "")
 		var loaded: Dictionary = HotbarLayout.decode_bindings(bindings_str)
 		if not loaded.is_empty():
 			_bindings = loaded
-	_root.position = HotbarLayout.clamp_position(pos, HotbarLayout.panel_total_size(), _viewport_size())
+	_root.position = HotbarLayout.clamp_clear_of_hud(pos, vp)
 	return found
-
-
-# First run, nothing saved yet: DEFAULT_POSITION is a guess that a longer
-# help paragraph (hud.gd's own _help label, a VBoxContainer child whose
-# height only settles once the container has actually sorted its children)
-# can grow past. One frame after _ready, hud.gd's column has settled, so its
-# real bottom edge is read and the panel is placed just under it instead --
-# still never touching hud.gd itself beyond the help_label() getter it
-# already exposed.
-func _place_below_help_text() -> void:
-	if hud == null or not hud.has_method("help_label"):
-		return
-	var help_label: Control = hud.help_label()
-	if help_label == null:
-		return
-	var below: float = help_label.global_position.y + help_label.size.y + 16.0
-	var pos := Vector2(DEFAULT_POSITION.x, maxf(DEFAULT_POSITION.y, below))
-	_root.position = HotbarLayout.clamp_position(pos, HotbarLayout.panel_total_size(), _viewport_size())
 
 
 func _save_layout() -> void:

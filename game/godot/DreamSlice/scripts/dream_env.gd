@@ -33,6 +33,13 @@ const CLEAR_RADIUS := 12.0
 const MIRETH_SPOT := Vector3(-6.0, 0.0, 9.0)
 const MIRETH_CLEAR_RADIUS := 2.0
 const PLAYER_SPAWN := Vector3(0.0, 0.0, 6.0)
+# The night street's own footprint (_build_night_street: a 7 m x 118 m plane).
+const STREET_HALF_WIDTH := 3.5
+const STREET_HALF_LENGTH := 59.0
+# Traffic keeps out of the fight lane: a car inside this distance of the
+# lane's centre (along the street) is parked out of sight, so no car ever
+# drives through the fight or fills the spawn frame.
+const CAR_CLEAR_Z := 20.0
 const ENEMY_SPOT := Vector3(0.0, 0.0, -6.0)
 
 # The day sun sits at yaw 62 degrees (see _build_day_environment); this is
@@ -181,6 +188,7 @@ const _RUINS_PACK := "res://assets/third_party/quaternius/ModularRuinsPack.glb"
 # Sentinel. No bone name, clip name or private helper of that file is read
 # or called from here.
 const CharacterModelScript := preload("res://scripts/character_model.gd")
+const RenderProfileScript := preload("res://scripts/render_profile.gd")
 
 # ---------------------------------------------------------------------------
 # NIGHT: crowds, traffic, rain and the alley dressing (spec 003-production-look,
@@ -273,6 +281,23 @@ var mode := "day"
 # demo_director.gd, which only ever exists in demo mode to begin with.
 var demo_quality := false
 
+# Which render profile to build from (scripts/render_profile.gd): the web one
+# in the browser build, the desktop one everywhere else. A test sets it
+# before _ready() to build the other platform's environment headless.
+var web_profile := OS.has_feature("web")
+var _profile: Dictionary = {}
+var _key_light: DirectionalLight3D = null
+var _cloud_layer: MeshInstance3D = null
+var _star_count := 0
+var _mirror_layer: Node3D = null
+var _mirror_copy_count := 0
+var _halo_count := 0
+var _contact_footprint_count := 0
+var _haze_card_count := 0
+var _wet_streak_count := 0
+var _contact_shadow_count := 0
+var _light_shaft_count := 0
+
 var _environment: Environment = null
 var _ground_body: StaticBody3D = null
 var _footprints: Array = []
@@ -328,6 +353,7 @@ var _night_life_time := 0.0
 
 
 func _ready() -> void:
+	_profile = RenderProfileScript.profile(mode, web_profile)
 	_footprints = []
 	_window_entries = []
 	_near_towers = []
@@ -569,6 +595,34 @@ func _build_day() -> void:
 	_build_day_environment()
 	_build_ground()
 	_build_day_scenery()
+	_feed_contact_darkening()
+
+
+# Hands the ground shader the registered footprints nearest the fight lane
+# (the camera spends its time there), for its contact darkening -- the
+# render table's web fallback for ambient occlusion (spec 005, T015).
+const CONTACT_FOOTPRINT_MAX := 32
+
+
+func _feed_contact_darkening() -> void:
+	if _day_ground_mat == null:
+		return
+	var sorted := _footprints.duplicate()
+	sorted.sort_custom(func(a, b) -> bool:
+		return Vector2(a["position"].x, a["position"].z).length() < Vector2(b["position"].x, b["position"].z).length())
+	var packed: Array = []
+	for i in range(mini(CONTACT_FOOTPRINT_MAX, sorted.size())):
+		var f: Dictionary = sorted[i]
+		packed.append(Vector4(f["position"].x, f["position"].z, float(f["radius"]), 0.0))
+	while packed.size() < CONTACT_FOOTPRINT_MAX:
+		packed.append(Vector4(0.0, 0.0, 0.0, 0.0))
+	_contact_footprint_count = mini(CONTACT_FOOTPRINT_MAX, sorted.size())
+	_day_ground_mat.set_shader_parameter("footprints", packed)
+	_day_ground_mat.set_shader_parameter("footprint_count", _contact_footprint_count)
+
+
+func contact_footprint_count() -> int:
+	return _contact_footprint_count
 
 
 func _build_night() -> void:
@@ -592,6 +646,8 @@ func _build_day_scenery() -> void:
 	_build_brush_clumps()
 	_build_mountain()
 	_build_dust_motes()
+	if bool(_profile.get("haze_cards", false)):
+		_build_haze_cards()
 
 
 func _build_night_scenery() -> void:
@@ -608,6 +664,10 @@ func _build_night_scenery() -> void:
 	_build_alley_details()
 	_build_rain()
 	_build_steam_vents()
+	if bool(_profile.get("mirror_layer", false)):
+		_build_wet_street_mirror()
+	if bool(_profile.get("contact_darkening", false)):
+		_build_contact_shadows()
 	_build_pedestrians()
 	_build_traffic()
 
@@ -640,6 +700,24 @@ func _build_ground() -> void:
 	if mode == "day":
 		mesh.mesh = _build_terrain_mesh()
 		mesh.material_override = _day_ground_material()
+	elif bool(_profile.get("mirror_layer", false)):
+		# The same flat slab, drawn as two halves either side of the street
+		# so the see-through wet street shows the mirrored reflection layer
+		# under it (render profile fallback for screen-space reflections).
+		# The collision box above is unchanged.
+		var side_w: float = GROUND_SIZE * 0.5 - STREET_HALF_WIDTH
+		var halves := MeshInstance3D.new()
+		var cube_l := BoxMesh.new()
+		cube_l.size = Vector3(side_w, 1.0, GROUND_SIZE)
+		halves.mesh = cube_l
+		halves.position = Vector3(-(STREET_HALF_WIDTH + side_w * 0.5), -0.5, 0.0)
+		halves.material_override = _flat_mat(_ground_color())
+		mesh.add_child(halves)
+		var right := MeshInstance3D.new()
+		right.mesh = cube_l
+		right.position = Vector3(STREET_HALF_WIDTH + side_w * 0.5, -0.5, 0.0)
+		right.material_override = halves.material_override
+		mesh.add_child(right)
 	else:
 		var cube := BoxMesh.new()
 		cube.size = Vector3(GROUND_SIZE, 1.0, GROUND_SIZE)
@@ -684,17 +762,18 @@ func _build_terrain_mesh() -> ArrayMesh:
 			var p10: Vector3 = row0[i + 1]
 			var p01: Vector3 = row1[i]
 			var p11: Vector3 = row1[i + 1]
-			# Winding chosen so cross(b-a, c-a) points +Y (checked directly:
-			# (p00, p01, p10) and (p10, p01, p11) both give an upward-facing
-			# normal for a grid laid out in the XZ plane) -- an upward-facing
-			# ground reads as lit from the sun above; the reverse winding
-			# would read as dark, unlit ground.
+			# Clockwise seen from above, which is Godot's front face. The
+			# counter-clockwise order this used to have made every triangle a
+			# back face from the camera's side, so the whole textured terrain
+			# was culled and the flat-coloured horizon skirt under it showed
+			# through as plain sand (found by capture for spec 005,
+			# 2026-09-28). tests/test_render_profile.gd checks the winding.
 			_terrain_vertex(st, p00)
-			_terrain_vertex(st, p01)
-			_terrain_vertex(st, p10)
 			_terrain_vertex(st, p10)
 			_terrain_vertex(st, p01)
+			_terrain_vertex(st, p10)
 			_terrain_vertex(st, p11)
+			_terrain_vertex(st, p01)
 	st.generate_normals()
 	st.generate_tangents()
 	return st.commit()
@@ -719,10 +798,10 @@ func _terrain_vertex(st: SurfaceTool, p: Vector3) -> void:
 const _GROUND_SHADER_SOURCE := """shader_type spatial;
 render_mode diffuse_burley, specular_schlick_ggx;
 
-uniform sampler2D albedo_tex : source_color;
-uniform sampler2D normal_tex : hint_normal;
-uniform sampler2D rough_tex : hint_default_white;
-uniform sampler2D macro_noise_tex : hint_default_white;
+uniform sampler2D albedo_tex : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D normal_tex : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D rough_tex : hint_default_white, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D macro_noise_tex : hint_default_white, filter_linear_mipmap, repeat_enable;
 // UV arrives already divided by TERRAIN_TEX_TILE at mesh-build time (see
 // _terrain_vertex), so it is already at the correct fine-tile density on its
 // own -- tile_scale is left in as a hook for future tuning, not something
@@ -738,11 +817,28 @@ uniform float macro_tile_scale : hint_range(0.02, 1.0) = 0.2;
 uniform float macro_noise_scale : hint_range(0.02, 1.0) = 0.15;
 uniform vec4 patch_tint : source_color = vec4(0.55, 0.55, 0.55, 1.0);
 uniform float patch_strength : hint_range(0.0, 1.0) = 0.35;
+// Spec 005, T015: toward the horizon the fine tile gives way to the larger,
+// rotated macro sample, so no single repeat distance shows in the distance.
+uniform float detail_far_start = 14.0;
+uniform float detail_far_end = 55.0;
+uniform float detail_far_amount : hint_range(0.0, 1.0) = 0.0;
+// Spec 005, T015: contact darkening where solid scenery meets the ground --
+// the web's stand-in for ambient occlusion. Each entry is (x, z, radius, 0),
+// taken from dream_env.gd's own registered footprints.
+uniform vec4 footprints[32];
+uniform int footprint_count = 0;
+uniform float contact_strength : hint_range(0.0, 1.0) = 0.0;
+
+varying vec3 world_pos;
 
 vec2 rotate_uv(vec2 uv, float angle) {
 	float s = sin(angle);
 	float c = cos(angle);
 	return mat2(vec2(c, -s), vec2(s, c)) * uv;
+}
+
+void vertex() {
+	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 
 void fragment() {
@@ -755,12 +851,26 @@ void fragment() {
 	// no single repeat distance ever dominates the whole field.
 	float blend_mask = texture(macro_noise_tex, UV * macro_noise_scale).r;
 	vec4 base_albedo = mix(fine_albedo, macro_albedo, blend_mask * 0.5);
+	float cam_dist = length(world_pos - CAMERA_POSITION_WORLD);
+	float far_t = smoothstep(detail_far_start, detail_far_end, cam_dist) * detail_far_amount;
+	base_albedo = mix(base_albedo, macro_albedo, far_t);
 
 	// A second, higher-frequency read of the same noise field darkens patches
 	// of ground continuously (uneven earth), rather than a flat plain colour.
-	float patch = texture(macro_noise_tex, UV * macro_noise_scale * 3.1 + vec2(5.2, 1.7)).r;
-	float patch_t = smoothstep(0.35, 0.75, patch) * patch_strength;
+	float patch_noise = texture(macro_noise_tex, UV * macro_noise_scale * 3.1 + vec2(5.2, 1.7)).r;
+	float patch_t = smoothstep(0.35, 0.75, patch_noise) * patch_strength;
 	vec3 tinted = mix(base_albedo.rgb, base_albedo.rgb * patch_tint.rgb, patch_t);
+
+	float contact = 0.0;
+	for (int i = 0; i < 32; i++) {
+		if (i >= footprint_count) {
+			break;
+		}
+		vec4 f = footprints[i];
+		float d = length(world_pos.xz - f.xy);
+		contact = max(contact, 1.0 - smoothstep(f.z * 0.55, f.z * 1.45, d));
+	}
+	tinted *= 1.0 - contact * contact_strength;
 
 	ALBEDO = tinted;
 	NORMAL_MAP = texture(normal_tex, uv_fine).rgb;
@@ -793,6 +903,10 @@ func _day_ground_material() -> ShaderMaterial:
 		m.set_shader_parameter("macro_tile_scale", 0.2)
 		m.set_shader_parameter("patch_tint", Color(0.60, 0.56, 0.48))
 		m.set_shader_parameter("patch_strength", 0.4)
+		m.set_shader_parameter("detail_far_amount",
+			0.6 if bool(_profile.get("ground_detail_blend", false)) else 0.0)
+		m.set_shader_parameter("contact_strength",
+			0.45 if bool(_profile.get("contact_darkening", false)) else 0.0)
 		_day_ground_mat = m
 	return _day_ground_mat
 
@@ -826,7 +940,13 @@ func _dirt_material(tint: Color) -> ORMMaterial3D:
 	m.normal_enabled = true
 	m.normal_texture = load(_DIRT_NORMAL)
 	m.orm_texture = load(_DIRT_ARM)
-	m.uv1_scale = Vector3(1.5, 1.0, 46.0)
+	# UV scale reads x and y (z is for triplanar only): 1.5 repeats across
+	# the 3.4 m track and 52 along its 118 m, square tiles of about 2.3 m.
+	# The old (1.5, 1.0, 46.0) put the 46 on the unused axis, so one tile ran
+	# the whole length of the track and read as long streaks (found by
+	# capture for spec 005, SB-06).
+	m.uv1_scale = Vector3(1.5, 52.0, 1.0)
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 	if _day_track_mat == null:
 		_day_track_mat = m
 	return m
@@ -854,12 +974,29 @@ func _rock_material(tint: Color) -> ORMMaterial3D:
 # edge of the world. It carries no collision: nothing on the real ground ever
 # reaches it.
 func _build_horizon_fill(color: Color) -> void:
+	if mode == "night" and bool(_profile.get("mirror_layer", false)):
+		# The street is see-through over the mirrored reflection layer
+		# (_build_wet_street_mirror), so the skirt leaves a gap exactly under
+		# the street and covers everything else: two wide side pieces and two
+		# end pieces past the street's own length.
+		var side_w: float = 450.0 - STREET_HALF_WIDTH
+		for side in [-1.0, 1.0]:
+			_horizon_piece(color, Vector2(side_w, 900.0),
+				Vector3(side * (STREET_HALF_WIDTH + side_w * 0.5), -0.05, 0.0))
+		for end in [-1.0, 1.0]:
+			_horizon_piece(color, Vector2(STREET_HALF_WIDTH * 2.0, 450.0 - STREET_HALF_LENGTH),
+				Vector3(0.0, -0.05, end * (STREET_HALF_LENGTH + (450.0 - STREET_HALF_LENGTH) * 0.5)))
+		return
+	_horizon_piece(color, Vector2(900.0, 900.0), Vector3(0.0, -0.05, 0.0))
+
+
+func _horizon_piece(color: Color, size: Vector2, pos: Vector3) -> void:
 	var mesh := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
-	plane.size = Vector2(900.0, 900.0)
+	plane.size = size
 	mesh.mesh = plane
 	mesh.material_override = _flat_mat(color, 1.0)
-	mesh.position = Vector3(0.0, -0.05, 0.0)
+	mesh.position = pos
 	add_child(mesh)
 
 
@@ -1026,149 +1163,234 @@ func _face_axes(normal: Vector3) -> Array:
 # ---------------------------------------------------------------------------
 
 func _build_day_environment() -> void:
+	_build_environment_from_profile()
+	_build_key_light()
+	if bool(_profile.get("clouds", false)):
+		_build_sky_clouds()
+
+
+# Every Environment setting comes from scripts/render_profile.gd (spec 005,
+# FR-002): one data source per world and platform, which the headless suite
+# reads on its own. The history of each value (judge reviews of day.png and
+# night.png on 2026-09-23, spec 003 lever 3's per-world grade) is kept in
+# that file's comments; this function only applies it.
+func _build_environment_from_profile() -> void:
+	var p: Dictionary = _profile
 	var e := Environment.new()
 	e.background_mode = Environment.BG_SKY
 	var sky := Sky.new()
 	var mat := ProceduralSkyMaterial.new()
-	# Violet at the top, a bright gold glow at the horizon around the sun
-	# itself: sun_angle_max/sun_curve are what draw that glow disc, widened
-	# and softened here after a judge review of day.png on 2026-09-23 called
-	# the lighting flat.
-	mat.sky_top_color = Color(0.20, 0.12, 0.30)
-	mat.sky_horizon_color = Color(1.0, 0.72, 0.32)
-	mat.sky_curve = 0.13
-	mat.ground_bottom_color = Color(0.12, 0.10, 0.09)
-	mat.ground_horizon_color = Color(0.55, 0.40, 0.24)
-	mat.ground_curve = 0.15
-	mat.sun_angle_max = 42.0
-	mat.sun_curve = 0.15
+	mat.sky_top_color = p["sky_top"]
+	mat.sky_horizon_color = p["sky_horizon"]
+	mat.sky_curve = p["sky_curve"]
+	mat.ground_bottom_color = p["ground_bottom"]
+	mat.ground_horizon_color = p["ground_horizon"]
+	mat.ground_curve = p["ground_curve"]
+	mat.sun_angle_max = p["sun_angle_max"]
+	mat.sun_curve = p["sun_curve"]
+	if bool(p.get("stars", false)):
+		# The star field (spec 005, FR-004, SB-02): a panorama drawn into the
+		# sky's own cover layer, which the sky adds on top of its gradient
+		# above the horizon. Generated here, no downloaded image.
+		mat.sky_cover = _star_field_texture(int(p.get("star_count", 1200)))
+		mat.sky_cover_modulate = Color(1.0, 1.0, 1.0, 1.0)
 	sky.sky_material = mat
 	e.sky = sky
 	e.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	# Brought back down from 0.55: that value, stacked with AGX's own midtone
-	# lift, was bleaching every material near-white (the ground clutter, the
-	# cottage stone, the mountain) into the "pale paper card" look a judge
-	# review of day.png on 2026-09-23 called out. Materials were darkened at
-	# the same time, so contrast is carried by colour, not by cranking the
-	# whole scene's exposure down.
-	e.ambient_light_energy = 0.40
-	e.tonemap_mode = Environment.TONE_MAPPER_AGX
-	# Spec 003 lever 3: "AgX ... with a colour grade per world." A small,
-	# deliberate push on top of AGX's own tonemap curve -- a bit more contrast
-	# and saturation for a punchier, filmic golden hour -- distinct from
-	# Night's own grade below (_build_night_environment), which pushes the
-	# opposite way (cooler, flatter, more contrast, less saturation).
-	e.adjustment_enabled = true
-	e.adjustment_brightness = 1.0
-	e.adjustment_contrast = 1.08
-	e.adjustment_saturation = 1.0
+	e.ambient_light_energy = p["ambient_energy"]
+	e.tonemap_mode = p["tonemap"]
+	e.tonemap_exposure = p["exposure"]
+	e.adjustment_enabled = p["adjustment"]
+	e.adjustment_brightness = p["brightness"]
+	e.adjustment_contrast = p["contrast"]
+	e.adjustment_saturation = p["saturation"]
 
-	# Dust in the air (depth fog, gentle: felt at range, not at the player's
-	# feet) and mist lying low (height fog capped well under the camera's
-	# 2.5 m eye height, so it never engulfs the whole shot the way an early
-	# pass at this did on 2026-09-23). Density raised a little so the pushed-
-	# back mountain actually hazes into the sky instead of reading as a solid
-	# cutout.
-	e.fog_enabled = true
-	e.fog_light_color = Color(0.80, 0.68, 0.50)
-	e.fog_density = 0.0032
-	e.fog_sky_affect = 0.20
-	# fog_aerial_perspective, not fog_sky_affect, is what blends distant
-	# GEOMETRY toward the sky's own gradient colour rather than the flat dust
-	# colour -- fog_sky_affect only tints the background sky itself, so
-	# raising it alone left the mountain blending into plain warm dust and
-	# reading as a pale grey cutout in a judge review of day.png on
-	# 2026-09-23. Aerial perspective is what actually gives the mountain its
-	# blue-violet haze.
-	# Day-polish pass (judge review of 003b-day-wide.png): lowered from 0.65.
-	# The mountain range now bakes its own depth-based haze directly into its
-	# vertex colour (MOUNTAIN_HAZE_COLOR/HAZE_MAX in _mountain_vertex), so this
-	# environment-wide blend toward the bright sky-horizon colour was stacking
-	# with that bake and washing the range's own warm/cool rock tones toward
-	# white before either colour ever reached the eye -- the exact "nearly
-	# white, flat-lit, paper cutout" the judge called out. A lower value still
-	# gives the mountain some blend into the sky at the horizon line without
-	# erasing its own baked colour.
-	e.fog_aerial_perspective = 0.28
-	e.fog_height = 1.1
-	e.fog_height_density = 0.20
+	e.fog_enabled = p["fog"]
+	e.fog_light_color = p["fog_color"]
+	e.fog_density = p["fog_density"]
+	e.fog_sky_affect = p["fog_sky_affect"]
+	e.fog_aerial_perspective = p["fog_aerial"]
+	e.fog_height = p["fog_height"]
+	e.fog_height_density = p["fog_height_density"]
 
-	if not OS.has_feature("web"):
-		e.glow_enabled = true
-		e.glow_intensity = 0.7
-		e.glow_bloom = 0.06
-		e.ssao_enabled = true
-		e.volumetric_fog_enabled = true
-		e.volumetric_fog_density = 0.004
-		e.volumetric_fog_albedo = Color(0.85, 0.78, 0.60)
+	e.glow_enabled = p["glow"]
+	if e.glow_enabled:
+		e.glow_intensity = p["glow_intensity"]
+		e.glow_bloom = p["glow_bloom"]
+		e.glow_hdr_threshold = p["glow_threshold"]
+		e.glow_strength = p["glow_strength"]
+	e.ssao_enabled = p["ssao"]
+	e.ssr_enabled = p["ssr"]
+	if e.ssr_enabled:
+		e.ssr_max_steps = 48
+	e.volumetric_fog_enabled = p["volumetric_fog"]
+	if e.volumetric_fog_enabled:
+		e.volumetric_fog_density = p["volumetric_fog_density"]
+		e.volumetric_fog_albedo = p["volumetric_fog_albedo"]
 
 	_environment = e
 	var we := WorldEnvironment.new()
 	we.environment = e
 	add_child(we)
 
-	# Low and golden. A judge review of day.png on 2026-09-23 asked for warm
-	# light on the stone faces as well as the sky doing the work, so this
-	# carries a little more warmth than a pure white sun; the sky and fog
-	# still carry most of the colour. The yaw is chosen so long shadows read
-	# across the lane from the side rather than pointing straight down the
-	# camera's barrel.
-	var sun := DirectionalLight3D.new()
-	sun.light_energy = 2.1
-	sun.light_color = Color(1.0, 0.92, 0.78)
-	sun.shadow_enabled = not OS.has_feature("web")
-	sun.rotation_degrees = Vector3(-13.0, 62.0, 0.0)
-	add_child(sun)
 
-	_build_sky_clouds()
+# The one DirectionalLight3D of either world: the low golden sun by day, the
+# moon by night. It casts shadows on both platforms (FR-003, FR-004); the web
+# profile asks for the cheaper two-split, shorter-range version.
+func _build_key_light() -> DirectionalLight3D:
+	var p: Dictionary = _profile
+	var key := DirectionalLight3D.new()
+	key.light_energy = p["key_energy"]
+	key.light_color = p["key_color"]
+	key.rotation_degrees = p["key_rotation"]
+	key.shadow_enabled = p["key_shadows"]
+	if key.shadow_enabled:
+		key.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS \
+			if int(p["shadow_splits"]) <= 2 else DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+		key.directional_shadow_max_distance = p["shadow_max_distance"]
+		key.shadow_opacity = p["shadow_opacity"]
+	add_child(key)
+	_key_light = key
+	return key
 
 
-# "detailed sky ... with clouds" (spec 003 lever 2). A big, high, unshaded
-# translucent plane carrying a procedurally generated cloud pattern
-# (FastNoiseLite through a Gradient, both built in to Godot -- no imported
-# asset, no shader, no risk to the ProceduralSkyMaterial gradient above,
-# which a whole run of judge reviews on 2026-09-23 already tuned by hand).
-# The gradient maps low noise to fully transparent (clear sky) and only high
-# noise to a soft warm-white puff, so most of the plane is invisible and only
-# the cloud shapes themselves read against the sky.
-func _build_sky_clouds() -> void:
+## The render profile this environment was built from
+## (scripts/render_profile.gd), for tests/test_render_profile.gd.
+func render_profile() -> Dictionary:
+	return _profile
+
+
+## The world's one DirectionalLight3D (the sun or the moon).
+func key_light() -> DirectionalLight3D:
+	return _key_light
+
+
+# A sky full of stars, drawn into a 2:1 panorama the sky's cover layer wraps
+# around the world. Only the upper half (above the horizon) carries stars,
+# thinning toward the horizon where the city glow and haze would hide them.
+# Seeded, so the same stars come back every time.
+func _star_field_texture(count: int) -> ImageTexture:
+	var w := 2048
+	var h := 1024
+	var img := Image.create(w, h, false, Image.FORMAT_RGB8)
+	img.fill(Color(0.0, 0.0, 0.0))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1717
+	for i in range(count):
+		var x := rng.randi_range(0, w - 1)
+		# Square-root bias keeps more stars high in the sky than near the
+		# horizon (y = h / 2).
+		var y := int(pow(rng.randf(), 1.4) * float(h) * 0.47)
+		var b: float = pow(rng.randf(), 2.6)
+		var tint := Color(0.80 + 0.2 * b, 0.84 + 0.12 * b, 1.0)
+		var bright: float = lerpf(0.35, 1.0, b)
+		img.set_pixel(x, y, tint * bright)
+		if b > 0.72:
+			# The brightest few get a soft cross so they read as larger.
+			var halo: float = bright * 0.35
+			for off in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var px: int = (x + off.x + w) % w
+				var py: int = clampi(y + off.y, 0, h - 1)
+				img.set_pixel(px, py, tint * halo)
+	_star_count = count
+	return ImageTexture.create_from_image(img)
+
+
+# The cloud layer (spec 003 lever 2, strengthened for spec 005 SB-02): a
+# large high plane with its own small shader, so the clouds have real
+# perspective -- big overhead, small and thin toward the horizon -- instead
+# of being painted flat onto the sky. Two runtime-generated noise textures
+# (no downloaded image) are layered into cloud shapes; each cloud's side that
+# faces the key light is lifted toward the lit colour and the far side sinks
+# toward the shade colour, and the whole layer fades out with distance so it
+# never shows a hard edge or a tiled pattern at the horizon. The layer ignores
+# the depth fog, which otherwise erased it completely at its own distance.
+const _CLOUD_SHADER_SOURCE := """shader_type spatial;
+render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, fog_disabled, shadows_disabled;
+
+uniform sampler2D noise_a : filter_linear_mipmap, repeat_enable;
+uniform sampler2D noise_b : filter_linear_mipmap, repeat_enable;
+uniform vec4 lit_color : source_color = vec4(1.0, 0.86, 0.62, 1.0);
+uniform vec4 shade_color : source_color = vec4(0.46, 0.34, 0.44, 1.0);
+uniform float coverage = 0.5;
+uniform float opacity = 0.9;
+uniform vec2 sun_dir = vec2(0.883, 0.469);
+uniform float fade_near = 900.0;
+uniform float fade_far = 2100.0;
+uniform float drift = 0.0025;
+
+varying vec3 world_pos;
+
+void vertex() {
+	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+
+float cloud_density(vec2 p) {
+	float a = texture(noise_a, p * 0.00042 + vec2(TIME * drift, 0.0)).r;
+	float b = texture(noise_b, p * 0.0017 + vec2(0.0, TIME * drift * 1.6)).r;
+	float n = a * 0.72 + b * 0.28;
+	return smoothstep(coverage, coverage + 0.20, n);
+}
+
+void fragment() {
+	vec2 p = world_pos.xz;
+	float d = cloud_density(p);
+	float toward_sun = cloud_density(p + sun_dir * 70.0);
+	float lit = clamp(0.62 + (d - toward_sun) * 2.4, 0.0, 1.0);
+	vec3 col = mix(shade_color.rgb, lit_color.rgb, lit);
+	float dist = length(world_pos.xz - CAMERA_POSITION_WORLD.xz);
+	float fade = 1.0 - smoothstep(fade_near, fade_far, dist);
+	ALBEDO = col;
+	ALPHA = d * opacity * fade;
+}
+"""
+
+
+func _cloud_noise(seed_val: int, frequency: float, octaves: int) -> NoiseTexture2D:
 	var noise := FastNoiseLite.new()
-	noise.seed = 4242
+	noise.seed = seed_val
 	noise.noise_type = FastNoiseLite.TYPE_PERLIN
-	noise.frequency = 0.006
-	noise.fractal_octaves = 4
+	noise.frequency = frequency
+	noise.fractal_octaves = octaves
 	noise.fractal_gain = 0.55
+	var tex := NoiseTexture2D.new()
+	tex.width = 512
+	tex.height = 512
+	tex.seamless = true
+	tex.normalize = true
+	tex.noise = noise
+	return tex
 
-	var gradient := Gradient.new()
-	gradient.colors = PackedColorArray([
-		Color(1.0, 1.0, 1.0, 0.0),
-		Color(1.0, 1.0, 1.0, 0.0),
-		Color(1.0, 1.0, 1.0, 0.5),
-		Color(1.0, 1.0, 1.0, 0.85),
-	])
-	gradient.offsets = PackedFloat32Array([0.0, 0.55, 0.74, 1.0])
 
-	var cloud_tex := NoiseTexture2D.new()
-	cloud_tex.width = 1024
-	cloud_tex.height = 1024
-	cloud_tex.seamless = true
-	cloud_tex.noise = noise
-	cloud_tex.color_ramp = gradient
-
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color(1.0, 0.88, 0.68)
-	mat.albedo_texture = cloud_tex
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+func _build_sky_clouds() -> void:
+	var p: Dictionary = _profile
+	var shader := Shader.new()
+	shader.code = _CLOUD_SHADER_SOURCE
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	mat.set_shader_parameter("noise_a", _cloud_noise(4242, 0.012, 4))
+	mat.set_shader_parameter("noise_b", _cloud_noise(777, 0.02, 3))
+	mat.set_shader_parameter("lit_color", p["cloud_lit"])
+	mat.set_shader_parameter("shade_color", p["cloud_shade"])
+	mat.set_shader_parameter("coverage", p["cloud_coverage"])
+	mat.set_shader_parameter("opacity", p["cloud_opacity"])
+	var toward_key := Basis.from_euler(Vector3(
+		deg_to_rad(p["key_rotation"].x), deg_to_rad(p["key_rotation"].y), 0.0)) * Vector3(0.0, 0.0, 1.0)
+	var flat := Vector2(toward_key.x, toward_key.z)
+	if flat.length() < 0.01:
+		flat = Vector2(0.0, 1.0)
+	mat.set_shader_parameter("sun_dir", flat.normalized())
 
 	var mesh := MeshInstance3D.new()
+	mesh.name = "CloudLayer"
 	var plane := PlaneMesh.new()
-	plane.size = Vector2(2800.0, 2800.0)
+	plane.size = Vector2(4400.0, 4400.0)
 	mesh.mesh = plane
 	mesh.material_override = mat
-	mesh.position = Vector3(0.0, 260.0, -60.0)
+	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mesh.position = Vector3(0.0, 170.0, -200.0)
 	add_child(mesh)
+	_cloud_layer = mesh
 
 
 # ---------------------------------------------------------------------------
@@ -2113,72 +2335,288 @@ func _mountain_vertex(st: SurfaceTool, p: Vector3, height_fn: Callable, rock_lit
 # ---------------------------------------------------------------------------
 
 func _build_night_environment() -> void:
-	var e := Environment.new()
-	e.background_mode = Environment.BG_SKY
-	var sky := Sky.new()
-	var mat := ProceduralSkyMaterial.new()
-	mat.sky_top_color = Color(0.025, 0.02, 0.07)
-	# A warm light-pollution glow low on the horizon, behind the skyline, so
-	# the towers' edges read as a silhouette against something rather than
-	# vanishing into a flat black sky -- asked for in a judge review of
-	# night.png on 2026-09-23.
-	mat.sky_horizon_color = Color(0.16, 0.13, 0.24)
-	mat.sky_curve = 0.06
-	mat.ground_bottom_color = Color(0.01, 0.01, 0.02)
-	mat.ground_horizon_color = Color(0.05, 0.05, 0.11)
-	mat.ground_curve = 0.10
-	mat.sun_angle_max = 1.5
-	sky.sky_material = mat
-	e.sky = sky
-	e.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	e.ambient_light_energy = 0.30
-	e.tonemap_mode = Environment.TONE_MAPPER_AGX
-	e.tonemap_exposure = 1.75
-	# Spec 003 lever 3's own per-world grade, distinct from Day's
-	# (_build_day_environment): cooler and flatter with more contrast and
-	# less saturation, the "moody neon city at night" push rather than Day's
-	# punchier golden-hour warmth.
-	e.adjustment_enabled = true
-	e.adjustment_brightness = 0.98
-	e.adjustment_contrast = 1.15
-	e.adjustment_saturation = 0.85
+	# Every setting from scripts/render_profile.gd, the night half (spec 005,
+	# T020): the light-pollution horizon asked for in a judge review of
+	# night.png on 2026-09-23, the cooler flatter grade of spec 003 lever 3,
+	# the star field and lit cloud (T021), and moon shadows on both platforms
+	# (T022).
+	_build_environment_from_profile()
+	_moon_light = _build_key_light()
+	if bool(_profile.get("clouds", false)):
+		_build_sky_clouds()
 
-	# Light haze, cooler than the day's dust, and kept low: the camera's
-	# 2.5 m eye height must stay above the thick part of it or the whole shot
-	# reads as a flat grey wall, which an early pass at this did on
-	# 2026-09-23.
-	e.fog_enabled = true
-	e.fog_light_color = Color(0.18, 0.22, 0.34)
-	e.fog_density = 0.0035
-	e.fog_sky_affect = 0.35
-	e.fog_height = 1.3
-	e.fog_height_density = 0.18
 
-	if not OS.has_feature("web"):
-		e.glow_enabled = true
-		e.glow_intensity = 0.82
-		e.glow_bloom = 0.08
-		e.glow_hdr_threshold = 1.0
-		e.ssao_enabled = true
-		# The wet street: screen-space reflections, desktop only.
-		e.ssr_enabled = true
-		e.ssr_max_steps = 48
-		e.volumetric_fog_enabled = true
-		e.volumetric_fog_density = 0.0035
-		e.volumetric_fog_albedo = Color(0.25, 0.28, 0.40)
+const WET_STREET_ALPHA := 0.68
+const PUDDLE_ALPHA := 0.42
+const MIRROR_DIM := 0.6
+const MIRROR_STRETCH := 1.6
 
-	_environment = e
-	var we := WorldEnvironment.new()
-	we.environment = e
-	add_child(we)
 
-	var moon := DirectionalLight3D.new()
-	moon.light_energy = 0.4
-	moon.light_color = Color(0.55, 0.62, 0.85)
-	moon.shadow_enabled = not OS.has_feature("web")
-	moon.rotation_degrees = Vector3(-52.0, 200.0, 0.0)
-	add_child(moon)
-	_moon_light = moon
+# The browser's fallback for screen-space reflections (spec 005, FR-004,
+# FR-005, SB-08; plan render table: "mirrored reflection layer"). Every lit
+# thing on the street -- lamp heads, sign panels, blade signs and the lit
+# windows -- gets a dimmed copy mirrored under the street plane (y = 0). The
+# ground and the horizon skirt leave a gap under the street, and the street
+# and its puddles are see-through, so those copies show through the wet
+# asphalt exactly where a reflection would sit, with the rain falling over
+# them. Built only when the render profile asks for it (the web profile);
+# the desktop keeps screen-space reflections on an opaque street.
+func _build_wet_street_mirror() -> void:
+	var mirror := Node3D.new()
+	mirror.name = "WetStreetMirror"
+	# Stretched as it mirrors: light on wet asphalt smears into long
+	# vertical streaks rather than a sharp mirror image.
+	mirror.transform = Transform3D(Basis.from_scale(Vector3(1.0, -MIRROR_STRETCH, 1.0)), Vector3.ZERO)
+	# The lit windows are left out on purpose: thousands of small sharp
+	# panes mirrored without blur read as a barcode pattern in the asphalt,
+	# not as a wet sheen. Signs, blade signs and the lamps' soft halos carry
+	# the reflection instead.
+	for child in get_children():
+		if child is MeshInstance3D and (_is_street_light_source(child) or child.has_meta("halo")):
+			var copy := MeshInstance3D.new()
+			copy.mesh = child.mesh
+			copy.transform = child.transform
+			copy.material_override = _mirror_material(child.material_override)
+			copy.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			mirror.add_child(copy)
+			_mirror_copy_count += 1
+	add_child(mirror)
+	_mirror_layer = mirror
+
+
+# A glowing street element: unshaded, and bright (a lamp head, a sign
+# panel), within reach of the street's reflection.
+func _is_street_light_source(mi: MeshInstance3D) -> bool:
+	var m := mi.material_override as StandardMaterial3D
+	if m == null or m.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED:
+		return false
+	if not (mi.mesh is QuadMesh):
+		# Flat sign panels only: a mirrored lamp-head sphere reads as a hard
+		# opaque blob, where its halo (mirrored above) reads as light.
+		return false
+	if m.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED or m.blend_mode != BaseMaterial3D.BLEND_MODE_MIX:
+		return false
+	var c: Color = m.albedo_color
+	if maxf(c.r, maxf(c.g, c.b)) < 0.6:
+		return false
+	return absf(mi.position.x) < 45.0 and absf(mi.position.z) < 75.0
+
+
+func _mirror_material(source: Material, dim: float = MIRROR_DIM) -> StandardMaterial3D:
+	var m: StandardMaterial3D = (source as StandardMaterial3D).duplicate()
+	m.albedo_color = Color(m.albedo_color.r * dim, m.albedo_color.g * dim,
+		m.albedo_color.b * dim, m.albedo_color.a)
+	if m.emission_enabled:
+		m.emission_energy_multiplier *= dim
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	return m
+
+
+## The mirrored reflection layer (web night only), or null.
+func mirror_layer() -> Node3D:
+	return _mirror_layer
+
+
+func mirror_copy_count() -> int:
+	return _mirror_copy_count
+
+
+# A soft round glow around a light source (the render table's halo
+# billboards): an additive, camera-facing quad with a radial falloff, so a
+# lamp reads as a light in wet air rather than a hard flat disc (SB-09).
+func _add_halo(pos: Vector3, color: Color, size: float, strength: float) -> MeshInstance3D:
+	var mesh := MeshInstance3D.new()
+	mesh.name = "Halo"
+	var quad := QuadMesh.new()
+	quad.size = Vector2(size, size)
+	mesh.mesh = quad
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	mat.albedo_texture = _soft_disc_texture()
+	mat.albedo_color = Color(color.r, color.g, color.b, strength)
+	mat.no_depth_test = false
+	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	mesh.material_override = mat
+	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mesh.position = pos
+	mesh.set_meta("halo", true)
+	add_child(mesh)
+	_halo_count += 1
+	return mesh
+
+
+# A shaft of lamp light falling through the rain (the render table's
+# fallback for volumetric fog on the web): an open, additive cone under the
+# lamp, brightest at the lamp and fading to nothing at the pavement, its
+# fade carried in vertex colours. A textured camera-facing quad was tried
+# first and drew nothing in the Compatibility renderer (measured by capture,
+# 2026-09-28); plain vertex colours draw on every renderer.
+func _add_light_shaft(lamp_pos: Vector3, color: Color) -> MeshInstance3D:
+	var mesh := MeshInstance3D.new()
+	mesh.name = "LightShaft"
+	mesh.mesh = _light_cone_mesh(lamp_pos.y - 0.1, 0.22, 1.7, color, 0.26)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.vertex_color_use_as_albedo = true
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	mesh.material_override = mat
+	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mesh.position = Vector3(lamp_pos.x, 0.0, lamp_pos.z)
+	add_child(mesh)
+	_light_shaft_count += 1
+	return mesh
+
+
+# An open cone from `top_r` at height `h` down to `bottom_r` at the ground,
+# coloured `color` with alpha `top_a` at the top fading to 0 at the bottom.
+func _light_cone_mesh(h: float, top_r: float, bottom_r: float, color: Color, top_a: float) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var segments := 14
+	var top_c := Color(color.r, color.g, color.b, top_a)
+	var mid_c := Color(color.r, color.g, color.b, top_a * 0.35)
+	var bot_c := Color(color.r, color.g, color.b, 0.0)
+	var mid_h: float = h * 0.55
+	var mid_r: float = lerpf(bottom_r, top_r, 0.55)
+	for i in range(segments):
+		var a0: float = TAU * float(i) / float(segments)
+		var a1: float = TAU * float(i + 1) / float(segments)
+		var d0 := Vector3(cos(a0), 0.0, sin(a0))
+		var d1 := Vector3(cos(a1), 0.0, sin(a1))
+		var t0 := d0 * top_r + Vector3(0.0, h, 0.0)
+		var t1 := d1 * top_r + Vector3(0.0, h, 0.0)
+		var m0 := d0 * mid_r + Vector3(0.0, mid_h, 0.0)
+		var m1 := d1 * mid_r + Vector3(0.0, mid_h, 0.0)
+		var b0 := d0 * bottom_r
+		var b1 := d1 * bottom_r
+		for tri in [[t0, top_c, m0, mid_c, t1, top_c], [t1, top_c, m0, mid_c, m1, mid_c],
+				[m0, mid_c, b0, bot_c, m1, mid_c], [m1, mid_c, b0, bot_c, b1, bot_c]]:
+			for k in range(3):
+				st.set_color(tri[k * 2 + 1])
+				st.add_vertex(tri[k * 2])
+	return st.commit()
+
+
+# The web's stand-in for volumetric fog by day (render table: haze cards):
+# a few very large, soft, see-through bands of dusty air standing between
+# the field and the mountains, so the near, middle and far ground separate
+# into planes the way light shafts through dust would separate them.
+func _build_haze_cards() -> void:
+	var fog_c: Color = _profile["fog_color"]
+	var tint := Color(fog_c.r * 1.12, fog_c.g * 1.12, fog_c.b * 1.16)
+	var cards := [
+		{"z": -95.0, "w": 520.0, "h": 34.0, "a": 0.30},
+		{"z": -175.0, "w": 760.0, "h": 70.0, "a": 0.34},
+		{"z": -255.0, "w": 980.0, "h": 110.0, "a": 0.30},
+	]
+	for c in cards:
+		var mesh := MeshInstance3D.new()
+		mesh.name = "HazeCard"
+		mesh.mesh = _haze_card_mesh(c["w"], c["h"], tint, c["a"])
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.vertex_color_use_as_albedo = true
+		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+		mesh.material_override = mat
+		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mesh.position = Vector3(0.0, -2.0, c["z"])
+		add_child(mesh)
+		_haze_card_count += 1
+
+
+# A vertical band, `w` wide and `h` tall from its base, densest a little
+# above the ground and thinning to nothing at the top and at both ends; the
+# fade lives in vertex colours (see _add_light_shaft for why not a texture).
+func _haze_card_mesh(w: float, h: float, tint: Color, peak_a: float) -> ArrayMesh:
+	var xs := [-0.5, -0.38, 0.38, 0.5]
+	var x_alpha := [0.0, 1.0, 1.0, 0.0]
+	var ys := [0.0, 0.18, 0.55, 1.0]
+	var y_alpha := [0.55, 1.0, 0.45, 0.0]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in range(3):
+		for j in range(3):
+			var corners := [[i, j], [i + 1, j], [i, j + 1], [i + 1, j], [i + 1, j + 1], [i, j + 1]]
+			for cxy in corners:
+				var xi: int = cxy[0]
+				var yi: int = cxy[1]
+				st.set_color(Color(tint.r, tint.g, tint.b, peak_a * float(x_alpha[xi]) * float(y_alpha[yi])))
+				st.add_vertex(Vector3(float(xs[xi]) * w, float(ys[yi]) * h, 0.0))
+	return st.commit()
+
+
+func haze_card_count() -> int:
+	return _haze_card_count
+
+
+# The web's stand-in for ambient occlusion at night (render table: contact
+# darkening): a soft dark pool on the pavement at the foot of each tower,
+# bench, bin and lamp that registered a footprint, so nothing reads as
+# pasted onto the ground. Long thin footprints (the kerbs) and anything on
+# the street itself are left alone.
+func _build_contact_shadows() -> void:
+	var tex := _soft_disc_texture()
+	for f in _footprints:
+		var pos: Vector3 = f["position"]
+		var r: float = f["radius"]
+		if r > 9.0 or absf(pos.x) < STREET_HALF_WIDTH + 0.5:
+			continue
+		var mesh := MeshInstance3D.new()
+		mesh.name = "ContactShadow"
+		var plane := PlaneMesh.new()
+		var span: float = r * 2.0 + 2.6
+		plane.size = Vector2(span, span)
+		mesh.mesh = plane
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.albedo_texture = tex
+		mat.albedo_color = Color(0.0, 0.0, 0.0, 0.55)
+		mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+		mesh.material_override = mat
+		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mesh.position = Vector3(pos.x, 0.035, pos.z)
+		add_child(mesh)
+		_contact_shadow_count += 1
+
+
+func contact_shadow_count() -> int:
+	return _contact_shadow_count
+
+
+func halo_count() -> int:
+	return _halo_count
+
+
+func light_shaft_count() -> int:
+	return _light_shaft_count
+
+
+var _soft_disc_tex: Texture2D = null
+
+
+func _soft_disc_texture() -> Texture2D:
+	if _soft_disc_tex == null:
+		var g := Gradient.new()
+		g.colors = PackedColorArray([Color(1, 1, 1, 1), Color(1, 1, 1, 0.35), Color(1, 1, 1, 0.0)])
+		g.offsets = PackedFloat32Array([0.0, 0.25, 1.0])
+		var t := GradientTexture2D.new()
+		t.gradient = g
+		t.fill = GradientTexture2D.FILL_RADIAL
+		t.fill_from = Vector2(0.5, 0.5)
+		t.fill_to = Vector2(1.0, 0.5)
+		t.width = 128
+		t.height = 128
+		_soft_disc_tex = t
+	return _soft_disc_tex
 
 
 # A small unshaded disc, parented to the moonlight itself so it always sits in
@@ -2249,6 +2687,7 @@ func _build_towers() -> void:
 		var w := rng.randf_range(6.0, 11.0)
 		var d := rng.randf_range(6.0, 11.0)
 		var h := rng.randf_range(22.0, 70.0)
+		pos = clear_of_street(pos, w, NEAR_TOWER_STREET_CLEARANCE)
 		var mat := facade_a if i % 2 == 0 else facade_b
 		_place_box(Vector3(pos.x, h * 0.5, pos.z), Vector3(w, h, d), 0.0, mat)
 		_near_towers.append({"pos": Vector3(pos.x, 0.0, pos.z), "w": w, "h": h, "d": d})
@@ -2280,6 +2719,7 @@ func _build_towers() -> void:
 		var w := rng.randf_range(7.0, 16.0)
 		var d := rng.randf_range(7.0, 16.0)
 		var h := rng.randf_range(30.0, 140.0)
+		pos = clear_of_street(pos, w, FAR_TOWER_STREET_CLEARANCE)
 		var basis := Basis().scaled(Vector3(w, h, d))
 		far_mm.set_instance_transform(i, Transform3D(basis, Vector3(pos.x, h * 0.5, pos.z)))
 		_add_tower_windows(Vector3(pos.x, 0.0, pos.z), w, h, d, 4, 7, rng)
@@ -2289,6 +2729,23 @@ func _build_towers() -> void:
 	add_child(far_mmi)
 
 	_finalize_windows()
+
+
+# Towers stand beside the street, never on it (spec 005, SB-02, SB-03,
+# SB-07): a tower whose footprint would cross the street's corridor slides
+# sideways until its near face lines the corridor. The corridor is wider for
+# the far skyline, so the view down the street opens onto hazy distant
+# towers and the night sky instead of ending in a wall 20 m away.
+const NEAR_TOWER_STREET_CLEARANCE := 7.2
+const FAR_TOWER_STREET_CLEARANCE := 16.0
+
+
+static func clear_of_street(pos: Vector3, width: float, clearance: float) -> Vector3:
+	var min_x: float = clearance + width * 0.5
+	if absf(pos.x) >= min_x:
+		return pos
+	var side: float = 1.0 if pos.x >= 0.0 else -1.0
+	return Vector3(side * min_x, pos.y, pos.z)
 
 
 func _init_window_multimesh() -> void:
@@ -2504,6 +2961,12 @@ func _street_material() -> ORMMaterial3D:
 	m.orm_texture = load(_STREET_ARM)
 	m.roughness = 0.18
 	m.uv1_scale = Vector3(1.4, 24.0, 1.0)
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	if bool(_profile.get("mirror_layer", false)):
+		# See-through, so the mirrored reflection layer under it reads as the
+		# lamps and signs reflected in the wet asphalt.
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.albedo_color.a = WET_STREET_ALPHA
 	_night_street_mat = m
 	return m
 
@@ -2519,6 +2982,10 @@ func _build_night_street() -> void:
 	add_child(mesh)
 
 	var puddle_mat := _flat_mat(Color(0.16, 0.20, 0.28), 0.04)
+	if bool(_profile.get("mirror_layer", false)):
+		# Standing water reflects more than wet asphalt does.
+		puddle_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		puddle_mat.albedo_color = Color(0.10, 0.13, 0.20, PUDDLE_ALPHA)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 6060
 	# A handful of fixed z depths close to the lane guarantee the wet street
@@ -2619,30 +3086,64 @@ func _build_lamps() -> void:
 		light.shadow_enabled = demo_quality and shadow_indices.has(i)
 		add_child(light)
 
+		if bool(_profile.get("halos", false)):
+			_add_halo(pos + Vector3(0.0, 4.05, 0.0), Color(1.0, 0.78, 0.48), 2.2, 0.55)
+		if bool(_profile.get("light_shafts", false)):
+			_add_light_shaft(pos + Vector3(0.0, 4.0, 0.0), Color(1.0, 0.80, 0.52))
+
 		_place_reflection_streak(pos, Color(1.0, 0.78, 0.42, 0.30))
 
 
 # A cheap stand-in for a screen-space reflection that a still frame cannot be
-# relied on to catch: a soft translucent streak on the ground stretching from
-# the light toward the lane, coloured like the light above it. A judge review
-# of night.png on 2026-09-23 asked for the wet street to visibly reflect its
-# lamps and signs.
+# relied on to catch: light on a wet road smears into a long streak running
+# from under the light toward the viewer. Spec 005 (SB-08) moved it off the
+# pavement and onto the street itself, as an additive band whose glow fades
+# along its length and across its width (vertex colours, which every
+# renderer draws), pointing down the street toward the spawn -- the way the
+# chase camera looks at it.
 func _place_reflection_streak(pos: Vector3, color: Color) -> void:
 	var mesh := MeshInstance3D.new()
-	var plane := PlaneMesh.new()
-	plane.size = Vector2(0.9, 4.2)
-	mesh.mesh = plane
+	mesh.name = "WetStreak"
+	var length := 13.0
+	var width := 1.3
+	var x: float = signf(pos.x) * minf(absf(pos.x) * 0.55, STREET_HALF_WIDTH - 0.7)
+	mesh.mesh = _streak_mesh(width, length, Color(color.r, color.g, color.b), minf(1.0, maxf(color.a, 0.3) * 2.8))
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = color
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.vertex_color_use_as_albedo = true
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
 	mesh.material_override = mat
-	var toward_lane := -pos
-	toward_lane.y = 0.0
-	var lane_dir := toward_lane.normalized() if toward_lane.length() > 0.01 else Vector3.FORWARD
-	mesh.position = Vector3(pos.x, 0.025, pos.z) + lane_dir * 1.6
-	mesh.rotation_degrees = Vector3(0.0, rad_to_deg(atan2(lane_dir.x, lane_dir.z)), 0.0)
+	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mesh.position = Vector3(x, 0.03, pos.z + 0.6)
 	add_child(mesh)
+	_wet_streak_count += 1
+
+
+# A flat band on the ground from z = 0 to z = +length: brightest at its
+# start and along its centre line, fading to nothing at its far end and
+# both edges.
+func _streak_mesh(width: float, length: float, tint: Color, peak_a: float) -> ArrayMesh:
+	var xs := [-0.5, 0.0, 0.5]
+	var x_alpha := [0.0, 1.0, 0.0]
+	var zs := [0.0, 0.25, 1.0]
+	var z_alpha := [0.7, 1.0, 0.0]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in range(2):
+		for j in range(2):
+			for cxy in [[i, j], [i + 1, j], [i, j + 1], [i + 1, j], [i + 1, j + 1], [i, j + 1]]:
+				var xi: int = cxy[0]
+				var zi: int = cxy[1]
+				st.set_color(Color(tint.r, tint.g, tint.b, peak_a * float(x_alpha[xi]) * float(z_alpha[zi])))
+				st.add_vertex(Vector3(float(xs[xi]) * width, 0.0, float(zs[zi]) * length))
+	return st.commit()
+
+
+func wet_streak_count() -> int:
+	return _wet_streak_count
 
 
 # Abstract glowing panels on some of the near towers: flat colour blocks in
@@ -2755,6 +3256,8 @@ func _build_street_signs() -> void:
 		panel.material_override = mat
 		panel.transform = Transform3D(basis, panel_pos)
 		add_child(panel)
+		var sign_c: Color = colors[i % colors.size()]
+		_place_reflection_streak(pos, Color(minf(sign_c.r, 1.0), minf(sign_c.g, 1.0), minf(sign_c.b, 1.0), 0.32))
 		i += 1
 
 
@@ -3233,6 +3736,7 @@ func _build_traffic() -> void:
 		var dir: float = lane["dir"]
 		var car := _build_car_mesh(body_colors[i % body_colors.size()])
 		car.position = car_position(lane_index, speed, phase, 0.0)
+		car.visible = car_shown_at(car.position)
 		car.rotation.y = 0.0 if dir > 0.0 else PI
 		add_child(car)
 		_cars.append({"node": car, "lane_index": lane_index, "speed": speed, "phase": phase})
@@ -3322,3 +3826,11 @@ func _update_traffic(_delta: float) -> void:
 	for entry in _cars:
 		var node: Node3D = entry["node"]
 		node.position = car_position(int(entry["lane_index"]), float(entry["speed"]), float(entry["phase"]), _night_life_time)
+		node.visible = car_shown_at(node.position)
+
+
+## False while a car is inside the fight lane's stretch of street, where it is
+## kept out of sight (CAR_CLEAR_Z): the lane stays clear for the fight and
+## the spawn frame is never filled by a passing car.
+static func car_shown_at(pos: Vector3) -> bool:
+	return absf(pos.z) >= CAR_CLEAR_Z

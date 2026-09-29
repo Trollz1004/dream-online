@@ -24,6 +24,8 @@ const PetScript := preload("res://scripts/pet.gd")
 const PetShopPanelScript := preload("res://scripts/pet_shop_panel.gd")
 const PetState := preload("res://scripts/pet_state.gd")
 const KeyboardPanelScript := preload("res://scripts/keyboard_panel.gd")
+const ComboListPanelScript := preload("res://scripts/combo_list_panel.gd")
+const RenderProfileScript := preload("res://scripts/render_profile.gd")
 
 const MIRETH_WITNESS_RADIUS := 40.0
 const DEFAULT_LAB_URL := "http://127.0.0.1:9127"
@@ -37,6 +39,7 @@ var memory_panel: Node = null
 var pet: Node3D = null
 var pet_shop_panel: Node = null
 var keyboard_panel: Node = null
+var combo_list_panel: Node = null
 
 var _capture_path := ""
 var _capture_at := 2.0
@@ -54,6 +57,11 @@ var _pet_time := PetState.LIFE_MAX
 var _pet_loot_demo := false
 var _pet_shop_open_demo := false   # --pet-shop-open: a capture needs the panel open with no key press to drive it
 var _use_potion_flag := false   # capture-only, see _read_args() and _ready()
+# --render-profile web|desktop: which render profile (scripts/render_profile.gd)
+# to build from. Defaults to the platform's own; a desktop capture can ask
+# for the web profile to preview what the browser build draws.
+var _web_profile := OS.has_feature("web")
+var _combo_list_open_demo := false   # --combo-list-open: a capture of the combo list screen
 
 var _env: Node3D = null
 var _fade_layer: CanvasLayer
@@ -73,6 +81,14 @@ var last_spoken_line := ""
 
 func _ready() -> void:
 	_read_args()
+	# The browser build has no command line, so the one setting a capture
+	# needs -- which world to open in -- comes from the page's own query
+	# string instead (spec 005, FR-001, T004). Web only: the desktop build
+	# never touches JavaScriptBridge and keeps reading --dream as before.
+	if should_read_query(OS.has_feature("web")):
+		var from_query := dream_from_query(_page_query_string())
+		if from_query != "":
+			_dream_mode = from_query
 	if (_capture_path != "" or _demo_mode) and DisplayServer.get_name() != "headless":
 		load("res://scripts/side_screen.gd").apply(get_window())
 	_build_fade_overlay()
@@ -80,6 +96,7 @@ func _ready() -> void:
 	_env = DreamEnvScript.new()
 	_env.mode = _dream_mode
 	_env.demo_quality = _demo_mode
+	_env.web_profile = _web_profile
 	add_child(_env)
 
 	hud = HudScript.new()
@@ -100,6 +117,7 @@ func _ready() -> void:
 	player.position = Vector3(0.0, 1.2, 6.0)
 	player.hud = hud
 	player.time_of_day = _dream_mode
+	player.web_profile = _web_profile
 	# Everything the player reads inside _ready has to be set before it is added
 	# to the tree, because add_child is what runs _ready. These three used to be
 	# assigned after, and two things were quietly wrong for it: a capture run
@@ -164,6 +182,16 @@ func _ready() -> void:
 	if _pet_shop_open_demo:
 		pet_shop_panel.toggle()
 
+	_apply_emitter_halos()
+
+	# The combo list screen on L (spec 005, FR-016): where the long help
+	# block lives now that it has left the play screen.
+	combo_list_panel = ComboListPanelScript.new()
+	add_child(combo_list_panel)
+	combo_list_panel.open_changed.connect(_on_combo_list_open_changed)
+	if _combo_list_open_demo:
+		combo_list_panel.open()
+
 	player.perfect_dodge_confirmed.connect(_on_perfect_dodge)
 	player.heavy_hit_landed.connect(_on_heavy_hit)
 	player.skill_used.connect(_on_skill_used)
@@ -202,6 +230,89 @@ func _ready() -> void:
 
 	if _capture_path != "":
 		_capture_after(_capture_at)
+
+	_frames_since_world_built = 0
+	_frame_ready_reported = false
+
+
+# ---------------------------------------------------------------------------
+# The browser build's query string and its frame-ready flag (spec 005, T004)
+# ---------------------------------------------------------------------------
+
+## Frames (not seconds: a software-rendered browser runs near one frame a
+## second) the current world has to draw before a capture may take it.
+const FRAME_READY_FRAMES := 12
+
+var _frames_since_world_built := 0
+var _frame_ready_reported := false
+
+
+## Only the browser build reads the page's query string; every other build
+## ignores it, so a desktop --dream flag can never be overridden by it.
+static func should_read_query(is_web: bool) -> bool:
+	return is_web
+
+
+## Reads `dream` (and nothing else) from a query string such as
+## "?dream=night&x=1". Returns "day" or "night", or "" when the key is missing
+## or carries any other value, so a bad link falls back to the default world.
+static func dream_from_query(search: String) -> String:
+	var text := search.strip_edges()
+	if text.begins_with("?"):
+		text = text.substr(1)
+	for part in text.split("&", false):
+		var kv := part.split("=", true, 1)
+		if kv.size() == 2 and kv[0] == "dream":
+			var value := kv[1].strip_edges().to_lower()
+			if value == "day" or value == "night":
+				return value
+	return ""
+
+
+func _page_query_string() -> String:
+	var result = JavaScriptBridge.eval("window.location.search", true)
+	return String(result) if result != null else ""
+
+
+func _process(_delta: float) -> void:
+	if _frame_ready_reported:
+		return
+	_frames_since_world_built += 1
+	if _frames_since_world_built >= FRAME_READY_FRAMES:
+		_frame_ready_reported = true
+		if OS.has_feature("web"):
+			JavaScriptBridge.eval("window.dreamFrameReady = true; window.dreamWorld = '%s';" % _dream_mode, true)
+
+
+# Clears the ready flag while the world is being swapped, so a capture that
+# waits on it never shoots the fade.
+func _reset_frame_ready() -> void:
+	_frames_since_world_built = 0
+	_frame_ready_reported = false
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.dreamFrameReady = false;", true)
+
+
+# Soft halos on the small emitters -- the Sentinel's eye, the pet's eye,
+# Mireth's orb -- when the current world's render profile asks for them
+# (spec 005, SB-09; the web profile's emitter_halos fallback).
+func _apply_emitter_halos() -> void:
+	var p: Dictionary = RenderProfileScript.profile(_dream_mode, _web_profile)
+	var on: bool = bool(p.get("emitter_halos", false))
+	var strength: float = float(p.get("emitter_halo_strength", 0.0))
+	for who in [sentinel, pet]:
+		if who != null and who.has_method("set_glow_halo"):
+			who.set_glow_halo(on, strength)
+	if npc != null and npc.get("model") != null and npc.model.has_method("set_glow_halo"):
+		npc.model.set_glow_halo(on, strength)
+
+
+# The combo list screen is a full panel: the play HUD steps out from behind
+# it while it is open, so nothing on screen overlaps it (spec 005, SB-13).
+func _on_combo_list_open_changed(is_open: bool) -> void:
+	for layer in [hud, keyboard_panel, memory_panel]:
+		if layer != null:
+			layer.visible = not is_open
 
 
 # The demo director's own reach for the live Environment resource (spec 003
@@ -252,6 +363,10 @@ func _read_args() -> void:
 			_pet_shop_open_demo = true
 		if args[i] == "--use-potion":
 			_use_potion_flag = true
+		if args[i] == "--combo-list-open":
+			_combo_list_open_demo = true
+		if args[i] == "--render-profile" and i + 1 < args.size():
+			_web_profile = args[i + 1] == "web"
 
 
 func _capture_after(seconds: float) -> void:
@@ -287,9 +402,14 @@ func _fade_to(target_alpha: float, duration: float) -> void:
 		_fade_rect.color = Color(0.0, 0.0, 0.0, target_alpha)
 		return
 	var start_alpha: float = _fade_rect.color.a
+	# Timed by the wall clock, not by summed frame deltas: under a software
+	# renderer the engine clamps each frame's delta (max physics steps), so a
+	# four-second fade summed from deltas took well over a minute of real
+	# time and a capture landed mid-fade (spec 005 baseline, 2026-09-28).
+	var start_ms := Time.get_ticks_msec()
 	var t := 0.0
 	while t < duration:
-		t += get_process_delta_time()
+		t = float(Time.get_ticks_msec() - start_ms) / 1000.0
 		var f: float = clampf(t / duration, 0.0, 1.0)
 		_fade_rect.color = Color(0.0, 0.0, 0.0, lerpf(start_alpha, target_alpha, f))
 		await get_tree().process_frame
@@ -307,6 +427,7 @@ func nightfall(duration: float) -> void:
 	if _dream_mode == "night":
 		return
 	var half: float = duration * 0.5
+	_reset_frame_ready()
 	await _fade_to(1.0, half)
 
 	if _env != null:
@@ -323,12 +444,17 @@ func nightfall(duration: float) -> void:
 	_env = DreamEnvScript.new()
 	_env.mode = "night"
 	_env.demo_quality = _demo_mode
+	_env.web_profile = _web_profile
 	add_child(_env)
+
+	_apply_emitter_halos()
 
 	npc_memory.recalled.connect(_on_recalled_for_night, CONNECT_ONE_SHOT)
 	npc_memory.recall("mireth")
 
 	await _fade_to(0.0, half)
+	_frames_since_world_built = 0
+	_frame_ready_reported = false
 
 
 func _on_recalled_for_night(facts: Array, source: String) -> void:

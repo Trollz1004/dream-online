@@ -29,6 +29,7 @@ extends Node3D
 #    the pet's own world position every frame via Camera3D.unproject_
 #    position), with a small triangular tail and a pop-in scale tween.
 
+const GlowHaloScript := preload("res://scripts/glow_halo.gd")
 const PetState := preload("res://scripts/pet_state.gd")
 
 const HOVER_HEIGHT := 0.55       # above the player's own origin -- shoulder/head height, not overhead
@@ -70,6 +71,8 @@ var _shell_material: StandardMaterial3D
 var _eye: MeshInstance3D
 var _eye_material: StandardMaterial3D
 var _eye_halo: OmniLight3D
+var _eye_glow: MeshInstance3D = null   # the soft billboard halo (spec 005, SB-09)
+var _eye_glow_strength := 0.0
 # The "alive" colours _update_dead_visual fades away from and
 # _update_alive_visual restores to (in case a shop "extend" purchase
 # revives a pet that had already sunk partway into darkness) -- unshaded
@@ -148,7 +151,10 @@ func _ready() -> void:
 	_eye = _build_eye()
 	_eye_rig.add_child(_eye)
 
-	_name_label = _build_label(0.62, 26, Color(0.85, 0.95, 1.0))
+	# Kept small and soft (spec 005, SB-10): a quiet nameplate with the pet's
+	# real remaining time, not a line of debug text across the frame.
+	_name_label = _build_label(0.58, 17, Color(0.90, 0.94, 1.0, 0.82))
+	_name_label.outline_size = 6
 
 	_build_bubble_ui()
 
@@ -674,6 +680,8 @@ func _update_alive_visual(delta: float, player_yaw: float) -> void:
 		_eye_material.emission_energy_multiplier = 2.8
 	if _eye_halo != null:
 		_eye_halo.light_energy = 1.1
+	if _eye_glow != null:
+		GlowHaloScript.set_strength(_eye_glow, _eye_alive_colour, _eye_glow_strength)
 	if _shell_material != null:
 		_shell_material.albedo_color = _shell_alive_colour
 	for dot in _seam_lights:
@@ -681,6 +689,28 @@ func _update_alive_visual(delta: float, player_yaw: float) -> void:
 		if mat != null:
 			mat.albedo_color = _seam_alive_colour
 			mat.emission = _seam_alive_colour
+
+
+# A soft halo round the eye when the render profile asks for one (spec 005,
+# SB-09; scripts/glow_halo.gd): the browser's glow does not bloom a small
+# eye in daylight, so the web profile draws the halo itself.
+func set_glow_halo(enabled: bool, strength: float) -> void:
+	_eye_glow_strength = strength
+	if _eye == null:
+		return
+	if not enabled:
+		if _eye_glow != null:
+			_eye_glow.visible = false
+		return
+	if _eye_glow == null:
+		_eye_glow = GlowHaloScript.make(_eye_alive_colour, 1.0, strength)
+		_eye.add_child(_eye_glow)
+	_eye_glow.visible = true
+	GlowHaloScript.set_strength(_eye_glow, _eye_alive_colour, strength)
+
+
+func eye_glow_halo() -> MeshInstance3D:
+	return _eye_glow
 
 
 func _update_dead_visual() -> void:
@@ -705,6 +735,8 @@ func _update_dead_visual() -> void:
 		_eye_material.emission_energy_multiplier = lerpf(2.8, 0.1, t)
 	if _eye_halo != null:
 		_eye_halo.light_energy = lerpf(1.1, 0.0, t)
+	if _eye_glow != null:
+		GlowHaloScript.set_strength(_eye_glow, _eye_alive_colour, lerpf(_eye_glow_strength, 0.0, t))
 	if _shell_material != null:
 		_shell_material.albedo_color = _shell_alive_colour.lerp(DEAD_TINT, t)
 	for dot in _seam_lights:

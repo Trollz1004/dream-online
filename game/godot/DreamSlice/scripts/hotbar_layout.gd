@@ -169,3 +169,116 @@ static func decode_bindings(s: String) -> Dictionary:
 		if kv.size() == 2:
 			result[kv[0]] = kv[1]
 	return result
+
+
+# ---------------------------------------------------------------------------
+# The play screen's layout (spec 005, FR-007, FR-008, SB-13)
+# ---------------------------------------------------------------------------
+# Every persistent rectangle on the play screen, worked out from the
+# viewport size alone so the headless suite can prove none of them overlap
+# at 1280x720 and 1920x1080 without a window: the hotbar at the bottom left,
+# the health and stamina bar at the bottom centre, the prompt band just
+# above that bar, the small frame-rate line at the bottom right, the target
+# frame at the top left, and the space the browser build's real-slice label
+# (.github/scripts/stamp_demo.py, a fixed strip at the top right, at most
+# 44% of the width) keeps for itself. scripts/hud.gd places its own nodes
+# from these same rectangles; scripts/keyboard_panel.gd keeps the hotbar
+# (default or restored) clear of them.
+
+const HUD_MARGIN := 20.0
+const HUD_GAP := 14.0
+const PLAY_BAR_SIZE := Vector2(540.0, 60.0)
+const PLAY_BAR_BOTTOM := 18.0
+const PROMPT_MAX_WIDTH := 1000.0
+const PROMPT_LINE_HEIGHT := 46.0
+const PROMPT_MAX_LINES := 2
+const FPS_SIZE := Vector2(176.0, 28.0)
+const TARGET_SIZE := Vector2(380.0, 66.0)
+const STAMP_WIDTH_FRACTION := 0.44
+const STAMP_HEIGHT := 110.0
+
+# The project's own stretch rule (project.godot: canvas_items, expand, a
+# 1920x1080 base): the canvas a window of this size actually lays out.
+const BASE_CANVAS := Vector2(1920.0, 1080.0)
+
+
+static func canvas_size_for_window(window_size: Vector2) -> Vector2:
+	var scale: float = minf(window_size.x / BASE_CANVAS.x, window_size.y / BASE_CANVAS.y)
+	if scale <= 0.0:
+		return BASE_CANVAS
+	return window_size / scale
+
+
+static func default_hotbar_position(viewport_size: Vector2) -> Vector2:
+	var size := panel_total_size()
+	return Vector2(HUD_MARGIN, maxf(0.0, viewport_size.y - HUD_MARGIN - size.y))
+
+
+static func prompt_band_height() -> float:
+	return PROMPT_LINE_HEIGHT * float(PROMPT_MAX_LINES)
+
+
+static func hud_rects(viewport_size: Vector2) -> Dictionary:
+	var vw: float = viewport_size.x
+	var vh: float = viewport_size.y
+	var hotbar := Rect2(default_hotbar_position(viewport_size), panel_total_size())
+
+	var play_y: float = vh - PLAY_BAR_BOTTOM - PLAY_BAR_SIZE.y
+	var prompt_h: float = prompt_band_height()
+	var prompt_y: float = play_y - HUD_GAP - prompt_h
+	# The bottom band starts where the prompt does; anything reaching into it
+	# from the left (the default hotbar) pushes the band's left edge along.
+	var left_limit: float = HUD_MARGIN
+	if hotbar.end.y > prompt_y:
+		left_limit = hotbar.end.x + HUD_GAP
+	var right_limit: float = vw - HUD_MARGIN
+
+	var fps := Rect2(Vector2(vw - HUD_MARGIN - FPS_SIZE.x, vh - PLAY_BAR_BOTTOM - FPS_SIZE.y), FPS_SIZE)
+
+	var play_x: float = maxf((vw - PLAY_BAR_SIZE.x) * 0.5, left_limit)
+	play_x = minf(play_x, fps.position.x - HUD_GAP - PLAY_BAR_SIZE.x)
+	var play := Rect2(Vector2(play_x, play_y), PLAY_BAR_SIZE)
+
+	var prompt_w: float = minf(PROMPT_MAX_WIDTH, right_limit - left_limit)
+	var prompt_x: float = clampf((vw - prompt_w) * 0.5, left_limit, right_limit - prompt_w)
+	var prompt := Rect2(Vector2(prompt_x, prompt_y), Vector2(prompt_w, prompt_h))
+
+	var stamp_w: float = vw * STAMP_WIDTH_FRACTION + 12.0
+	var stamp := Rect2(Vector2(vw - stamp_w, 0.0), Vector2(stamp_w, STAMP_HEIGHT))
+	var target := Rect2(Vector2(HUD_MARGIN, HUD_MARGIN), TARGET_SIZE)
+
+	return {
+		"hotbar": hotbar, "play_bar": play, "prompt": prompt,
+		"fps": fps, "stamp": stamp, "target": target,
+	}
+
+
+# The rectangles the hotbar must never cover, wherever it is dragged or
+# restored to.
+static func protected_rects(viewport_size: Vector2) -> Array:
+	var r := hud_rects(viewport_size)
+	return [r["play_bar"], r["prompt"], r["fps"], r["stamp"], r["target"]]
+
+
+# clamp_position, then out of the play screen's own rectangles: a saved
+# position from an older build (user://hud_layout.cfg, which once defaulted
+# to the middle of the left edge) or a drag onto the prompt is lifted above
+# the bottom band, or failing that sent back to the bottom-left default.
+static func clamp_clear_of_hud(pos: Vector2, viewport_size: Vector2) -> Vector2:
+	var size := panel_total_size()
+	var p := clamp_position(pos, size, viewport_size)
+	if _hotbar_is_clear(Rect2(p, size), viewport_size):
+		return p
+	var r := hud_rects(viewport_size)
+	var band_top: float = minf(r["prompt"].position.y, r["play_bar"].position.y)
+	var lifted := clamp_position(Vector2(p.x, band_top - HUD_GAP - size.y), size, viewport_size)
+	if _hotbar_is_clear(Rect2(lifted, size), viewport_size):
+		return lifted
+	return default_hotbar_position(viewport_size)
+
+
+static func _hotbar_is_clear(hotbar: Rect2, viewport_size: Vector2) -> bool:
+	for other in protected_rects(viewport_size):
+		if hotbar.intersects(other):
+			return false
+	return true
