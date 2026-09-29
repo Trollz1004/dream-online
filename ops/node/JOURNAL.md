@@ -10,7 +10,7 @@ One entry per session, newest first, in the form did, verified, blocked, next, c
 
 **Blocked.** The two remote branch deletes (sandbox classifier, his click).
 
-**Next.** Spec 005 Phases 5 and 6 when he returns to the game.
+**Next.** First thing on the next `drift` session on the node, where the real GitHub login has no proxy in front of it: delete `judge/prod-outfits-ranger` (fully in `main`) and, once the pull request carrying this entry has merged, `claude/hopeful-cray-0kce1f` (fully in `main` only from that merge on; never before), and turn on "automatically delete head branches" for this repository so every judge branch dies on merge as it already does on ANTIGRAVITY. Joshua ruled it (2026-09-29, "clean up your branches"); from the cloud the git relay and the API proxy both refuse ref deletes and the repo-settings change, tried and recorded. Then Spec 005 Phases 5 and 6 when he returns to the game.
 
 **Commits.** This entry and the four record files, landing through the pull request on the restarted `claude/hopeful-cray-0kce1f`.
 
