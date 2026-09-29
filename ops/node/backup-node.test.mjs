@@ -137,12 +137,26 @@ describe('helpers', () => {
   it('stamp and host', () => {
     expect(stampOf(NOW)).toBe('2026-09-29T03-04-05')
     expect(dbHost(URL_SECRET)).toBe('db.example.supabase.co:5432')
-    expect(dbHost('nohost')).toBe('nohost')
+    expect(dbHost('nohost')).toBe('unknown')
+    // A libpq keyword string carries its password inline: the host cell must never echo it.
+    expect(dbHost('host=db.example.supabase.co port=5432 user=postgres password=hunter2secret dbname=postgres')).toBe('unknown')
+    expect(dbHost('https://db.example.supabase.co')).toBe('unknown')
   })
   it('splitDbUrl keeps the password off the command line', () => {
-    expect(splitDbUrl(URL_SECRET)).toEqual({ safeUrl: 'postgresql://postgres@db.example.supabase.co:5432/postgres', password: 'hunter2secret' })
+    expect(splitDbUrl(URL_SECRET)).toEqual({ ok: true, safeUrl: 'postgresql://postgres@db.example.supabase.co:5432/postgres', password: 'hunter2secret' })
     expect(splitDbUrl('postgresql://u:p%40ss@h/db').password).toBe('p@ss')
-    expect(splitDbUrl('not a url')).toEqual({ safeUrl: 'not a url', password: '' })
+    expect(splitDbUrl('not a url')).toEqual({ ok: false, detail: 'SUPABASE_DB_URL is not a postgresql:// URL' })
+    expect(splitDbUrl('host=h user=postgres password=hunter2secret dbname=postgres').ok).toBe(false)
+    expect(splitDbUrl('https://h/db').ok).toBe(false)
+  })
+  it('a connection string that is not a postgresql:// URL never reaches pg_dump or the record', () => {
+    let called = 0
+    const conninfo = 'host=db.example.supabase.co port=5432 user=postgres password=hunter2secret dbname=postgres'
+    const r = runBackup({ env: env({ SUPABASE_DB_URL: conninfo }), exec: () => { called += 1; return { status: 0 } }, now: () => NOW, root })
+    expect(called).toBe(0)
+    const db = r.items.find((i) => i.id === 'supabase')
+    expect(db).toMatchObject({ status: 'FAILED', detail: 'SUPABASE_DB_URL is not a postgresql:// URL' })
+    expect(JSON.stringify(r)).not.toContain('hunter2secret')
   })
   it('readEnvFile and loadEnv: .env underneath, real environment on top', () => {
     write(path.join(root, '.env'), '# comment\nOBSIDIAN_VAULT_PATH="from file"\nBACKUP_KEEP=3\nbad line\nSUPABASE_DB_URL=\'quoted\'\n')

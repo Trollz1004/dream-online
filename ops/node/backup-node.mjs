@@ -219,26 +219,34 @@ export function summarize(items) {
   return 'GREEN';
 }
 
-// Host part after the @, never the credentials.
+// Host part of a postgresql:// URL, never the credentials; 'unknown' for anything
+// that does not parse (a libpq keyword string would echo its password otherwise).
 export function dbHost(url) {
-  const after = String(url).split('@').pop();
-  return after.split(/[/?]/)[0] || 'unknown';
+  try {
+    const u = new URL(String(url));
+    if (!/^postgres(ql)?:$/.test(u.protocol) || !u.hostname) return 'unknown';
+    return u.port ? `${u.hostname}:${u.port}` : u.hostname;
+  } catch {
+    return 'unknown';
+  }
 }
 
 /**
  * Split the password out of a connection URL. pg_dump gets `safeUrl` on its
  * command line and `password` through PGPASSWORD, so the secret is never in a
- * process list. A URL that does not parse is passed through untouched with no
- * password (pg_dump then fails on it, which is reported).
+ * process list. A value that is not a postgresql:// URL (a libpq keyword string,
+ * a password with an unencoded slash) is refused with { ok: false } and never
+ * reaches a command line or a record: the caller reports it as FAILED.
  */
 export function splitDbUrl(url) {
   try {
     const u = new URL(String(url));
+    if (!/^postgres(ql)?:$/.test(u.protocol)) return { ok: false, detail: 'SUPABASE_DB_URL is not a postgresql:// URL' };
     const password = decodeURIComponent(u.password || '');
     u.password = '';
-    return { safeUrl: u.toString(), password };
+    return { ok: true, safeUrl: u.toString(), password };
   } catch {
-    return { safeUrl: String(url), password: '' };
+    return { ok: false, detail: 'SUPABASE_DB_URL is not a postgresql:// URL' };
   }
 }
 
@@ -250,7 +258,9 @@ function scrub(text, ...secrets) {
 
 function backupDatabase(url, setDir, exec, baseEnv) {
   const file = path.join(setDir, 'supabase.dump');
-  const { safeUrl, password } = splitDbUrl(url);
+  const split = splitDbUrl(url);
+  if (!split.ok) return { id: 'supabase', status: 'FAILED', detail: split.detail };
+  const { safeUrl, password } = split;
   const childEnv = { ...baseEnv };
   if (password) childEnv.PGPASSWORD = password;
   const res = exec('pg_dump', ['--no-owner', '--no-privileges', '--format=custom', `--file=${file}`, safeUrl], { encoding: 'utf8', env: childEnv }) || {};
