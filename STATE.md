@@ -7,7 +7,7 @@ Purpose: compact handoff for the current state of the repository. This file must
 ## Root
 
 - Repo root on the Alienware node: `C:\DREAM\dream-online`. `DREAM_ROOT` resolves there. Older documents name a `D:` drive root; that clone was folded in and removed on 2026-09-19 (`docs/CONSOLIDATION-2026-09-19.md`).
-- GitHub: `Trollz1004/dream-online`, public, `main` is the only remote branch. The account's billing lock was cleared on 2026-09-26 and Actions runs again, so the gates are the local suites and the Actions checks.
+- GitHub: `Trollz1004/dream-online`, public, `main` is the only remote branch. The account's GitHub Actions usage cap lifted on 2026-09-26 (a usage cap, never a violation; corrected 2026-09-29 on Joshua's word) and Actions runs again, so the gates are the local suites and the Actions checks.
 - Rules: `CLAUDE.md` loads `AGENTS.md`. Node operations and the rulings in force: `ops/node/skills/alienware-node/SKILL.md`, section 0.
 - Engine decision: `docs/tech/engine-decision-2026-09-20.md` (Godot 4.7.2 now; Unreal parked on defined revisit terms).
 - Design index: `docs/DESIGN-INDEX.md`. Port contract: `docs/tech/local-prototype-ports.md`. Local commands: `docs/tech/local-command-reference.md`. AI failure behavior: `docs/tech/ai-failure-behavior.md`.
