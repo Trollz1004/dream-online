@@ -27,10 +27,23 @@
  *     BACKUP_KEEP usable sets (a manifest, not RED, at least one item DONE),
  *     deletes every other set except the one just written, so failed and
  *     interrupted sets never crowd out good ones and never pile up.
+ *   - Retention also keeps, whatever the count, the newest set in which each
+ *     item was DONE, so a source that goes NOT CONFIGURED for weeks never
+ *     loses its last good copy to newer partial sets.
  *   - Exit code 1 on RED (any item FAILED). YELLOW and GREEN exit 0.
+ *   - This is a local snapshot, not disaster recovery: by default the sets
+ *     sit on the same disk as the vault. Point BACKUP_DIR at a second volume
+ *     (external drive, another machine's share) so one disk loss does not take
+ *     the vault and its copies together. An off-node copy stage is a separate
+ *     ruling, not something this script pretends to do.
+ *   - The heartbeat JSON and each set's manifest are written to a temp file
+ *     and renamed into place, so a reader never sees a half-written file.
  *
  * Env: REPO_ROOT, BACKUP_DIR, BACKUP_KEEP (default 14), OBSIDIAN_VAULT_PATH,
- *      SUPABASE_DB_URL, HEARTBEAT_DIR.
+ *      SUPABASE_DB_URL, HEARTBEAT_DIR. When run from the command line the
+ *      repository's .env (REPO_ROOT/.env) is read first and real environment
+ *      variables win over it, so the Hermes cron and Task Scheduler need no
+ *      env of their own.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -44,6 +57,35 @@ export const HEARTBEAT_REL = UNDER_OPS_NODE ? ['ops', 'node', 'heartbeat'] : ['o
 export const STAMP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}$/;
 export const DUMP_MAGIC = 'PGDMP';
 export const MANIFEST = 'manifest.json';
+export const ITEM_IDS = ['supabase', 'vault'];
+
+/** KEY=VALUE lines of a .env file, quotes stripped, comments and blanks skipped. Missing file: {}. */
+export function readEnvFile(file) {
+  const out = {};
+  let text;
+  try { text = fs.readFileSync(file, 'utf8'); } catch { return out; }
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) continue;
+    const m = /^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line);
+    if (!m) continue;
+    out[m[1]] = m[2].trim().replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1');
+  }
+  return out;
+}
+
+/** The env the command line runs with: REPO_ROOT/.env underneath, real environment variables on top. */
+export function loadEnv(processEnv = process.env) {
+  const repo = processEnv.REPO_ROOT || DEFAULT_ROOT;
+  return { ...readEnvFile(path.join(repo, '.env')), ...processEnv };
+}
+
+/** Write text to a temp file beside the target and rename it into place. */
+export function writeAtomic(file, text) {
+  const tmp = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, text);
+  fs.renameSync(tmp, file);
+}
 
 export function stampOf(date) {
   return date.toISOString().slice(0, 19).replace(/:/g, '-');
@@ -121,10 +163,12 @@ export function isUsableSet(setDir, fsMod = fs) {
 }
 
 /**
- * Keep the newest `keep` usable sets. Delete every other stamped set (older
- * usable ones beyond keep, and every set without a usable manifest: failed,
- * interrupted, or written by an older version) except `protect`, the set the
- * current run just wrote. Returns how many were removed.
+ * Keep the newest `keep` usable sets, plus the newest set in which each item
+ * was DONE (so a source that is NOT CONFIGURED for a while keeps its last good
+ * copy). Delete every other stamped set (older usable ones beyond keep, and
+ * every set without a usable manifest: failed, interrupted, or written by an
+ * older version) except `protect`, the set the current run just wrote.
+ * Returns how many were removed.
  */
 export function applyRetention(dir, keep, { fsMod = fs, protect = null } = {}) {
   const limit = Math.max(1, Math.floor(Number(keep)) || 1);
@@ -137,6 +181,14 @@ export function applyRetention(dir, keep, { fsMod = fs, protect = null } = {}) {
   for (const name of sets) {
     if (kept.size >= limit) break;
     if (isUsableSet(path.join(dir, name), fsMod)) kept.add(name);
+  }
+  // Whatever the count, the newest set holding each item's last DONE stays.
+  for (const id of ITEM_IDS) {
+    const last = sets.find((name) => {
+      const m = readManifest(path.join(dir, name), fsMod);
+      return !!m && Array.isArray(m.items) && m.items.some((i) => i && i.id === id && i.status === 'DONE');
+    });
+    if (last) kept.add(last);
   }
   let removed = 0;
   for (const name of sets) {
@@ -250,7 +302,7 @@ export function runBackup({ env = process.env, exec = spawnSync, now = () => new
   }
 
   const overall = summarize(items);
-  fs.writeFileSync(path.join(setDir, MANIFEST), JSON.stringify({ at, overall, items }, null, 2) + '\n');
+  writeAtomic(path.join(setDir, MANIFEST), JSON.stringify({ at, overall, items }, null, 2) + '\n');
   const removed = applyRetention(backupDir, keep, { protect: setName });
 
   const result = { at, overall, set: setDir, items, removed };
@@ -258,13 +310,13 @@ export function runBackup({ env = process.env, exec = spawnSync, now = () => new
   const line = `${at} ${overall} supabase=${st('supabase')} vault=${st('vault')} set=${setDir}`;
   const hb = heartbeatDir(env, repo);
   fs.mkdirSync(hb, { recursive: true });
-  fs.writeFileSync(path.join(hb, 'backup-node.json'), JSON.stringify(result, null, 2) + '\n');
+  writeAtomic(path.join(hb, 'backup-node.json'), JSON.stringify(result, null, 2) + '\n');
   fs.appendFileSync(path.join(hb, 'backup-node.log'), line + '\n');
   return { ...result, line };
 }
 
 function main() {
-  const r = runBackup();
+  const r = runBackup({ env: loadEnv() });
   console.log(r.line);
   if (r.overall === 'RED') process.exit(1);
 }

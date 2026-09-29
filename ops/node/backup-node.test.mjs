@@ -5,7 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { walkTree, copyVault, applyRetention, verifyDump, summarize, runBackup, dbHost, stampOf, splitDbUrl, isUsableSet, HEARTBEAT_REL, MANIFEST } from './backup-node.mjs'
+import { walkTree, copyVault, applyRetention, verifyDump, summarize, runBackup, dbHost, stampOf, splitDbUrl, isUsableSet, HEARTBEAT_REL, MANIFEST, readEnvFile, loadEnv, writeAtomic } from './backup-node.mjs'
 
 // Small expect() over node:assert so the cases read the same as the mission-control suite.
 function expect(actual) {
@@ -105,6 +105,15 @@ describe('applyRetention', () => {
     expect(applyRetention(dir(), 2)).toBe(0)
     expect(applyRetention(dir(), 0)).toBe(1)
   })
+  it('keeps the newest set holding each item\'s last DONE, beyond the count', () => {
+    const both = { overall: 'GREEN', items: [{ id: 'supabase', status: 'DONE' }, { id: 'vault', status: 'DONE' }] }
+    const vaultOnly = { overall: 'YELLOW', items: [{ id: 'supabase', status: 'NOT CONFIGURED' }, { id: 'vault', status: 'DONE' }] }
+    mk('2026-09-01T01-00-00', both); mk('2026-09-02T01-00-00', vaultOnly); mk('2026-09-03T01-00-00', vaultOnly)
+    expect(applyRetention(dir(), 2)).toBe(0)
+    mk('2026-09-04T01-00-00', vaultOnly)
+    expect(applyRetention(dir(), 2)).toBe(1)
+    expect(fs.readdirSync(dir()).sort()).toEqual(['2026-09-01T01-00-00', '2026-09-03T01-00-00', '2026-09-04T01-00-00'])
+  })
   it('never deletes the protected set, even when it is RED', () => {
     mk('2026-09-01T01-00-00', good); mk('2026-09-02T01-00-00', red); mk('2026-09-03T01-00-00', red)
     expect(applyRetention(dir(), 5, { protect: '2026-09-03T01-00-00' })).toBe(1)
@@ -134,6 +143,20 @@ describe('helpers', () => {
     expect(splitDbUrl(URL_SECRET)).toEqual({ safeUrl: 'postgresql://postgres@db.example.supabase.co:5432/postgres', password: 'hunter2secret' })
     expect(splitDbUrl('postgresql://u:p%40ss@h/db').password).toBe('p@ss')
     expect(splitDbUrl('not a url')).toEqual({ safeUrl: 'not a url', password: '' })
+  })
+  it('readEnvFile and loadEnv: .env underneath, real environment on top', () => {
+    write(path.join(root, '.env'), '# comment\nOBSIDIAN_VAULT_PATH="from file"\nBACKUP_KEEP=3\nbad line\nSUPABASE_DB_URL=\'quoted\'\n')
+    expect(readEnvFile(path.join(root, '.env'))).toEqual({ OBSIDIAN_VAULT_PATH: 'from file', BACKUP_KEEP: '3', SUPABASE_DB_URL: 'quoted' })
+    expect(readEnvFile(path.join(root, 'missing.env'))).toEqual({})
+    const merged = loadEnv({ REPO_ROOT: root, BACKUP_KEEP: '9' })
+    expect(merged.OBSIDIAN_VAULT_PATH).toBe('from file')
+    expect(merged.BACKUP_KEEP).toBe('9')
+  })
+  it('writeAtomic leaves no temp file behind', () => {
+    const f = path.join(tmp, 'atomic.json')
+    writeAtomic(f, '{"ok":true}')
+    expect(fs.readFileSync(f, 'utf8')).toBe('{"ok":true}')
+    expect(fs.readdirSync(tmp).filter((n) => n.endsWith('.tmp'))).toEqual([])
   })
   it('heartbeat folder follows where the script lives', () => {
     expect(HEARTBEAT_REL).toEqual(['ops', 'node', 'heartbeat'])
@@ -234,7 +257,7 @@ describe('runBackup', () => {
 })
 
 describe('command line', () => {
-  it('prints the summary line and exits 0 on YELLOW, 1 on RED', () => {
+  it('prints the summary line, reads REPO_ROOT/.env, exits 0 on YELLOW and 1 on RED', () => {
     const y = spawnSync(process.execPath, [script], { env: { PATH: process.env.PATH, REPO_ROOT: root, BACKUP_DIR: path.join(tmp, 'bk') }, encoding: 'utf8' })
     expect(y.status).toBe(0)
     expect(y.stdout).toContain('YELLOW supabase=NOT CONFIGURED vault=NOT CONFIGURED')
@@ -243,6 +266,11 @@ describe('command line', () => {
     const r = spawnSync(process.execPath, [script], { env: { PATH: process.env.PATH, REPO_ROOT: root, BACKUP_DIR: path.join(tmp, 'bk'), OBSIDIAN_VAULT_PATH: file }, encoding: 'utf8' })
     expect(r.status).toBe(1)
     expect(r.stdout).toContain('RED')
+    write(path.join(root, '.env'), `OBSIDIAN_VAULT_PATH=${vault}\nBACKUP_DIR=${path.join(tmp, 'bk-from-env')}\n`)
+    const fromEnv = spawnSync(process.execPath, [script], { env: { PATH: process.env.PATH, REPO_ROOT: root }, encoding: 'utf8' })
+    expect(fromEnv.status).toBe(0)
+    expect(fromEnv.stdout).toContain('vault=DONE')
+    expect(fromEnv.stdout).toContain('bk-from-env')
     const bad = spawnSync(process.execPath, [script], { env: { PATH: process.env.PATH, REPO_ROOT: root, BACKUP_DIR: path.join(file, 'x') }, encoding: 'utf8' })
     expect(bad.status).toBe(1)
     expect(bad.stderr).toContain('backup-node failed')
