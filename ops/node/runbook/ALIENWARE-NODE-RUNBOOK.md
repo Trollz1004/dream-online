@@ -128,3 +128,13 @@ Sabretooth's judge lane has key-only SSH into this box as Joshua's Windows user 
 In the other direction, SSH from this node to Sabretooth works as of 2026-09-19 18:10 EDT. Joshua set it up with Codex: the key `%USERPROFILE%\.ssh\id_ed25519_sabretooth`, a dedicated config `config_sabretooth` with the alias `dream-sabretooth`, and Sabretooth's host key pinned in `known_hosts_sabretooth`. The command is `ssh -F "$env:USERPROFILE\.ssh\config_sabretooth" dream-sabretooth <command>`. Sabretooth's remote shell is `cmd`. An earlier attempt the same afternoon was refused only because the key had not been authorized yet. Verified through it, read-only: JARVIS answers `jarvis-dashboard`, and `C:\ANTIGRAVITY` was at `f0d67a93` with tracked files clean.
 
 Sabretooth also offers a read-only MCP endpoint at `http://192.168.0.8:9150/mcp` behind a bearer token that Joshua holds; it is not connected here yet.
+
+## 11. Backups and data tools
+
+Judged 2026-09-29 (the full audit for both nodes is `ops/runbook/BACKUPS-AND-DATA-TOOLS-2026-09-29.md` in `Trollz1004/ANTIGRAVITY`). This node's data is the game vault `C:\DREAM\dream-online\DREAM-ONLINE` (gitignored) and the Supabase project named for DREAM ONLINE (`nmwxzciaapguzqjynena`, one table, no rows, security advisors clean after the migration recorded at `ops/supabase/dream-online-rls_hygiene_2026_09_29.sql`). `ops/node/backup-node.mjs` backs both up into a dated set under `ops/backups/` (gitignored): `pg_dump` of `SUPABASE_DB_URL` verified by its `PGDMP` header (NOT CONFIGURED, not DONE, until Postgres client tools and the URL are on this node), and a copy of the vault verified by file count and bytes against the source. It keeps `BACKUP_KEEP` usable sets (default 14) plus the newest set holding each item's last good copy, drops failed and interrupted sets, reads this repository's `.env` itself when run from the command line, and writes `ops/node/heartbeat/backup-node.json` plus one log line, the same shape as the health probe. It is a local snapshot on the same disk as the vault, not disaster recovery: point `BACKUP_DIR` at a second volume for that; an off-node copy is a separate ruling. Register it once, from an elevated Windows PowerShell:
+
+```
+schtasks /Create /TN DREAM-Alienware-Backup /SC DAILY /ST 03:30 /TR "node C:\DREAM\dream-online\ops\node\backup-node.mjs" /RL LIMITED /F
+```
+
+Run it by hand with `node ops/node/backup-node.mjs`; the JSON it writes is the proof, a scheduled task that exists is not. Vercel is not a tool this node uses (GitHub Pages hosts the demo); no key for it belongs here.
