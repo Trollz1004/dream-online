@@ -52,7 +52,7 @@ Recommended (in `opencode/opencode.json`): Free `openrouter/meta-llama/llama-3.3
 
 ## Dev commands and safety
 
-- `DREAM_ROOT` must resolve to the repo root (`C:\DREAM\dream-online` on the Alienware node). There is no repo-wide lint or typecheck; the gates are the Godot headless suite and the Live NPC Lab `npm test` plus `npm run test:contracts`, run locally and, since the account's billing lock was cleared on 2026-09-26, in GitHub Actions as well.
+- `DREAM_ROOT` must resolve to the repo root (`C:\DREAM\dream-online` on the Alienware node). There is no repo-wide lint or typecheck; the gates are the Godot headless suite and the Live NPC Lab `npm test` plus `npm run test:contracts`, run locally and, since the account's GitHub Actions usage cap lifted on 2026-09-26, in GitHub Actions as well (Joshua, 2026-09-29: it was a usage cap on the free or paid tier, never a billing violation, and he has never lost or violated any AI platform or software account; earlier records that said "billing lock" repeated GitHub's own wording and are corrected here).
 - Never commit secrets, `.env` values, provider tokens, private keys, classified OneDrive material or local session exports.
 - Paid systems stay convenience/style/access focused. Do not sell direct combat power.
 - Do not deploy externally, install heavyweight interactive software, make purchases or perform destructive operations without explicit approval.
