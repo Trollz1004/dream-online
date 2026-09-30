@@ -1,6 +1,8 @@
 # DREAM Dispatch
 
-Last updated: 2026-09-27
+Last updated: 2026-09-30
+
+**2026-09-30 about 13:30 to 15:00 EDT, Claude judge lane on Alienware.** The engine changed again, on Joshua's explicit call in session: DREAM builds its own engine. He will build his own everything; a real dream is an ever-evolving world we control and do not depend on another for. The record is `docs/tech/engine-decision-2026-09-30-own-engine.md` (it supersedes the 2026-09-20 Godot record under that record's own fourth revisit condition) and the brief is `docs/handoffs/GEMINI-DREAM-ENGINE-2026-09-30.md`: DREAM Engine (TypeScript runtime, WebGPU with a WebGL2 fallback, no third-party engine in runtime code), DREAM World Server (Node, zero runtime dependencies, authoritative), DREAM Maker (browser editor, scenes as JSON). Gemini in AI Studio Build builds it, Google hosts it, AI Studio syncs it to a new `dream-engine` repository. The judge lane pasted the brief into a new AI Studio Build app from Joshua's own browser the same afternoon and Stage 0 (first light: ground, sky, sun, a walking capsule, Day and Night on N, a frame-rate pill) started generating. Staged, one hosted link per stage; the Godot slice stays the public demo until Stage 1 (combat parity) is verified on screen by the judge lane. Unreal stays parked. Nothing deleted. Pull request 25 carries the records.
 
 **2026-09-27 about 07:45 EDT, Claude judge lane on Alienware.** No game code. The live cloud demo at `https://trollz1004.github.io/dream-online/` was looked at for the first time from the node: a headless Chrome frame (`C:\DREAM\recon\demo-live-2026-09-27.png`) shows the real slice booting (commit `79f51ca` label, the Day Dream field, the Hollow Sentinel, the ranger, GeminEYE with its timer, the hotbar). Its "1 frames per second" is the software renderer of a headless browser, not a real-hardware reading; Joshua's own look is still the frame-rate record. One real layout bug is visible at 1280 by 720: the hotbar panel covers the last two lines of the help text. `drift` now waits for the Obsidian REST port before starting Claude (pull request 10). Next game work is unchanged: that hotbar overlap, icon and pet polish, then the melee dagger ranger.
 
@@ -21,6 +23,8 @@ Operational state for asynchronous coordination between Fable and Codex. The mas
 Move that date whenever this file is touched. `ops/node/dream-ground-truth.ps1` reads it and calls this file stale when work landed after it, which is how a session finds out that the dispatch is lying before it acts on it rather than after.
 
 ## CURRENT OBJECTIVE
+
+Since 2026-09-30: DREAM Engine, staged in AI Studio by Gemini under the brief above, judged here stage by stage; the Godot slice below stays the demo until Stage 1 parity is seen on screen. The paragraph that follows is the 2026-09-20 to 2026-09-29 objective, kept because the slice is still what runs today.
 
 Spec 001, the world bus and the CrossEyed vertical slice (directive section 43). Story 1, something the founder can open and play, is now real and is built in **Godot 4.7.2**, not Unreal. Joshua chose Godot on 2026-09-20 after the Unreal path stalled on a missing C++ compiler and on Blueprint logic that has to be hand-wired in an editor, which the engine's own scripting cannot do (checked in the engine source: `BlueprintEditorLibrary` exposes graphs and variables but no node creation or pin connection). GDScript and scene data are text, so this lane writes, runs, tests and photographs the game with nothing for anyone to click. Unreal is parked, not deleted, and City Sample stays on disk.
 
