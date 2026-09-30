@@ -26,7 +26,9 @@ repository, `dream-engine`, created and synced by AI Studio.
   APIs. No third-party engine or framework in runtime code.
 - Server: Node, zero runtime dependencies, authoritative, one shared world.
 - Editor: browser, scenes as JSON in git, play in place.
-- Delivery: hosted by Google from AI Studio, one link per stage.
+- Delivery: runs in AI Studio's free preview, one stage at a time, synced to
+  GitHub. Nothing is published or deployed until Joshua says finalize (his
+  ruling the same afternoon: that step costs money and is his own, last).
 
 ## What the options were and why this one won
 

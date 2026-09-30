@@ -38,12 +38,15 @@ What it is:
    with a profile id, Day and Night preview, play the scene in place, save.
    Every scene is a JSON file in git. No binary editor state anywhere.
 
-Everything is text. Assets are glTF, PNG and WebP. Sync this app to a GitHub
-repository named `dream-engine` and deploy it so I can open a link.
+Everything is text. Assets are glTF, PNG and WebP. The app is synced to the
+GitHub repository `dream-engine`. Never Publish, never deploy, never create a
+Cloud Run service or anything else that costs money: the AI Studio preview is
+the link for every stage, and the finalize steps are the founder's own, last.
 
-Build in stages. Each stage ends with a hosted link and a `HANDBACK.md` at the
-repository root that says what works, what is stubbed, how it was tested, and
-the link. Do not start the next stage until the current one runs at the link.
+Build in stages. Each stage ends running in the AI Studio preview and with a
+`HANDBACK.md` at the repository root that says what works, what is stubbed and
+how it was tested. Do not start the next stage until the current one runs in
+the preview and the judge lane has said so in chat.
 
 Stage 0, first light. A ground plane, a sky with a sun, a capsule that walks
 with W A S D, the mouse looks, Escape frees the mouse, N toggles Day and
@@ -121,9 +124,16 @@ Start with Stage 0 now. When it runs at a link, write `HANDBACK.md` and stop.
   The brief asks for exactly that shape, so Gemini never has to fight its own
   tool. Cloud Run pricing applies by usage; the AI Studio preview link is the
   zero-cost fallback if a deploy is ever unwanted.
-- Stages end with a link because Joshua decides from a screen, never from a
+- Stages end on a screen because Joshua decides from a screen, never from a
   spec. Stage 1 is parity with the Godot slice so the new engine is measured
   against something that already runs.
+- Joshua ruled the same afternoon, when the lane reached the Publish step:
+  nothing is published, deployed or hosted on Cloud Run until he says
+  finalize, because that step costs him money. Everything stays in AI Studio,
+  free. The preview link (`ais-dev-…run.app`, behind his Google sign-in) is
+  the stage link. Gemini's first handback claimed a deployed link that
+  returned 404; the "Hosted" wording above was removed for that reason too.
+  The GitHub sync is free and stays.
 - The world server is the part that makes the world "ours". The spine (event
   envelope, NPC profiles, Live NPC Lab, DreamOps Bridge) stays engine-agnostic
   and plugs into Stage 3 unchanged.
