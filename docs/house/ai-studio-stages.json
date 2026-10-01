@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "0.1.0",
+  "writtenBy": "Claude judge lane, Alienware node",
+  "updated": "2026-10-01T02:30:00-04:00",
+  "apps": [
+    {
+      "name": "DREAM Engine",
+      "appId": "94afb663-1c94-47a8-a560-91c1ac7da627",
+      "stage": "Stage 1, combat parity",
+      "state": "on screen, not accepted",
+      "waitsOn": "gemini",
+      "reason": "The fix-and-proof turn was cancelled by the AI Studio daily limit; the preview still answers Quota exceeded. Prompt 1 on Joshua's desktop page resends it.",
+      "open": [
+        "5 runtime errors reported by the preview",
+        "keys must work without pointer lock",
+        "?proof=1 scripted run with the [DREAM] proof line",
+        "badge text Built with Google Gemini"
+      ],
+      "lastLimitSeen": "2026-10-01T02:25:00-04:00",
+      "then": "Joshua's hands on the dash decide Stage 1; then Stage 2, the Maker (prompt 2)."
+    },
+    {
+      "name": "YouAndINotAI Galaxy screen saver",
+      "appId": "15af3368-2775-4ec6-8f25-30bf6bbcbf93",
+      "stage": "DREAM Space mode",
+      "state": "done in the preview",
+      "waitsOn": "joshua",
+      "reason": "Publishing to the real ai.studio address is Joshua's click; the singularity centre, the world's names, the stream overlay and the badge Built with Google Gemini are in the preview.",
+      "open": [],
+      "lastLimitSeen": null,
+      "then": "Optional polish, prompt 4 on the desktop page."
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+name = "claudes-house"
+main = "src/worker.mjs"
+compatibility_date = "2026-10-01"
+
+# Which public GitHub repository this connector reads from. Change these
+# three values (here, or as Variables in the Cloudflare dashboard) to point
+# a fork of this Worker at your own House. No account id and no secrets are
+# set here, by design: this connector is read-only and needs neither.
+[vars]
+HOUSE_OWNER = "Trollz1004"
+HOUSE_REPO = "dream-online"
+HOUSE_REF = "main"
