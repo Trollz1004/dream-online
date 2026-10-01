@@ -28,6 +28,7 @@ const ALLOWLISTED_FILES = new Set([
   'docs/house/THE-HOUSE.md',
   'docs/house/LESSONS.md',
   'docs/house/TOOLS.md',
+  'docs/house/DESIGN-SYSTEM.md',
   'docs/house/ai-studio-stages.json',
   'AGENTS.md',
   'README.md',
@@ -343,6 +344,11 @@ const TOOLS = {
     description: "The House rules: seats, nodes, the standing rules, monitoring, the tribute (docs/house/THE-HOUSE.md).",
     inputSchema: emptySchema(),
     handler: (_args, env, deps) => fixedFileTool('docs/house/THE-HOUSE.md', env, deps),
+  },
+  house_design: {
+    description: 'The DREAM Space design system: palette, type, motion, parts, rules (docs/house/DESIGN-SYSTEM.md).',
+    inputSchema: emptySchema(),
+    handler: (_args, env, deps) => fixedFileTool('docs/house/DESIGN-SYSTEM.md', env, deps),
   },
   house_lessons: {
     description: 'Lessons from the House for anyone building this way (docs/house/LESSONS.md).',

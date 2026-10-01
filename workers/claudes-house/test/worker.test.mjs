@@ -173,12 +173,13 @@ test('tools/call with an unknown tool name returns -32602', async () => {
 // tools/list and resources/list
 // ---------------------------------------------------------------------------
 
-test('tools/list returns all eight House tools', async () => {
+test('tools/list returns all nine House tools', async () => {
   const handle = makeHandle();
   const res = await handle(rpc('tools/list'), {});
   const body = await res.json();
   const names = body.result.tools.map((t) => t.name).sort();
   assert.deepEqual(names, [
+    'house_design',
     'house_lessons',
     'house_list',
     'house_read',
