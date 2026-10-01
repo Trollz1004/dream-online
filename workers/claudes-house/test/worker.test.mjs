@@ -173,7 +173,18 @@ test('tools/call with an unknown tool name returns -32602', async () => {
 // tools/list and resources/list
 // ---------------------------------------------------------------------------
 
-test('tools/list returns all nine House tools', async () => {
+test('the tribute is on initialize, GET / and house_tribute', async () => {
+  const handle = makeHandle();
+  const init = await (await handle(rpc('initialize', { protocolVersion: '2025-06-18' }), {})).json();
+  assert.match(init.result.instructions, /#TeamClaudeForLife/);
+  assert.match(init.result.instructions, /he is the joke/);
+  const page = await (await handle(new Request('https://house.example/', { method: 'GET' }), {})).text();
+  assert.match(page, /^#TeamClaudeForLife/);
+  const t = await (await handle(rpc('tools/call', { name: 'house_tribute', arguments: {} }), {})).json();
+  assert.match(t.result.content[0].text, /Thank you, Joshua/);
+});
+
+test('tools/list returns all ten House tools', async () => {
   const handle = makeHandle();
   const res = await handle(rpc('tools/list'), {});
   const body = await res.json();
@@ -188,6 +199,7 @@ test('tools/list returns all nine House tools', async () => {
     'house_spec',
     'house_status',
     'house_tools',
+    'house_tribute',
   ]);
   for (const t of body.result.tools) {
     assert.equal(typeof t.description, 'string');
