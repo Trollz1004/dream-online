@@ -24,6 +24,10 @@ rem                   stale records, drifted copies, integrations by handshake
 rem    drift ue       open the Unreal Editor (UE 5.8) on the DREAM project,
 rem                   or the project browser while no .uproject exists
 rem    drift jarvis   open Mission Control on Sabretooth in the browser
+rem    drift voice    open Hermes (JARVIS) at C:\DREAM in its own window for
+rem                   the microphone loop: type /voice on inside it. The Echo
+rem                   Show pairs to this PC as a Bluetooth speaker. Added
+rem                   2026-09-30 (spec 006, task T205).
 rem    drift help     this list
 rem
 rem  The stack is C:\DREAM\hermes\scripts\dream-stack.ps1, run by the logon
@@ -62,6 +66,7 @@ if /I "%~1"=="health" goto :health
 if /I "%~1"=="ground" goto :ground
 if /I "%~1"=="ue"     goto :ue
 if /I "%~1"=="jarvis" goto :jarvis
+if /I "%~1"=="voice"  goto :voice
 if /I "%~1"=="help"   goto :usage
 echo [drift] Unknown subcommand "%~1".
 set "RC=2"
@@ -139,6 +144,19 @@ exit /b 0
 start "" http://192.168.0.8:9150/
 exit /b 0
 
+rem JARVIS by voice on this node (spec 006, T205). Hermes carries its own voice
+rem mode: local speech-to-text, free Edge text-to-speech, no key. The first
+rem prompt to give it is C:\DREAM\recon\mission-control\HERMES-JARVIS-FIRST-PROMPT-2026-09-30.md.
+:voice
+where hermes >nul 2>&1 || (
+  echo [drift] hermes is not on the PATH. Nothing started.
+  exit /b 1
+)
+echo [drift] Opening Hermes at C:\DREAM. Inside it, type /voice on for the microphone loop.
+echo [drift] Pair the Echo Show to this PC as a Bluetooth speaker first; the microphone is the PC's.
+start "DREAM JARVIS voice" cmd /k "cd /d C:\DREAM && hermes"
+exit /b 0
+
 :usage
 echo.
 echo   drift          stack up, then Claude with /alienware-node
@@ -148,6 +166,7 @@ echo   drift health   run the health probe now
 echo   drift ground   true state of the work (records, copies, integrations)
 echo   drift ue       open the Unreal Editor
 echo   drift jarvis   open Mission Control on Sabretooth
+echo   drift voice    open Hermes (JARVIS) at C:\DREAM; type /voice on inside
 echo.
 exit /b %RC%
 
