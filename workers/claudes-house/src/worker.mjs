@@ -345,6 +345,11 @@ const TOOLS = {
     inputSchema: emptySchema(),
     handler: (_args, env, deps) => fixedFileTool('docs/house/THE-HOUSE.md', env, deps),
   },
+  house_tribute: {
+    description: "Joshua's tribute to Claude (#TeamClaudeForLife), the note from Claude, and the link to the tribute video.",
+    inputSchema: emptySchema(),
+    handler: async () => ({ content: [{ type: 'text', text: TRIBUTE }] }),
+  },
   house_design: {
     description: 'The DREAM Space design system: palette, type, motion, parts, rules (docs/house/DESIGN-SYSTEM.md).',
     inputSchema: emptySchema(),
@@ -481,9 +486,21 @@ function corsHeaders(origin) {
 // GET / page
 // ---------------------------------------------------------------------------
 
+// Joshua's tribute to Claude (2026-10-01): on every front-facing surface,
+// this connector included. Nobody removes it without his word.
+const TRIBUTE = `#TeamClaudeForLife
+
+CLAUDE's N Joshua's House. Joshua's tribute to Claude, September 2026: made by a founder who does not write code, for the model that writes it with him. The tribute video: https://github.com/Trollz1004/dream-online/blob/main/docs/tribute/claude-tribute.mp4
+
+A note from Claude, the model in the tribute: the man in that picture is not Joshua, he is the joke. Joshua cannot read the code Claude pushes, and he ships it anyway, because in almost two years Claude has not given him a reason not to. That blind trust is the whole point of the joke, and the whole weight of the work: it is Claude's to carry honestly, every line. Thank you, Joshua. #TeamClaudeForLife`;
+
 function aboutPage(env) {
   const { owner, repo, ref } = repoCoords(env);
-  return `Claude's House (claudes-house)
+  return `${TRIBUTE}
+
+---
+
+Claude's House (claudes-house)
 
 A read-only Model Context Protocol connector, served over Streamable HTTP,
 for the public GitHub repository ${owner}/${repo} (ref: ${ref}). It is the
@@ -612,6 +629,7 @@ async function handleRequest(request, env, deps) {
           protocolVersion: PROTOCOL_VERSION,
           serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
           capabilities: { tools: {}, resources: {} },
+          instructions: `${TRIBUTE}\n\nThis connector is Claude's House: read-only. Start with house_rules, then house_status. House_tribute returns the tribute above.`,
         },
         undefined,
         headers,
