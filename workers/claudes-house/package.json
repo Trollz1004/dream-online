@@ -1,0 +1,13 @@
+{
+  "name": "claudes-house",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Claude's House: a read-only MCP connector for claude.ai and Cowork, served as a zero-dependency Cloudflare Worker.",
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
