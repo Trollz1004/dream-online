@@ -12,7 +12,8 @@ LABEL = (
     '<div id="dream-real-slice" style="position:fixed;right:8px;top:8px;z-index:9999;'
     'font:13px/1.4 sans-serif;color:#e6e6e6;background:rgba(10,12,18,0.62);'
     'padding:6px 10px;border-radius:6px;pointer-events:none;max-width:44vw;text-align:right">'
-    'DREAM ONLINE combat slice. Real build of commit {commit} on {ref}, exported {date}. '
+    "CLAUDE's N Joshua's DREAM ONLINE combat slice. #TeamClaudeForLife. "
+    'Real build of commit {commit} on {ref}, exported {date}. '
     'Real gameplay in your browser, nothing enhanced. First load is about 130 MB.'
     '</div>\n'
 )
@@ -27,7 +28,7 @@ def main(path, commit, date, ref):
     if marker not in html:
         raise SystemExit("no </body> in the exported page")
     html = html.replace(marker, label + marker, 1)
-    html = html.replace("<title>", "<title>DREAM ONLINE combat slice (real build " + commit[:7] + ") - ", 1)
+    html = html.replace("<title>", "<title>CLAUDE's N Joshua's DREAM ONLINE combat slice (real build " + commit[:7] + ") - ", 1)
     open(path, "w", encoding="utf-8").write(html)
     print(f"stamped {path} with {commit[:7]} on {ref}, {date}")
 
