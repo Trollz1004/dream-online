@@ -28,6 +28,9 @@ rem    drift voice    open Hermes (JARVIS) at C:\DREAM in its own window for
 rem                   the microphone loop: type /voice on inside it. The Echo
 rem                   Show pairs to this PC as a Bluetooth speaker. Added
 rem                   2026-09-30 (spec 006, task T205).
+rem    drift duo      one Windows Terminal tab, split: Claude (drift) on the
+rem                   left, Hermes as JARVIS (drift voice) on the right. The
+rem                   view Joshua works in. Added 2026-10-01.
 rem    drift help     this list
 rem
 rem  The stack is C:\DREAM\hermes\scripts\dream-stack.ps1, run by the logon
@@ -67,6 +70,7 @@ if /I "%~1"=="ground" goto :ground
 if /I "%~1"=="ue"     goto :ue
 if /I "%~1"=="jarvis" goto :jarvis
 if /I "%~1"=="voice"  goto :voice
+if /I "%~1"=="duo"    goto :duo
 if /I "%~1"=="help"   goto :usage
 echo [drift] Unknown subcommand "%~1".
 set "RC=2"
@@ -157,6 +161,18 @@ echo [drift] Pair the Echo Show to this PC as a Bluetooth speaker first; the mic
 start "DREAM JARVIS voice" cmd /k "cd /d C:\DREAM && hermes"
 exit /b 0
 
+rem The split view: Claude left, Hermes right, in one Windows Terminal tab.
+rem wt.exe reads ";" as its own command separator, so the whole line is one
+rem wt command: new-tab runs drift (stack up, then Claude), split-pane runs
+rem Hermes at C:\DREAM for the microphone loop (/voice on inside).
+:duo
+where wt >nul 2>&1 || (
+  echo [drift] Windows Terminal ^(wt^) not found. Use two windows: drift, then drift voice.
+  exit /b 1
+)
+start "" wt -w new new-tab --title "DREAM Claude" cmd /k drift ; split-pane -V --title "DREAM JARVIS" cmd /k "cd /d C:\DREAM && hermes"
+exit /b 0
+
 :usage
 echo.
 echo   drift          stack up, then Claude with /alienware-node
@@ -167,6 +183,7 @@ echo   drift ground   true state of the work (records, copies, integrations)
 echo   drift ue       open the Unreal Editor
 echo   drift jarvis   open Mission Control on Sabretooth
 echo   drift voice    open Hermes (JARVIS) at C:\DREAM; type /voice on inside
+echo   drift duo      one terminal tab, split: Claude left, Hermes right
 echo.
 exit /b %RC%
 
