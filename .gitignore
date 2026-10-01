@@ -92,6 +92,9 @@ DREAM-ONLINE/
 ops/node/heartbeat/
 
 # Strays in the main checkout on the Alienware node that are not game source
+# (2026-09-30: the Agency Agents desktop app installed itself under game/; its
+# exe, uninstaller and corpus are not game source and never go in)
+/game/Agency Agents/
 /UE_5.8/
 /hermes-worktrees/
 /claude-quickstarts/
