@@ -1,0 +1,63 @@
+# hermes-marketing-config.yaml
+#
+# Template for the T5500's Hermes "marketing" profile config.yaml
+# (lives at %LOCALAPPDATA%\hermes\profiles\marketing\config.yaml once
+# Bootstrap-T5500.ps1 copies it there). This profile is the Hermes operator
+# the T5500's AGENTS.md calls OPSis: a marketing-desk lane with no local
+# models, reachable by the Sabretooth operator over the LAN through
+# `hermes peer add t5500 --url http://<this machine's LAN IP>:8377 --key <API_SERVER_KEY>`.
+#
+# Every field below is a real hermes-agent config.yaml key, checked against
+# this node's own installed copy of the Hermes docs
+# (%LOCALAPPDATA%\hermes\hermes-agent\website\docs\user-guide\features\api-server.md,
+# \local-models.md and \guides\run-hermes-with-nous-portal.md) on 2026-10-01.
+#
+# Do not put the API_SERVER_KEY here. It is generated on the target machine
+# by Bootstrap-T5500.ps1 (New-ApiKey, 48 random characters) and written only
+# to this profile's .env file as API_SERVER_KEY=<value>. Environment
+# variables take precedence over config.yaml values, so leaving `key` out of
+# this file and setting it in .env is both the documented pattern and the
+# one that keeps the key out of anything that gets committed.
+
+# Who this profile is when it answers a peer or a dashboard.
+display_name: OPSis
+
+# The model this profile thinks and writes with. `hermes setup --portal`
+# normally sets this block for you (Nous Portal OAuth, model.provider: nous);
+# it is repeated here so a from-scratch config.yaml for this profile is
+# self-describing even before that command runs.
+model:
+  provider: nous
+  default: anthropic/claude-sonnet-4.6
+
+# OmniRoute (Sabretooth, 192.168.0.8:20128/v1) is registered as an
+# OpenAI-compatible provider so this profile's sub-agents can route through
+# it. It is never the main model — only `model.provider` above is.
+providers:
+  omniroute:
+    base_url: http://192.168.0.8:20128/v1
+    discover_models: true
+    models:
+      auto/best-chat: {}
+      auto/best-coding: {}
+      auto/best-fast: {}
+
+# No local models on the T5500. The House (C:\DREAM\AGENTS.md) reserves this
+# seat for the marketing desk only; model weights and local inference stay
+# off this machine.
+local_runtime:
+  enabled: false
+
+# The API server: this profile's gateway, bound to the LAN (not just
+# loopback) so the Sabretooth operator can reach it as a peer. The key lives
+# in this profile's .env, never here.
+gateway:
+  api_server:
+    enabled: true
+    port: 8377
+    host: 0.0.0.0
+    model_name: OPSis
+
+# Keep API keys and tokens out of logs everywhere this profile writes one.
+security:
+  redact_secrets: true
