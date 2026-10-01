@@ -20,6 +20,8 @@ Tasks are ordered so that every phase ends with something Joshua can see or hear
 - [ ] T103 `mission-control/lib/validators.mjs` test-first: runs both tools every fifteen minutes, writes `state/validators/<tool>.json` with started, finished, status (green, red, did-not-run), items.
 - [ ] T104 GitHub tab and Links tab in `index.html` reading that state; every light with its time; 20 pixel text or larger.
 - [ ] T105 Twenty-four hours on the schedule with no missed pass (SC-002). Proof: the state files' timestamps.
+- [ ] T106 **The watchdog (FR-012, Joshua 2026-10-01).** `mission-control/lib/watchdog.mjs` test-first: for each shipped product in `config/shipped-products.json` (name, identity string, restart command, last-good release pointer, holding-page switch), probe by identity; on failure restart, then roll back, then holding page, in that order, each step logged with its time; then compose the message to Joshua from the log. Tests prove each step against a deliberately broken fake service. Hermes runs it on the Sabretooth schedule; Mission Control shows the last heal per product.
+- [ ] T107 The Nodes tab names each node's seat (FR-013): Alienware workshop, Sabretooth shelf, T5500 marketing desk.
 
 ## Phase 2: The voice (Sabretooth; the path per the plan's decision)
 

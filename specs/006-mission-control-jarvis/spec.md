@@ -106,6 +106,8 @@ Joshua opens Mission Control on his phone through Cloudflare Access, and, once v
 - **FR-009**: The public dashboard stays behind Cloudflare Access; the voice endpoint is the one path exempted from Access and it verifies the request signature itself.
 - **FR-010**: Text on the dashboard is 20 pixels or larger, dark background, high contrast, no dense tables; every light carries its time.
 - **FR-011**: Nothing in this feature costs money to run: no paid tier of IFTTT, no Nabu Casa, no Cloud Run; if the chosen voice path turns out to require payment, the plan stops and Joshua decides.
+- **FR-012** (Joshua, 2026-10-01, the watchdog rule): the Sabretooth routine heals before it speaks. For every shipped product it probes by identity string; on failure it restarts the service, then rolls back to the last good release, then takes the broken surface off the public path behind an honest holding page; each step is tried in that order and logged; Joshua is told afterwards what was done and what is still wrong, never a bare "it is down". A restart, a rollback and a holding page each have a test that proves them against a deliberately broken service in test mode.
+- **FR-013**: the three nodes keep their seats: Alienware develops (the game, AI Studio, the judge lanes); Sabretooth runs finished product and the watchdog; the T5500 is the marketing desk with no local models. Mission Control's Nodes tab shows all three with their seat named.
 
 ### Key Entities
 
