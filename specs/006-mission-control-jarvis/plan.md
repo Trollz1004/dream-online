@@ -93,3 +93,8 @@ Each `lib/*.mjs` lands with its vitest file first (red), then the code (green). 
 - If the chosen voice path needs an Amazon certification a private skill cannot get, the local path is the fallback and loses only the Echo's own microphone.
 - The OmniRoute gateway key already lives in Sabretooth's `.env`; this plan adds at most one more variable there (the voice path's secret) and none anywhere else.
 - Abuse reports: today nothing reaches an authority. That is a legal and reputational exposure for a dating app about to be marketed; Phase 3 item 2 closes it, and the judge lane says so in the dispatch until it is closed.
+
+
+## Correction, 2026-10-01 (later the same night, Joshua and the judge lane)
+
+The finding above overstated the gap. Codex built and Joshua tested the working path: the report form has a minor-safety category, those reports escalate to a human review queue, and Joshua is alerted on Telegram or WhatsApp; he received the test. Filing with NCMEC's CyberTipline is done by the provider, a person, after review, not by automatic code, so the missing piece is not code: it is the business's CyberTipline registration as an electronic service provider (if not already done) and a one-page procedure for a minor-safety report. It does not block launch.
