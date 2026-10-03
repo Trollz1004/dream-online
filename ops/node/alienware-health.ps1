@@ -16,8 +16,9 @@
                             skill reads this first on every `drift`
 
   Groups: "required" services are local and trigger the bring-up when they fail. "optional" are
-  local and only reported. "remote" live on Sabretooth (192.168.0.8); this node reports them and
-  never tries to heal them. OmniRoute is remote only: nothing on this node serves port 20128.
+  local and only reported. "remote" is kept for future LAN targets and is empty now: Joshua
+  ruled on 2026-10-03 that JARVIS and the NPC-only OmniRoute (127.0.0.1:20128) live on this
+  node, and Sabretooth holds the date app and the other domains only, so nothing there is probed.
 
   There is deliberately no unattended model run and no command read from a flag file here.
 
@@ -49,8 +50,7 @@ function Get-Targets {
     [pscustomobject]@{ name = 'ollama_11434';           group = 'optional'; url = 'http://127.0.0.1:11434/api/tags';     mustContain = '"models":[' }
     [pscustomobject]@{ name = 'jarvis_hud_9150';        group = 'optional'; url = 'http://127.0.0.1:9150/health';        mustContain = 'airi-dashboard' }
     [pscustomobject]@{ name = 'crosslisting_3000';      group = 'optional'; url = 'http://127.0.0.1:3000/';              mustContain = '<div id="root">' }
-    [pscustomobject]@{ name = 'omniroute_sabretooth';   group = 'remote';   url = 'http://192.168.0.8:20128/v1/models';  mustContain = '"data":[' }
-    [pscustomobject]@{ name = 'jarvis_sabretooth_9150'; group = 'remote';   url = 'http://192.168.0.8:9150/health';      mustContain = 'jarvis-dashboard' }
+    [pscustomobject]@{ name = 'omniroute_npc_20128';    group = 'optional'; url = 'http://127.0.0.1:20128/v1/models';    mustContain = '"data":[' }
   )
 }
 
