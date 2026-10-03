@@ -37,11 +37,14 @@ Describe 'Get-Targets' {
     ($required -contains 'live_npc_lab_9127') | Should Be $true
     ($required -contains 'dreamops_bridge_9133') | Should Be $true
   }
-  It 'reaches OmniRoute only on Sabretooth and only as a remote target' {
+  It 'reaches the NPC OmniRoute only on this node, on loopback, as optional' {
     $omni = @($targets | Where-Object { $_.name -like 'omniroute*' })
     $omni.Count | Should Be 1
-    $omni[0].group | Should Be 'remote'
-    $omni[0].url.StartsWith('http://192.168.0.8:20128/v1') | Should Be $true
+    $omni[0].group | Should Be 'optional'
+    $omni[0].url.StartsWith('http://127.0.0.1:20128/v1') | Should Be $true
+  }
+  It 'probes nothing on Sabretooth, which holds the date app and domains only' {
+    @($targets | Where-Object { $_.url -like '*192.168.0.8*' }).Count | Should Be 0
   }
   It 'never puts a Sabretooth service in the required group' {
     @($targets | Where-Object { $_.group -eq 'required' -and $_.url -notlike 'http://127.0.0.1:*' }).Count | Should Be 0
