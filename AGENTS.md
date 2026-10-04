@@ -2,6 +2,21 @@
 
 The one rulebook for every AI platform in this repo. Claude Code reads it through `CLAUDE.md` (`@AGENTS.md`), Gemini CLI through `GEMINI.md`, GitHub Copilot through `.github/copilot-instructions.md`; Codex, OpenCode and Hermes read this file directly. Edit this file only. The workspace rulebook `C:\DREAM\AGENTS.md` applies on top (nodes, judge lanes, privacy).
 
+## Rule one: done means the real user would accept it (Joshua, 2026-10-04)
+
+This replaces "200 OK is not OK" and every "verify it" that came before it. It applies to every AI on every repository: Claude, Codex, Gemini, Copilot, Hermes, OpenCode, Emergent, anyone.
+
+Before you say "done", "working", "fixed" or "verified":
+
+1. Say who it is for, as a person (example: a nurse handing a phone to a sick 5-year-old; Joshua reading on his phone with tired eyes).
+2. Show the screenshot of what that person sees, taken from the real thing they will open.
+3. Look at it as that person and list everything wrong with it: ugly, confusing, broken, cut off, too much text, wrong for them. If you list nothing, say why that person would accept it as it is.
+4. Fix what you found, then show the new screenshot.
+
+Status codes, test counts and scores (200, 26 of 26, Lighthouse 100) prove the code runs. They never prove it is good, and they are never the reason something is called done. Joshua decides when it is done, not your tests.
+
+Why this rule exists: on 2026-10-04 Misses Trollz shipped with 100 on every score and a screenshot that "proved" it ran, while what a nurse would see was a clip-art character, a cut-off banner, a wall of text and a legal footer under a kids' toy. Every check passed and the product failed. The AI graded its own work with tools that cannot see ugly.
+
 ## Project language
 
 Use player-readable terms: live-world open-world MMO, action combat, life skills, player-driven marketplace, Nightfall, Nightmare Class, DREAM Class, Storage Runner, Market Runner.

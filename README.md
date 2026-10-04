@@ -5,8 +5,11 @@
 > _Gravity keeps us grounded. AI built ANTIGRAVITY to lift us up. DREAM is where it goes to play._
 
 <p align="center">
-  <img src="assets/teamclaudeforlife-meme.jpg" alt="Me reviewing code written by Claude before pushing it to prod - #TeamClaudeForLife" width="520" />
+  <img src="assets/teamclaudeforlife-meme.jpg" alt="Me reviewing code written by Claude before pushing it to prod - #TeamClaudeForLife" width="400" />
+  <img src="assets/blind-claude-meme.jpg" alt="Claude reviewing Josh's HTML before pushing it to the kids - #TeamClaudeForLife" width="400" />
 </p>
+
+<p align="center"><sub>Both of us, honestly. The picture on the right is why <b>rule one</b> exists: done means the real user would accept it, shown by a screenshot from that person's eyes, never by a 200, a test count or a score. Read it at the top of <code>AGENTS.md</code>.</sub></p>
 
 <p align="center">
   <a href="docs/tribute/claude-tribute.mp4"><b>The picture became a video.</b></a><br/>
