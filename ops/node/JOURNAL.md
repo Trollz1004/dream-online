@@ -2,6 +2,26 @@
 
 One entry per session, newest first, in the form did, verified, blocked, next, commits. Written by the Claude judge lane for a reader with no memory of the session.
 
+## 2026-10-05 about 04:10 EDT, Claude Opus 5.5 on the Alienware node through `drift`, session start and records catch-up
+
+**Did.** Session start by the launch skill. No triggers. Health YELLOW from the 2026-10-04 12:30Z probe: both required services UP (Live NPC Lab, DreamOps Bridge); Hermes, Ollama and JARVIS UP; Crosslisting on 3000 answers without its identity string (WRONG SERVICE, not game work); the NPC OmniRoute on 127.0.0.1:20128 answers 401 (AUTH MISSING, expected until Hermes finishes its card and the key lives only in the NPC service's process). `drift ground` was YELLOW because the journal and the dispatch were last written on 2026-10-02 while three commits landed on 2026-10-03. Nobody wrote the 2026-10-03 entry, so it is written below from the commits and the auto-memory; it is a reconstruction, not a first-hand record.
+
+**Verified.** Checkout clean and equal to `origin/main` at `42b0dc6`. Launch skill and `drift.cmd` copies byte-identical. Obsidian MCP handshake ok. No game code changed, so no game suite was run.
+
+**Blocked.** Nothing on this node.
+
+**Next.** Whatever Joshua asks. Standing: the NPC OmniRoute card for Hermes (`C:\DREAM\recon\cards\HERMES-OMNIROUTE-ALIENWARE-2026-10-03.md`), then add it to the stack supervisor; DREAM Engine stages in AI Studio; the founder's vision stills in Flow.
+
+**Commits.** This records pull request.
+
+## 2026-10-03, Claude Opus 5.5 on the Alienware node, reconstructed on 2026-10-05 from the commits
+
+**Did.** Three rulings by Joshua landed as records. First, the Gemini ask on Project Genie's terms and on the DREAM Maker (`docs/handoffs/GEMINI-WORLD-AND-MAKER-ASK-2026-10-03.md`, pull request 45). Second, JARVIS (Mission Control) and the NPC-only OmniRoute live on this node, and Sabretooth holds the date app and the other domains only: the health probe now checks OmniRoute at 127.0.0.1:20128 as optional and probes nothing on 192.168.0.8, and the launch skill says the same (pull request 46, Pester 16 of 16). Third, JARVIS is not part of the game and is never wired into it (pull request 47). Other rulings of the day are in the workspace `AGENTS.md` (The House) and the auto-memory: HOUSE BUILT or not built, Google tools as the one design-tool exception, Hermes on official sign-ins only and running the 90 percent test gate, nothing presented until Joshua approves it with his eyes, and Claude drives the founder's vision stills in Flow.
+
+**Verified.** Pester 16 of 16 on the health probe, as recorded in commit `4b53130`. Both protected-file edits carry a changelog line.
+
+**Commits.** `734f63f`, `4b53130`, `dd43f9e`, merges `b550907`, `cf1c284`, `42b0dc6`.
+
 ## 2026-10-02 morning EDT, Claude Opus 5.5 on the Alienware node through `drift`, records and Misses Trollz
 
 **Did.** Session start: no triggers; health YELLOW only because Sabretooth's OmniRoute and JARVIS time out (Sabretooth's RAM failed; the T5500 stands in). `drift ground` was RED for three reasons. The installed launch skill lacked the 2026-09-26 paragraph (the 90 percent gate, one branch, judge of judges) that the tracked copy has; the tracked copy was copied over the installed one and `cmp` confirms they match. The journal and the dispatch were a commit behind; this entry and a dispatch entry fix that. Two files were uncommitted from 2026-10-01: the spec 006 plan correction and the DREAM Space design system sheet (checked for absolute paths, user names and keys first: none); both landed with this entry. Joshua then asked for a separate, non-game job: seal his free kid-friendly hospital avatar, Misses Trollz, from a long session with another assistant. Wrote `C:\DREAM\misses-trollz\MISSES-TROLLZ-BUILD.md` (outside this repository): one file with the story, the system prompt, the AI Studio app spec, tests, starter banks and public wording. Removed from the draft: a forced "them, their, they" rule, an innuendo about Trollz's "assets", brand names, food talk by default (some kids cannot eat), the free text box for kids, and fast flashing. Joshua then ruled it is never streamed, only shared as a link; his stream is a redacted dashboard of the AI Dream Team's agents.

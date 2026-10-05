@@ -1,6 +1,8 @@
 # DREAM Dispatch
 
-Last updated: 2026-10-02
+Last updated: 2026-10-05
+
+**2026-10-05 early EDT, Claude judge lane on Alienware.** No game code. Records caught up for 2026-10-03, when three rulings landed: the Gemini ask on Project Genie terms and the DREAM Maker (pull request 45), JARVIS and the NPC-only OmniRoute on this node with Sabretooth holding only the date app and domains (pull request 46), and JARVIS kept out of the game (pull request 47). The game itself is house built on its own engine (workspace `AGENTS.md`, 2026-10-03); the Godot lines lower in this file are history. Objective unchanged: DREAM Engine stages in AI Studio, judged here, shown only after Joshua approves them by eye.
 
 **2026-10-02 morning EDT, Claude judge lane on Alienware.** No game code. Session start found the records behind and the installed launch skill missing the 2026-09-26 ruling; the skill was re-synced. Landed two files left uncommitted on 2026-10-01: the correction in spec 006's plan (the abuse-report finding was overstated; the minor-safety path exists and alerts Joshua, and the open item is the CyberTipline registration and a one-page procedure) and the DREAM Space design system sheet. Outside this repository, Joshua's free kid avatar Misses Trollz got its sealed build file at `C:\DREAM\misses-trollz\MISSES-TROLLZ-BUILD.md`; it is not game work, is never streamed, and waits on his yes for its own public repository. Sabretooth is down (RAM failure); the T5500 is the stand-in. Objective unchanged: DREAM Engine Stage 1 in AI Studio.
 
