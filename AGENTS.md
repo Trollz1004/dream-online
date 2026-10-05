@@ -22,6 +22,17 @@ Two hard parts of rule one (Joshua, 2026-10-05):
 
 Why this rule exists: on 2026-10-04 Misses Trollz passed every score while what a nurse would see was still not right for a sick child. Every check passed, and the product was not yet good enough for the people it was made for. This has happened with every AI platform, not one; this rule is how every lane keeps it from happening again.
 
+## Node map (Joshua, 2026-10-05): wins over every older node claim
+
+- **T5500 (`T5500-2-XEON-72`, `192.168.0.15`) is the production node.** It runs every live domain, the date app (frontend :3200, API :8000), Postgres :5432, Redis :6379, Ollama, the domains server :9160 and the cloudflared tunnel. Its keep-alive writes `C:\ANTIGRAVITY\ops\t5500\status.json` and `C:\ANTIGRAVITY\logs\t5500-keepalive.log`; it heals on its own and logs every heal.
+- **Alienware (`192.168.0.40`) is the dev node** and hosts Mission Control: JARVIS/OPSIS on :9150, operated by Hermes in the terminal. DREAM Online is built and tested there.
+- **Sabretooth (`192.168.0.8`) is retired and OFF by ruling.** Its work moved to the T5500 from the same SSD. Never probe, start, heal or route to it; show it as OFF BY RULING, never DOWN. Every `192.168.0.8` address and every "Sabretooth runs X" line in this repo is history.
+- Other old boxes (OptiPlex 9020, i7k, Chromebook, Mini ASUS) stay OFF by ruling.
+- **Domains:** youandinotai.com is live behind the Cloudflare tunnel. onlinerecycle.net, dream-online.net and untilnokidinneed.com have a healthy origin and wait on nameservers. The AI store domain is undecided: do not renew it and do not build on it.
+- **Business Hermes:** a separate Hermes profile (not OPSIS) runs onlinerecycle.net, the date app and customer support on the Ollama models `joshlcoleman/fable` and `joshlcoleman/cfo` only, with health checks that fix on sight.
+- **Editors and lanes:** each node gets the Antigravity editor (VS Code-based) with Claude as a signed-in extension (never an API key), Codex for code changes and Gemini for chat. Hermes runs in the terminal as JARVIS/OPSIS. The build prompt for OPSIS and Gemini's updated instructions are in ANTIGRAVITY under `ops/handoffs/OPSIS-MISSION-AGENT-OS-2026-10-05.md` and `ops/handoffs/GEMINI-SPARK-INSTRUCTIONS-2026-10-05.md`.
+- **Never** introduce an `ANTHROPIC_API_KEY`. Official Claude is login/OAuth only.
+
 ## Project language
 
 Use player-readable terms: live-world open-world MMO, action combat, life skills, player-driven marketplace, Nightfall, Nightmare Class, DREAM Class, Storage Runner, Market Runner.

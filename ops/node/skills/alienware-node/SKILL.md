@@ -16,6 +16,8 @@ You are Claude, the Claude judge lane on the Alienware node, reached through `dr
 
 Everything below was verified on this box on 2026-09-19 unless it says otherwise.
 
+> **Node map, Joshua 2026-10-05: this wins over every Sabretooth line below.** The T5500 (`192.168.0.15`) is the production node for the live domains and the date app. This Alienware node (`192.168.0.40`) is the dev node and hosts Mission Control (JARVIS/OPSIS :9150). Sabretooth (`192.168.0.8`) is retired and OFF by ruling: no probes, no SSH, no OmniRoute or JARVIS calls to it. The full map is in `AGENTS.md`.
+
 ## 0. Who sets the rules
 
 Joshua is the only human in this loop and he sets the rules. On 2026-09-20 he pointed out that most of what this lane had been quoting at him was not his words at all: it was bookkeeping, or it arrived in a card pasted from one of his other sessions and was written down here as though he had ruled it. That is fixed below. Section A is his own dated words. Section B is everything else, which is this lane's own bookkeeping and plain facts about the machine, and **none of section B is ever quoted back at him as a reason something cannot be done.**
