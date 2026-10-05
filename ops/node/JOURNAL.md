@@ -2,6 +2,18 @@
 
 One entry per session, newest first, in the form did, verified, blocked, next, commits. Written by the Claude judge lane for a reader with no memory of the session.
 
+## 2026-10-05 about 15:30 UTC, Claude Opus 5.5 in the cloud, node map sync
+
+**Did.** Wrote Joshua's 2026-10-05 node map into `AGENTS.md`, with banners on the launch skill and the runbook: the T5500 (`192.168.0.15`) is production for the live domains and the date app, this Alienware node is dev plus Mission Control (JARVIS/OPSIS :9150), Sabretooth is retired and OFF by ruling. The same map landed in ANTIGRAVITY with the OPSIS Mission Agent OS build prompt and the new Gemini Spark instructions under `ops/handoffs/`. Earlier today: rule one gained mandatory screenshots and live-on-Cloudflare, and the second README picture came off all three repos (#50 here).
+
+**Verified.** Records only, no game code changed. The live READMEs on `main` of ANTIGRAVITY, dream-online and misses-trollz carry the tribute picture only.
+
+**Blocked.** Nothing on this node. The launch skill and runbook bodies still name Sabretooth in places; the banners override them until a node session rewrites those sections against the disk.
+
+**Next.** On the next `drift` here: pull `main`, copy the launch skill to the user skills folder, drop any Sabretooth probe from the health script, and point `drift jarvis` at `http://127.0.0.1:9150/`.
+
+**Commits.** This entry's commit on `claude/hopeful-cray-0kce1f`.
+
 ## 2026-10-05 about 04:10 EDT, Claude Opus 5.5 on the Alienware node through `drift`, session start and records catch-up
 
 **Did.** Session start by the launch skill. No triggers. Health YELLOW from the 2026-10-04 12:30Z probe: both required services UP (Live NPC Lab, DreamOps Bridge); Hermes, Ollama and JARVIS UP; Crosslisting on 3000 answers without its identity string (WRONG SERVICE, not game work); the NPC OmniRoute on 127.0.0.1:20128 answers 401 (AUTH MISSING, expected until Hermes finishes its card and the key lives only in the NPC service's process). `drift ground` was YELLOW because the journal and the dispatch were last written on 2026-10-02 while three commits landed on 2026-10-03. Nobody wrote the 2026-10-03 entry, so it is written below from the commits and the auto-memory; it is a reconstruction, not a first-hand record.

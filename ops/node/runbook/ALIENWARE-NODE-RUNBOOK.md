@@ -2,6 +2,8 @@
 
 Written by Claude Fable 5.1, the Claude judge lane on this node, on 2026-09-19, from the brief Joshua handed over from the Sabretooth lane. This is the only runbook for this box. If a doc, a skill or a dashboard disagrees with it, this wins and that gets fixed. The launch skill for Claude is `~/.claude/skills/alienware-node/SKILL.md`, with its tracked copy at `ops/node/skills/alienware-node/SKILL.md`. Every fact here was checked on the box on 2026-09-19 unless it says otherwise.
 
+> **Node map, Joshua 2026-10-05: this wins over every Sabretooth line below.** The T5500 (`192.168.0.15`) is the production node for the live domains and the date app. This Alienware node (`192.168.0.40`) is the dev node and hosts Mission Control (JARVIS/OPSIS :9150). Sabretooth (`192.168.0.8`) is retired and OFF by ruling: no probes, no SSH, no OmniRoute or JARVIS calls to it. The full map is in `AGENTS.md`.
+
 ## 1. What this node is for
 
 This node builds and runs DREAM Online. Sabretooth designs, dispatches and reviews; the game never runs there.
