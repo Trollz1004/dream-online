@@ -15,7 +15,12 @@ Before you say "done", "working", "fixed" or "verified":
 
 Status codes, test counts and scores (200, 26 of 26, Lighthouse 100) prove the code runs. They never prove it is good, and they are never the reason something is called done. Joshua decides when it is done, not your tests.
 
-Why this rule exists: on 2026-10-04 Misses Trollz shipped with 100 on every score and a screenshot that "proved" it ran, while what a nurse would see was a clip-art character, a cut-off banner, a wall of text and a legal footer under a kids' toy. Every check passed and the product failed. The AI graded its own work with tools that cannot see ugly.
+Two hard parts of rule one (Joshua, 2026-10-05):
+
+- **Screenshots are mandatory for anything front-facing.** Any HTML a customer, a kid or Joshua will see gets its screenshots shown to Joshua before it is called done.
+- **Front-facing HTML is done only when it is live.** Most HTML changes must be pushed to the Cloudflare page that serves the domain. A change that sits on disk or in the repo and never reaches Cloudflare is the same as a 200 OK.
+
+Why this rule exists: on 2026-10-04 Misses Trollz passed every score while what a nurse would see was still not right for a sick child. Every check passed, and the product was not yet good enough for the people it was made for. This has happened with every AI platform, not one; this rule is how every lane keeps it from happening again.
 
 ## Project language
 
