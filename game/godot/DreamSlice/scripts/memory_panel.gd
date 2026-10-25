@@ -95,7 +95,12 @@ func show_stored(text: String) -> void:
 # came from — world memory or the local fallback — named plainly.
 func show_recalled(lines: Array, source: String) -> void:
 	_title.text = "Mireth remembers"
-	_source.text = "from %s" % source
+	if source == "local memory":
+		_source.text = "from %s (DEGRADED: Live NPC Lab unreachable)" % source
+		_source.add_theme_color_override("font_color", Color(1.0, 0.72, 0.30, 0.95))
+	else:
+		_source.text = "from %s" % source
+		_source.add_theme_color_override("font_color", Color(0.75, 0.75, 0.82, 0.85))
 	_fill_bullets(lines)
 	_present()
 

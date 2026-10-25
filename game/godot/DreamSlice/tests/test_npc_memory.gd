@@ -20,10 +20,20 @@ class RecallReceiver:
 	extends RefCounted
 	var facts: Array = []
 	var source: String = ""
+	var degraded_npc_id: String = ""
+	var degraded_lab_url: String = ""
+	var degraded_count: int = 0
+	var degraded_reason: String = ""
 
 	func on_recalled(received_facts: Array, received_source: String) -> void:
 		facts = received_facts
 		source = received_source
+
+	func on_degraded(npc_id: String, lab_url: String, fallback_count: int, reason: String) -> void:
+		degraded_npc_id = npc_id
+		degraded_lab_url = lab_url
+		degraded_count = fallback_count
+		degraded_reason = reason
 
 
 var runner
@@ -141,6 +151,7 @@ func _test_recall_falls_back_to_local_when_the_lab_is_unreachable() -> void:
 
 	var receiver := RecallReceiver.new()
 	mem.recalled.connect(receiver.on_recalled)
+	mem.lab_degraded.connect(receiver.on_degraded)
 
 	mem.recall("mireth")
 
@@ -148,6 +159,21 @@ func _test_recall_falls_back_to_local_when_the_lab_is_unreachable() -> void:
 		receiver.source == "local memory")
 	check("the recall actually reads back what record() wrote, not an empty stub",
 		receiver.facts.size() == 1 and receiver.facts[0]["eventType"] == "perfect_dodge")
+	check("the fallback increments local_fallback_count and records a degraded reason",
+		mem.local_fallback_count == 1 and mem.last_degraded_reason != "")
+	check("the lab_degraded signal fires with the witness, lab URL, count and reason",
+		receiver.degraded_npc_id == "mireth" and receiver.degraded_lab_url == "http://127.0.0.1:9"
+		and receiver.degraded_count == 1 and receiver.degraded_reason != "")
+
+	var panel = load("res://scripts/memory_panel.gd").new()
+	panel._ready()
+	panel.show_recalled(["1 perfect dodge"], receiver.source)
+	check("memory_panel visibly flags degraded local fallback in its source label",
+		panel.source_label().text.contains("DEGRADED") and panel.source_label().text.contains("Live NPC Lab unreachable"))
+	panel.show_recalled(["1 perfect dodge"], "world memory (Live NPC Lab)")
+	check("memory_panel clears the degraded warning when world memory answers",
+		not panel.source_label().text.contains("DEGRADED"))
+	panel.free()
 
 	mem.reset_local()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
