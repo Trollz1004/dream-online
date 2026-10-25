@@ -25,6 +25,9 @@ extends Node
 ## Emitted once recall() has an answer, from the lab or from the local store.
 signal recalled(facts: Array, source: String)
 
+## Emitted when recall() cannot reach the Live NPC Lab and falls back to the local store.
+signal lab_degraded(npc_id: String, lab_url: String, fallback_count: int, reason: String)
+
 const SOURCE_LAB := "world memory (Live NPC Lab)"
 const SOURCE_LOCAL := "local memory"
 
@@ -46,6 +49,9 @@ const _ERROR_STATUSES := [
 @export var lab_timeout_ms: int = 3000
 @export var store_path: String = "user://npc-memory.json"
 
+var local_fallback_count: int = 0
+var last_degraded_reason: String = ""
+
 
 # Expected payload keys by event type (the world/player lane fills these in;
 # npc_memory.gd only requires eventType, everything else is read back as-is
@@ -66,8 +72,14 @@ func record(event_type: String, payload: Dictionary) -> void:
 func recall(npc_id: String) -> void:
 	var lab_facts = _lab_recall_facts(npc_id)
 	if lab_facts != null:
+		last_degraded_reason = ""
 		recalled.emit(lab_facts, SOURCE_LAB)
 		return
+	local_fallback_count += 1
+	var reason := last_degraded_reason if last_degraded_reason != "" else "unreachable"
+	push_warning("npc_memory: Live NPC Lab unreachable at %s (%s) for '%s'; degraded to %s (fallback #%d)" % [
+		lab_base_url, reason, npc_id, SOURCE_LOCAL, local_fallback_count])
+	lab_degraded.emit(npc_id, lab_base_url, local_fallback_count, reason)
 	recalled.emit(local_facts_for(npc_id), SOURCE_LOCAL)
 
 
@@ -245,6 +257,8 @@ func _lab_recall_facts(npc_id: String) -> Variant:
 		player_id.uri_encode(), npc_id.uri_encode(), zone.uri_encode()]
 	var response = _lab_get(query, lab_timeout_ms)
 	if typeof(response) != TYPE_DICTIONARY or not response.get("ok", false):
+		if last_degraded_reason == "":
+			last_degraded_reason = "invalid_lab_payload"
 		return null
 
 	var facts: Array = []
@@ -278,15 +292,19 @@ func _lab_get(path_and_query: String, timeout_ms: int) -> Variant:
 	var hp := _lab_host_port()
 	var client := HTTPClient.new()
 	if client.connect_to_host(hp["host"], hp["port"]) != OK:
+		last_degraded_reason = "connect_failed"
 		return null
 
 	var deadline := Time.get_ticks_msec() + timeout_ms
 	if not _pump_until(client, [HTTPClient.STATUS_CONNECTED], deadline):
+		last_degraded_reason = "connect_unreachable"
 		return null
 
 	if client.request(HTTPClient.METHOD_GET, path_and_query, PackedStringArray(["Accept: application/json"])) != OK:
+		last_degraded_reason = "request_failed"
 		return null
 	if not _pump_until(client, [HTTPClient.STATUS_BODY, HTTPClient.STATUS_CONNECTED], deadline):
+		last_degraded_reason = "response_unreachable"
 		return null
 
 	var body := PackedByteArray()
@@ -296,9 +314,12 @@ func _lab_get(path_and_query: String, timeout_ms: int) -> Variant:
 		if chunk.size() > 0:
 			body.append_array(chunk)
 		elif Time.get_ticks_msec() > deadline:
+			last_degraded_reason = "response_timeout"
 			return null
 
-	if client.get_response_code() != 200:
+	var code := client.get_response_code()
+	if code != 200:
+		last_degraded_reason = "http_%d" % code
 		return null
 	return JSON.parse_string(body.get_string_from_utf8())
 

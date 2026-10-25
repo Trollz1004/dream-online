@@ -67,7 +67,9 @@ extends SceneTree
 # web profile's emitter halos on the Sentinel's eye and the pet's eye (9)
 # and the combo list screen clearing the real-slice label (3). The copy
 # check's name list moved from base64 to SHA-256 with the same count.
-const MINIMUM_CHECKS := 1078
+# Raised to 1082 for boot-resilience audible degradation checks on npc_memory.gd
+# and memory_panel.gd (4 checks in tests/test_npc_memory.gd).
+const MINIMUM_CHECKS := 1082
 
 var passed := 0
 var failed := 0
