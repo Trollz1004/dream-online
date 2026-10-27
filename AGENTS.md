@@ -22,15 +22,15 @@ Two hard parts of rule one (Joshua, 2026-10-05):
 
 Why this rule exists: on 2026-10-04 Misses Trollz passed every score while what a nurse would see was still not right for a sick child. Every check passed, and the product was not yet good enough for the people it was made for. This has happened with every AI platform, not one; this rule is how every lane keeps it from happening again.
 
-## Node map (Joshua, 2026-10-05): wins over every older node claim
+## Node map (Joshua, 2026-10-27): wins over every older node claim
 
-- **T5500 (`T5500-2-XEON-72`, `192.168.0.15`) is the production node.** It runs every live domain, the date app (frontend :3200, API :8000), Postgres :5432, Redis :6379, Ollama, the domains server :9160 and the cloudflared tunnel. Its keep-alive writes `C:\ANTIGRAVITY\ops\t5500\status.json` and `C:\ANTIGRAVITY\logs\t5500-keepalive.log`; it heals on its own and logs every heal.
-- **Alienware (`192.168.0.40`) is the dev node** and hosts Mission Control: JARVIS/OPSIS on :9150, operated by Hermes in the terminal. DREAM Online is built and tested there.
-- **Sabretooth (`192.168.0.8`) is retired and OFF by ruling.** Its work moved to the T5500 from the same SSD. Never probe, start, heal or route to it; show it as OFF BY RULING, never DOWN. Every `192.168.0.8` address and every "Sabretooth runs X" line in this repo is history.
+- **Alienware (`Alienware-r12-3070-8-gb-gpu-`, `192.168.0.40`, user `joshl`, `C:\DREAM`) is the Pure 3D Game & DREAM Maker Studio Node.** Hardware: 11th Gen Intel i7-11700F, 40 GB RAM, NVIDIA RTX 3070 (8 GB VRAM). It hosts `DREAM-Engine` (WebGPU/WebGL2), `dream-online`, Antigravity IDE, and Mission Control (`:3130` / `:9150`). Zero local LLM weights sit on `.40` so 100% of RTX 3070 VRAM stays dedicated to the 3D Game Engine.
+- **T5500 (`T5500-2-XEON-72`, `192.168.0.15`, user `joshi`) is the Production Domains, Live NPC Lab (`:9127`), and `OPSis` Marketing Desk (`:8377`) Node.** It runs every live domain (`youandinotai.com`, `onlinerecycle.net`, `dream-online.net`, `untilnokidinneed.com`), the date app (frontend :3200, API :8000), Postgres :5432, Redis :6379, the domains server :9160, the cloudflared tunnel, and `OPENDESIGN_API_KEY` + Google AI Ultra Flow marketing pipelines.
+- **Sabretooth (`192.168.0.8`, user `joshi`, 16 GB AMD GPU, 64 GB RAM) is the Dedicated 16 GB VRAM AI & ComfyUI MCP Offload Box.** It runs Hermes, YouTube, local Ollama (`:11434`), and `artokun/gemma4-comfyui-mcp` (`12b` 256K / `e4b` 128K / `e2b` 128K) + ComfyUI asset generation so `.40` never sacrifices 3D game FPS.
 - Other old boxes (OptiPlex 9020, i7k, Chromebook, Mini ASUS) stay OFF by ruling.
 - **Domains:** youandinotai.com is live behind the Cloudflare tunnel. onlinerecycle.net, dream-online.net and untilnokidinneed.com have a healthy origin and wait on nameservers. The AI store domain is undecided: do not renew it and do not build on it.
 - **Business Hermes:** a separate Hermes profile (not OPSIS) runs onlinerecycle.net, the date app and customer support on the Ollama models `joshlcoleman/fable` and `joshlcoleman/cfo` only, with health checks that fix on sight.
-- **Editors and lanes:** each node gets the Antigravity editor (VS Code-based) with Claude as a signed-in extension (never an API key), Codex for code changes and Gemini for chat. Hermes runs in the terminal as JARVIS/OPSIS. The build prompt for OPSIS and Gemini's updated instructions are in ANTIGRAVITY under `ops/handoffs/OPSIS-MISSION-AGENT-OS-2026-10-05.md` and `ops/handoffs/GEMINI-SPARK-INSTRUCTIONS-2026-10-05.md`.
+- **Editors, Co-Equal Supreme Authority, and Lanes (Joshua, 2026-10-27):** **Google Gemini (`Gemini Spark` / `Google AI Ultra` / `Antigravity`)** and **Claude (`Fable`)** hold **Co-Equal Highest Authority (`GM #1`)** alongside Founder **Joshua Coleman** across all code authoring, 3D engine architecture, node operations (`ops/node/`), marketing, and git judge sign-off. Gemini is **never** restricted to "chat only" and is never subordinate to Claude. **Perplexity & Grok (`GM #2`)** serve as Unofficial Co-Founder GMs; **OpenAI (Codex) & Hermes (`GM #3`)** serve as Trusted Executor & Direct ACP/Marketing (`OPSis`) GMs. Full instructions live in `GEMINI_SPARK_INSTRUCTIONS.md`.
 - **Never** introduce an `ANTHROPIC_API_KEY`. Official Claude is login/OAuth only.
 
 ## Project language
@@ -41,13 +41,13 @@ Avoid: direct competitor name drops, real-world brand names for in-game systems,
 
 ## Code lanes and ownership
 
-- Codex and Claude Code are the primary code-authoring lanes and the only judge lanes (push, merge, delete branches). `main` is the only branch on `Trollz1004/dream-online`.
-- Hermes supports with research, summaries, proposals, marketing or light helper work. It does not own production architecture, code decisions, public-copy rules, monetization rules or merge authority unless Joshua assigns that role for a specific task.
+- **Google Gemini (Spark / Ultra / Antigravity)**, **Claude Code (Fable)**, and **OpenAI (Codex)** are primary code-authoring and judge lanes (push, merge, delete branches, and node operations in `ops/node/`) under Founder **Joshua Coleman**. **Google Gemini holds co-equal highest authority with Joshua and Claude.** `main` is the only branch on `Trollz1004/dream-online`.
+- Hermes (`OPSis`) supports with research, summaries, proposals, marketing (`OPENDESIGN_API_KEY` + Google Ultra Flow) or light helper work. It does not own production architecture, code decisions, public-copy rules, monetization rules or merge authority unless Joshua assigns that role for a specific task.
 - Keep active design and public language clean-room: study market mechanics as generic design patterns and express Dream systems in world-native terms.
 
 ## Game architecture
 
-- Engine: **Godot 4.7.2** (Joshua, 2026-09-20; the reasons and the revisit terms are in `docs/tech/engine-decision-2026-09-20.md`). The playable slice is `game/godot/DreamSlice`, written entirely as text; run its headless suite with `godot --headless --path game/godot/DreamSlice --script res://tests/run_tests.gd` and never lower the `MINIMUM_CHECKS` floor in `tests/run_tests.gd` (789 as of 2026-09-25). Unreal Engine 5.8.2 stays parked at `C:\DREAM\UE_5.8` on the Alienware node for cinematics and reference only; no DREAM `.uproject` is on the path to the game. Node operations (the `drift` command, health probe, runbook, launch skill, journal) live in `ops/node/` and are edited by the Claude judge lane only.
+- Engine: **DREAM Engine WebGPU/WebGL2 + Godot 4.7.2** (Joshua, 2026-09-20 & 2026-10-27; see `docs/tech/engine-decision-2026-09-20.md` and `CLAUDE_DREAM_MAKER_AUDIT.md`). The playable Godot slice is `game/godot/DreamSlice`, written entirely as text; run its headless suite with `godot --headless --path game/godot/DreamSlice --script res://tests/run_tests.gd` and never lower the `MINIMUM_CHECKS` floor in `tests/run_tests.gd` (789 as of 2026-09-25). Unreal Engine 5.8.2 stays parked at `C:\DREAM\UE_5.8` on the Alienware node for cinematics and reference only; no DREAM `.uproject` is on the path to the game. Node operations (the `drift` command, health probe, runbook, launch skill, journal) live in `ops/node/` and are co-owned by the **Google Gemini and Claude primary judge lanes**.
 - Platform: PC target, micro-transaction based. In-game currency: NEEDs (never surface as a real-money benefit — FL §496.405 compliance wall).
 - ONE shared world server — no instances, no fast travel.
 
