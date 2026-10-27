@@ -48,9 +48,19 @@
       "node": "Sabretooth (192.168.0.8 — 16 GB AMD Radeon RX 6800)",
       "primary_local_model": "kokoro-82m",
       "secondary_local_models": [
+        "lfm3-omni-2b",
         "f5-tts",
         "chatterbox"
       ],
+      "omni_modal_24khz_engine": {
+        "model": "Liquid AI LFM3-Omni-2B",
+        "params": "2.17B",
+        "context_window": 32768,
+        "formats": ["GGUF", "ONNX", "MLX"],
+        "input_modalities": ["text", "image", "video", "audio_16khz"],
+        "output_modalities": ["text", "speech_24khz"],
+        "license": "LFM Open License v1.0"
+      },
       "approved_female_voices": {
         "af_heart": {
           "engine": "kokoro-82m",
@@ -139,7 +149,10 @@
       "world_previs_engine": "Google DeepMind Genie 4 (Gemini 3.8 Flash live 3D scene steering + native ambient audio + speaking NPCs)",
       "visual_brand_hub": "Google Gemini Small Business Hub (Nano Banana 2.1 + automated receipt/ledger charts)",
       "decisions_api": "OpenAI gpt-6-luna Decisions API ($0.10/1M input tokens, 10x faster structured JSON)",
-      "cross_agent_skill_sync": "MuscleMemory (Codex <-> Claude Code <-> Gemini)"
+      "cross_agent_skill_sync": "MuscleMemory (Codex <-> Claude Code <-> Gemini)",
+      "local_16gb_omni_voice_model": "Liquid AI LFM3-Omni-2B (2.17B GGUF/ONNX, 32K ctx, 16kHz audio/video/image in -> 24kHz natural speech out on Sabretooth .8)",
+      "local_desktop_mcp_processor": "Hob (MIT open-source on-device Gemma 4 + MCP document/code processor)",
+      "local_codebase_graph_memory": "Graph-MIND (local directed-graph entity & call-hierarchy memory with zero LLM calls on save)"
     },
     "verification_policy": "The 24/7 OPSis/Jarvis Mission Control livestream is strictly gated until AI verifiably helps fund the mission (AI-driven e-waste intake on onlinerecycle.net broken down for Shriners, automated DREAM Online microtransactions, or verified public transparent crypto wallet / Shriners DAO ledger on Base Mainnet 8453). Founder Joshua Coleman's personal out-of-pocket eBay donations to Shriners are NEVER counted as AI-generated funding. Zero fake metrics, zero slop."
   }

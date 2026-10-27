@@ -35,7 +35,7 @@ export interface Genie4SteeringPrompt {
   speakingCharacters: Array<{
     npcId: string;
     displayName: string;
-    voicePreset: 'Aoede' | 'Kore' | 'af_heart' | 'af_bella';
+    voicePreset: 'Aoede' | 'Kore' | 'af_heart' | 'af_bella' | 'lfm3_omni_2b_24khz';
     openingLine: string;
   }>;
   maxShortsClipSeconds?: number; // Strictly <= 59.0s (default 58.5s) when used for YouTube Shorts
@@ -141,6 +141,75 @@ export const MUSCLE_MEMORY_SHARED_SKILLS: readonly MuscleMemorySkillRule[] = [
     targetAgents: ['google-gemini', 'claude-fable', 'hermes-opsis'],
     patternSummary:
       'Route high-volume structured JSON classification (live-npc-lab intent & onlinerecycle.net e-waste grading) through gpt-6-luna Decisions API ($0.10/1M tokens) or Gemini 3.8/2.5 Flash.',
+  },
+  {
+    id: 'mm-graph-mind-zero-llm-save',
+    sourceAgent: 'google-gemini',
+    targetAgents: ['openai-codex', 'claude-fable', 'hermes-opsis'],
+    patternSummary:
+      'Use Graph-MIND local directed-graph serialization for codebase entities, call hierarchies, and session history on save with zero LLM token overhead, paired with T5500 ai-memory (:49374).',
+  },
+] as const;
+
+export interface Local16GbGpuToolSpec {
+  id: 'lfm3-omni-2b' | 'hob-local-mcp' | 'graph-mind-local';
+  name: string;
+  nodeIp: '192.168.0.8' | '192.168.0.40' | '192.168.0.15';
+  vramBudgetGb: number;
+  contextWindow: number;
+  capabilities: readonly string[];
+  zeroCloudCost: boolean;
+}
+
+/**
+ * Canonical Local 16 GB GPU & Zero-LLM-Overhead Coding/Voice Stack
+ * (Sabretooth 192.168.0.8 16 GB AMD Radeon RX 6800 + 3-Node Fleet).
+ */
+export const LOCAL_16GB_GPU_FLEET_TOOLS: readonly Local16GbGpuToolSpec[] = [
+  {
+    id: 'lfm3-omni-2b',
+    name: 'Liquid AI LFM3-Omni-2B (GGUF / ONNX / 32K Context)',
+    nodeIp: '192.168.0.8',
+    vramBudgetGb: 16,
+    contextWindow: 32768,
+    capabilities: [
+      'text-in',
+      'image-in',
+      'video-in',
+      'audio-16khz-in',
+      'text-out',
+      'speech-24khz-out',
+      't0-ambient-npc-voice',
+    ],
+    zeroCloudCost: true,
+  },
+  {
+    id: 'hob-local-mcp',
+    name: 'Hob (MIT Open-Source On-Device Gemma 4 & GPT-OSS + MCP Desktop Processor)',
+    nodeIp: '192.168.0.8',
+    vramBudgetGb: 16,
+    contextWindow: 131072,
+    capabilities: [
+      'offline-document-analysis',
+      'local-code-processing',
+      'gemma4-local',
+      'mcp-connectors',
+    ],
+    zeroCloudCost: true,
+  },
+  {
+    id: 'graph-mind-local',
+    name: 'Graph-MIND (Local Directed-Graph Codebase Memory — Zero LLM Calls on Save)',
+    nodeIp: '192.168.0.40',
+    vramBudgetGb: 0,
+    contextWindow: 0,
+    capabilities: [
+      'entity-graph-serialization',
+      'call-hierarchy-tracking',
+      'session-history-graph',
+      'zero-llm-save-hook',
+    ],
+    zeroCloudCost: true,
   },
 ] as const;
 

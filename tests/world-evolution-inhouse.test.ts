@@ -14,6 +14,7 @@ import {
   Genie4WorldBridge,
   PRE_GASSED_BASE_DAO_WALLETS,
   MUSCLE_MEMORY_SHARED_SKILLS,
+  LOCAL_16GB_GPU_FLEET_TOOLS,
 } from '../src/engine/world/genie4-world-bridge.ts';
 
 test('100% In-House DREAM Engine: cycles AI-governed world evolution phases (Day Dream 3D -> Nightmare 3D -> 16-Bit Circle-Craft)', () => {
@@ -122,6 +123,13 @@ test('100% In-House DREAM Engine: Genie 4 live 3D world steering, MuscleMemory s
   assert.equal(shrinersWallet?.chainId, 8453);
 
   // Verify MuscleMemory cross-agent skill rules exist
-  assert.equal(MUSCLE_MEMORY_SHARED_SKILLS.length >= 3, true);
+  assert.equal(MUSCLE_MEMORY_SHARED_SKILLS.length >= 4, true);
+
+  // Verify Local 16 GB GPU & Zero-LLM-Save Fleet Tools (LFM3-Omni-2B, Hob, Graph-MIND)
+  assert.equal(LOCAL_16GB_GPU_FLEET_TOOLS.length, 3);
+  const lfm3 = LOCAL_16GB_GPU_FLEET_TOOLS.find((t) => t.id === 'lfm3-omni-2b');
+  assert.equal(lfm3?.nodeIp, '192.168.0.8');
+  assert.equal(lfm3?.contextWindow, 32768);
+  assert.equal(lfm3?.capabilities.includes('speech-24khz-out'), true);
 });
 
