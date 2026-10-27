@@ -184,3 +184,33 @@ Extracted from `CitySampleDreamOnline.uproject` modules (`CitySampleMassCrowd`, 
    - Sidewalks and roadways are represented as directed hermite spline lanes with width, speed limit (`12 m/s` urban avenues, `1.4 m/s` pedestrian walkways), and intersection phase masks.
 3. **2D Spatial Hash Sensor Grid (`CitySampleSensorGrid`):**
    - Crowd and traffic entities query a uniform 2D spatial hash grid (`4.0 m × 4.0 m` cells) rather than $O(N^2)$ raycasts to maintain separation distance, yield at crosswalks, and clear paths around combat arenas during Nightfall.
+
+
+---
+
+## 6. CapCut (`9.7.0.4153`) & HubSpot Inbound CRM Clean-Room Specification (`2026-10-27`)
+
+### 6.1 Cryptographic REA Evidence Ledger (CapCut `9.7.0.4153`)
+- **`ev_e307022a61d3c0bdc69f3a1aaef57ce00972fea65b79eafc4c97c81f8ae54ecc`**:
+  - **Target**: `C:\Users\joshl\AppData\Local\CapCut\Apps\9.7.0.4153\CapCut.exe`
+  - **SHA-256**: `fbc3ef1624351a0ac94795c6f7d664e286f3f4074ce0844cfb912515e618f92b` (`90,536 bytes`, `PE32+ x86_64`)
+- **`ev_5977c02b9cb6baba37eb483f97097b98754a13439ba96e76d0bb72f4e5724d0f`**:
+  - **Target**: `C:\Users\joshl\AppData\Local\CapCut\Apps\9.7.0.4153\VEConfig.dll`
+  - **SHA-256**: `61d3f2dfb4a2d9efb45e2666810adef661a6d37fcd03d4ec88205ac63c063068` (`321,960 bytes`, `PE32+ x86_64`)
+- **`ev_572b753e7997a36f0f50c39c97d3b3cc6f4f734eed70775f35a941e7e6a36b54` / `ev_c5e5dcf74c3591751bc07912684fcc62360550cba0edbd07ec935e59a97e9d65`**:
+  - **Target**: `C:\Users\joshl\AppData\Local\CapCut\Apps\9.7.0.4153\Resources\lvop_intelligent_crop`
+  - **Root Artifact SHA-256**: `899c97f205e60a85a599a5ef4748467c9c320aad334458ef50d69500481e780a`
+
+### 6.2 Clean-Room Functional Patterns Extracted for `OPSis Cut & Reach Studio`
+1. **6-Stage Autonomous Video Editing Pipeline**:
+   - **Stage 1 — Semantic Material Indexing (`material_understanding`)**: Transcribe and tag raw video/gameplay/podcast segments into timestamped semantic blocks.
+   - **Stage 2 — Hook & Climax Extraction (`highlight`)**: Identify the highest-retention 3-second opening hook and emotional peak (`hook_window_us`).
+   - **Stage 3 — Multi-Variant Script & Edit Plan (`script`)**: Produce 3 candidate edit plans and narration scripts in `--dry-run` mode before committing timeline changes.
+   - **Stage 4 — Smart Speech Cut (`speaker`)**: Automatically strip filler words, dead silences (`> 250,000 us`), and repeated phrases.
+   - **Stage 5 — Long-to-Short Condenser (`lvc`)**: Condense source footage into a vertical `9:16` (`1080x1920`, `60 fps`) Short strictly capped at `<= 58,500,000 us` (`58.5s`, hard ceiling `59,000,000 us` = `59.0s`).
+   - **Stage 6 — Beat-Synced BGM Ducking & Transition SFX (`align_bgm_with_video`)**: Align BGM to clip duration, duck BGM by `-14 dB` under female voiceover (`Gemini Aoede/Kore`, `Kokoro-82M af_heart/af_bella`, or `Liquid AI LFM3-Omni-2B` 24 kHz), add transition SFX at cuts, and fade out smoothly.
+2. **Microsecond-Revisioned Multi-Track Timeline (`timeline-draft-cli` & `text_to_video_template`)**:
+   - Integer microsecond timestamps (`position_us`, `duration_us`), optimistic concurrency (`expected_timeline_revision`, `request_id`), placement modes (`append`, `ripple`, `overwrite`), and normalized 9:16 safe-zone text coordinates (`y = 0.6544` top hook, `y = 0.0432` center word-by-word captions with `border_width = 0.06`, `y = -0.5712` lower-third CTA).
+3. **100% Google / YouTube Data API v3 & Inbound CRM Compliance Wall**:
+   - Zero unofficial scraping, zero headless browser upload bots, and zero robotic TTS.
+   - Official YouTube Data API v3 (`videos.insert` OAuth2) with `selfDeclaredMadeForKids: false`, `containsSyntheticMedia: true` (when realistic synthetic media is present), and mandatory one-click human approval in the high-contrast `OPSis Cut & Reach GUI`.
