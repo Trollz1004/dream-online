@@ -16,6 +16,8 @@ import {
   createSkyDomeGeometry,
   createMonolithGeometry,
   createCyberKnightGeometries,
+  createCircleCraftCharacterGeometries,
+  createCylinderDiscGeometry,
   MeshGeometry,
   MaterialProperties
 } from './scene/mesh.ts';
@@ -24,6 +26,7 @@ import { Vec3 } from './math/vec3.ts';
 import { AmbientSynth } from './audio/ambient-synth.ts';
 import { CombatManager } from './combat/combat-manager.ts';
 import { StudioConfigManager } from './studioConfig.ts';
+import { WorldEvolutionDirector, quantizeColor16Bit, EvolutionPhase } from './world/world-evolution.ts';
 
 export class DreamEngine {
   private canvas: HTMLCanvasElement;
@@ -32,10 +35,12 @@ export class DreamEngine {
   readonly input: InputManager;
   private controller: CharacterController;
   private cyberKnightGeoms: ReturnType<typeof createCyberKnightGeometries>;
+  private circleKnightGeoms: ReturnType<typeof createCircleCraftCharacterGeometries>;
 
-  // Authoritative Combat Manager & Live DREAM Studio Config
+  // Authoritative Combat Manager, Live DREAM Studio Config & AI World Evolution Director
   readonly combat: CombatManager = new CombatManager();
   readonly studio: StudioConfigManager = new StudioConfigManager();
+  readonly evolution: WorldEvolutionDirector = new WorldEvolutionDirector();
 
   // Scene entities
   private sceneRoot: SceneNode;
@@ -54,8 +59,10 @@ export class DreamEngine {
   private groundMesh: MeshGeometry;
   private playerCapsuleMesh: MeshGeometry;
   private monolithMesh: MeshGeometry;
+  private circleMonolithMesh: MeshGeometry;
   private visorMesh: MeshGeometry;
   private sentinelMesh: MeshGeometry;
+  private circleSentinelMesh: MeshGeometry;
   private sentinelEyeMesh: MeshGeometry;
   private beamMesh: MeshGeometry;
   private telegraphMesh: MeshGeometry;
@@ -112,11 +119,14 @@ export class DreamEngine {
     this.groundMesh = createGroundPlane(300, 16);
     this.playerCapsuleMesh = createCapsuleGeometry(0.45, 1.9, 24, 8);
     this.cyberKnightGeoms = createCyberKnightGeometries();
+    this.circleKnightGeoms = createCircleCraftCharacterGeometries();
     this.monolithMesh = createMonolithGeometry(1, 1, 1);
+    this.circleMonolithMesh = createCylinderDiscGeometry(0.55, 1.0, 0.55, 0, 0.5, 0, 16);
     this.visorMesh = createMonolithGeometry(1, 1, 1);
 
     // Combat Geometries
     this.sentinelMesh = createMonolithGeometry(1.2, 2.6, 1.2);
+    this.circleSentinelMesh = createCylinderDiscGeometry(0.6, 2.6, 0.6, 0, 1.3, 0, 16);
     this.sentinelEyeMesh = createMonolithGeometry(0.35, 0.25, 0.35);
     this.beamMesh = createMonolithGeometry(2.2, 1.8, 26.0);
     this.telegraphMesh = createMonolithGeometry(0.2, 0.05, 26.0);
@@ -236,7 +246,26 @@ export class DreamEngine {
   toggleDayNight(): 'day' | 'night' {
     const mode = this.renderer.toggleWorldMode();
     this.ambientSynth.setMode(mode);
+    this.evolution.setPhase(mode === 'night' ? 'nightmare_3d' : 'day_dream_3d', 'Manual Day/Night Shift');
     return mode;
+  }
+
+  setEvolutionPhase(phase: EvolutionPhase): EvolutionPhase {
+    const evt = this.evolution.setPhase(phase, 'AI World Reality Morph');
+    if (phase === 'nightmare_3d' && this.renderer.worldMode !== 'night') {
+      this.renderer.toggleWorldMode();
+      this.ambientSynth.setMode('night');
+    } else if (phase === 'day_dream_3d' && this.renderer.worldMode !== 'day') {
+      this.renderer.toggleWorldMode();
+      this.ambientSynth.setMode('day');
+    }
+    this.combat.say(evt.title);
+    return this.evolution.phase;
+  }
+
+  cycleEvolutionPhase(): EvolutionPhase {
+    const evt = this.evolution.cyclePhase();
+    return this.setEvolutionPhase(evt.phase);
   }
 
   toggleViewMode(): 'third-person' | 'first-person' {
@@ -548,28 +577,36 @@ export class DreamEngine {
     // Player Cyber-Knight Avatar items
     // (glow yellow during invulnerable window and only then; recovery shows red)
     const isNight = this.renderer.worldMode === 'night';
+    const isCircle16 = this.evolution.isCircle16Bit;
+    const q16 = (c: [number, number, number]): [number, number, number] =>
+      isCircle16 ? quantizeColor16Bit(c) : c;
     const charCfg = this.studio.character;
     if (this.camera.viewMode === 'third-person') {
       const glow = this.combat.getCharacterGlow(this.renderer.worldMode);
       const isAttacking = this.combat.attack.isAttacking() || this.combat.heavy.isAttacking() || this.combat.lunge.isLunging();
 
-      const baseArmorRgb = isNight ? charCfg.armorColorNight : charCfg.armorColorDay;
+      const rawArmorRgb = glow.isGlow
+        ? ([glow.r, glow.g, glow.b] as [number, number, number])
+        : isNight
+        ? charCfg.armorColorNight
+        : charCfg.armorColorDay;
+      const baseArmorRgb = q16(rawArmorRgb);
       const armorMat: MaterialProperties = {
-        baseColor: glow.isGlow
-          ? [glow.r, glow.g, glow.b, 1.0]
-          : [baseArmorRgb[0], baseArmorRgb[1], baseArmorRgb[2], 1.0],
+        baseColor: [baseArmorRgb[0], baseArmorRgb[1], baseArmorRgb[2], 1.0],
         roughness: glow.isGlow ? 0.15 : charCfg.armorRoughness,
         metallic: charCfg.armorMetallic,
-        emissive: glow.isGlow ? [glow.r, glow.g, glow.b] : [0, 0, 0],
+        emissive: glow.isGlow ? baseArmorRgb : [0, 0, 0],
         emissiveIntensity: glow.isGlow ? 3.5 : 0.0,
         rimIntensity: glow.isGlow ? 1.0 : this.studio.shader.rimIntensity,
       };
 
-      const opticColor: [number, number, number] = glow.isGlow
-        ? [glow.r, glow.g, glow.b]
-        : isNight
-        ? charCfg.visorColorNight
-        : charCfg.visorColorDay;
+      const opticColor: [number, number, number] = q16(
+        glow.isGlow
+          ? [glow.r, glow.g, glow.b]
+          : isNight
+          ? charCfg.visorColorNight
+          : charCfg.visorColorDay
+      );
       const opticMat: MaterialProperties = {
         baseColor: [opticColor[0], opticColor[1], opticColor[2], 1.0],
         roughness: 0.1,
@@ -579,9 +616,10 @@ export class DreamEngine {
         rimIntensity: 1.0,
       };
 
-      const bladeColor: [number, number, number] = isAttacking
+      const rawBladeColor: [number, number, number] = isAttacking
         ? (isNight ? charCfg.bladeColorNight : charCfg.bladeColorDay)
         : (isNight ? [charCfg.bladeColorNight[0] * 0.5, charCfg.bladeColorNight[1] * 0.5, charCfg.bladeColorNight[2] * 0.6] : [charCfg.bladeColorDay[0] * 0.45, charCfg.bladeColorDay[1] * 0.45, charCfg.bladeColorDay[2] * 0.45]);
+      const bladeColor = q16(rawBladeColor);
       const bladeMat: MaterialProperties = {
         baseColor: [bladeColor[0], bladeColor[1], bladeColor[2], 1.0],
         roughness: 0.1,
@@ -591,7 +629,7 @@ export class DreamEngine {
         rimIntensity: 1.0,
       };
 
-      const ck = this.cyberKnightGeoms;
+      const ck = isCircle16 ? this.circleKnightGeoms : this.cyberKnightGeoms;
       const wm = this.playerNode.worldMatrix;
       items.push(
         { geometry: ck.torso, modelMatrix: wm, material: armorMat },
@@ -612,8 +650,9 @@ export class DreamEngine {
 
     // 8. Hollow Sentinel items
     const sentinelStanding = !this.combat.sentinel.isDown();
+    const sentBase = q16(sentinelStanding ? [0.22, 0.22, 0.28] : [0.12, 0.12, 0.14]);
     const sentinelMat: MaterialProperties = {
-      baseColor: sentinelStanding ? [0.22, 0.22, 0.28, 1.0] : [0.12, 0.12, 0.14, 1.0],
+      baseColor: [sentBase[0], sentBase[1], sentBase[2], 1.0],
       roughness: 0.6,
       metallic: 0.3,
       emissive: sentinelStanding ? [0.05, 0.05, 0.1] : [0, 0, 0],
@@ -621,7 +660,7 @@ export class DreamEngine {
       rimIntensity: 0.6,
     };
     items.push({
-      geometry: this.sentinelMesh,
+      geometry: isCircle16 ? this.circleSentinelMesh : this.sentinelMesh,
       modelMatrix: this.sentinelNode.worldMatrix,
       material: sentinelMat,
     });
@@ -704,16 +743,18 @@ export class DreamEngine {
     }
 
     // 10. Monolith & Dynamic Studio Entities
+    const monoBase = q16(isNight ? [0.12, 0.16, 0.24] : [0.38, 0.34, 0.30]);
     const monolithMat: MaterialProperties = {
-      baseColor: isNight ? [0.12, 0.16, 0.24, 1.0] : [0.38, 0.34, 0.30, 1.0],
+      baseColor: [monoBase[0], monoBase[1], monoBase[2], 1.0],
       roughness: 0.7,
       metallic: 0.1,
       emissive: isNight ? [0.05, 0.15, 0.35] : [0, 0, 0],
       emissiveIntensity: isNight ? 0.3 : 0,
     };
+    const activeMonolithMesh = isCircle16 ? this.circleMonolithMesh : this.monolithMesh;
     for (const mNode of this.monolithNodes) {
       items.push({
-        geometry: this.monolithMesh,
+        geometry: activeMonolithMesh,
         modelMatrix: mNode.worldMatrix,
         material: monolithMat,
       });
@@ -729,16 +770,17 @@ export class DreamEngine {
       tempNode.updateWorldMatrix(this.sceneRoot.worldMatrix);
 
       const isSelected = this.studio.selectedEntityId === ent.id;
+      const entRgb = q16(ent.color);
       const entMat: MaterialProperties = {
-        baseColor: [ent.color[0], ent.color[1], ent.color[2], 1.0],
+        baseColor: [entRgb[0], entRgb[1], entRgb[2], 1.0],
         roughness: ent.type === 'rea-artifact' || ent.type === 'pylon' ? 0.15 : 0.55,
         metallic: ent.type === 'rea-artifact' || ent.type === 'pylon' ? 0.85 : 0.25,
-        emissive: isSelected ? [1.0, 0.82, 0.12] : ent.color,
+        emissive: isSelected ? [1.0, 0.82, 0.12] : entRgb,
         emissiveIntensity: isSelected ? Math.max(2.0, ent.emissiveIntensity) : ent.emissiveIntensity,
         rimIntensity: isSelected ? 1.0 : 0.65,
       };
       items.push({
-        geometry: this.monolithMesh,
+        geometry: activeMonolithMesh,
         modelMatrix: tempNode.worldMatrix,
         material: entMat,
       });

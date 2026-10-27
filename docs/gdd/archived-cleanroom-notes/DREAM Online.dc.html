@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/antigravity-design-system-58589bbe-5ea8-4572-a1ed-feeae43480fa/tokens/fonts.css">
+  <link rel="stylesheet" href="_ds/antigravity-design-system-58589bbe-5ea8-4572-a1ed-feeae43480fa/tokens/colors.css">
+  <link rel="stylesheet" href="_ds/antigravity-design-system-58589bbe-5ea8-4572-a1ed-feeae43480fa/tokens/typography.css">
+  <link rel="stylesheet" href="_ds/antigravity-design-system-58589bbe-5ea8-4572-a1ed-feeae43480fa/tokens/spacing.css">
+  <link rel="stylesheet" href="_ds/antigravity-design-system-58589bbe-5ea8-4572-a1ed-feeae43480fa/tokens/effects.css">
+  <link rel="stylesheet" href="_ds/antigravity-design-system-58589bbe-5ea8-4572-a1ed-feeae43480fa/styles.css">
+  <script src="_ds/antigravity-design-system-58589bbe-5ea8-4572-a1ed-feeae43480fa/_ds_bundle.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; background: #020617; }
+    @keyframes supoPulse { 0%,100% { box-shadow: 0 0 8px rgba(34,211,238,0.8); } 50% { box-shadow: 0 0 16px rgba(34,211,238,1); } }
+  </style>
+</helmet>
+<div style="position:relative;width:100vw;height:100vh;overflow:hidden;background:#020617;font-family:Inter,sans-serif;color:#e2e8f0;user-select:none">
+
+  <x-import component-from-global-scope="dream-world" from="./dream-engine.js" style="position:absolute;inset:0;width:100%;height:100%" hint-size="100%,100%"></x-import>
+
+  <!-- ============ START GATE ============ -->
+  <sc-if value="{{ showStart }}" hint-placeholder-val="{{ true }}">
+    <div data-screen-label="Start Gate" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 20% 0%, rgba(34,211,238,0.12), transparent 50%), radial-gradient(ellipse at 80% 100%, rgba(236,72,153,0.12), transparent 50%), rgba(2,6,23,0.82)">
+      <x-import component-from-global-scope="LiveDotField" from="./dot-field.jsx" focus="center" pitch="16" style="position:absolute;inset:0;width:100%;height:100%" hint-size="100%,100%"></x-import>
+      <div style="position:relative;width:440px;max-width:92vw;background:rgba(15,23,42,0.6);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.1);box-shadow:0 0 40px rgba(0,0,0,0.5);border-radius:32px;padding:32px;display:flex;flex-direction:column;gap:14px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;color:#22d3ee">FREE TO PLAY · OPEN WORLD · MMORPG</div>
+        <div style="font-size:13px;color:#94a3b8;line-height:1.5">Wake up in Haven. Grind, fish, flag for PvP if you dare. Sup@ grows as you do. It was all a DREAM — or it still is.</div>
+        
+        <sc-if value="{{ hasSave }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ onContinue }}" style="padding:12px;border-radius:12px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;background:rgba(34,211,238,0.15);border:1px solid rgba(34,211,238,0.5);color:#22d3ee;box-shadow:0 0 15px rgba(34,211,238,0.25);transition:all 150ms ease" style-hover="filter:brightness(1.15)">CONTINUE THE DREAM · {{ saveName }} · LV {{ saveLvl }}</button>
+        </sc-if>
+        <input value="{{ nameVal }}" onChange="{{ onName }}" placeholder="Character name" maxLength="14" style="padding:12px 14px;border-radius:12px;background:rgba(2,6,23,0.6);border:1px solid rgba(255,255,255,0.12);color:#e2e8f0;font-family:Inter,sans-serif;font-size:14px;outline:none">
+        <div style="font-size:46px;line-height:1;font-weight:900;font-style:italic;background:linear-gradient(to right,#22d3ee,#ec4899);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 14px rgba(34,211,238,0.35))">DREAM ONLINE</div><div style="display:flex;gap:8px">
+          <button onClick="{{ pickF }}" style="{{ fBtnStyle }}" style-hover="filter:brightness(1.15)">FEMALE</button>
+          <button onClick="{{ pickM }}" style="{{ mBtnStyle }}" style-hover="filter:brightness(1.15)">MALE</button>
+        </div>
+        <label style="display:flex;gap:10px;align-items:center;font-size:13px;color:#cbd5e1;cursor:pointer"><input type="checkbox" checked="{{ ageChecked }}" onChange="{{ toggleAge }}" style="accent-color:#22d3ee;width:16px;height:16px">I am 13 or older</label>
+        <label style="display:flex;gap:10px;align-items:center;font-size:13px;color:#cbd5e1;cursor:pointer"><input type="checkbox" checked="{{ tosChecked }}" onChange="{{ toggleTos }}" style="accent-color:#22d3ee;width:16px;height:16px">I accept the Terms of Service</label>
+        <label style="display:flex;gap:10px;align-items:center;font-size:13px;color:#cbd5e1;cursor:pointer"><input type="checkbox" checked="{{ adultChecked }}" onChange="{{ toggleAdult }}" style="accent-color:#22d3ee;width:16px;height:16px"></input>I am 18 or older — unfiltered mode <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#64748b">(OPTIONAL · OTHERWISE FILTERED TEEN MODE)</span></label>
+        <button onClick="{{ onStart }}" disabled="{{ startDisabled }}" style="{{ startBtnStyle }}" style-hover="filter:brightness(1.12)" style-active="transform:scale(0.97)">ENTER THE DREAM</button>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:0.08em;color:#475569;line-height:1.6">PROTOTYPE BUILD ·&nbsp; &nbsp; &nbsp; &nbsp; ACCOUNTS,&nbsp; &nbsp; &nbsp; &nbsp; 2FA &amp; SQUARE&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;CHECKOUT SIMULATED ·&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; PAY FOR CONVENIENCE, NEVER POWER · SWIMWEAR-KEEP IN MIND- KIDS PLAY THIS GAME , NO NUDITY&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; Not that Type of DREAM</div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ HUD ============ -->
+  <sc-if value="{{ started }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Game HUD">
+
+      <!-- player card -->
+      <div style="position:absolute;top:14px;left:14px;width:272px;background:rgba(15,23,42,0.6);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.1);box-shadow:0 0 20px rgba(0,0,0,0.5);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:7px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="flex:1;font-weight:700;font-size:15px;color:{{ pnameColor }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ pname }}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#22d3ee;border:1px solid rgba(34,211,238,0.4);border-radius:8px;padding:2px 7px">LV {{ lvl }}</div>
+        </div>
+        <div style="height:12px;border-radius:6px;background:rgba(2,6,23,0.7);overflow:hidden;position:relative">
+          <div style="position:absolute;inset:0;width:{{ hpPct }};background:linear-gradient(to right,#059669,#34d399);transition:width 200ms ease"></div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:9px;color:#f0fdf4">{{ hpText }}</div>
+        </div>
+        <div style="height:7px;border-radius:4px;background:rgba(2,6,23,0.7);overflow:hidden">
+          <div style="height:100%;width:{{ xpPct }};background:linear-gradient(to right,#22d3ee,#ec4899);transition:width 200ms ease"></div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#64748b">WPN {{ wText }}</div>
+            <div style="height:4px;border-radius:2px;background:rgba(2,6,23,0.7);overflow:hidden"><div style="height:100%;width:{{ wPct }};background:{{ wColor }}"></div></div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#64748b">ARM {{ aText }}</div>
+            <div style="height:4px;border-radius:2px;background:rgba(2,6,23,0.7);overflow:hidden"><div style="height:100%;width:{{ aPct }};background:{{ aColor }}"></div></div>
+          </div>
+        </div>
+        <sc-if value="{{ teenMode }}" hint-placeholder-val="{{ false }}">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.08em;color:#67e8f9;border:1px solid rgba(103,232,249,0.3);background:rgba(103,232,249,0.06);border-radius:8px;padding:3px 8px">FILTERED MODE · TEEN ACCOUNT</div>
+        </sc-if>
+        <sc-if value="{{ redActive }}" hint-placeholder-val="{{ false }}">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#f43f5e;border:1px solid rgba(244,63,94,0.4);background:rgba(244,63,94,0.1);border-radius:8px;padding:4px 8px">{{ redPillText }}</div>
+        </sc-if>
+      </div>
+
+      <!-- SupO whisper -->
+      <sc-if value="{{ showSupoLine }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;top:170px;left:14px;width:272px;box-sizing:border-box;background:rgba(15,23,42,0.6);backdrop-filter:blur(12px);border:1px solid rgba(34,211,238,0.25);box-shadow:0 0 20px rgba(0,0,0,0.5);border-radius:14px;padding:10px 14px;display:flex;gap:11px;align-items:center">
+          <div style="width:14px;height:14px;border-radius:50%;background:#a5f3fc;animation:supoPulse 1.6s infinite;flex-shrink:0"></div>
+          <div style="display:flex;flex-direction:column;gap:2px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.1em;color:#22d3ee">{{ supoTier }}</div>
+            <div style="font-size:13px;color:#e2e8f0;line-height:1.4">{{ supoLine }}</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- currencies + panel buttons -->
+      <div style="position:absolute;top:14px;right:14px;display:flex;gap:7px;align-items:center">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#fbbf24;background:rgba(15,23,42,0.6);backdrop-filter:blur(12px);border:1px solid rgba(251,191,36,0.3);border-radius:10px;padding:7px 12px">{{ sols }} SOLS</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#22d3ee;background:rgba(15,23,42,0.6);backdrop-filter:blur(12px);border:1px solid rgba(34,211,238,0.35);border-radius:10px;padding:7px 12px;box-shadow:0 0 12px rgba(34,211,238,0.15)">{{ needs }} NEEDS</div>
+        <button onClick="{{ openShop }}" style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#020617;background:linear-gradient(to right,#22d3ee,#06b6d4);border:none;border-radius:10px;padding:8px 12px;cursor:pointer;box-shadow:0 0 15px rgba(34,211,238,0.4);transition:all 150ms ease" style-hover="filter:brightness(1.1)" style-active="transform:scale(0.95)">+ NEEDS</button>
+        <button onClick="{{ openInv }}" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#94a3b8;background:rgba(15,23,42,0.6);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:8px 10px;cursor:pointer;transition:all 150ms ease" style-hover="filter:brightness(1.3)">INV · I</button>
+        <button onClick="{{ openChar }}" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#94a3b8;background:rgba(15,23,42,0.6);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:8px 10px;cursor:pointer;transition:all 150ms ease" style-hover="filter:brightness(1.3)">CHAR · C</button>
+      </div>
+
+      <!-- boss banner -->
+      <sc-if value="{{ showBanner }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;top:72px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:13px;color:#fde68a;background:rgba(15,23,42,0.7);backdrop-filter:blur(12px);border:1px solid rgba(245,158,11,0.45);border-radius:12px;padding:10px 20px;box-shadow:0 0 25px rgba(245,158,11,0.3);white-space:nowrap">{{ banner }}</div>
+      </sc-if>
+
+      <!-- log -->
+      <div style="position:absolute;left:14px;bottom:92px;width:280px;display:flex;flex-direction:column;gap:3px;pointer-events:none">
+        <sc-for list="{{ logRows }}" as="row" hint-placeholder-count="0">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.45;color:{{ row.color }};text-shadow:0 1px 3px #000">{{ row.msg }}</div>
+        </sc-for>
+      </div>
+
+      <!-- hotbar -->
+      <div style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px">
+        <div style="display:flex;gap:7px">
+          <button onClick="{{ onAttack }}" style="width:66px;height:54px;border-radius:12px;background:rgba(15,23,42,0.65);backdrop-filter:blur(12px);border:1px solid rgba(34,211,238,0.4);color:#22d3ee;font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;transition:all 150ms ease" style-hover="filter:brightness(1.25)" style-active="transform:scale(0.93)">ATTACK ␣</button>
+          <button onClick="{{ onDodge }}" style="width:66px;height:54px;border-radius:12px;background:rgba(15,23,42,0.65);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.12);color:#e2e8f0;font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;transition:all 150ms ease" style-hover="filter:brightness(1.25)" style-active="transform:scale(0.93)">DODGE ⇧</button>
+          <button onClick="{{ onTonic }}" style="width:66px;height:54px;border-radius:12px;background:rgba(15,23,42,0.65);backdrop-filter:blur(12px);border:1px solid rgba(52,211,153,0.35);color:#34d399;font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;transition:all 150ms ease" style-hover="filter:brightness(1.25)" style-active="transform:scale(0.93)">TONIC ×{{ tonicCount }} Q</button>
+          <button onClick="{{ onDance }}" style="width:66px;height:54px;border-radius:12px;background:rgba(15,23,42,0.65);backdrop-filter:blur(12px);border:1px solid rgba(244,114,182,0.4);color:#f472b6;font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;transition:all 150ms ease" style-hover="filter:brightness(1.25)" style-active="transform:scale(0.93)">DANCE ♪ B</button>
+          <sc-if value="{{ showFish }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ onFish }}" style="width:66px;height:54px;border-radius:12px;background:rgba(15,23,42,0.65);backdrop-filter:blur(12px);border:1px solid rgba(34,211,238,0.5);color:#67e8f9;font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;box-shadow:0 0 14px rgba(34,211,238,0.3);transition:all 150ms ease" style-hover="filter:brightness(1.25)" style-active="transform:scale(0.93)">FISH F</button>
+          </sc-if>
+          <sc-if value="{{ showInteract }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ onInteract }}" style="width:66px;height:54px;border-radius:12px;background:rgba(15,23,42,0.65);backdrop-filter:blur(12px);border:1px solid rgba(233,185,73,0.5);color:#e9b949;font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;box-shadow:0 0 14px rgba(233,185,73,0.25);transition:all 150ms ease" style-hover="filter:brightness(1.25)" style-active="transform:scale(0.93)">{{ interactLabel }} E</button>
+          </sc-if>
+          <button onClick="{{ onFlag }}" style="{{ flagStyle }}" style-hover="filter:brightness(1.25)" style-active="transform:scale(0.93)">{{ flagLabel }} P</button>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.08em;color:#475569;text-shadow:0 1px 2px #000;pointer-events:none">WASD / TAP MOVE · SPACE ATTACK · SHIFT DODGE · E INTERACT · ESC CLOSE</div>
+      </div>
+
+      <!-- fishing minigame -->
+      <sc-if value="{{ fishActive }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;bottom:104px;left:50%;transform:translateX(-50%);width:430px;background:rgba(15,23,42,0.7);backdrop-filter:blur(12px);border:1px solid rgba(34,211,238,0.35);box-shadow:0 0 25px rgba(34,211,238,0.2);border-radius:14px;padding:13px 16px;display:flex;flex-direction:column;gap:9px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#67e8f9">STRIKE WHEN THE MARKER IS IN THE GLOW · SPACE</div>
+          <div style="position:relative;height:16px;border-radius:8px;background:rgba(2,6,23,0.8);overflow:hidden">
+            <div style="position:absolute;top:0;bottom:0;left:{{ zoneLeft }};width:{{ zoneW }};background:rgba(34,211,238,0.35);border-left:1px solid #22d3ee;border-right:1px solid #22d3ee;box-shadow:0 0 10px rgba(34,211,238,0.6)"></div>
+            <div style="position:absolute;top:0;bottom:0;left:{{ markerLeft }};width:3px;background:#f8fafc;box-shadow:0 0 6px #fff"></div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- side panel -->
+      <sc-if value="{{ panelOpen }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Side Panel" style="position:absolute;top:64px;right:14px;bottom:96px;width:364px;box-sizing:border-box;background:rgba(15,23,42,0.72);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.1);box-shadow:0 0 30px rgba(0,0,0,0.55);border-radius:20px;padding:16px;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:9px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="flex:1;font-weight:900;font-style:italic;font-size:15px;letter-spacing:0.04em">{{ panelTitle }}</div>
+            <button onClick="{{ closePanel }}" style="background:none;border:none;color:#64748b;font-size:16px;cursor:pointer;padding:2px 6px" style-hover="color:#e2e8f0">✕</button>
+          </div>
+
+          <sc-if value="{{ panelInv }}" hint-placeholder-val="{{ false }}">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#64748b">{{ invCount }} / {{ invCap }} SLOTS</div>
+            <sc-for list="{{ invRows }}" as="it" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:7px;background:rgba(2,6,23,0.5);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:8px 10px">
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.label }}</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#64748b">{{ it.sub }}</div>
+                </div>
+                <sc-if value="{{ it.canEquip }}" hint-placeholder-val="{{ false }}"><button onClick="{{ it.equip }}" style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:5px 8px;border-radius:8px;background:rgba(34,211,238,0.12);border:1px solid rgba(34,211,238,0.4);color:#22d3ee;cursor:pointer" style-hover="filter:brightness(1.3)">EQUIP</button></sc-if>
+                <sc-if value="{{ it.canUse }}" hint-placeholder-val="{{ false }}"><button onClick="{{ it.use }}" style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:5px 8px;border-radius:8px;background:rgba(244,114,182,0.12);border:1px solid rgba(244,114,182,0.4);color:#f472b6;cursor:pointer" style-hover="filter:brightness(1.3)">USE</button></sc-if>
+                <sc-if value="{{ it.canSell }}" hint-placeholder-val="{{ false }}"><button onClick="{{ it.sell }}" style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:5px 8px;border-radius:8px;background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.4);color:#fbbf24;cursor:pointer" style-hover="filter:brightness(1.3)">SELL</button></sc-if>
+                <sc-if value="{{ it.canStash }}" hint-placeholder-val="{{ false }}"><button onClick="{{ it.stash }}" style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:5px 8px;border-radius:8px;background:rgba(233,185,73,0.12);border:1px solid rgba(233,185,73,0.4);color:#e9b949;cursor:pointer" style-hover="filter:brightness(1.3)">STASH</button></sc-if>
+              </div>
+            </sc-for>
+          </sc-if>
+
+          <sc-if value="{{ panelChar }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:14px;background:radial-gradient(circle at 30% 20%, rgba(34,211,238,0.12), rgba(2,6,23,0.6));border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:14px">
+              <div style="position:relative;width:64px;height:64px;flex-shrink:0">
+                <div style="position:absolute;inset:6px;border-radius:50%;background:#22d3ee;border:3px solid {{ genderRing }};box-shadow:0 0 18px rgba(34,211,238,0.5)"></div>
+                <div style="position:absolute;right:-2px;top:-2px;width:14px;height:14px;border-radius:50%;background:#a5f3fc;animation:supoPulse 1.6s infinite"></div>
+                <div style="position:absolute;left:10px;bottom:-2px;right:10px;height:8px;border-radius:4px;background:{{ outfitColor }}"></div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+                <div style="font-weight:800;font-size:15px;color:{{ pnameColor }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ pname }}</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#64748b">LV {{ lvl }} · {{ supoTier }}</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#94a3b8">{{ outfitLabel }}</div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div style="background:rgba(2,6,23,0.5);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px"><div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#64748b">ATTACK</div><div style="font-size:22px;font-weight:800;color:#22d3ee">{{ statAtk }}</div></div>
+              <div style="background:rgba(2,6,23,0.5);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px"><div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#64748b">DEFENSE</div><div style="font-size:22px;font-weight:800;color:#34d399">{{ statDef }}</div></div>
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#64748b;margin-top:4px">EQUIPPED</div>
+            <div style="display:flex;align-items:center;gap:8px;background:rgba(2,6,23,0.5);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:8px 10px"><div style="flex:1;font-size:13px">{{ weaponLabel }}</div><button onClick="{{ onUnequipW }}" style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:4px 8px;border-radius:8px;background:none;border:1px solid rgba(255,255,255,0.15);color:#94a3b8;cursor:pointer">UNEQUIP</button></div>
+            <div style="display:flex;align-items:center;gap:8px;background:rgba(2,6,23,0.5);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:8px 10px"><div style="flex:1;font-size:13px">{{ armorLabel }}</div><button onClick="{{ onUnequipA }}" style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:4px 8px;border-radius:8px;background:none;border:1px solid rgba(255,255,255,0.15);color:#94a3b8;cursor:pointer">UNEQUIP</button></div>
+            <div style="display:flex;align-items:center;gap:8px;background:rgba(2,6,23,0.5);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:8px 10px"><div style="flex:1;font-size:13px">{{ outfitLabel }}</div><button onClick="{{ onUnequipO }}" style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:4px 8px;border-radius:8px;background:none;border:1px solid rgba(255,255,255,0.15);color:#94a3b8;cursor:pointer">UNEQUIP</button></div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#64748b;margin-top:4px">ACTIVE PERKS</div>
+            <sc-for list="{{ perkLines }}" as="pk" hint-placeholder-count="1">
+              <div style="font-size:12px;color:#67e8f9">{{ pk.text }}</div>
+            </sc-for>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#64748b;margin-top:4px">KARMA</div>
+            <div style="font-size:12px;color:{{ karmaColor }}">{{ karmaText }}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#64748b;margin-top:4px">COMPANION</div>
+            <div style="font-size:12px;color:#a5f3fc">{{ supoTier }} — grows with your level: Murmur → Whisper → Voice → Chorus → ULTRACODE.</div>
+          </sc-if>
+
+          <sc-if value="{{ panelShop }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:12px;color:#94a3b8;line-height:1.5">Convenience and style — never power. Everything here drops rarely in-world too.</div>
+            <sc-for list="{{ shopRows }}" as="it" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center;gap:8px;background:rgba(2,6,23,0.5);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:9px 10px">
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13px;font-weight:600">{{ it.name }}</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#64748b;line-height:1.5">{{ it.blurb }}</div>
+                </div>
+                <button onClick="{{ it.buy }}" disabled="{{ it.disabled }}" style="{{ it.buyStyle }}" style-hover="filter:brightness(1.2)">{{ it.buyLabel }}</button>
+              </div>
+            </sc-for>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#64748b;margin-top:6px">GET NEEDS · SQUARE CHECKOUT</div>
+            <div style="display:flex;gap:8px">
+              <sc-for list="{{ packRows }}" as="pk" hint-placeholder-count="3">
+                <button onClick="{{ pk.buy }}" style="flex:1;display:flex;flex-direction:column;gap:3px;align-items:center;padding:11px 6px;border-radius:12px;background:rgba(34,211,238,0.08);border:1px solid rgba(34,211,238,0.35);cursor:pointer;transition:all 150ms ease" style-hover="filter:brightness(1.25)" style-active="transform:scale(0.96)">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#22d3ee">{{ pk.label }}</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#64748b">${{ pk.usd }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#475569;line-height:1.6">13+ · UNDER 18 NEEDS A GUARDIAN TO PURCHASE · PAY FOR CONVENIENCE, NEVER POWER</div>
+          </sc-if>
+
+          <sc-if value="{{ panelSmith }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:12px;color:#e9b949;font-style:italic">"Back again, dreamer. Gear tells me everything I need to know about you."</div>
+            <button onClick="{{ onRepair }}" style="padding:11px;border-radius:12px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;background:rgba(233,185,73,0.14);border:1px solid rgba(233,185,73,0.5);color:#e9b949;box-shadow:0 0 14px rgba(233,185,73,0.18);transition:all 150ms ease" style-hover="filter:brightness(1.2)" style-active="transform:scale(0.97)">{{ repairLabel }}</button>
+            <sc-if value="{{ atSmith }}" hint-placeholder-val="{{ false }}">
+              <button onClick="{{ onSellLoot }}" style="padding:9px;border-radius:12px;font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.35);color:#fbbf24;transition:all 150ms ease" style-hover="filter:brightness(1.2)">SELL ALL MATERIALS, FISH &amp; TREASURE</button>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#64748b;margin-top:4px">FABLE SELLS · SOLS</div>
+              <sc-for list="{{ vendorRows }}" as="it" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:8px;background:rgba(2,6,23,0.5);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:8px 10px">
+                  <div style="flex:1;font-size:13px;font-weight:600">{{ it.name }}</div>
+                  <button onClick="{{ it.buy }}" disabled="{{ it.disabled }}" style="{{ it.buyStyle }}" style-hover="filter:brightness(1.2)">{{ it.price }} S</button>
+                </div>
+              </sc-for>
+            </sc-if>
+          </sc-if>
+
+          <sc-if value="{{ panelStash }}" hint-placeholder-val="{{ false }}">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#64748b">STASH · {{ stashCount }} / {{ stashCap }}</div>
+            <sc-for list="{{ stashRows }}" as="it" hint-placeholder-count="2">
+              <div style="display:flex;align-items:center;gap:8px;background:rgba(2,6,23,0.5);border:1px solid rgba(233,185,73,0.15);border-radius:10px;padding:8px 10px">
+                <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">{{ it.label }}</div><div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#64748b">{{ it.sub }}</div></div>
+                <button onClick="{{ it.withdraw }}" style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:5px 8px;border-radius:8px;background:rgba(34,211,238,0.12);border:1px solid rgba(34,211,238,0.4);color:#22d3ee;cursor:pointer" style-hover="filter:brightness(1.3)">TAKE</button>
+              </div>
+            </sc-for>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#64748b;margin-top:4px">YOUR BAG — TAP STASH TO DEPOSIT</div>
+            <sc-for list="{{ invRows }}" as="it" hint-placeholder-count="2">
+              <div style="display:flex;align-items:center;gap:8px;background:rgba(2,6,23,0.5);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:8px 10px">
+                <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">{{ it.label }}</div><div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#64748b">{{ it.sub }}</div></div>
+                <button onClick="{{ it.stash }}" style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:5px 8px;border-radius:8px;background:rgba(233,185,73,0.12);border:1px solid rgba(233,185,73,0.4);color:#e9b949;cursor:pointer" style-hover="filter:brightness(1.3)">STASH</button>
+              </div>
+            </sc-for>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <!-- checkout modal -->
+      <sc-if value="{{ showCheckout }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Checkout" style="position:absolute;inset:0;background:rgba(2,6,23,0.72);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center">
+          <div style="width:390px;max-width:90vw;background:rgba(15,23,42,0.7);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.12);box-shadow:0 0 40px rgba(0,0,0,0.6);border-radius:24px;padding:26px;display:flex;flex-direction:column;gap:13px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:#64748b">SQUARE CHECKOUT · SIMULATED</div>
+            <div style="font-size:24px;font-weight:800">{{ coLabel }}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:15px;color:#22d3ee">${{ coUsd }} USD</div>
+            <div style="font-size:12px;color:#94a3b8;line-height:1.55">NEEDS is product currency — it buys convenience and style, never power. Design prototype: no real charge is made.</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#475569">UNDER 18 REQUIRES A GUARDIAN · TOS ACCEPTED AT SIGNUP · ALL SALES FINAL</div>
+            <button onClick="{{ onCoConfirm }}" style="padding:13px;border-radius:12px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;background:linear-gradient(to right,#22d3ee,#06b6d4);border:none;color:#020617;box-shadow:0 0 18px rgba(34,211,238,0.4);transition:all 150ms ease" style-hover="filter:brightness(1.1)" style-active="transform:scale(0.97)">CONFIRM PURCHASE</button>
+            <button onClick="{{ onCoCancel }}" style="padding:9px;border-radius:12px;font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;background:none;border:1px solid rgba(255,255,255,0.12);color:#94a3b8;transition:all 150ms ease" style-hover="filter:brightness(1.4)">CANCEL</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- death overlay -->
+      <sc-if value="{{ showDeath }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Death Screen" style="position:absolute;inset:0;background:rgba(2,6,23,0.8);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center">
+          <div style="width:420px;max-width:90vw;text-align:center;display:flex;flex-direction:column;gap:14px;align-items:center">
+            <div style="font-size:52px;font-weight:900;font-style:italic;color:#f43f5e;text-shadow:0 0 30px rgba(244,63,94,0.5)">{{ deathTitle }}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#94a3b8">{{ deathVerb }} {{ deathBy }}</div>
+            <div style="font-size:13px;color:#cbd5e1;line-height:1.5">{{ lostNote }}</div>
+            <button onClick="{{ onRespawn }}" style="padding:13px 34px;border-radius:14px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;background:rgba(34,211,238,0.14);border:1px solid rgba(34,211,238,0.5);color:#22d3ee;box-shadow:0 0 18px rgba(34,211,238,0.25);transition:all 150ms ease" style-hover="filter:brightness(1.2)" style-active="transform:scale(0.96)">WAKE IN HAVEN</button>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;xpRate&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:1,&quot;min&quot;:0.5,&quot;max&quot;:3,&quot;step&quot;:0.1,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Grind Tuning&quot;},&quot;lootLuck&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:1,&quot;min&quot;:0.5,&quot;max&quot;:4,&quot;step&quot;:0.1,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Grind Tuning&quot;},&quot;bossRush&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Grind Tuning&quot;}}">
+class Component extends DCLogic {
+  state = { name: '', gender: 'f', age: false, tos: false, adult: false, checkout: null };
+
+  componentDidMount() {
+    this._poll = setInterval(() => {
+      if (window.DREAM) {
+        clearInterval(this._poll); this._poll = null;
+        window.DREAM.onHud(() => this.forceUpdate());
+        this.forceUpdate();
+      }
+    }, 80);
+  }
+  componentWillUnmount() { if (this._poll) clearInterval(this._poll); }
+  act(t, p) { if (window.DREAM) window.DREAM.act(t, p); }
+
+  renderVals() {
+    window.DREAM_CFG = {
+      xpRate: this.props.xpRate ?? 1,
+      lootLuck: this.props.lootLuck ?? 1,
+      bossRush: this.props.bossRush ?? false
+    };
+    const D = window.DREAM ? window.DREAM.state : null;
+    const st = this.state;
+    const t = Date.now();
+    const mono = "font-family:'JetBrains Mono',monospace;";
+    const pill = (on) => 'flex:1;padding:11px;border-radius:10px;' + mono + 'font-size:12px;font-weight:700;cursor:pointer;transition:all 150ms ease;' +
+      (on ? 'background:rgba(34,211,238,0.15);border:1px solid rgba(34,211,238,0.55);color:#22d3ee'
+          : 'background:rgba(2,6,23,0.5);border:1px solid rgba(255,255,255,0.1);color:#64748b');
+    const buyBtn = (ok) => mono + 'font-size:10px;font-weight:700;padding:7px 10px;border-radius:9px;white-space:nowrap;transition:all 150ms ease;' +
+      (ok ? 'background:rgba(34,211,238,0.14);border:1px solid rgba(34,211,238,0.5);color:#22d3ee;cursor:pointer'
+          : 'background:rgba(2,6,23,0.4);border:1px solid rgba(255,255,255,0.08);color:#475569;cursor:default');
+
+    if (!D) {
+      return { loading: true, showStart: false, started: false, hasSave: false, logRows: [], invRows: [], shopRows: [], packRows: [], vendorRows: [], stashRows: [], perkLines: [] };
+    }
+    const I = D.items;
+    const durInfo = (slot) => {
+      const it = D.eq[slot];
+      if (!it) return { pct: '0%', color: '#475569', text: '—' };
+      const max = I[it.key].maxDur, pct = Math.round(it.dur / max * 100);
+      return {
+        pct: pct + '%',
+        color: it.dur === 0 ? '#f43f5e' : pct < 25 ? '#fbbf24' : '#22d3ee',
+        text: it.dur + '/' + max + (it.dur === 0 ? ' BROKEN' : '')
+      };
+    };
+    const w = durInfo('weapon'), a = durInfo('armor');
+    const redActive = t < D.redUntil;
+    const count = (key) => D.inv.reduce((n, r) => n + (r.key === key ? (r.qty || 1) : 0), 0);
+    const owns = (key) => (D.eq.outfit && D.eq.outfit.key === key) ||
+      D.inv.some(r => r.key === key) || D.stash.some(r => r.key === key);
+
+    const rowSub = (row) => {
+      const def = I[row.key];
+      let sub = def.kind.toUpperCase();
+      if (row.dur != null && def.maxDur) sub += ' · DUR ' + row.dur + '/' + def.maxDur;
+      if (def.atk) sub += ' · ATK ' + def.atk;
+      if (def.def) sub += ' · DEF ' + def.def;
+      if (def.val) sub += ' · SELLS ' + Math.floor(def.val / 2) + 'S';
+      return sub;
+    };
+    const invRows = D.inv.map((row, i) => {
+      const def = I[row.key];
+      const gear = ['weapon', 'armor', 'outfit'].includes(def.kind);
+      return {
+        id: i + '-' + row.key,
+        label: def.name + (row.qty > 1 ? ' ×' + row.qty : ''),
+        sub: rowSub(row),
+        canEquip: gear,
+        canUse: !!(row.key === 'tonic' || def.writ || def.camper),
+        canSell: !!def.val && D.near.smith && D.panel === 'inventory',
+        canStash: D.panel === 'stash',
+        equip: () => this.act('equip', { i }),
+        use: () => this.act('useItem', { i }),
+        sell: () => this.act('sellItem', { i }),
+        stash: () => this.act('stashDeposit', { i })
+      };
+    });
+    const stashRows = D.stash.map((row, i) => ({
+      id: 's' + i + '-' + row.key,
+      label: I[row.key].name + (row.qty > 1 ? ' ×' + row.qty : ''),
+      sub: rowSub(row),
+      withdraw: () => this.act('stashWithdraw', { i })
+    }));
+    const shopRows = D.needsShop.map(e => {
+      const key = e.stash ? 'stash8' : e.key;
+      const def = e.stash ? { name: 'Stash Expansion +8', kind: 'service' } : I[e.key];
+      const owned = !e.stash && (def.kind === 'outfit' || def.kind === 'emote') && owns(e.key);
+      const ok = !owned && D.needs >= e.price;
+      const dispName = D.teen && (e.key === 'swim_t' || e.key === 'swim_r') ? def.name + ' — Full-Cover' : def.name;
+      return {
+        id: key, name: dispName, blurb: e.blurb,
+        buyLabel: owned ? 'OWNED' : e.price + ' N',
+        disabled: !ok, buyStyle: buyBtn(ok),
+        buy: () => { if (ok) this.act('buyNeeds', { key }); }
+      };
+    });
+    const packRows = D.packs.map(pk => ({
+      id: pk.id, label: pk.n + ' NEEDS', usd: pk.usd,
+      buy: () => this.setState({ checkout: pk })
+    }));
+    const vendorRows = D.vendor.map(key => {
+      const def = I[key];
+      const ok = D.sols >= def.val;
+      return {
+        id: key, name: def.name, price: def.val,
+        disabled: !ok, buyStyle: buyBtn(ok),
+        buy: () => { if (ok) this.act('buyVendor', { key }); }
+      };
+    });
+    let missing = 0;
+    ['weapon', 'armor'].forEach(s => { const it = D.eq[s]; if (it) missing += I[it.key].maxDur - it.dur; });
+    const repairCost = missing ? Math.max(5, Math.ceil(missing / 2)) : 0;
+    const wAtk = D.eq.weapon ? I[D.eq.weapon.key].atk * (D.eq.weapon.dur > 0 ? 1 : 0.5) : 2;
+    const aDef = D.eq.armor ? I[D.eq.armor.key].def * (D.eq.armor.dur > 0 ? 1 : 0.5) : 0;
+    const outfit = D.eq.outfit ? I[D.eq.outfit.key] : null;
+    const perkLines = [];
+    if (outfit) {
+      if (outfit.fish) perkLines.push({ id: 'f', text: '+' + Math.round(outfit.fish * 100) + '% fishing success' });
+      if (outfit.fishXp) perkLines.push({ id: 'fx', text: '+' + Math.round(outfit.fishXp * 100) + '% fishing XP' });
+      if (outfit.healBoost) perkLines.push({ id: 'h', text: 'Tonics heal +' + Math.round(outfit.healBoost * 100) + '%' });
+      if (outfit.xpB) perkLines.push({ id: 'x', text: '+' + Math.round(outfit.xpB * 100) + '% XP' });
+      if (outfit.durResist) perkLines.push({ id: 'd', text: 'Durability drains ' + Math.round(outfit.durResist * 100) + '% slower' });
+    }
+    if (!perkLines.length) perkLines.push({ id: 'none', text: 'No outfit perks active — the NEEDS shop has style with benefits.' });
+
+    const interactLabel = D.near.bag ? 'LOOT' : (D.near.smith || D.near.camper) ? 'SMITHY' : D.near.chest ? 'STASH' : '';
+    const f = D.fishing;
+    const co = st.checkout;
+    const panelTitles = { inventory: 'INVENTORY', character: 'CHARACTER', shop: 'NEEDS SHOP', smith: "FABLE'S BLACKSMITH", stash: 'STASH' };
+
+    return {
+      loading: false,
+      // start gate
+      showStart: !D.started,
+      started: D.started,
+      hasSave: D.hasSave,
+      saveName: D.saveName, saveLvl: D.lvl,
+      nameVal: st.name,
+      onName: (e) => this.setState({ name: e.target.value }),
+      pickF: () => this.setState({ gender: 'f' }),
+      pickM: () => this.setState({ gender: 'm' }),
+      fBtnStyle: pill(st.gender === 'f'),
+      mBtnStyle: pill(st.gender === 'm'),
+      ageChecked: st.age, tosChecked: st.tos,
+      toggleAge: (e) => this.setState({ age: e.target.checked }),
+      toggleTos: (e) => this.setState({ tos: e.target.checked }),
+      adultChecked: st.adult,
+      toggleAdult: (e) => this.setState({ adult: e.target.checked }),
+      startDisabled: !(st.name.trim().length >= 2 && st.age && st.tos),
+      startBtnStyle: 'padding:14px;border-radius:14px;' + mono + 'font-size:14px;font-weight:700;transition:all 150ms ease;' +
+        ((st.name.trim().length >= 2 && st.age && st.tos)
+          ? 'cursor:pointer;background:linear-gradient(to right,#22d3ee,#06b6d4);border:none;color:#020617;box-shadow:0 0 20px rgba(34,211,238,0.45)'
+          : 'cursor:default;background:rgba(2,6,23,0.5);border:1px solid rgba(255,255,255,0.08);color:#475569'),
+      onStart: () => { if (st.name.trim().length >= 2 && st.age && st.tos) this.act('start', { mode: 'new', name: st.name.trim(), gender: st.gender, adult: st.adult }); },
+      onContinue: () => this.act('start', { mode: 'continue' }),
+      // hud
+      pname: D.name,
+      pnameColor: redActive ? '#f43f5e' : '#e2e8f0',
+      lvl: D.lvl,
+      hpPct: Math.round(Math.max(0, D.hp) / D.maxHp * 100) + '%',
+      hpText: Math.round(Math.max(0, D.hp)) + ' / ' + D.maxHp,
+      xpPct: Math.round(D.xp / D.xpNeed * 100) + '%',
+      sols: D.sols, needs: D.needs,
+      wPct: w.pct, wColor: w.color, wText: w.text,
+      aPct: a.pct, aColor: a.color, aText: a.text,
+      redActive,
+      teenMode: !!D.teen,
+      redPillText: 'RED NAME · GUARDS ' + (D.teen ? 'ZAP' : 'SHOOT') + ' ON SIGHT · CLEARS ' + Math.max(0, Math.ceil((D.redUntil - t) / 1000)) + 'S',
+      redRemain: Math.max(0, Math.ceil((D.redUntil - t) / 1000)) + 'S',
+      supoTier: D.supo.tier,
+      supoLine: D.supo.line,
+      showSupoLine: !!D.supo.line && !D.dead,
+      banner: D.banner, showBanner: !!D.banner,
+      logRows: D.log.map(r => ({
+        id: r.id, msg: r.msg,
+        color: r.cls === 'bad' ? '#f87171' : r.cls === 'good' ? '#34d399' : r.cls === 'warn' ? '#fbbf24' : r.cls === 'supo' ? '#67e8f9' : '#94a3b8'
+      })),
+      // hotbar
+      tonicCount: count('tonic'),
+      showFish: D.near.water && !f && !D.dead,
+      showInteract: !!interactLabel,
+      interactLabel,
+      flagLabel: D.flagged ? 'FLAGGED ⚔' : 'PVP FLAG',
+      flagStyle: 'width:74px;height:54px;border-radius:12px;backdrop-filter:blur(12px);' + mono + 'font-size:10px;cursor:pointer;transition:all 150ms ease;' +
+        (D.flagged ? 'background:rgba(244,63,94,0.2);border:1px solid rgba(244,63,94,0.65);color:#f43f5e;box-shadow:0 0 14px rgba(244,63,94,0.35)'
+                   : 'background:rgba(15,23,42,0.65);border:1px solid rgba(255,255,255,0.12);color:#94a3b8'),
+      onAttack: () => this.act('attack'),
+      onDodge: () => this.act('dodge'),
+      onTonic: () => this.act('usePotion'),
+      onDance: () => this.act('dance'),
+      onFish: () => this.act('castFish'),
+      onInteract: () => this.act('interact'),
+      onFlag: () => this.act('togglePvp'),
+      openInv: () => this.act('setPanel', { panel: 'inventory' }),
+      openChar: () => this.act('setPanel', { panel: 'character' }),
+      openShop: () => this.act('setPanel', { panel: 'shop' }),
+      closePanel: () => this.act('setPanel', { panel: D.panel }),
+      // fishing
+      fishActive: !!f,
+      markerLeft: f ? (f.p * 100).toFixed(1) + '%' : '0%',
+      zoneLeft: f ? ((f.zoneC - f.zoneW / 2) * 100).toFixed(1) + '%' : '0%',
+      zoneW: f ? (f.zoneW * 100).toFixed(1) + '%' : '0%',
+      // panels
+      panelOpen: !!D.panel && !D.dead,
+      panelTitle: panelTitles[D.panel] || '',
+      panelInv: D.panel === 'inventory',
+      panelChar: D.panel === 'character',
+      panelShop: D.panel === 'shop',
+      panelSmith: D.panel === 'smith',
+      panelStash: D.panel === 'stash',
+      atSmith: D.near.smith,
+      invRows, stashRows, shopRows, packRows, vendorRows, perkLines,
+      invCount: D.inv.length, invCap: D.invCap,
+      stashCount: D.stash.length, stashCap: D.stashCap,
+      statAtk: Math.round(wAtk + D.lvl * 1.5),
+      statDef: Math.round(aDef),
+      weaponLabel: D.eq.weapon ? I[D.eq.weapon.key].name + ' · ' + D.eq.weapon.dur + '/' + I[D.eq.weapon.key].maxDur : 'No weapon',
+      armorLabel: D.eq.armor ? I[D.eq.armor.key].name + ' · ' + D.eq.armor.dur + '/' + I[D.eq.armor.key].maxDur : 'No armor',
+      outfitLabel: D.eq.outfit ? I[D.eq.outfit.key].name : 'No outfit',
+      genderRing: D.gender === 'f' ? '#f472b6' : '#e2e8f0',
+      outfitColor: D.eq.outfit ? ({ swim_t: '#22d3ee', swim_r: '#0e7490', medic: '#f472b6', skin_v: '#fbbf24', crown: '#e9b949' }[D.eq.outfit.key] || '#334155') : '#334155',
+      onUnequipW: () => this.act('unequip', { slot: 'weapon' }),
+      onUnequipA: () => this.act('unequip', { slot: 'armor' }),
+      onUnequipO: () => this.act('unequip', { slot: 'outfit' }),
+      karmaText: redActive ? 'RED NAME — ' + D.pKills + ' player kills. Death drops half your bag. Guards execute on sight.'
+        : D.pKills > 0 ? D.pKills + ' player kill(s). Red name at 3.' : 'Clean. The world has no grudge against you.',
+      karmaColor: redActive ? '#f43f5e' : D.pKills > 0 ? '#fbbf24' : '#34d399',
+      onRepair: () => this.act('repairAll'),
+      repairLabel: repairCost ? 'REPAIR ALL GEAR · ' + repairCost + ' SOLS' : 'GEAR IS PRISTINE',
+      onSellLoot: () => this.act('sellLoot'),
+      // checkout
+      showCheckout: !!co,
+      coLabel: co ? co.n + ' NEEDS' : '',
+      coUsd: co ? co.usd : '',
+      onCoConfirm: () => { this.act('grantPack', { id: co.id }); this.setState({ checkout: null }); },
+      onCoCancel: () => this.setState({ checkout: null }),
+      // death
+      showDeath: D.dead,
+      deathBy: (D.deathBy || '').toUpperCase(),
+      deathTitle: D.teen ? 'KNOCKED OUT' : 'YOU DIED',
+      deathVerb: D.teen ? 'STOPPED BY' : 'SLAIN BY',
+      lostNote: D.lostItems ? D.lostItems + ' item(s) dropped where you fell — get back before someone else does.' : 'Your gear took 5 durability. FABLE will notice.',
+      onRespawn: () => this.act('respawn')
+    };
+  }
+}
+</script>
+</body>
+</html>

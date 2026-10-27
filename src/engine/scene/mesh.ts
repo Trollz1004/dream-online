@@ -385,3 +385,127 @@ export function createCyberKnightGeometries() {
     spine: createBoxGeometry(0.10, 0.54, 0.12, 0, 1.18, -0.20),
   };
 }
+
+/**
+ * Creates a radial cylinder / disc primitive (for "16-Bit Circle-Craft" mode — circles, never square cubes!).
+ * Every cross-section in XZ is a true radial polygon/circle of `radialSegments` sides with top and bottom disc caps.
+ */
+export function createCylinderDiscGeometry(
+  radiusX = 0.5,
+  height = 1.0,
+  radiusZ = radiusX,
+  ox = 0,
+  oy = 0,
+  oz = 0,
+  radialSegments = 16
+): MeshGeometry {
+  const segs = Math.max(8, radialSegments);
+  const hh = height * 0.5;
+  const minY = oy - hh;
+  const maxY = oy + hh;
+
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const uvs: number[] = [];
+  const indices: number[] = [];
+
+  // 1. Cylindrical side wall
+  for (let i = 0; i <= segs; i++) {
+    const u = i / segs;
+    const phi = u * Math.PI * 2;
+    const cosP = Math.cos(phi);
+    const sinP = Math.sin(phi);
+
+    const x = ox + radiusX * cosP;
+    const z = oz + radiusZ * sinP;
+
+    // Normal along radial outward direction
+    const nx = cosP;
+    const nz = sinP;
+
+    // Bottom ring vertex
+    positions.push(x, minY, z);
+    normals.push(nx, 0, nz);
+    uvs.push(u, 0);
+
+    // Top ring vertex
+    positions.push(x, maxY, z);
+    normals.push(nx, 0, nz);
+    uvs.push(u, 1);
+  }
+
+  for (let i = 0; i < segs; i++) {
+    const a = i * 2;
+    const b = a + 1;
+    const c = a + 2;
+    const d = a + 3;
+    indices.push(a, c, b);
+    indices.push(b, c, d);
+  }
+
+  // 2. Top circular disc cap (Y+)
+  const topCenterIdx = positions.length / 3;
+  positions.push(ox, maxY, oz);
+  normals.push(0, 1, 0);
+  uvs.push(0.5, 0.5);
+
+  for (let i = 0; i <= segs; i++) {
+    const phi = (i / segs) * Math.PI * 2;
+    const cosP = Math.cos(phi);
+    const sinP = Math.sin(phi);
+    positions.push(ox + radiusX * cosP, maxY, oz + radiusZ * sinP);
+    normals.push(0, 1, 0);
+    uvs.push(0.5 + 0.5 * cosP, 0.5 + 0.5 * sinP);
+  }
+  for (let i = 0; i < segs; i++) {
+    indices.push(topCenterIdx, topCenterIdx + 1 + i + 1, topCenterIdx + 1 + i);
+  }
+
+  // 3. Bottom circular disc cap (Y-)
+  const botCenterIdx = positions.length / 3;
+  positions.push(ox, minY, oz);
+  normals.push(0, -1, 0);
+  uvs.push(0.5, 0.5);
+
+  for (let i = 0; i <= segs; i++) {
+    const phi = (i / segs) * Math.PI * 2;
+    const cosP = Math.cos(phi);
+    const sinP = Math.sin(phi);
+    positions.push(ox + radiusX * cosP, minY, oz + radiusZ * sinP);
+    normals.push(0, -1, 0);
+    uvs.push(0.5 + 0.5 * cosP, 0.5 + 0.5 * sinP);
+  }
+  for (let i = 0; i < segs; i++) {
+    indices.push(botCenterIdx, botCenterIdx + 1 + i, botCenterIdx + 1 + i + 1);
+  }
+
+  return new MeshGeometry({
+    positions: new Float32Array(positions),
+    normals: new Float32Array(normals),
+    uvs: new Float32Array(uvs),
+    indices: indices.length > 65535 ? new Uint32Array(indices) : new Uint16Array(indices),
+  });
+}
+
+/**
+ * Creates the 16-Bit Circle-Craft character avatar where every limb, helm, visor,
+ * torso, core, pauldron, and blade is constructed from radial cylinders & circular discs
+ * ("16 bit circles chars not square like minecraft").
+ */
+export function createCircleCraftCharacterGeometries() {
+  return {
+    head: createCylinderDiscGeometry(0.18, 0.30, 0.18, 0, 1.62, 0, 16),
+    visor: createCylinderDiscGeometry(0.15, 0.08, 0.08, 0, 1.62, 0.15, 12),
+    torso: createCylinderDiscGeometry(0.27, 0.58, 0.20, 0, 1.16, 0, 16),
+    core: createCylinderDiscGeometry(0.09, 0.14, 0.06, 0, 1.25, 0.18, 12),
+    pauldronL: createCylinderDiscGeometry(0.13, 0.22, 0.13, -0.38, 1.38, 0, 12),
+    pauldronR: createCylinderDiscGeometry(0.13, 0.22, 0.13, 0.38, 1.38, 0, 12),
+    armL: createCylinderDiscGeometry(0.08, 0.52, 0.08, -0.36, 1.02, 0, 12),
+    armR: createCylinderDiscGeometry(0.08, 0.52, 0.08, 0.36, 1.02, 0, 12),
+    blade: createCylinderDiscGeometry(0.05, 0.75, 0.06, 0.38, 0.85, 0.25, 12),
+    hip: createCylinderDiscGeometry(0.22, 0.18, 0.17, 0, 0.78, 0, 16),
+    legL: createCylinderDiscGeometry(0.09, 0.68, 0.10, -0.15, 0.36, 0, 12),
+    legR: createCylinderDiscGeometry(0.09, 0.68, 0.10, 0.15, 0.36, 0, 12),
+    spine: createCylinderDiscGeometry(0.06, 0.54, 0.06, 0, 1.18, -0.20, 12),
+  };
+}

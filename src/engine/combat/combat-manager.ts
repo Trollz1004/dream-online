@@ -1,8 +1,7 @@
 /**
- * DREAM Engine — Combat Authoritative Manager
- * Orchestrates combat state, stamina/health pools, inputs, hit resolution,
- * sentinel interactions, and event logging.
- * Strict conformance to docs/gdd/02-action-combat.md and godot slice scripts.
+ * DREAM Engine — Combat Authoritative Manager (100% In-House AI-Built)
+ * Orchestrates combat state, stamina/health pools, consumables, GeminEYE companion shop,
+ * inputs, hit resolution, sentinel interactions, and event logging.
  */
 
 import { DashState } from './dash-state';
@@ -11,6 +10,8 @@ import { HeavyAttackState } from './heavy-attack-state';
 import { GuardState } from './guard-state';
 import { LungeState } from './lunge-state';
 import { BurstState } from './burst-state';
+import { ConsumablesState } from './consumables';
+import { GeminEyePetState, GeminEyePetShop } from './pet-shop';
 import { Combo } from './combo';
 import { HollowSentinel } from './sentinel';
 import { EventLog } from './event-log';
@@ -43,6 +44,9 @@ export class CombatManager {
   readonly guard = new GuardState();
   readonly lunge = new LungeState();
   readonly burst = new BurstState();
+  readonly consumables = new ConsumablesState();
+  readonly petState = new GeminEyePetState();
+  readonly petShop = new GeminEyePetShop();
   readonly sentinel = new HollowSentinel(new Vec3(0, 0, -10));
   readonly eventLog = new EventLog();
 
@@ -295,6 +299,11 @@ export class CombatManager {
     this.guard.advance(delta);
     this.lunge.advance(delta);
     this.burst.advance(delta);
+    this.petState.advance(delta);
+    const foodHeal = this.consumables.advance(delta);
+    if (foodHeal > 0) {
+      this.health = Math.min(CombatManager.HEALTH_MAX, this.health + foodHeal);
+    }
 
     this.eventAge += delta;
     this.hitFlashTime = Math.max(0.0, this.hitFlashTime - delta);

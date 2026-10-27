@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/antigravity-design-system-58589bbe-5ea8-4572-a1ed-feeae43480fa/tokens/fonts.css">
+  <link rel="stylesheet" href="_ds/antigravity-design-system-58589bbe-5ea8-4572-a1ed-feeae43480fa/tokens/colors.css">
+  <link rel="stylesheet" href="_ds/antigravity-design-system-58589bbe-5ea8-4572-a1ed-feeae43480fa/tokens/typography.css">
+  <link rel="stylesheet" href="_ds/antigravity-design-system-58589bbe-5ea8-4572-a1ed-feeae43480fa/tokens/spacing.css">
+  <link rel="stylesheet" href="_ds/antigravity-design-system-58589bbe-5ea8-4572-a1ed-feeae43480fa/tokens/effects.css">
+  <link rel="stylesheet" href="_ds/antigravity-design-system-58589bbe-5ea8-4572-a1ed-feeae43480fa/styles.css">
+  <script src="_ds/antigravity-design-system-58589bbe-5ea8-4572-a1ed-feeae43480fa/_ds_bundle.js"></script>
+  <style>
+    body { margin: 0; background: #020617; overflow: hidden; }
+    a { color: var(--ag-cyan); } a:hover { color: #67e8f9; }
+    @keyframes gmspin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+    @media (max-width: 1280px) { #gm-board { grid-template-columns: 200px minmax(0,1fr) 280px !important; } }
+    @media (max-width: 1000px) { #gm-board { grid-template-columns: minmax(0,1fr) !important; overflow: auto !important; } #gm-board > div { min-height: auto !important; overflow: visible !important; } }
+  </style>
+  <template id="__bundler_thumbnail" data-bg-color="#020617">
+    <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+      <rect width="1200" height="800" fill="#020617"/>
+      <g transform="translate(600,400)" fill="none" stroke-linecap="round">
+        <circle r="150" stroke="#22d3ee" stroke-width="10" stroke-dasharray="620 120"/>
+        <circle r="200" stroke="#e9b949" stroke-width="6" stroke-dasharray="300 240" transform="rotate(120)"/>
+        <circle r="80" fill="#22d3ee"/>
+      </g>
+      <text x="600" y="430" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="700" font-size="92" fill="#083344">@</text>
+    </svg>
+  </template>
+</helmet>
+<div data-screen-label="GM Control" style="height:100vh;display:flex;flex-direction:column;background:#020617;background-image:radial-gradient(ellipse at 10% 0%, rgba(34,211,238,0.10), transparent 50%), radial-gradient(ellipse at 90% 100%, rgba(233,185,73,0.08), transparent 50%), repeating-linear-gradient(0deg, rgba(37,99,235,0.06) 0 1px, transparent 1px 40px), repeating-linear-gradient(90deg, rgba(37,99,235,0.06) 0 1px, transparent 1px 40px);font-family:var(--ag-font-sans);color:var(--ag-text);user-select:none">
+
+  <!-- title bar -->
+  <div style="display:flex;align-items:center;gap:14px;padding:10px 18px;background:var(--ag-glass-fill);backdrop-filter:blur(var(--ag-glass-blur));border-bottom:1px solid var(--ag-glass-border);box-shadow:var(--ag-shadow-glass);flex-wrap:wrap">
+    <div style="width:30px;height:30px;border-radius:9px;background:rgba(34,211,238,0.12);border:1px solid rgba(34,211,238,0.4);display:flex;align-items:center;justify-content:center;font-family:var(--ag-font-mono);font-weight:700;font-size:14px;color:var(--ag-cyan);box-shadow:var(--ag-glow-cyan)">@</div>
+    <div style="font-size:16px;font-weight:900;font-style:italic;letter-spacing:0.02em;background:linear-gradient(to right,#22d3ee,#e9b949);-webkit-background-clip:text;background-clip:text;color:transparent">DREAM ONLINE · GM CONTROL</div>
+    <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.MonoLabel" size="{{ 9 }}" hint-size="auto,10px">local-dreamops · design-to-slice</x-import>
+    <div style="flex:1"></div>
+    <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.StatusPill" status="{{ apiPill }}" label="{{ apiPillLabel }}" hint-size="auto,22px"></x-import>
+    <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.MonoLabel" size="{{ 9 }}" color="var(--ag-gold)" hint-size="auto,10px">founder session · local only</x-import>
+    <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.MonoLabel" size="{{ 9 }}" hint-size="auto,10px">{{ updatedLabel }}</x-import>
+  </div>
+
+  <!-- board -->
+  <div id="gm-board" style="flex:1;min-height:0;display:grid;grid-template-columns:248px minmax(0,1fr) 336px;gap:12px;padding:12px">
+
+    <!-- LEFT rail -->
+    <div style="display:flex;flex-direction:column;gap:12px;min-height:0">
+      <div style="background:var(--ag-glass-fill);backdrop-filter:blur(var(--ag-glass-blur));border:1px solid var(--ag-glass-border);box-shadow:var(--ag-shadow-glass);border-radius:var(--ag-radius-xl);padding:12px;display:flex;flex-direction:column;gap:6px">
+        <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.MonoLabel" size="{{ 9 }}" style="padding:2px 6px 8px" hint-size="auto,10px">modes</x-import>
+        <sc-for list="{{ modeRows }}" as="m" hint-placeholder-count="5">
+          <button onClick="{{ m.pick }}" style="{{ m.style }}" style-hover="filter:brightness(1.2)" style-active="transform:scale(0.97)">{{ m.label }}</button>
+        </sc-for>
+      </div>
+
+      <div style="background:var(--ag-glass-fill);backdrop-filter:blur(var(--ag-glass-blur));border:1px solid var(--ag-glass-border);box-shadow:var(--ag-shadow-glass);border-radius:var(--ag-radius-xl);padding:14px;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:12px;font-weight:900;font-style:italic;letter-spacing:0.04em">TRUST HIERARCHY</div>
+          <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.MonoLabel" size="{{ 8 }}" hint-size="auto,10px">founder → lanes</x-import>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;border:1px solid rgba(233,185,73,0.4);background:rgba(233,185,73,0.08);border-radius:10px;padding:8px 10px">
+          <span style="font-family:var(--ag-font-mono);font-size:11px;font-weight:700;color:var(--ag-gold);width:22px">#1</span>
+          <div style="min-width:0"><div style="font-size:12px;font-weight:700;color:var(--ag-gold)">FOUNDER</div><div style="font-family:var(--ag-font-mono);font-size:8px;letter-spacing:0.12em;color:var(--ag-text-muted);text-transform:uppercase">approves safe_mode · rollback · doctrine</div></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;border:1px solid rgba(34,211,238,0.35);background:rgba(34,211,238,0.06);border-radius:10px;padding:8px 10px">
+          <span style="font-family:var(--ag-font-mono);font-size:11px;font-weight:700;color:var(--ag-cyan);width:22px">#2</span>
+          <div style="min-width:0"><div style="font-size:12px;font-weight:700;color:var(--ag-cyan)">CLAUDE CEO · HERMES CEO</div><div style="font-family:var(--ag-font-mono);font-size:8px;letter-spacing:0.12em;color:var(--ag-text-muted);text-transform:uppercase">standing lanes · proposals only</div></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;border:1px solid rgba(52,211,153,0.35);background:rgba(52,211,153,0.06);border-radius:10px;padding:8px 10px">
+          <span style="font-family:var(--ag-font-mono);font-size:11px;font-weight:700;color:var(--ag-success);width:22px">#3</span>
+          <div style="min-width:0"><div style="font-size:12px;font-weight:700;color:var(--ag-success)">CODEX</div><div style="font-family:var(--ag-font-mono);font-size:8px;letter-spacing:0.12em;color:var(--ag-text-muted);text-transform:uppercase">default executor · code lane</div></div>
+        </div>
+      </div>
+
+      <div style="flex:1;min-height:0;overflow:auto;background:var(--ag-glass-fill);backdrop-filter:blur(var(--ag-glass-blur));border:1px solid var(--ag-glass-border);box-shadow:var(--ag-shadow-glass);border-radius:var(--ag-radius-xl);padding:14px;display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:4px">
+          <div style="font-size:12px;font-weight:900;font-style:italic;letter-spacing:0.04em">ADAPTER LANES</div>
+          <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.MonoLabel" size="{{ 8 }}" hint-size="auto,10px">adapters/ mirror</x-import>
+        </div>
+        <sc-for list="{{ laneRows }}" as="l" hint-placeholder-count="6">
+          <div style="display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:9px;background:rgba(2,6,23,0.45);border:1px solid rgba(255,255,255,0.07)">
+            <div style="width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:var(--ag-font-mono);font-weight:700;font-size:11px;color:{{ l.color }};background:rgba(2,6,23,0.6);border:1px solid rgba(255,255,255,0.1)">{{ l.initial }}</div>
+            <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ l.name }}</div><div style="font-family:var(--ag-font-mono);font-size:8px;letter-spacing:0.1em;color:var(--ag-text-muted);text-transform:uppercase">{{ l.role }}</div></div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <!-- CENTER -->
+    <div style="min-height:0;overflow:auto;display:flex;flex-direction:column;gap:12px;padding-right:2px">
+
+      <!-- GM command -->
+      <div style="background:var(--ag-glass-fill);backdrop-filter:blur(var(--ag-glass-blur));border:1px solid var(--ag-glass-border);box-shadow:var(--ag-shadow-glass);border-radius:var(--ag-radius-xl);padding:14px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="font-size:12px;font-weight:900;font-style:italic;letter-spacing:0.04em">GM COMMAND</div>
+          <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.MonoLabel" size="{{ 8 }}" hint-size="auto,10px">POST /hotfix/propose · proposals only · appends to audit.log</x-import>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input value="{{ cmd }}" onChange="{{ onCmd }}" placeholder="Describe the hotfix or world change to propose…" style="flex:1 1 220px;min-width:0;padding:11px 14px;border-radius:12px;background:rgba(2,6,23,0.6);border:1px solid var(--ag-border-strong);color:var(--ag-text);font-family:var(--ag-font-sans);font-size:13px;outline:none"></input>
+          <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.Button" size="sm" disabled="{{ cmdDisabled }}" onClick="{{ propose }}" hint-size="auto,32px">PROPOSE HOTFIX</x-import>
+          <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.Button" size="sm" variant="outline" onClick="{{ planRollback }}" hint-size="auto,32px">PLAN ROLLBACK</x-import>
+        </div>
+        <div style="font-family:var(--ag-font-mono);font-size:8.5px;letter-spacing:0.1em;color:var(--ag-text-muted-deep);text-transform:uppercase">No destructive execution exists. A rollback is a plan the founder reads, never a button that fires.</div>
+      </div>
+
+      <!-- stack integrity -->
+      <sc-if value="{{ showStack }}" hint-placeholder-val="{{ true }}">
+        <div style="background:var(--ag-glass-fill);backdrop-filter:blur(var(--ag-glass-blur));border:1px solid var(--ag-glass-border);box-shadow:var(--ag-shadow-glass);border-radius:var(--ag-radius-xl);padding:14px;display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:12px;font-weight:900;font-style:italic;letter-spacing:0.04em">STACK INTEGRITY</div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.MonoLabel" size="{{ 8 }}" hint-size="auto,10px">polling 5s · pauses when hidden</x-import>
+              <button onClick="{{ refresh }}" title="Refresh" style="width:22px;height:22px;border-radius:6px;border:1px solid var(--ag-glass-border);background:rgba(2,6,23,0.5);color:var(--ag-text-muted);cursor:pointer;font-size:12px;line-height:1" style-hover="color:var(--ag-cyan);border-color:var(--ag-border-cyan)">↻</button>
+            </div>
+          </div>
+          <sc-for list="{{ svcRows }}" as="s" hint-placeholder-count="4">
+            <div style="display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:12px;background:rgba(2,6,23,0.45);border:1px solid rgba(255,255,255,0.07);flex-wrap:wrap">
+              <div style="flex:1 1 180px;min-width:0">
+                <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><span style="font-size:13px;font-weight:700;white-space:nowrap">{{ s.name }}</span><span style="font-family:var(--ag-font-mono);font-size:9px;color:var(--ag-text-muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">{{ s.url }}</span></div>
+                <div style="font-family:var(--ag-font-mono);font-size:8.5px;letter-spacing:0.1em;color:var(--ag-text-muted-deep);text-transform:uppercase;margin-top:3px">{{ s.note }}</div>
+              </div>
+              <span style="font-family:var(--ag-font-mono);font-size:9px;color:var(--ag-text-muted)">{{ s.ms }}</span>
+              <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.StatusPill" status="{{ s.pill }}" label="{{ s.pillLabel }}" hint-size="auto,22px"></x-import>
+            </div>
+          </sc-for>
+          <sc-if value="{{ mixedBlocked }}" hint-placeholder-val="{{ false }}">
+            <div style="font-family:var(--ag-font-mono);font-size:8.5px;letter-spacing:0.08em;color:var(--ag-warning);line-height:1.6;text-transform:uppercase">This console is served over https, so plain-http LAN targets are blocked by the browser. Open it over http (or the standalone file) on the same network, or put the node behind https. 127.0.0.1 targets are exempt.</div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <!-- world state -->
+      <sc-if value="{{ showWorld }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+          <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.StatCard" label="PLAYERS ONLINE" value="{{ wPlayers }}" note="{{ wSource }}" accent="cyan" live="{{ wLive }}" style="padding:16px" hint-size="100%,120px"></x-import>
+          <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.StatCard" label="DREAM SHIFT" value="{{ wShift }}" note="{{ wShiftNote }}" accent="gold" style="padding:16px" hint-size="100%,120px"></x-import>
+          <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.StatCard" label="PHASE" value="{{ wPhase }}" note="{{ wServer }}" accent="slate" style="padding:16px" hint-size="100%,120px"></x-import>
+          <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.StatCard" label="LAST GREEN CHECKPOINT" value="{{ wCheckpoint }}" note="Rollback target (checkpoint-0001 series). Plan only." accent="success" style="padding:16px" hint-size="100%,120px"></x-import>
+        </div>
+        <div style="background:var(--ag-glass-fill);backdrop-filter:blur(var(--ag-glass-blur));border:1px solid var(--ag-glass-border);box-shadow:var(--ag-shadow-glass);border-radius:var(--ag-radius-xl);padding:14px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:12px;font-weight:900;font-style:italic;letter-spacing:0.04em">LIVE EVENTS</div>
+            <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.MonoLabel" size="{{ 8 }}" hint-size="auto,10px">GET /events · POST /events/:id/pause</x-import>
+          </div>
+          <sc-if value="{{ noEvents }}" hint-placeholder-val="{{ true }}">
+            <div style="font-size:12px;color:var(--ag-text-muted);padding:6px 2px">{{ eventsEmptyNote }}</div>
+          </sc-if>
+          <sc-for list="{{ eventRows }}" as="e" hint-placeholder-count="0">
+            <div style="display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:12px;background:rgba(2,6,23,0.45);border:1px solid rgba(255,255,255,0.07)">
+              <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700">{{ e.name }}</div><div style="font-family:var(--ag-font-mono);font-size:8.5px;letter-spacing:0.1em;color:var(--ag-text-muted);text-transform:uppercase">{{ e.meta }}</div></div>
+              <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.Button" size="sm" variant="outline" onClick="{{ e.pause }}" hint-size="auto,30px">PAUSE</x-import>
+            </div>
+          </sc-for>
+          <div style="display:flex;align-items:center;gap:12px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.07);flex-wrap:wrap">
+            <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.MonoLabel" size="{{ 8 }}" hint-size="auto,10px">nightfall control</x-import>
+            <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.Button" size="sm" variant="outline" disabled="{{ true }}" hint-size="auto,30px">TRIGGER NIGHTFALL</x-import>
+            <span style="font-family:var(--ag-font-mono);font-size:8.5px;letter-spacing:0.08em;color:var(--ag-text-muted-deep);text-transform:uppercase">Manual prototype trigger — no endpoint yet (world_state.nextShiftHint)</span>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- NPC lab -->
+      <sc-if value="{{ showNpc }}" hint-placeholder-val="{{ true }}">
+        <div style="background:var(--ag-glass-fill);backdrop-filter:blur(var(--ag-glass-blur));border:1px solid var(--ag-glass-border);box-shadow:var(--ag-shadow-glass);border-radius:var(--ag-radius-xl);padding:14px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:10px"><div style="font-size:12px;font-weight:900;font-style:italic;letter-spacing:0.04em">LIVE NPC LAB</div><x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.MonoLabel" size="{{ 8 }}" hint-size="auto,10px">POST /npc/dialogue · playerId founder · zone first-gate</x-import></div>
+            <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.StatusPill" status="{{ labPill }}" label="{{ labPillLabel }}" hint-size="auto,22px"></x-import>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <sc-for list="{{ npcRows }}" as="n" hint-placeholder-count="5">
+              <button onClick="{{ n.pick }}" style="{{ n.style }}" style-hover="filter:brightness(1.2)">{{ n.label }}</button>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input value="{{ npcMsg }}" onChange="{{ onNpcMsg }}" placeholder="Say something to the NPC as the founder test player…" style="flex:1 1 220px;min-width:0;padding:10px 14px;border-radius:12px;background:rgba(2,6,23,0.6);border:1px solid var(--ag-border-strong);color:var(--ag-text);font-family:var(--ag-font-sans);font-size:13px;outline:none"></input>
+            <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.Button" size="sm" disabled="{{ npcDisabled }}" onClick="{{ sendNpc }}" hint-size="auto,32px">{{ npcBtnLabel }}</x-import>
+          </div>
+          <sc-if value="{{ hasNpcResp }}" hint-placeholder-val="{{ false }}">
+            <pre style="margin:0;padding:12px;border-radius:12px;background:rgba(2,6,23,0.6);border:1px solid rgba(255,255,255,0.08);font-family:var(--ag-font-mono);font-size:11px;line-height:1.55;color:var(--ag-text);white-space:pre-wrap;max-height:180px;overflow:auto;user-select:text">{{ npcResp }}</pre>
+          </sc-if>
+          <div style="font-family:var(--ag-font-mono);font-size:8.5px;letter-spacing:0.08em;color:var(--ag-text-muted-deep);text-transform:uppercase">Mock T0 reply by default · no cloud call · memory writes to npc-memory.jsonl · judge layer rejects rating / fourth-wall breaks pre-render</div>
+        </div>
+      </sc-if>
+
+      <!-- economy -->
+      <sc-if value="{{ showEcon }}" hint-placeholder-val="{{ true }}">
+        <div style="background:var(--ag-glass-fill);backdrop-filter:blur(var(--ag-glass-blur));border:1px solid var(--ag-glass-border);box-shadow:var(--ag-shadow-glass);border-radius:var(--ag-radius-xl);padding:14px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:10px"><div style="font-size:12px;font-weight:900;font-style:italic;letter-spacing:0.04em">ECONOMY SCAN</div><x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.MonoLabel" size="{{ 8 }}" hint-size="auto,10px">GET /economy/scan · NEEDS ledger is server-authoritative</x-import></div>
+            <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.MonoLabel" size="{{ 8 }}" color="var(--ag-gold)" hint-size="auto,10px">{{ econSource }}</x-import>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px">
+            <div style="padding:12px 14px;border-radius:14px;background:rgba(2,6,23,0.45);border:1px solid rgba(255,255,255,0.07)"><div style="font-family:var(--ag-font-mono);font-size:8px;letter-spacing:0.18em;color:var(--ag-text-muted-deep)">NEEDS MINTED</div><div style="font-size:26px;font-weight:900;margin-top:6px;color:var(--ag-cyan)">{{ eMinted }}</div></div>
+            <div style="padding:12px 14px;border-radius:14px;background:rgba(2,6,23,0.45);border:1px solid rgba(255,255,255,0.07)"><div style="font-family:var(--ag-font-mono);font-size:8px;letter-spacing:0.18em;color:var(--ag-text-muted-deep)">NEEDS SPENT</div><div style="font-size:26px;font-weight:900;margin-top:6px">{{ eSpent }}</div></div>
+            <div style="padding:12px 14px;border-radius:14px;background:rgba(2,6,23,0.45);border:1px solid rgba(255,255,255,0.07)"><div style="font-family:var(--ag-font-mono);font-size:8px;letter-spacing:0.18em;color:var(--ag-text-muted-deep)">SUSPICIOUS Δ</div><div style="font-size:26px;font-weight:900;margin-top:6px;color:{{ eSuspColor }}">{{ eSusp }}</div></div>
+            <div style="padding:12px 14px;border-radius:14px;background:rgba(2,6,23,0.45);border:1px solid rgba(255,255,255,0.07)"><div style="font-family:var(--ag-font-mono);font-size:8px;letter-spacing:0.18em;color:var(--ag-text-muted-deep)">ITEM WARNINGS</div><div style="font-size:26px;font-weight:900;margin-top:6px;color:{{ eWarnColor }}">{{ eWarn }}</div></div>
+          </div>
+          <div style="font-family:var(--ag-font-mono);font-size:8.5px;letter-spacing:0.08em;color:var(--ag-text-muted-deep);text-transform:uppercase">Duplicate · negative-balance · impossible-durability scans. Recorded values only, never projections.</div>
+        </div>
+      </sc-if>
+    </div>
+
+    <!-- RIGHT rail -->
+    <div style="display:flex;flex-direction:column;gap:12px;min-height:0">
+      <div style="background:var(--ag-glass-fill);backdrop-filter:blur(var(--ag-glass-blur));border:1px solid var(--ag-glass-border);box-shadow:var(--ag-shadow-glass);border-radius:var(--ag-radius-xl);padding:14px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:12px;font-weight:900;font-style:italic;letter-spacing:0.04em">INFERENCE BUDGET</div>
+          <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.StatusPill" status="live" label="AD-FUNDED" hint-size="auto,22px"></x-import>
+        </div>
+        <div style="font-size:13px;line-height:1.5;color:var(--ag-text-body)"><b style="color:var(--ag-text)">Live NPCs are free and unlimited for every player.</b> Ads pay for inference — the player never does. No AI paywall, no message cap, no premium brain.</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <sc-for list="{{ tierRows }}" as="t" hint-placeholder-count="4">
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:rgba(2,6,23,0.45);border:1px solid rgba(255,255,255,0.07)">
+              <span style="font-family:var(--ag-font-mono);font-size:10px;font-weight:700;color:{{ t.color }};width:22px">{{ t.tier }}</span>
+              <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700">{{ t.name }}</div><div style="font-family:var(--ag-font-mono);font-size:8px;letter-spacing:0.1em;color:var(--ag-text-muted);text-transform:uppercase">{{ t.lane }}</div></div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div style="padding:10px 12px;border-radius:12px;background:rgba(2,6,23,0.45);border:1px solid rgba(255,255,255,0.07)"><div style="font-family:var(--ag-font-mono);font-size:8px;letter-spacing:0.18em;color:var(--ag-text-muted-deep)">AD IMPRESSIONS</div><div style="font-size:20px;font-weight:900;margin-top:4px">0</div></div>
+          <div style="padding:10px 12px;border-radius:12px;background:rgba(2,6,23,0.45);border:1px solid rgba(255,255,255,0.07)"><div style="font-family:var(--ag-font-mono);font-size:8px;letter-spacing:0.18em;color:var(--ag-text-muted-deep)">INFERENCE CALLS</div><div style="font-size:20px;font-weight:900;margin-top:4px">0</div></div>
+        </div>
+        <div style="font-family:var(--ag-font-mono);font-size:8.5px;letter-spacing:0.08em;color:var(--ag-text-muted-deep);text-transform:uppercase">Shown only when backed by a production data source. Prototype: no ad network wired.</div>
+      </div>
+
+      <div style="background:var(--ag-glass-fill);backdrop-filter:blur(var(--ag-glass-blur));border:1px solid var(--ag-glass-border);box-shadow:var(--ag-shadow-glass);border-radius:var(--ag-radius-xl);padding:14px;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:12px;font-weight:900;font-style:italic;letter-spacing:0.04em">CHECKPOINTS</div>
+          <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.MonoLabel" size="{{ 8 }}" hint-size="auto,10px">GET /checkpoints</x-import>
+        </div>
+        <sc-for list="{{ cpRows }}" as="c" hint-placeholder-count="1">
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:rgba(2,6,23,0.45);border:1px solid rgba(52,211,153,0.25)">
+            <span style="width:8px;height:8px;border-radius:50%;background:var(--ag-success);box-shadow:0 0 8px var(--ag-success)"></span>
+            <div style="flex:1;min-width:0"><div style="font-family:var(--ag-font-mono);font-size:11px;font-weight:700">{{ c.id }}</div><div style="font-family:var(--ag-font-mono);font-size:8px;letter-spacing:0.1em;color:var(--ag-text-muted);text-transform:uppercase">{{ c.meta }}</div></div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="flex:1;min-height:0;display:flex;flex-direction:column;background:var(--ag-glass-fill);backdrop-filter:blur(var(--ag-glass-blur));border:1px solid var(--ag-glass-border);box-shadow:var(--ag-shadow-glass);border-radius:var(--ag-radius-xl);padding:14px;gap:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:12px;font-weight:900;font-style:italic;letter-spacing:0.04em">AUDIT · THIS SESSION</div>
+          <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.MonoLabel" size="{{ 8 }}" hint-size="auto,10px">mutations → game/server/audit.log</x-import>
+        </div>
+        <sc-if value="{{ noAudit }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:12px;color:var(--ag-text-muted)">No GM actions this session.</div>
+        </sc-if>
+        <div style="flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:5px">
+          <sc-for list="{{ auditRows }}" as="a" hint-placeholder-count="0">
+            <div style="display:flex;gap:8px;align-items:baseline;font-family:var(--ag-font-mono);font-size:10px;line-height:1.45"><span style="color:var(--ag-text-muted-deep)">{{ a.t }}</span><span style="color:{{ a.color }};font-weight:700">{{ a.kind }}</span><span style="color:var(--ag-text-body);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ a.msg }}</span></div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- footer -->
+  <div style="display:flex;align-items:center;gap:14px;padding:7px 18px;background:rgba(2,6,23,0.72);backdrop-filter:blur(12px);border-top:1px solid var(--ag-glass-border)">
+    <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.MonoLabel" size="{{ 8 }}" dot="var(--ag-cyan)" hint-size="auto,10px">GM control · not public-facing · JSON storage only</x-import>
+    <div style="flex:1"></div>
+    <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.MonoLabel" size="{{ 8 }}" hint-size="auto,10px">codex + claude built in · hermes supports · founder approves</x-import>
+    <x-import component-from-global-scope="ANTIGRAVITYDesignSystem_58589b.MonoLabel" size="{{ 8 }}" color="var(--ag-rose)" hint-size="auto,10px">#UntilNoKidInNeed</x-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;apiBase&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;http://192.168.0.8:20128/api/v1&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Endpoints&quot;},&quot;labBase&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;http://127.0.0.1:9127&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Endpoints&quot;},&quot;bridgeBase&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;http://127.0.0.1:9133&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Endpoints&quot;},&quot;ollamaBase&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;http://127.0.0.1:11434&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Endpoints&quot;}}">
+class Component extends DCLogic {
+  state = {
+    mode: 'overview', now: Date.now(), checked: 0,
+    svc: {}, world: null, econ: null, events: null, profiles: null, cps: null,
+    npcId: 'sup-guide', npcMsg: '', npcResp: '', npcBusy: false,
+    cmd: '', audit: []
+  };
+  SNAP = {
+    world: { status: 'prototype', server: 'local-dreamops', phase: 'design-to-slice', activePlayers: 0, dreamShift: { state: 'day', nextShiftHint: 'manual prototype trigger later' }, lastGreenCheckpoint: 'checkpoint-0001', updatedAt: '2026-08-25' },
+    econ: { currency: { NEEDs: { totalMinted: 0, totalSpent: 0, suspiciousDelta: 0 } }, items: { duplicateWarnings: [], negativeBalanceWarnings: [], impossibleDurabilityWarnings: [] } },
+    profiles: ['sup-guide', 'camp-guard', 'market-runner', 'field-gatherer', 'c0d3x-rider'],
+    cps: [{ id: 'checkpoint-0001', meta: 'last green · recorded 2026-08-25' }]
+  };
+  bases() {
+    const p = this.props, strip = (v) => String(v).replace(/\/+$/, '');
+    return {
+      api: strip(p.apiBase ?? 'http://192.168.0.8:20128/api/v1'),
+      lab: strip(p.labBase ?? 'http://127.0.0.1:9127'),
+      bridge: strip(p.bridgeBase ?? 'http://127.0.0.1:9133'),
+      ollama: strip(p.ollamaBase ?? 'http://127.0.0.1:11434')
+    };
+  }
+  blocked(url) { return location.protocol === 'https:' && /^http:\/\//.test(url) && !/^http:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(url); }
+  async probe(url, init) {
+    if (this.blocked(url)) return { status: 'blocked' };
+    const c = new AbortController(), t = setTimeout(() => c.abort(), 3500), t0 = performance.now();
+    try {
+      const r = await fetch(url, Object.assign({ signal: c.signal }, init || {}));
+      let json = null; try { json = await r.clone().json(); } catch (e) { }
+      return { status: r.ok ? 'ok' : 'down', code: r.status, json, ms: Math.round(performance.now() - t0) };
+    } catch (e) { return { status: e && e.name === 'AbortError' ? 'timeout' : 'down', ms: Math.round(performance.now() - t0) }; }
+    finally { clearTimeout(t); }
+  }
+  post(url, body) { return this.probe(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); }
+  log(kind, msg, ok) {
+    const t = new Date().toLocaleTimeString([], { hour12: false });
+    this.setState(s => ({ audit: [{ id: Date.now() + Math.random(), t, kind, msg, ok }].concat(s.audit).slice(0, 60) }));
+  }
+  async tick() {
+    if (document.visibilityState === 'hidden') return;
+    const b = this.bases();
+    const [api0, lab, bridge, ollama] = await Promise.all([this.probe(b.api + '/health'), this.probe(b.lab + '/health'), this.probe(b.bridge + '/health'), this.probe(b.ollama + '/api/tags')]);
+    const api = api0.status === 'down' && api0.code === 404 ? await this.probe(b.api) : api0;
+    const next = { svc: { api, lab, bridge, ollama }, checked: Date.now() };
+    if (lab.status === 'ok') { const p = await this.probe(b.lab + '/npc/profiles'); if (p.json) next.profiles = p.json; }
+    if (bridge.status === 'ok') {
+      const [w, ev, ec, cp] = await Promise.all([this.probe(b.bridge + '/world/health'), this.probe(b.bridge + '/events'), this.probe(b.bridge + '/economy/scan'), this.probe(b.bridge + '/checkpoints')]);
+      if (w.json) next.world = w.json; if (ev.json) next.events = ev.json; if (ec.json) next.econ = ec.json; if (cp.json) next.cps = cp.json;
+    }
+    this.setState(next);
+  }
+  componentDidMount() {
+    this.tick();
+    this._iv = setInterval(() => this.tick(), 5000);
+    this._clock = setInterval(() => this.setState({ now: Date.now() }), 1000);
+    this._vis = () => { if (document.visibilityState === 'visible') this.tick(); };
+    document.addEventListener('visibilitychange', this._vis);
+  }
+  componentWillUnmount() { clearInterval(this._iv); clearInterval(this._clock); document.removeEventListener('visibilitychange', this._vis); }
+
+  renderVals() {
+    const S = this.state, b = this.bases();
+    const mono = 'font-family:var(--ag-font-mono);';
+    const pillOf = (r) => {
+      const st = r ? r.status : 'unknown';
+      return {
+        ok: ['active', 'ONLINE'], down: ['failed', 'UNREACHABLE'], timeout: ['pending', 'TIMEOUT'],
+        blocked: ['pending', 'BLOCKED · HTTPS→HTTP'], unknown: ['offline', 'CHECKING']
+      }[st];
+    };
+    const svcDefs = [
+      { id: 'api', name: 'GAME NODE API', url: b.api, note: 'primary node · /health probe · falls back to base' },
+      { id: 'lab', name: 'LIVE NPC LAB', url: b.lab, note: 'dialogue · event · memory scopes · profiles · ai-failures' },
+      { id: 'bridge', name: 'DREAMOPS BRIDGE', url: b.bridge, note: 'world health · events · economy scan · checkpoints · rollback plan' },
+      { id: 'ollama', name: 'OLLAMA LOCAL', url: b.ollama, note: 'T1 inference · local model fallback' }
+    ];
+    const svcRows = svcDefs.map(d => { const r = S.svc[d.id]; const [pill, pillLabel] = pillOf(r); return Object.assign({}, d, { pill, pillLabel, ms: r && r.ms != null ? r.ms + 'MS' : '' }); });
+    const apiP = pillOf(S.svc.api);
+    const labP = pillOf(S.svc.lab);
+    const modes = [['overview', 'OVERVIEW'], ['world', 'WORLD'], ['npc', 'NPC LAB'], ['econ', 'ECONOMY'], ['stack', 'STACK']];
+    const modeRows = modes.map(([id, label]) => ({
+      id, label, pick: () => this.setState({ mode: id }),
+      style: 'text-align:left;padding:9px 12px;border-radius:10px;' + mono + 'font-size:10px;font-weight:700;letter-spacing:0.16em;cursor:pointer;transition:all 150ms ease;' +
+        (S.mode === id ? 'background:rgba(34,211,238,0.12);border:1px solid rgba(34,211,238,0.45);color:var(--ag-cyan)' : 'background:transparent;border:1px solid transparent;color:var(--ag-text-muted)')
+    }));
+    const lanes = [
+      ['claude', 'Claude', 'CEO · standing lane · built in', '#22d3ee'], ['hermes', 'Hermes', 'CEO / operator · standing lane', '#22d3ee'],
+      ['codex', 'Codex', 'default executor · built in', '#34d399'], ['pi', 'Pi', 'helper · openai-codex path', '#94a3b8'],
+      ['opencode', 'OpenCode', 'helper · local/provider ladder', '#94a3b8'], ['gemini', 'Gemini', 'helper · CLI/browser auth', '#94a3b8'],
+      ['grok', 'Grok', 'helper · CLI/browser auth', '#94a3b8'], ['ollama-local', 'Ollama Local', 'fallback · T1 inference', '#e9b949'], ['1minai', '1min.ai', 'cloud reference config', '#94a3b8']
+    ];
+    const laneRows = lanes.map(([id, name, role, color]) => ({ id, name, role, color, initial: name[0] }));
+    const world = S.world || this.SNAP.world, wLive = !!S.world;
+    const shift = (world.dreamShift && world.dreamShift.state) || 'day';
+    const econ = S.econ || this.SNAP.econ;
+    const needs = (econ.currency && econ.currency.NEEDs) || { totalMinted: 0, totalSpent: 0, suspiciousDelta: 0 };
+    const items = econ.items || {};
+    const warn = ['duplicateWarnings', 'negativeBalanceWarnings', 'impossibleDurabilityWarnings'].reduce((n, k) => n + ((items[k] || []).length), 0);
+    const evs = Array.isArray(S.events) ? S.events : (S.events && Array.isArray(S.events.events) ? S.events.events : []);
+    const eventRows = evs.map((e, i) => ({
+      id: e.id || i, name: e.name || e.type || e.id || 'event', meta: [e.zone, e.status, e.id].filter(Boolean).join(' · '),
+      pause: async () => { const r = await this.post(b.bridge + '/events/' + encodeURIComponent(e.id || i) + '/pause', { by: 'founder' }); this.log('PAUSE', (e.name || e.id) + ' → ' + (r.status === 'ok' ? 'paused' : r.status.toUpperCase()), r.status === 'ok'); this.tick(); }
+    }));
+    const profs = Array.isArray(S.profiles) ? S.profiles.map(p => (typeof p === 'string' ? p : (p.id || p.npcId || p.name))) : this.SNAP.profiles;
+    const npcRows = profs.map(id => ({
+      id, label: id.toUpperCase(), pick: () => this.setState({ npcId: id }),
+      style: 'padding:6px 10px;border-radius:999px;' + mono + 'font-size:9px;font-weight:700;letter-spacing:0.12em;cursor:pointer;transition:all 150ms ease;' +
+        (S.npcId === id ? 'background:rgba(34,211,238,0.14);border:1px solid rgba(34,211,238,0.5);color:var(--ag-cyan)' : 'background:rgba(2,6,23,0.5);border:1px solid rgba(255,255,255,0.1);color:var(--ag-text-muted)')
+    }));
+    const cpsArr = Array.isArray(S.cps) ? S.cps : (S.cps && Array.isArray(S.cps.checkpoints) ? S.cps.checkpoints : this.SNAP.cps);
+    const cpRows = cpsArr.map((c, i) => (typeof c === 'string' ? { id: c, meta: 'live · :9133' } : { id: c.id || 'checkpoint-' + i, meta: c.meta || [c.status, c.createdAt || c.updatedAt].filter(Boolean).join(' · ') || 'live · :9133' }));
+    const tierRows = [
+      { tier: 'T0', name: 'Scripted lines', lane: 'zero cost · always instant · the fallback for every intent', color: '#94a3b8' },
+      { tier: 'T1', name: 'Ollama local', lane: 'node-hosted · guide chatter · gatherer · guard', color: '#e9b949' },
+      { tier: 'T2', name: 'Claude lane', lane: 'story-critical · Sup@ · FABLE · per-player memory', color: '#22d3ee' },
+      { tier: 'T3', name: 'Codex lane', lane: 'world recovery · C0D3X · hotfix proposals', color: '#34d399' }
+    ];
+    const ago = S.checked ? Math.max(0, Math.round((S.now - S.checked) / 1000)) : null;
+    const canCmd = S.cmd.trim().length >= 6;
+    const auditRows = S.audit.map(a => ({ id: a.id, t: a.t, kind: a.kind, msg: a.msg, color: a.ok ? 'var(--ag-success)' : 'var(--ag-danger)' }));
+    return {
+      apiPill: apiP[0], apiPillLabel: 'NODE · ' + apiP[1],
+      updatedLabel: ago == null ? 'checking…' : 'updated · ' + ago + 's ago',
+      modeRows, laneRows, svcRows, tierRows, cpRows, auditRows, eventRows, npcRows,
+      mixedBlocked: svcRows.some(s => s.pill === 'pending' && /BLOCKED/.test(s.pillLabel)),
+      refresh: () => this.tick(),
+      showStack: S.mode === 'overview' || S.mode === 'stack',
+      showWorld: S.mode === 'overview' || S.mode === 'world',
+      showNpc: S.mode === 'overview' || S.mode === 'npc',
+      showEcon: S.mode === 'overview' || S.mode === 'econ',
+      // command
+      cmd: S.cmd, onCmd: (e) => this.setState({ cmd: e.target.value }), cmdDisabled: !canCmd,
+      propose: async () => {
+        if (!canCmd) return;
+        const text = S.cmd.trim();
+        const r = await this.post(b.bridge + '/hotfix/propose', { proposal: text, by: 'founder', source: 'gm-control' });
+        this.log('HOTFIX', text + ' → ' + (r.status === 'ok' ? 'proposed' : r.status.toUpperCase()), r.status === 'ok');
+        this.setState({ cmd: '' });
+      },
+      planRollback: async () => {
+        const r = await this.post(b.bridge + '/rollback/plan', { checkpoint: world.lastGreenCheckpoint, by: 'founder' });
+        this.log('ROLLBACK', 'plan → ' + world.lastGreenCheckpoint + ' · ' + (r.status === 'ok' ? 'plan drafted (no execution)' : r.status.toUpperCase()), r.status === 'ok');
+      },
+      // world
+      wPlayers: String(world.activePlayers ?? 0), wLive,
+      wSource: wLive ? 'Live · dreamops-bridge :9133' : 'Recorded snapshot · world_state.json · ' + String(world.updatedAt).slice(0, 10),
+      wShift: shift.toUpperCase(), wShiftNote: shift === 'day' ? 'Nightfall raises mob threat, closes routes, arms the guards.' : 'Nightfall active. Risk economy engaged.',
+      wPhase: String(world.phase || '—').toUpperCase(), wServer: (world.server || '') + ' · ' + (world.status || ''),
+      wCheckpoint: String(world.lastGreenCheckpoint || '—').replace(/^checkpoint-/i, 'CP-').toUpperCase(),
+      noEvents: eventRows.length === 0,
+      eventsEmptyNote: S.svc.bridge && S.svc.bridge.status === 'ok' ? 'No active events. The world is quiet.' : 'No events recorded — bridge unreachable, showing nothing rather than guessing.',
+      // npc
+      labPill: labP[0], labPillLabel: labP[1],
+      npcMsg: S.npcMsg, onNpcMsg: (e) => this.setState({ npcMsg: e.target.value }),
+      npcDisabled: S.npcBusy || !S.npcMsg.trim(), npcBtnLabel: S.npcBusy ? 'SENDING…' : 'SEND TO ' + S.npcId.toUpperCase(),
+      hasNpcResp: !!S.npcResp, npcResp: S.npcResp,
+      sendNpc: async () => {
+        if (!S.npcMsg.trim() || S.npcBusy) return;
+        this.setState({ npcBusy: true });
+        const r = await this.post(b.lab + '/npc/dialogue', { npcId: S.npcId, playerId: 'founder', zone: 'first-gate', message: S.npcMsg.trim() });
+        const text = r.json ? (r.json.reply || r.json.text || JSON.stringify(r.json, null, 2)) : (r.status === 'blocked' ? 'Blocked: https page cannot call a plain-http target.' : 'Lab unreachable at ' + b.lab + ' (' + r.status + ').');
+        this.log('NPC', S.npcId + ' ← "' + S.npcMsg.trim().slice(0, 40) + '" · ' + (r.status === 'ok' ? 'replied' : r.status.toUpperCase()), r.status === 'ok');
+        this.setState({ npcBusy: false, npcResp: text, npcMsg: r.status === 'ok' ? '' : S.npcMsg });
+      },
+      // economy
+      econSource: S.econ ? 'LIVE · :9133' : 'RECORDED · economy_snapshot.json · 2026-08-25',
+      eMinted: String(needs.totalMinted), eSpent: String(needs.totalSpent), eSusp: String(needs.suspiciousDelta),
+      eSuspColor: needs.suspiciousDelta ? 'var(--ag-danger)' : 'var(--ag-success)',
+      eWarn: String(warn), eWarnColor: warn ? 'var(--ag-warning)' : 'var(--ag-success)',
+      noAudit: auditRows.length === 0
+    };
+  }
+}
+</script>
+</body>
+</html>

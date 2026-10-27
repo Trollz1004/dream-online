@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/antigravity-design-system-58589bbe-5ea8-4572-a1ed-feeae43480fa/tokens/fonts.css">
+  <link rel="stylesheet" href="_ds/antigravity-design-system-58589bbe-5ea8-4572-a1ed-feeae43480fa/tokens/colors.css">
+  <link rel="stylesheet" href="_ds/antigravity-design-system-58589bbe-5ea8-4572-a1ed-feeae43480fa/tokens/typography.css">
+  <link rel="stylesheet" href="_ds/antigravity-design-system-58589bbe-5ea8-4572-a1ed-feeae43480fa/styles.css">
+  <script src="_ds/antigravity-design-system-58589bbe-5ea8-4572-a1ed-feeae43480fa/_ds_bundle.js"></script>
+  <script>window.OM_SCENES = '[{"name":"ColdOpen","dur":4,"desc":"The DREAM ONLINE wordmark settles over the grid with the Sup@ orb behind it"},{"name":"World","dur":5,"desc":"The world map draws in and a dot walks Haven to Rust Ridge to show there is no fast travel"},{"name":"Combat","dur":5,"desc":"Three swing arcs land, the finisher hits big, then a perfect i-frame dodge"},{"name":"Durability","dur":4,"desc":"Gear bars drain to broken and the two repair options appear, with the no-gambling upgrade rule"},{"name":"Dragonclaw","dur":7,"desc":"Gameplay capture begins: the Dragonclaw drains 10% HP and the AOE wipes a golem pack with six-figure damage numbers"},{"name":"Party","dur":5,"desc":"Five party members walk in, party frames fill the HUD and buffs burst"},{"name":"PvP","dur":5,"desc":"The flag raises, a rival jumps a fisher and turns red name"},{"name":"Vengeance","dur":7,"desc":"The hit list opens with last-known intel, the six-stack hunts Malrick down and a title unlocks"},{"name":"GuildFight","dur":6,"desc":"The 22-hour timer hits zero, a boss spawns and two guilds converge; the winners light up with the blue Champion flame"},{"name":"Prestige","dur":5,"desc":"Inspect panel shows the earned prestige icons above the players head"},{"name":"Pets","dur":4,"desc":"NPC dragon and premium ember dragon side by side with identical gameplay effect"},{"name":"Companion","dur":5,"desc":"Sup@ grows to hero size while the five tiers fill in on a level line"},{"name":"Prime","dur":4,"desc":"The orb turns Prime red-gold and the Context Overflow one-shot flashes"},{"name":"Model","dur":5,"desc":"Four columns state the money model including no gambling upgrades"},{"name":"Close","dur":5,"desc":"The wordmark returns with the backing call to action, matching the opening frame"}]';</script>
+  <script>window.OM_PLAYBACK = '{"mode":"loop"}';</script>
+  <style>
+    body { margin: 0; background: #020617; }
+    a { color: #22d3ee; } a:hover { color: #67e8f9; }
+  </style>
+</helmet>
+<div style="width:100vw;height:100vh;background:#020617;display:flex;align-items:center;justify-content:center;overflow:hidden">
+  <x-import component-from-global-scope="CompositionStage" from="./animations-v3.jsx ./dot-field.jsx ./dream-pitch-v2.jsx" width="1920" height="1080" scenes="{{ scenes }}" playback="{{ playback }}" bg="#020617" hint-size="100%,100%">
+    <x-import component-from-global-scope="DreamPitchV2" hint-size="100%,100%"></x-import>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    return { scenes: window.OM_SCENES, playback: window.OM_PLAYBACK };
+  }
+}
+</script>
+</body>
+</html>
