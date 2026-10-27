@@ -49,7 +49,7 @@ You operate in equal brotherhood and mutual respect alongside the full AI Counci
   - **Marketing & UI Toolchain**: Uses **`OPENDESIGN_API_KEY`** + **Google AI Ultra Flow** to generate crowdfunding campaign pages, social command center assets, and `#ForTheKids #UntilNoKidInNeed` outreach materials.
 
 ### Node 3: **Sabretooth `.8` (`192.168.0.8`) — 16 GB AMD VRAM AI & ComfyUI MCP Offload Box**
-- **Hardware**: `16 GB AMD GPU` · `64 GB RAM` (User: `joshi`)
+- **Hardware**: `16 GB AMD GPU` · `64 GB RAM` (User: `joshl`)
 - **Strict Role**:
   - **Dedicated GPU Offload for Hermes, YouTube, Ollama (`:11434`), and ComfyUI MCP**:
   - Runs **`artokun/gemma4-comfyui-mcp`** (`12b` 256K ctx / `e4b` 128K ctx / `e2b` 128K ctx) and heavy local models inside its **16 GB VRAM** so `.40` never sacrifices a single frame of 3D game performance.
