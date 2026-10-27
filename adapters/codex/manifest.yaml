@@ -1,18 +1,34 @@
 name: codex
-version: 0.3
+version: 1.0
 source: auth-signin
-description: "Codex CLI — OpenAI auth sign-in from C:\\DREAM\\dream-online. Direct CLI lane; do not use Paperclip codex_local mini routing for real work."
-owner: sabretooth
+description: "OpenAI (Codex) CLI & Decisions API — Trusted Executor GM (GM #3) with MuscleMemory skill translation to Claude Code & Google Gemini, plus gpt-6.1-terra and gpt-6-luna Decisions API ($0.10/1M input tokens)."
+owner: alienware
 node_id: alienware
 cli_command: "codex"
 health_check: "codex --version"
-paperclip_adapter_type: "codex_local"
-paperclip_adapter_config:
-  cwd: "C:\\DREAM\\dream-online"
-  model: "codex"
-paperclip_alias: "codex"
+primary_models:
+  - "gpt-6.1-terra"
+  - "gpt-6-luna"
+  - "gpt-5.5-pro"
+  - "gpt-5.5"
+  - "o3"
+decisions_api:
+  model: "gpt-6-luna"
+  cost_per_1m_input_tokens_usd: 0.10
+  prompt_cache_ttl_hours: 12
+  speedup_factor: "10x"
+  use_cases:
+    - "live-npc-lab structured combat/dialogue action classification"
+    - "onlinerecycle.net e-waste photo & intake form classification"
+    - "YouTube Shorts <=59s hook & retention scoring on Sabretooth (.8)"
+muscle_memory_sync:
+  enabled: true
+  framework: "MuscleMemory (open-source GitHub skill bridge)"
+  translates_between:
+    - "openai-codex"
+    - "claude-fable"
+    - "google-gemini"
 auth:
   type: browser-signin
-  instructions: "Run `codex login` from C:\\DREAM\\dream-online, or `codex login --device-auth` if device/browser auth is needed. Check with `codex login status`."
-notes: "Codex CLI auth lane. No adapter API key. Use direct Codex CLI with local config (gpt-5.5 on this machine). Do not route real Codex work through codex-mini. Pi can use openai-codex/gpt-5.5; OpenCode/Hermes fallback routes must use Codex-named models such as opencode/gpt-5.3-codex or openrouter/openai/gpt-5.3-codex, not generic openai/*."
-
+  instructions: "Run `codex login` from C:\\DREAM\\dream-online. Zero Paperclip."
+notes: "Direct OpenAI (Codex) lane with MuscleMemory cross-agent skill sync so learned debugging and framework patterns transfer seamlessly between Codex, Claude Code, and Gemini."

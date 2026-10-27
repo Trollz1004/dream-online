@@ -10,6 +10,11 @@ import {
 } from '../src/engine/scene/mesh.ts';
 import { ConsumablesState } from '../src/engine/combat/consumables.ts';
 import { GeminEyePetState, GeminEyePetShop } from '../src/engine/combat/pet-shop.ts';
+import {
+  Genie4WorldBridge,
+  PRE_GASSED_BASE_DAO_WALLETS,
+  MUSCLE_MEMORY_SHARED_SKILLS,
+} from '../src/engine/world/genie4-world-bridge.ts';
 
 test('100% In-House DREAM Engine: cycles AI-governed world evolution phases (Day Dream 3D -> Nightmare 3D -> 16-Bit Circle-Craft)', () => {
   const director = new WorldEvolutionDirector('day_dream_3d');
@@ -81,3 +86,42 @@ test('100% In-House DREAM Engine: maintains Consumables and GeminEYE NEEDs Conve
   assert.equal(pet.remainingSeconds, 7200);
   assert.equal(shop.needsBalance, 390);
 });
+
+test('100% In-House DREAM Engine: Genie 4 live 3D world steering, MuscleMemory skill sync, and Base Mainnet (8453) pre-gassed DAO wallets', () => {
+  const bridge = new Genie4WorldBridge();
+  const frame = bridge.synthesizeSteeredWorldFrame({
+    promptId: 'lake-lumen-morph',
+    textPrompt: 'Golden hour sanctuary morphing into 16-bit cylindrical circle-craft village',
+    targetPhase: 'circle_16bit',
+    steeringController: 'gemini-3.8-flash',
+    nativeAmbientAudioCue: 'lake-lumen-wind-chimes-16bit',
+    speakingCharacters: [
+      {
+        npcId: 'mireth',
+        displayName: 'Mireth',
+        voicePreset: 'Aoede',
+        openingLine: 'The Moon Gate remembers every dodge.',
+      },
+    ],
+    maxShortsClipSeconds: 65.0, // Should be hard-capped to <= 59.0s
+  });
+
+  assert.equal(frame.phase, 'circle_16bit');
+  assert.equal(frame.shortsReady, true);
+  assert.equal(frame.cappedDurationSeconds <= 59.0, true);
+  assert.equal(
+    frame.nodes.every((n) => n.primitive === 'cylinder-disc-circle'),
+    true
+  );
+
+  // Verify all 4 pre-gassed Base Mainnet (8453) DAO / Splitter / Charity addresses
+  assert.equal(PRE_GASSED_BASE_DAO_WALLETS.length, 4);
+  const shrinersWallet = PRE_GASSED_BASE_DAO_WALLETS.find((w) => w.role === 'charity_shriners');
+  assert.equal(shrinersWallet?.address, '0x8d3dEADbE2b4B857A43331D459270B5eedC7084e');
+  assert.equal(shrinersWallet?.charityEin, '36-2193608');
+  assert.equal(shrinersWallet?.chainId, 8453);
+
+  // Verify MuscleMemory cross-agent skill rules exist
+  assert.equal(MUSCLE_MEMORY_SHARED_SKILLS.length >= 3, true);
+});
+

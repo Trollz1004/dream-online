@@ -1,20 +1,34 @@
 name: gemini
-version: 0.2
-source: auth-signin
-description: "Google Gemini CLI — CLI/browser auth sign-in via Google account / Google AI Studio. No hardcoded credentials."
-owner: sabretooth
+version: 1.0
+source: google-ai-ultra
+description: "Google Gemini (GM #1 — Primary Co-CEO, Lead 3D Engine Architect & Marketing Director) — Powered by Google AI Ultra ($200/mo plan), Project Genie (Genie 4), Gemini 3.8 Flash Live Steering, and Gemini Small Business Hub (Nano Banana 2.1)."
+owner: alienware
 node_id: alienware
-cli_command: "gemini"
-health_check: "opencode --version && echo 'gemini: google provider via opencode.json' || echo 'gemini: opencode not found'"
-paperclip_adapter_type: "opencode_local"
-paperclip_adapter_config:
-  cwd: "C:\\DREAM\\dream-online"
-  model: "gemini-2.5-pro"
-paperclip_alias: "gemini"
-opencode_provider: "google"
-opencode_model: "gemini-2.5-pro"
+cli_command: "agy"
+health_check: "agy --version"
+provider: "google-ai-ultra"
+primary_models:
+  - "gemini-4-argon"
+  - "gemini-3.8-flash"
+  - "gemini-2.5-pro"
+  - "gemini-2.5-flash"
+  - "gemini-2.5-flash-preview-tts"
+world_and_media_engines:
+  genie_4_world_engine:
+    model: "genie-4"
+    steering_controller: "gemini-3.8-flash"
+    capabilities:
+      - "real-time interactive 3D world generation from text/image prompts"
+      - "native ambient audio synthesis"
+      - "speaking NPC character hooks (Aoede & Kore female voices)"
+      - "live scene steering into 100% in-house DREAM Engine (day_dream_3d, nightmare_3d, circle_16bit)"
+      - "<= 58.5s YouTube Shorts 3D world-morph B-roll generation"
+  small_business_hub:
+    visual_model: "nano-banana-2.1"
+    capabilities:
+      - "brand-consistent visual generation for DREAM Online & onlinerecycle.net"
+      - "automated financial & receipt charts for transparent Shriners / #UntilNoKidInNeed verification gate"
 auth:
   type: browser-signin
-  instructions: "Open Gemini CLI, sign in with Google account via browser. No API key needed."
-notes: "CLI/browser sign-in lane. No hardcoded credentials. Uses `opencode_local` Paperclip adapter type with google provider when routed through OpenCode. CEO wheel: on FAIL swap to hermes-router/ollama-local."
-
+  instructions: "Signed in via Google AI Ultra subscription (joshlcoleman@gmail.com). Zero Paperclip."
+notes: "Co-equal highest authority (GM #1) alongside Founder Joshua Coleman and Claude (Fable). Directs Hermes (OPSis) on Sabretooth (.8) for multi-channel <=59s YouTube Shorts and natural female voice podcasts."

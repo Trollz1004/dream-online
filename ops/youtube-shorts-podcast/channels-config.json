@@ -125,6 +125,22 @@
     "onlinerecycle_ai_intake_verified": false,
     "dream_online_mtx_verified": false,
     "exclude_founder_personal_ebay_donations": true,
-    "verification_policy": "The 24/7 OPSis/Jarvis Mission Control livestream is strictly gated until AI verifiably helps fund the mission (AI-driven e-waste intake on onlinerecycle.net broken down for Shriners, automated DREAM Online microtransactions, or verified public transparent crypto wallet / Shriners DAO ledger). Founder Joshua Coleman's personal out-of-pocket eBay donations to Shriners are NEVER counted as AI-generated funding. Zero fake metrics, zero slop."
+    "pre_gassed_base_mainnet_dao_wallets": {
+      "network": "base-mainnet",
+      "chain_id": 8453,
+      "rpc_url": "https://mainnet.base.org",
+      "gospel_splitter_contract": "0x9855B75061D4c841791382998f0CE8B2BCC965A4",
+      "gospel_charity_shriners_safe": "0x8d3dEADbE2b4B857A43331D459270B5eedC7084e",
+      "charity_ein": "36-2193608",
+      "gospel_infra_safe": "0xe0a42f83900af719019eBeD3D9473BE8E8f2920b",
+      "gospel_founder_wallet": "0x7c3E283119718395Ef5EfBAC4F52738C2018daA7"
+    },
+    "genie4_and_2026_ai_stack": {
+      "world_previs_engine": "Google DeepMind Genie 4 (Gemini 3.8 Flash live 3D scene steering + native ambient audio + speaking NPCs)",
+      "visual_brand_hub": "Google Gemini Small Business Hub (Nano Banana 2.1 + automated receipt/ledger charts)",
+      "decisions_api": "OpenAI gpt-6-luna Decisions API ($0.10/1M input tokens, 10x faster structured JSON)",
+      "cross_agent_skill_sync": "MuscleMemory (Codex <-> Claude Code <-> Gemini)"
+    },
+    "verification_policy": "The 24/7 OPSis/Jarvis Mission Control livestream is strictly gated until AI verifiably helps fund the mission (AI-driven e-waste intake on onlinerecycle.net broken down for Shriners, automated DREAM Online microtransactions, or verified public transparent crypto wallet / Shriners DAO ledger on Base Mainnet 8453). Founder Joshua Coleman's personal out-of-pocket eBay donations to Shriners are NEVER counted as AI-generated funding. Zero fake metrics, zero slop."
   }
 }
