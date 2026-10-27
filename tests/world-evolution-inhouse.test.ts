@@ -14,6 +14,7 @@ import {
   Genie4WorldBridge,
   PRE_GASSED_BASE_DAO_WALLETS,
   POST_TAX_LAW_REVENUE_POLICY,
+  adaptPortfolioToTaxLawChange,
   MUSCLE_MEMORY_SHARED_SKILLS,
   LOCAL_16GB_GPU_FLEET_TOOLS,
 } from '../src/engine/world/genie4-world-bridge.ts';
@@ -123,11 +124,20 @@ test('100% In-House DREAM Engine: Genie 4 live 3D world steering, MuscleMemory s
   assert.equal(shrinersWallet?.charityEin, '36-2193608');
   assert.equal(shrinersWallet?.chainId, 8453);
 
-  // Verify post-tax-law-change policy (90% founder/taxable, 10% corporate charity deduction ceiling; 100% charity split retired)
+  // Verify post-tax-law-change policy (90% founder/taxable, 10% corporate charity deduction ceiling; multi-stream scaling; adaptive to future tax laws)
   assert.equal(POST_TAX_LAW_REVENUE_POLICY.revenueModel, 'FOR_PROFIT_LLC');
   assert.equal(POST_TAX_LAW_REVENUE_POLICY.founderAndTaxablePercentage, 90);
   assert.equal(POST_TAX_LAW_REVENUE_POLICY.corporateCharityDeductionCeilingPercentage, 10);
   assert.equal(POST_TAX_LAW_REVENUE_POLICY.fullCharity100PercentSplitRetired, true);
+  assert.equal(
+    POST_TAX_LAW_REVENUE_POLICY.multiStreamScalingStrategy,
+    'MANY_INDEPENDENT_10_PERCENT_STREAMS'
+  );
+  assert.equal(POST_TAX_LAW_REVENUE_POLICY.activeRevenuePillars.length >= 4, true);
+
+  const futureEpoch = adaptPortfolioToTaxLawChange('2032-NEXT-TAX-LAW', 25);
+  assert.equal(futureEpoch.corporateCharityDeductionCeilingPercentage, 25);
+  assert.equal(futureEpoch.founderAndTaxablePercentage, 75);
 
   // Verify MuscleMemory cross-agent skill rules exist
   assert.equal(MUSCLE_MEMORY_SHARED_SKILLS.length >= 4, true);

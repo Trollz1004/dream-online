@@ -73,29 +73,60 @@ export interface PreGassedDaoWalletEntry {
 }
 
 export interface PostTaxLawRevenuePolicy {
+  taxLawEpochId: string;
   revenueModel: 'FOR_PROFIT_LLC';
   legalEntity: 'TRASH OR TREASURE ONLINE RECYCLER LLC';
-  founderAndTaxablePercentage: 90;
-  corporateCharityDeductionCeilingPercentage: 10;
+  founderAndTaxablePercentage: number;
+  corporateCharityDeductionCeilingPercentage: number;
   fullCharity100PercentSplitRetired: true;
+  multiStreamScalingStrategy: 'MANY_INDEPENDENT_10_PERCENT_STREAMS';
+  adaptiveToFutureTaxLaws: true;
+  activeRevenuePillars: readonly string[];
   taxLawNote: string;
 }
 
 /**
- * Canonical Post-Tax-Law-Change ("One Big Beautiful Bill") Revenue & Tax Ceiling Policy:
- * - There is NO 100% to charity split (`FOUNDER_PERCENTAGE=0` / `CHARITY_PERCENTAGE=100` is permanently retired).
- * - 90% of every dollar is taxable income (`FOUNDER_PERCENTAGE=90`, `TAXABLE_REVENUE_PERCENTAGE=90`)
- *   because the corporate charitable tax deduction ceiling is capped at 10% (`CHARITY_TAX_DEDUCTION_CEILING_PERCENTAGE=10`).
+ * Canonical Post-Tax-Law-Change ("One Big Beautiful Bill") Multi-Stream 10% Portfolio Policy:
+ * - Because only 10% of each dollar can be tax-deducted and 90% is taxable income,
+ *   long-term mission impact scales horizontally by building MANY independent 10%-ceiling
+ *   revenue sources over the decades to come.
+ * - Designed to adapt cleanly in a single config update whenever future tax laws change.
  */
 export const POST_TAX_LAW_REVENUE_POLICY: PostTaxLawRevenuePolicy = {
+  taxLawEpochId: '2026-POST-OBBB-10PCT-CEILING',
   revenueModel: 'FOR_PROFIT_LLC',
   legalEntity: 'TRASH OR TREASURE ONLINE RECYCLER LLC',
   founderAndTaxablePercentage: 90,
   corporateCharityDeductionCeilingPercentage: 10,
   fullCharity100PercentSplitRetired: true,
+  multiStreamScalingStrategy: 'MANY_INDEPENDENT_10_PERCENT_STREAMS',
+  adaptiveToFutureTaxLaws: true,
+  activeRevenuePillars: [
+    'onlinerecycle.net (AI-graded e-waste intake, breakdown, and component resale)',
+    'dream-online.net (100% In-House AI-Built 3D Action MMORPG & DREAM Maker convenience/cosmetics + Open Collective)',
+    'Multi-Channel YouTube Shorts (<= 59s) & Natural Female Voice Podcast Network on Sabretooth (.8)',
+    'youandinotai.com & Digital Asset / Domain Portfolio on T5500 (.15)',
+  ],
   taxLawNote:
-    '90% of every dollar is taxable income; only 10% is the corporate tax-deductible ceiling. Never use FOUNDER_PERCENTAGE=0 or CHARITY_PERCENTAGE=100.',
+    '90% of every dollar is taxable income; only 10% is the corporate tax-deductible ceiling. Scale impact over the decades by multiplying independent 10% revenue sources, and adapt taxLawEpochId parameters whenever future tax legislation changes.',
 } as const;
+
+/**
+ * Adapts the portfolio's tax-deductible ceiling and taxable founder/operations allocation
+ * when a future tax law takes effect, preserving invariants (`taxable + ceiling === 100`).
+ */
+export function adaptPortfolioToTaxLawChange(
+  newEpochId: string,
+  newDeductionCeilingPercent: number
+): PostTaxLawRevenuePolicy {
+  const clampedCeiling = Math.max(0, Math.min(100, Math.round(newDeductionCeilingPercent)));
+  return {
+    ...POST_TAX_LAW_REVENUE_POLICY,
+    taxLawEpochId: newEpochId,
+    corporateCharityDeductionCeilingPercentage: clampedCeiling,
+    founderAndTaxablePercentage: 100 - clampedCeiling,
+  };
+}
 
 /**
  * Canonical public Base Mainnet (Chain ID 8453) DAO / Splitter / Charity addresses
