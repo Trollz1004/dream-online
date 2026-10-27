@@ -72,6 +72,31 @@ export interface PreGassedDaoWalletEntry {
   publicExplorerUrl: string;
 }
 
+export interface PostTaxLawRevenuePolicy {
+  revenueModel: 'FOR_PROFIT_LLC';
+  legalEntity: 'TRASH OR TREASURE ONLINE RECYCLER LLC';
+  founderAndTaxablePercentage: 90;
+  corporateCharityDeductionCeilingPercentage: 10;
+  fullCharity100PercentSplitRetired: true;
+  taxLawNote: string;
+}
+
+/**
+ * Canonical Post-Tax-Law-Change ("One Big Beautiful Bill") Revenue & Tax Ceiling Policy:
+ * - There is NO 100% to charity split (`FOUNDER_PERCENTAGE=0` / `CHARITY_PERCENTAGE=100` is permanently retired).
+ * - 90% of every dollar is taxable income (`FOUNDER_PERCENTAGE=90`, `TAXABLE_REVENUE_PERCENTAGE=90`)
+ *   because the corporate charitable tax deduction ceiling is capped at 10% (`CHARITY_TAX_DEDUCTION_CEILING_PERCENTAGE=10`).
+ */
+export const POST_TAX_LAW_REVENUE_POLICY: PostTaxLawRevenuePolicy = {
+  revenueModel: 'FOR_PROFIT_LLC',
+  legalEntity: 'TRASH OR TREASURE ONLINE RECYCLER LLC',
+  founderAndTaxablePercentage: 90,
+  corporateCharityDeductionCeilingPercentage: 10,
+  fullCharity100PercentSplitRetired: true,
+  taxLawNote:
+    '90% of every dollar is taxable income; only 10% is the corporate tax-deductible ceiling. Never use FOUNDER_PERCENTAGE=0 or CHARITY_PERCENTAGE=100.',
+} as const;
+
 /**
  * Canonical public Base Mainnet (Chain ID 8453) DAO / Splitter / Charity addresses
  * recovered from the pre-tax-law-change gassed DAO `.env` vaults.

@@ -13,6 +13,7 @@ import { GeminEyePetState, GeminEyePetShop } from '../src/engine/combat/pet-shop
 import {
   Genie4WorldBridge,
   PRE_GASSED_BASE_DAO_WALLETS,
+  POST_TAX_LAW_REVENUE_POLICY,
   MUSCLE_MEMORY_SHARED_SKILLS,
   LOCAL_16GB_GPU_FLEET_TOOLS,
 } from '../src/engine/world/genie4-world-bridge.ts';
@@ -121,6 +122,12 @@ test('100% In-House DREAM Engine: Genie 4 live 3D world steering, MuscleMemory s
   assert.equal(shrinersWallet?.address, '0x8d3dEADbE2b4B857A43331D459270B5eedC7084e');
   assert.equal(shrinersWallet?.charityEin, '36-2193608');
   assert.equal(shrinersWallet?.chainId, 8453);
+
+  // Verify post-tax-law-change policy (90% founder/taxable, 10% corporate charity deduction ceiling; 100% charity split retired)
+  assert.equal(POST_TAX_LAW_REVENUE_POLICY.revenueModel, 'FOR_PROFIT_LLC');
+  assert.equal(POST_TAX_LAW_REVENUE_POLICY.founderAndTaxablePercentage, 90);
+  assert.equal(POST_TAX_LAW_REVENUE_POLICY.corporateCharityDeductionCeilingPercentage, 10);
+  assert.equal(POST_TAX_LAW_REVENUE_POLICY.fullCharity100PercentSplitRetired, true);
 
   // Verify MuscleMemory cross-agent skill rules exist
   assert.equal(MUSCLE_MEMORY_SHARED_SKILLS.length >= 4, true);
