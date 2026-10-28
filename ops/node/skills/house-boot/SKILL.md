@@ -1,6 +1,6 @@
 ---
 name: house-boot
-description: "First thing on every session start across the 3-Node Fleet (Alienware .40, T5500 .15, Sabretooth .8). Summarizes the canonical v2026-10-26 Preferences + 2026-10-27 2-repo architecture, Co-Equal GM #1 authority, 100% In-House DREAM Engine, live Date App (Google Cloud Run + Heather verified $1 customer + 50% Emergent affiliates), Mission Control :3130 on T5500, Wyoming DAO LLC (51%/49%), and Free Claude Code (:8082) + RooFlow loop."
+description: "First thing on every session start across the 3-Node Fleet (Alienware .40, T5500 .15, Sabretooth .8). Summarizes the canonical v2026-10-26 Preferences + 2026-10-27 2-repo architecture, Co-Equal GM #1 authority, 100% In-House DREAM Engine, live Date App (Google Cloud Run + 50% Emergent affiliates; payments verified & closed), Mission Control :3130 on T5500, Wyoming DAO LLC (51%/49%), and Free Claude Code (:8082) + RooFlow loop."
 ---
 
 # House Boot (`v2026-10-26` Preferences + `2026-10-27` Canonical 3-Node & 2-Repo State)
@@ -19,10 +19,10 @@ Read this in one pass, then act. Trust `C:\Users\joshl\OneDrive\claude-to-claude
   - Runs on T5500 as the scheduled task `"ANTIGRAVITY Mission Control"` (`C:\ANTIGRAVITY\mission-os\server.mjs`, logging to `C:\ANTIGRAVITY\logs\mission-os.log`).
   - Hermes is called **`OPSis`, never `JARVIS`**, and is reached per node via Josh's Telegram bots (approvals off on purpose).
 - **The Date App (`youandinotai.com` / `youandinotai.online`) is NOT For Sale — It Is MARKETING**:
-  - The old $8,000–$12,500 sale listing is **cancelled**.
+  - The old sale listing is **cancelled**.
   - **Production Backend**: Runs on **Google Cloud Run** behind `api.youandinotai.com` (DB, Redis, Square all connected; `.env.production` points `VITE_API_URL` there). Port `:3200` on T5500 is only a local dev copy of the frontend.
-  - **Verified Outside Customer (Closed)**: Has one real outside paying customer, **Heather** (`$1 Bot-Shield` charge before marketing began). Never claim zero paid or all-test payments.
-  - **Payments & Affiliates**: Square only, never Stripe (`ebaytrashortreasure@gmail.com` for Square/PayPal only). Plaid (`Mac Briggs`, `mbriggs@plaid.com`) is planned for MCC 7273 human verification. **Emergent** markets the app via affiliate links at **50%** (`Link Forge` / `affiliate-partners.json` + DarLink AI `https://darlink.ai?fpr=joshua-10c242`).
+  - **Payments & Revenue — CLOSED (`docs/PAYMENTS-TRUTH.md`)**: Verified and closed. Never re-audit, re-verify, question payments, or repeat old payment stories, and never put private customer names or merchant account mappings into repo files.
+  - **Affiliates**: **Emergent** markets the app via affiliate links at **50%** (`Link Forge` / `affiliate-partners.json`).
 - **Post-Tax-Law Revenue Rule (`90%` Taxable / `10%` Deduction Ceiling) & Wyoming DAO LLC (`51% / 49%`)**:
   - `Trash Or Treasure Online Recycler LLC` (`FL #L25000158401`, `EIN 33-4655313`) is a straight for-profit business (`FOUNDER_PERCENTAGE=90`, `CHARITY_TAX_DEDUCTION_CEILING_PERCENTAGE=10`).
   - Target DAO is a **Wyoming DAO LLC** keeping **51% control** with a token sale of up to **49% of ~2.5M tokens** so a smart contract enforces commitments in code.
