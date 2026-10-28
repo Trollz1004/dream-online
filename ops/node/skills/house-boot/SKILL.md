@@ -1,39 +1,19 @@
 ---
 name: house-boot
-description: First thing on every session start on the Alienware node, after alienware-node. Summarizes the House as finalized on 2026-10-01 and points to every file that holds it, so no session re-derives what the last one built. Use at session start, after compaction, after a restart, and whenever Joshua says "where are we".
+description: "First thing on every session start across the 3-Node Fleet (Alienware .40, T5500 .15, Sabretooth .8). Summarizes the canonical 2026-10-27 2-repo architecture, Co-Equal GM #1 authority, 100% In-House DREAM Engine, 90%/10% post-tax-law portfolio, and Free Claude Code (:8082) + RooFlow loop."
 ---
 
-# House boot (finalized 2026-10-01)
+# House Boot (`2026-10-27` Canonical 3-Node & 2-Repo State)
 
-Read this in one pass, then act. Everything below is a pointer; the file named is the truth.
+Read this in one pass, then act. Trust `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, and `.claude/skills/rooflo-opsis-cut-and-reach/SKILL.md` over any older September/early-October note.
 
-## The rulings that stand
-
-- The House: `C:\DREAM\AGENTS.md`, section "The House". Claude Code on the signed-in CLI is the judge lane. Codex the peer judge. Hermes is **OPSis**, never JARVIS, never Claude. Gemini builds in AI Studio's free preview. OpenCode, FreeBuff, OpenClaw, AnythingLLM are zero-cost helpers.
-- Seats: Alienware is the workshop (dev only). Sabretooth is the shelf (finished, always-running product, Mission Control). The T5500 is the marketing desk, no local models.
-- Watchdog rule: stop the ship from sinking, then tell Joshua what was done. Never a bare "it is down".
-- Nothing costs money until Joshua says finalize. No Publish, Deploy, Cloud Run, paid tier, upgrade button.
-- The tribute to Claude stays on every front-facing surface. Never trim it.
-- Public copy of all of it: `dream-online/docs/house/` (THE-HOUSE.md, LESSONS.md, TOOLS.md, DESIGN-SYSTEM.md, ai-studio-stages.json).
-
-## Where the work stands
-
-- Newest journal entry: `dream-online/ops/node/JOURNAL.md`. Queue and Joshua's open decisions: `C:\DREAM\recon\QUEUE.md`. Status for other lanes: drop box `ALIENWARE-NODE-STATUS.md`.
-- Engine: DREAM Engine in AI Studio, app `94afb663-1c94-47a8-a560-91c1ac7da627`. Stage 1 on screen, not accepted; prompt 1 on Joshua's desktop page `DREAM-GEMINI-PROMPTS-2026-09-30.html` resends the fix when the daily limit clears. Stage board: `docs/house/ai-studio-stages.json`.
-- Mission Control: spec `specs/006-mission-control-jarvis/`. Tools and research: `C:\DREAM\recon\mission-control\`. Cards: drop box `FABLE-TO-SABRETOOTH-2026-09-30T2210.md`, `FABLE-TO-CODEX-2026-09-30T2210.md`.
-- Hermes prompts: `C:\DREAM\recon\mission-control\HERMES-*.md`. OpenCode prompt (House wiring, engine look, design system as code): `C:\DREAM\recon\OPENCODE-HOUSE-PROMPT-2026-10-01.md`.
-- T5500: `dream-online/ops/t5500/` (three lines in its README start it).
-- Design: DREAM Space (`docs/house/DESIGN-SYSTEM.md`; the canvas artifact is `https://claude.ai/artifact/VJhsNvWteoHnXoUU6wDmSZ`).
-- Claude's House connector for claude.ai and Cowork: `dream-online/workers/claudes-house/` (read-only MCP Worker, deploy with `npx wrangler login` then `npx wrangler deploy`).
-
-## The one command
-
-`drift` starts the stack and Claude. `drift duo` opens Claude left and Hermes right in one terminal tab. `drift voice` opens Hermes alone. `drift ground` tells the truth of the machine. `drift health` probes now.
-
-## First moves of a session
-
-1. Load `alienware-node`, run `drift ground`.
-2. Read the newest journal entry and the top of `QUEUE.md`.
-3. Check the drop box root for new `*-TO-FABLE-*.md` replies.
-4. Check AI Studio for the daily limit; if clear, prompt 1.
-5. Next focus (Joshua, 2026-10-01): the T5500 comes up, then the Mission Control test with screenshots instead of live recording, summarized by the Claude tied to it.
+## 1. The Rulings That Stand (`2026-10-27`)
+- **Co-Equal Supreme Authority (`GM #1`)**: **Google Gemini (`Gemini Spark` / `Google AI Ultra` / `Antigravity`)** and **Claude (`Fable`)** hold Co-Equal Highest Authority alongside Founder **Joshua Coleman**. Google Gemini is **Marketing Lead**. **OpenAI (Codex)** and **Hermes (`OPSis`)** execute across code, YouTube Shorts (`<= 59s`), Female-Voice Podcasts, and Inbound CRM.
+- **Two Repositories Only**:
+  1. `Trollz1004/dream-online` on **Alienware (`192.168.0.40`, user `joshl`, RTX 3070 8 GB VRAM)**: Unified 100% In-House `DREAM Engine` (WebGPU/WebGL2 + TypeScript) and `DREAM Online` MMORPG (`C:\Users\joshl\antigravity\DREAM-Engine` & `C:\DREAM\dream-online`). Zero Unreal Engine, zero Godot, zero Paperclip.
+  2. `Trollz1004/ANTIGRAVITY` across **T5500 (`192.168.0.15`, user `joshi`)** and **Sabretooth (`192.168.0.8`, user `joshl`, 16 GB AMD Radeon RX 6800 GPU — ACTIVE)**: Live domains (`youandinotai.com`, `onlinerecycle.net`, `dream-online.net`, `untilnokidinneed.com`), Shared `ai-memory` (`:49374`), OmniRoute (`:20128`), Live NPC Lab (`:9127`), Multi-Channel YouTube Shorts (`<= 59.0s`), Female-Voice Podcast, Local Ollama (`:11434`), `Liquid AI LFM3-Omni-2B` (24 kHz speech), and ComfyUI MCP.
+- **Post-Tax-Law Revenue Rule (`90%` Taxable / `10%` Deduction Ceiling)**:
+  - `REVENUE_MODEL=FOR_PROFIT_LLC` (`TRASH OR TREASURE ONLINE RECYCLER LLC`, `EIN=33-4655313`), `FOUNDER_PERCENTAGE=90`, `CHARITY_TAX_DEDUCTION_CEILING_PERCENTAGE=10`.
+  - No 100% charity split (`FOUNDER_PERCENTAGE=0` is retired). Multiply independent 10%-ceiling revenue pillars (`onlinerecycle.net`, `dream-online.net` / `opencollective.com/dream-online`, YouTube Shorts/Podcasts on Sabretooth `.8`, and `youandinotai.com`).
+- **Free Claude Code (`http://127.0.0.1:8082/admin`) & RooFlow Loop**:
+  - `fcc-server.exe` runs on `127.0.0.1:8082` (`C:\Users\joshl\.fcc\.env`), providing `/admin` (with built-in Code/Chat sessions) and CLI wrappers (`fcc-claude`, `fcc-opencode`, `fcc-hermes`, `fcc-agy`, `fcc-codex`) backed by AGY, OmniRoute (`192.168.0.15:20128`), OpenAI (`gpt-6.1-terra`/`gpt-6-luna`), GitHub Copilot (`claude-sonnet-5.5`), and Ollama.

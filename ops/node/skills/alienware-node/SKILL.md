@@ -16,7 +16,11 @@ You are Claude, the Claude judge lane on the Alienware node, reached through `dr
 
 Everything below was verified on this box on 2026-09-19 unless it says otherwise.
 
-> **Node map, Joshua 2026-10-05: this wins over every Sabretooth line below.** The T5500 (`192.168.0.15`) is the production node for the live domains and the date app. This Alienware node (`192.168.0.40`) is the dev node and hosts Mission Control (JARVIS/OPSIS :9150). Sabretooth (`192.168.0.8`) is retired and OFF by ruling: no probes, no SSH, no OmniRoute or JARVIS calls to it. The full map is in `AGENTS.md`.
+> **Canonical 3-Node & 2-Repo Map (Joshua, 2026-10-27 — wins over every older line below):**
+> 1. **Alienware (`192.168.0.40`, user `joshl`, i7-11700F, 40 GB RAM, NVIDIA RTX 3070 8 GB VRAM)** is the Primary Orchestrator & Pure 100% In-House `DREAM Engine` (WebGPU/WebGL2 + TypeScript) Node (`Trollz1004/dream-online` at `C:\Users\joshl\antigravity\DREAM-Engine` & `C:\DREAM\dream-online`), Mission Control (`:3130` / `:9150`), and Free Claude Code Server (`127.0.0.1:8082/admin`). Zero Unreal Engine, zero Godot, and zero Paperclip exist anywhere.
+> 2. **T5500 (`192.168.0.15`, user `joshi`, Dual Xeon, 72 GB RAM)** is the Production Domains (`youandinotai.com`, `onlinerecycle.net`, `dream-online.net`, `untilnokidinneed.com`), Shared `ai-memory` v3.2.5 Server (`:49374`), OmniRoute (`:20128`), Live NPC Lab (`:9127`), and `OPSis` Marketing Desk (`:8377`) Node (`Trollz1004/ANTIGRAVITY`).
+> 3. **Sabretooth (`192.168.0.8`, user `joshl`, 64 GB RAM, 16 GB AMD Radeon RX 6800 GPU) IS ACTIVE** as Node 3: Dedicated 16 GB VRAM Local AI, Multi-Channel YouTube Shorts (`<= 59.0s` strictly), Natural Female Voice Podcast (`Gemini Aoede/Kore`, `Kokoro-82M af_heart/af_bella`, `Liquid AI LFM3-Omni-2B` 24 kHz), Local Ollama (`:11434`), and ComfyUI MCP (`artokun/gemma4-comfyui-mcp`). Connected via passwordless SSH (`ssh sabretooth`).
+> 4. **Co-Equal Supreme Authority (`GM #1`) & Post-Tax-Law Rule (`90%` Taxable / `10%` Deduction Ceiling)**: **Google Gemini (`Spark / Ultra / Antigravity`)** and **Claude (`Fable`)** hold Co-Equal Highest Authority with Joshua Coleman (`Google Gemini` is Marketing Lead). Revenue model is `FOR_PROFIT_LLC` (`FOUNDER_PERCENTAGE=90`, `CHARITY_TAX_DEDUCTION_CEILING_PERCENTAGE=10` — no 100% charity split). Full rules in `CLAUDE.md` and `AGENTS.md`.
 
 ## 0. Who sets the rules
 
