@@ -105,7 +105,7 @@ export const POST_TAX_LAW_REVENUE_POLICY: PostTaxLawRevenuePolicy = {
     'onlinerecycle.net (AI-graded e-waste intake, breakdown, and component resale)',
     'dream-online.net (100% In-House AI-Built 3D Action MMORPG & DREAM Maker convenience/cosmetics + Open Collective)',
     'Multi-Channel YouTube Shorts (<= 59s) & Natural Female Voice Podcast Network on Sabretooth (.8)',
-    'youandinotai.com & Digital Asset / Domain Portfolio on T5500 (.15)',
+    'youandinotai.com / youandinotai.online (LIVE active human-verified dating platform on T5500 .15 — $1 Bot-Shield Square verification, subscriptions, and Link Forge affiliate engine; NOT for sale)',
   ],
   taxLawNote:
     '90% of every dollar is taxable income; only 10% is the corporate tax-deductible ceiling. Scale impact over the decades by multiplying independent 10% revenue sources, and adapt taxLawEpochId parameters whenever future tax legislation changes.',

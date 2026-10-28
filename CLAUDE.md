@@ -46,7 +46,12 @@ Only **two repositories** and **three active nodes** exist across the fleet (old
 ## 4. Post-Tax-Law Revenue Rule (`90%` Taxable / `10%` Deduction Ceiling — Closed)
 - **No 100% Charity Split**: `REVENUE_MODEL=FULL_CHARITY`, `CHARITY_PERCENTAGE=100`, and `FOUNDER_PERCENTAGE=0` are permanently retired.
 - Under the post-Big-Beautiful-Bill tax law, **90% of every dollar is taxable income** (`REVENUE_MODEL=FOR_PROFIT_LLC`, `LEGAL_NAME=TRASH OR TREASURE ONLINE RECYCLER LLC`, `EIN=33-4655313`, `FOUNDER_PERCENTAGE=90`, `TAXABLE_REVENUE_PERCENTAGE=90`) and only **10%** can be tax-deducted (`CHARITY_TAX_DEDUCTION_CEILING_PERCENTAGE=10`).
-- **Decades-Long Strategy**: Scale mission impact horizontally by building **many independent 10%-ceiling revenue sources** (`onlinerecycle.net` e-waste intake, `dream-online.net` MMORPG & `opencollective.com/dream-online`, Multi-Channel YouTube Shorts & Female-Voice Podcasts on Sabretooth `.8`, and `youandinotai.com`) and adapt via `adaptPortfolioToTaxLawChange()` whenever future tax laws change.
+- **Decades-Long Strategy**: Scale mission impact horizontally by building **many independent 10%-ceiling revenue sources**:
+  1. **`onlinerecycle.net` AI E-Waste Intake & Refurbishing Engine** (`Square` + `eBay`).
+  2. **`dream-online.net` MMORPG & `opencollective.com/dream-online`** (`NEEDs` pay-for-convenience cosmetics & supporter packs).
+  3. **Multi-Channel YouTube Shorts (`<= 59.0s`) & Natural Female Voice Podcast Engine (`Sabretooth .8`)**.
+  4. **`youandinotai.com` (`youandinotai.online`) — LIVE, ACTIVE, and NOT FOR SALE (`T5500 .15`, `:3200` / `:8000`)**: Active human-verified dating platform (`18+ Adults Only`) with `$1 Bot-Shield` Square human verification (Square only, never Stripe), active subscriptions, and the Date App `Link Forge` (`affiliate-partners.json`) affiliate engine (including `https://darlink.ai?fpr=joshua-10c242`, isolated strictly on `youandinotai.com`). Never refer to `youandinotai.com` as "frozen" or "for sale".
+  Adapt the portfolio automatically via `adaptPortfolioToTaxLawChange()` whenever future tax laws change.
 - **24/7 `OPSis / Jarvis` Livestream Honesty Gate**: Gated until AI verifiably helps fund the mission (AI-driven e-waste intake on `onlinerecycle.net`, automated in-game convenience microtransactions, or tracked on the pre-gassed Base Mainnet `8453` Shriners Safe `0x8d3dEADbE2b4B857A43331D459270B5eedC7084e` / Gospel Splitter `0x9855B75061D4c841791382998f0CE8B2BCC965A4`). Never count Joshua's personal out-of-pocket eBay donations as AI revenue.
 
 ---

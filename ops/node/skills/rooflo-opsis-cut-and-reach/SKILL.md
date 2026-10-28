@@ -34,7 +34,7 @@ When invoked in Free Claude Code (`http://127.0.0.1:8082`), `fcc-claude`, `fcc-o
      - Pillar 1: `onlinerecycle.net` (AI-graded e-waste intake, breakdown, and resale)
      - Pillar 2: `dream-online.net` & `https://opencollective.com/dream-online` (100% AI-Built 3D MMORPG convenience/cosmetics & crowdfunding)
      - Pillar 3: Multi-Channel YouTube Shorts (`@DreamOnlineMMO`, `@UntilNoKidInNeed`, `@AIDreamTeamStudio`) & Female-Voice Podcast on Sabretooth (`.8`)
-     - Pillar 4: `youandinotai.com` (`$8,000–$12,500` human-verified dating SaaS/domain lot & Square keep-alive)
+     - Pillar 4: `youandinotai.com` / `youandinotai.online` (LIVE, ACTIVE Human-Verified Dating Platform — `$1 Bot-Shield` Square verification, subscriptions, and `Link Forge` affiliate partnerships; NOT frozen and NOT for sale)
 
 ---
 
