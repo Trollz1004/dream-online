@@ -1,0 +1,14 @@
+﻿{
+    "description":  "Mandatory accessibility and cognitive-clarity skill for Founder Joshua Coleman (gradually losing vision + fast context switching). Outcome first, linear prose, pick-up-cold ready.",
+    "name":  "i-have-adhd",
+    "version":  "2.0.0",
+    "entry":  "SKILL.md",
+    "harnesses":  [
+                      "claude",
+                      "gemini",
+                      "codex",
+                      "opencode",
+                      "hermes",
+                      "fcc"
+                  ]
+}

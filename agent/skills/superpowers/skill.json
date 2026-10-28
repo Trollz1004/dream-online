@@ -1,0 +1,14 @@
+﻿{
+    "description":  "Full-stack autonomous execution loop: Spec -\u003e Plan -\u003e TDD (Red/Green/Refactor) -\u003e Implement -\u003e Verify (Rule One screenshot/HTTP probe) -\u003e Commit -\u003e 4-Tier Memory Sync.",
+    "name":  "superpowers",
+    "version":  "2.0.0",
+    "entry":  "SKILL.md",
+    "harnesses":  [
+                      "claude",
+                      "gemini",
+                      "codex",
+                      "opencode",
+                      "hermes",
+                      "fcc"
+                  ]
+}

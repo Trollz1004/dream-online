@@ -1,0 +1,5 @@
+﻿name: tdd
+description: "Mandatory Test-Driven Development (RED -> GREEN -> REFACTOR). Every feature or bugfix requires automated tests written and verified before completion."
+version: "2.0.0"
+model: "auto/best-reasoning"
+instructions_file: "../SKILL.md"

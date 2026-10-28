@@ -1,0 +1,4 @@
+﻿name = "obsidian-save"
+description = "Mandatory session-start read and session-end write to the Obsidian Vault (C:\DREAM\Antigravity\<NODE>\<agent>-to-<agent>.md) with automatic backup to Shared ai-memory (:49374), Graphy, OpenViking, Supabase, and Supermemory."
+version = "2.0.0"
+instructions = "../SKILL.md"

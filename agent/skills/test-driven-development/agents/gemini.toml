@@ -1,0 +1,4 @@
+﻿name = "test-driven-development"
+description = "Alias for mandatory TDD skill (RED -> GREEN -> REFACTOR) ensuring compatibility with harnesses expecting test-driven-development."
+version = "2.0.0"
+instructions = "../SKILL.md"

@@ -1,0 +1,14 @@
+﻿{
+    "description":  "Mandatory session-start read and session-end write to the Obsidian Vault (C:\\DREAM\\Antigravity\\\u003cNODE\u003e\\\u003cagent\u003e-to-\u003cagent\u003e.md) with automatic backup to Shared ai-memory (:49374), Graphy, OpenViking, Supabase, and Supermemory.",
+    "name":  "obsidian-save",
+    "version":  "2.0.0",
+    "entry":  "SKILL.md",
+    "harnesses":  [
+                      "claude",
+                      "gemini",
+                      "codex",
+                      "opencode",
+                      "hermes",
+                      "fcc"
+                  ]
+}

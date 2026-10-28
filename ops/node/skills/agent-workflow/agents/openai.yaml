@@ -1,0 +1,5 @@
+﻿name: agent-workflow
+description: "Master multi-agent orchestration workflow across Claude (Opus 5.5 / Fable), Gemini 4 High Reasoning (Trust Level Max Judges), Codex, Free Claude Code (:8082), and Hermes (OPSis)."
+version: "2.0.0"
+model: "auto/best-reasoning"
+instructions_file: "../SKILL.md"
