@@ -1,7 +1,7 @@
-﻿import test from 'node:test';
+import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { verifyPartnerConfig, planSocialStrike, planMusaCampaign, scoreLeadForgeBatch, maskSecrets, assertCustomerCopy, scoreLead } from '../inbound-crm-engine.mjs';
+import { verifyPartnerConfig, planSocialStrike, planMusaCampaign, scoreLeadForgeBatch, maskSecrets, assertCustomerCopy, scoreLead, judgeApproveAndDispatch, TRUST_LEVEL_MAX_JUDGES } from '../inbound-crm-engine.mjs';
 import { createStudioServer } from '../server.mjs';
 
 test('partner registry validates isolated URLs and creator split math', () => {
@@ -31,6 +31,15 @@ test('secrets are masked and customer copy has no mission language', () => {
  assert.equal(maskSecrets({key:'sk-secret-123',nested:'Bearer abcdefghijklmnop'}).key,'XXXX');
  assert.throws(()=>assertCustomerCopy('support mission charity donation'));
  assert.doesNotThrow(()=>assertCustomerCopy('verified accounts, safer matching, direct support'));
+});
+test('Trust Level Max judges (Gemini 4 High Reasoning and Opus 5.5 Fable) can approve and dispatch zero-cost work', () => {
+ assert.deepEqual(TRUST_LEVEL_MAX_JUDGES,['gemini-4-high-reasoning','opus-5.5-fable']);
+ const g=judgeApproveAndDispatch({judge_lane:'gemini-4-high-reasoning',source_agent:'emergent',item_type:'partner_email',cost_usd:0,copy:'Verified accounts and 50% creator affiliate splits.'});
+ assert.equal(g.approved,true); assert.equal(g.trust_level,'MAX'); assert.equal(g.dispatched,true);
+ const f=judgeApproveAndDispatch({judge_lane:'opus-5.5-fable',source_agent:'musa',item_type:'musa_campaign',cost_usd:0,copy:'Electronics pickup and AI-assisted intake.'});
+ assert.equal(f.approved,true); assert.equal(f.trust_level,'MAX');
+ assert.throws(()=>judgeApproveAndDispatch({judge_lane:'untrusted-bot',item_type:'partner_email'}));
+ assert.throws(()=>judgeApproveAndDispatch({judge_lane:'gemini-4-high-reasoning',item_type:'partner_email',cost_usd:10}));
 });
 test('server exposes four one-click staging endpoints and rejects automation', async () => {
  const server=createStudioServer(); await new Promise(r=>server.listen(0,'127.0.0.1',r));

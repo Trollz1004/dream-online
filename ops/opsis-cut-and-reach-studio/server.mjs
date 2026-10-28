@@ -1,9 +1,9 @@
-﻿import http from 'node:http';
+import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { TimelineStore } from './timeline-engine.mjs';
-import { scoreLead, trackAttribution, verifyPartnerConfig, planSocialStrike, planMusaCampaign, scoreLeadForgeBatch } from './inbound-crm-engine.mjs';
+import { scoreLead, trackAttribution, verifyPartnerConfig, planSocialStrike, planMusaCampaign, scoreLeadForgeBatch, judgeApproveAndDispatch } from './inbound-crm-engine.mjs';
 const html=await readFile(new URL('./public/index.html',import.meta.url));
 const partners=JSON.parse(await readFile(new URL('./affiliate-partners.json',import.meta.url),'utf8'));
 async function json(req){let raw=''; for await (const chunk of req){raw+=chunk; if(raw.length>100_000)throw new Error('Request too large');} return raw?JSON.parse(raw):{};}
@@ -14,7 +14,7 @@ export function createStudioServer() {
   const host=req.headers.host || ''; if(!/^127\.0\.0\.1:\d+$/.test(host)) {res.writeHead(403).end(); return;}
   if(req.method==='GET' && req.url==='/') {res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}).end(html);return;}
   if(req.method==='GET' && req.url==='/api/session') {res.writeHead(200,{'Content-Type':'application/json'}).end(JSON.stringify({token}));return;}
-  const routes=['/api/timeline','/api/lead','/api/stage-social','/api/verify-partners','/api/stage-musa','/api/leadforge'];
+  const routes=['/api/timeline','/api/lead','/api/stage-social','/api/verify-partners','/api/stage-musa','/api/leadforge','/api/judge-approve'];
   if(req.method!=='POST' || !routes.includes(req.url)) {res.writeHead(404).end();return;}
   if(req.headers.origin!==`http://${host}` || req.headers['x-studio-token']!==token || !/^application\/json(?:;|$)/i.test(req.headers['content-type']||'')) {res.writeHead(403).end();return;}
   try {
@@ -24,6 +24,7 @@ export function createStudioServer() {
    else if(req.url==='/api/stage-social') result=planSocialStrike(body||{});
    else if(req.url==='/api/verify-partners') result={valid:true,partners:verifyPartnerConfig(partners).map(p=>({...p,token:'XXXX'}))};
    else if(req.url==='/api/stage-musa') result=planMusaCampaign(body||{});
+   else if(req.url==='/api/judge-approve') result=judgeApproveAndDispatch(body||{});
    else {const leads=Array.isArray(body.leads)?body.leads:[]; const tier=body.tier||'starter'; result=scoreLeadForgeBatch(tier,leads);}
    res.writeHead(200,{'Content-Type':'application/json'}).end(JSON.stringify(result));
   } catch {res.writeHead(400,{'Content-Type':'application/json'}).end(JSON.stringify({error:'Request rejected. Check the input, disclosure, duration, voice, and revision.'}));}

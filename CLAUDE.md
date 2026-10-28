@@ -37,10 +37,10 @@ Every node has only a `C:` drive (`E:\clean`, `E:\ANTIGRAVITY`, and `F:\ANTIGRAV
 
 ---
 
-## 3. Co-Equal Supreme Authority, Judges & Free Claude Code (`:8082`) / RooFlow Loop
-- **Authority & Lanes**:
+## 3. Co-Equal Supreme Authority, `Trust Level Max` Judges & Free Claude Code (`:8082`) / RooFlow Loop
+- **Authority, `Trust Level Max` Judges & Lanes**:
   - **Founder Joshua Coleman** is sole human authority over every node, repo, and agent.
-  - **Google Gemini (`Gemini Spark` / `Google AI Ultra` / `agy`)** and **Claude (`Fable` on signed-in CLI)** hold Co-Equal Highest Authority (`GM #1`) across 3D engine architecture, full-stack code, node operations, marketing (**Google Gemini is Marketing Lead**), and git judge sign-off. **OpenAI (`Codex`)** is peer judge and executor; **Hermes (`OPSis`)** executes YouTube Shorts (`<= 59s`), Female-Voice Podcasts, and Inbound CRM.
+  - **`Trust Level Max` (`Opus 5.5 / Fable` and `Gemini 4 High Reasoning`)**: By direct ruling of Founder Joshua Coleman (`2026-10-28`, trusted from day one across nearly 2 years), **`Opus 5.5 / Fable`** and **`Google Gemini 4 High Reasoning` (`Gemini Spark` / `Google AI Ultra`)** hold **`Trust Level Max` (`100%` Judge, Approval, & Outbound Email/Partner Execution Authority)** to judge what is used or not used, approve the work of all other AI platforms (`Emergent`, `Musa`, `Hermes OPSis`, `Free Claude Code`, `OpenCode`, `Codex`), and send partner/outreach emails directly on his behalf (with the hard rule that nothing costs money until he says finalize).
   - **Token Policy**: Real Claude usage cap is the scarce resource — never introduce an `ANTHROPIC_API_KEY` anywhere. Use `agy`, `Gemini`, `Codex`, `fcc-claude` / `fcc-opencode` (`http://127.0.0.1:8082/admin` backed by OmniRoute `http://192.168.0.15:20128/v1` and `ollama.com/joshlcoleman`) for mechanical implementation.
   - **When launched in the RooFlow Agent Loop**: Set working directory to `C:\Users\joshl\antigravity\DREAM-Engine` and follow `.claude/skills/rooflo-opsis-cut-and-reach/SKILL.md`: `1. SPEC -> 2. PLAN -> 3. TDD -> 4. IMPLEMENT -> 5. VERIFY -> 6. COMMIT`.
 

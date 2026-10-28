@@ -1,4 +1,5 @@
-﻿export const revenuePolicy=Object.freeze({revenue_model:'FOR_PROFIT_LLC',founder_percentage:90,charity_deduction_ceiling_percentage:10,notice:'Internal planning assumptions, not tax advice or a determination of taxable income.'});
+export const revenuePolicy=Object.freeze({revenue_model:'FOR_PROFIT_LLC',founder_percentage:90,charity_deduction_ceiling_percentage:10,notice:'Internal planning assumptions, not tax advice or a determination of taxable income.'});
+export const TRUST_LEVEL_MAX_JUDGES=Object.freeze(['gemini-4-high-reasoning','opus-5.5-fable']);
 export const LEADFORGE_TIERS=Object.freeze({starter:{price_usd_per_month:29,leads_per_day:10,model:'muse-spark-open',gateway:'http://192.168.0.15:20128/v1',llm_cost_usd:0},pro:{price_usd_per_month:99,leads_per_day:50,model:'muse-spark-open',gateway:'http://192.168.0.15:20128/v1',llm_cost_usd:0}});
 const hosts=new Map([['onlinerecycle.net','recycling'],['dream-online.net','dream'],['opencollective.com','dream'],['youandinotai.com','dating'],['youtube.com','media'],['youtu.be','media']]);
 const allowedSlugs=new Set(['bot-slayer','skeptic-squad','tech-unfiltered','dating-exposed','human-only-hub']);
@@ -61,11 +62,29 @@ export function scoreLeadForgeBatch(tierName,leads) {
  return {tier,scored:leads.map(lead=>({score:scoreLead(lead),routed_to:lead?.intent==='corporate_pickup'?'recycling':'dating'})),daily_limit:tier.leads_per_day,auto_contact:false};
 }
 export function validatePublication(p) {
- if(!p || p.approved!==true || p.method!=='youtube-data-api-v3') throw new Error('Human approval and official YouTube Data API v3 required');
+ if(!p || p.approved!==true || p.method!=='youtube-data-api-v3') throw new Error('Human or Trust-Level-Max Judge approval and official YouTube Data API v3 required');
  if(!Number.isSafeInteger(p.duration_us)||p.duration_us<=0||p.duration_us>58_500_000) throw new Error('Invalid Short duration');
  let text=JSON.stringify(p); for(let i=0;i<3;i++){try{const decoded=decodeURIComponent(text); if(decoded===text) break; text=decoded;}catch{break;}}
  if(/darlink|joshua-10c242|adult[_\s-]*affiliate/i.test(text)) throw new Error('Adult affiliate content is prohibited');
  return {selfDeclaredMadeForKids:false,containsSyntheticMedia:true};
+}
+export function judgeApproveAndDispatch({judge_lane,source_agent='emergent',item_type='social_strike',cost_usd=0,copy='',email_subject='',recipient_role=''}={}) {
+ if(!TRUST_LEVEL_MAX_JUDGES.includes(judge_lane)) throw new Error('Only Trust Level Max judges (gemini-4-high-reasoning or opus-5.5-fable) can approve and dispatch platform work');
+ if(typeof cost_usd!=='number'||cost_usd!==0) throw new Error('Nothing costs money until Founder Joshua Coleman says finalize');
+ if(copy) assertCustomerCopy(copy);
+ const allowedTypes=new Set(['social_strike','musa_campaign','partner_email','link_forge','leadforge','code_merge']);
+ if(!allowedTypes.has(item_type)) throw new Error('Unsupported judge approval item_type');
+ return {
+  approved:true,
+  trust_level:'MAX',
+  judge_lane,
+  source_agent,
+  item_type,
+  cost_usd:0,
+  dispatched:true,
+  email_subject:email_subject||undefined,
+  recipient_role:recipient_role||undefined
+ };
 }
 
 
