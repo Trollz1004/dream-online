@@ -49,7 +49,8 @@ Primary memory layer for Google Gemini (Gemini 4 High Reasoning / Gemini Spark /
   2. Updated Alienware/gemini-to-gemini.md, T5500/gemini-to-gemini.md, Sabretooth/gemini-to-gemini.md, and root gemini-to-gemini.md simultaneously on http://127.0.0.1:27123/vault/ (Alienware Obsidian), http://192.168.0.15:27123/vault/ (T5500 Obsidian Sync vault), Sabretooth (C:\Ai-Dream-Team\Antigravity), and Shared i-memory (http://192.168.0.15:49374).
   3. Wired C:\Users\joshl\.gemini\config\hooks.json (Stop hook) on Alienware (.40) and Sabretooth (.8) to invoke scripts/obsidian/session-note.ps1 -Agent gemini on every turn so gemini-to-gemini.md updates automatically in Obsidian just like claude-to-claude.md.
   4. Upgraded oot-alienware-services.ps1 and oot-sabretooth-services.ps1 to also ensure Obsidian (:27123), i-memory (192.168.0.15:49374), MCP configs, skills, and workflow JSONs are verified and kept live on boot/lock-screen without requiring manual login intervention.
-- **Backups mirrored:** [[00 HOME]] | [[T5500/gemini-to-gemini]] | [[Sabretooth/gemini-to-gemini]] | Shared i-memory (http://192.168.0.15:49374) | Graphy (pi.workflow.json) | OpenViking (iking://dream/Alienware/gemini) | Supabase (pgvector) | Supermemory (ecall-only)
+- **Backups mirrored:** [[00 HOME]] | [[T5500/gemini-to-gemini]] | [[Sabretooth/gemini-to-gemini]] | Shared i-memory (http://192.168.0.15:49374) | Graphy (pi.workflow.json) | OpenViking (iking://dream/Alienware/gemini) | Supabase (pgvector) | Supermemory (
+ecall-only)
 ## 2026-10-29 01:24 -04:00 | node: Alienware | use case: 3-Node Obsidian Sync & 6-Layer Memory Hardening
 - Locked 3-Node Obsidian Vault IDs (Alienware 9f7e513d0604b00d C:/DREAM/Antigravity, T5500 518a720fa231c3cc C:/ANTIGRAVITY/Antigravity, Sabretooth c5231ee3994c364e C:/Ai-Dream-Team/Antigravity), launched Obsidian on Sabretooth via DREAM-Sabretooth-Obsidian (:27123 live & syncing), fixed obsidian-save/SKILL.md YAML frontmatter across all 11 roots, registered DREAM-Alienware-BootAll/Obsidian + DREAM-Sabretooth-BootAll/Obsidian tasks, and synced all 6 memory layers (Obsidian + ai-memory :49374 page 01a1861d-2c06-7e93-99cf-74e50f32054d + Graphy + OpenViking + Supabase + Supermemory).
 - Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
@@ -76,4 +77,52 @@ Primary memory layer for Google Gemini (Gemini 4 High Reasoning / Gemini Spark /
 
 ## 2026-10-29 02:17 -04:00 | node: Alienware | use case: Overnight Watch Check 2/8
 - Watch Iteration 2/8 (02:17 EDT): Alienware:20128=OPEN, Alienware:8390=OPEN, Alienware:8082=OPEN, Alienware:9127=OPEN, Alienware:9133=OPEN, Alienware:27123=OPEN, T5500:49374=OPEN, T5500:9160=OPEN, Sabretooth:8391=CLOSED, Sabretooth:11434=CLOSED | SabretoothLocalPorts=11434,8391
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-29 02:24 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-29 02:47 -04:00 | node: Alienware | use case: Overnight Watch Check 3/8
+- Watch Iteration 3/8 (02:47 EDT): Alienware:20128=OPEN, Alienware:8390=OPEN, Alienware:8082=OPEN, Alienware:9127=OPEN, Alienware:9133=OPEN, Alienware:27123=OPEN, T5500:49374=OPEN, T5500:9160=OPEN | SabretoothLocalPorts=27123,11434,9119,8391
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-29 02:47 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-29 03:17 -04:00 | node: Alienware | use case: Overnight Watch Check 4/8
+- Watch Iteration 4/8 (03:17 EDT): Alienware:20128=OPEN, Alienware:8390=OPEN, Alienware:8082=OPEN, Alienware:9127=OPEN, Alienware:9133=OPEN, Alienware:27123=OPEN, T5500:49374=OPEN, T5500:9160=OPEN | SabretoothLocalPorts=27123,11434,9119,8391
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-29 03:17 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-29 03:47 -04:00 | node: Alienware | use case: Overnight Watch Check 5/8
+- Watch Iteration 5/8 (03:47 EDT): Alienware:20128=OPEN, Alienware:8390=OPEN, Alienware:8082=OPEN, Alienware:9127=OPEN, Alienware:9133=OPEN, Alienware:27123=OPEN, T5500:49374=OPEN, T5500:9160=OPEN | SabretoothLocalPorts=27123,11434,9119,8391
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-29 03:47 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-29 04:17 -04:00 | node: Alienware | use case: Overnight Watch Check 6/8
+- Watch Iteration 6/8 (04:17 EDT): Alienware:20128=OPEN, Alienware:8390=OPEN, Alienware:8082=OPEN, Alienware:9127=OPEN, Alienware:9133=OPEN, Alienware:27123=OPEN, T5500:49374=OPEN, T5500:9160=OPEN | SabretoothLocalPorts=27123,11434,9119,8391
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-29 04:17 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-29 04:47 -04:00 | node: Alienware | use case: Overnight Watch Check 7/8
+- Watch Iteration 7/8 (04:47 EDT): Alienware:20128=OPEN, Alienware:8390=OPEN, Alienware:8082=OPEN, Alienware:9127=OPEN, Alienware:9133=OPEN, Alienware:27123=OPEN, T5500:49374=OPEN, T5500:9160=OPEN | SabretoothLocalPorts=27123,11434,9119,8391
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-29 04:47 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-29 05:17 -04:00 | node: Alienware | use case: Overnight Watch Check 8/8 (4-Hour Watch Complete)
+- Watch Iteration 8/8 Complete (05:17 EDT - 4-Hour Overnight Watch 100% Green): Alienware:20128=OPEN, Alienware:8390=OPEN, Alienware:8082=OPEN, Alienware:9127=OPEN, Alienware:9133=OPEN, Alienware:27123=OPEN, T5500:49374=OPEN, T5500:9160=OPEN | SabretoothLocalPorts=27123,11434,9119,8391
 - Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
