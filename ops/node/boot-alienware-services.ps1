@@ -40,12 +40,10 @@ function Start-DetachedService([string]$CommandLine, [string]$WorkingDir) {
 Get-ChildItem $vaultRoot -Filter "*.zip" -Force -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
 
 # 1. Ensure Obsidian (Vault 9f7e513d0604b00d -> C:\DREAM\Antigravity, Port :27123) is running for $5 Obsidian Sync
+# Uses Win32_Process.Create so Obsidian starts even at the Windows Lock Screen (LogonUI / Session 0) without waiting for login.
 if (-not (Test-TcpPort "127.0.0.1" 27123) -and -not (Get-Process Obsidian -ErrorAction SilentlyContinue)) {
-    $obsTask = Get-ScheduledTask -TaskName "DREAM-Alienware-Obsidian" -ErrorAction SilentlyContinue
-    if ($obsTask) {
-        Start-ScheduledTask -TaskName "DREAM-Alienware-Obsidian" -ErrorAction SilentlyContinue
-    } elseif (Test-Path $obsidianExe) {
-        Start-Process "obsidian://open?vault=$alienwareVaultId" -ErrorAction SilentlyContinue
+    if (Test-Path $obsidianExe) {
+        Start-DetachedService "`"$obsidianExe`"" $vaultRoot
     }
 }
 

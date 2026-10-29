@@ -53,3 +53,27 @@ Primary memory layer for Google Gemini (Gemini 4 High Reasoning / Gemini Spark /
 ## 2026-10-29 01:24 -04:00 | node: Alienware | use case: 3-Node Obsidian Sync & 6-Layer Memory Hardening
 - Locked 3-Node Obsidian Vault IDs (Alienware 9f7e513d0604b00d C:/DREAM/Antigravity, T5500 518a720fa231c3cc C:/ANTIGRAVITY/Antigravity, Sabretooth c5231ee3994c364e C:/Ai-Dream-Team/Antigravity), launched Obsidian on Sabretooth via DREAM-Sabretooth-Obsidian (:27123 live & syncing), fixed obsidian-save/SKILL.md YAML frontmatter across all 11 roots, registered DREAM-Alienware-BootAll/Obsidian + DREAM-Sabretooth-BootAll/Obsidian tasks, and synced all 6 memory layers (Obsidian + ai-memory :49374 page 01a1861d-2c06-7e93-99cf-74e50f32054d + Graphy + OpenViking + Supabase + Supermemory).
 - Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-29 01:29 -04:00 | node: Alienware | use case: 4-Hour Rest Watch Started
+- Founder Joshua Coleman resting eyes for ~4 hours. All 3 nodes (Alienware .40, T5500 .15, Sabretooth .8), 1 synced Obsidian vault (9f7e513d0604b00d / 518a720fa231c3cc / c5231ee3994c364e on :27123), Shared ai-memory (:49374), and OPSis Cut & Reach Studio (:8390/:8391) verified green and on autonomous watch.
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-29 01:30 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-29 01:34 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-29 01:47 -04:00 | node: Alienware | use case: Overnight Watch Check 1/8
+- Watch Iteration 1/8 (01:47 EDT): Alienware:20128=OPEN, Alienware:8390=OPEN, Alienware:8082=OPEN, Alienware:9127=OPEN, Alienware:9133=OPEN, Alienware:27123=OPEN, T5500:49374=OPEN, T5500:27123=CLOSED, T5500:9160=OPEN, T5500:8000=CLOSED, Sabretooth:8391=OPEN, Sabretooth:11434=OPEN | SabretoothLocalPorts=11434,27123,9119,8391
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-29 01:47 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-29 02:17 -04:00 | node: Alienware | use case: Overnight Watch Check 2/8
+- Watch Iteration 2/8 (02:17 EDT): Alienware:20128=OPEN, Alienware:8390=OPEN, Alienware:8082=OPEN, Alienware:9127=OPEN, Alienware:9133=OPEN, Alienware:27123=OPEN, T5500:49374=OPEN, T5500:9160=OPEN, Sabretooth:8391=CLOSED, Sabretooth:11434=CLOSED | SabretoothLocalPorts=11434,8391
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
