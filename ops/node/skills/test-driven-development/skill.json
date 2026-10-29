@@ -1,14 +1,14 @@
-﻿{
-    "description":  "Alias for mandatory TDD skill (RED -\u003e GREEN -\u003e REFACTOR) ensuring compatibility with harnesses expecting test-driven-development.",
-    "name":  "test-driven-development",
-    "version":  "2.0.0",
-    "entry":  "SKILL.md",
-    "harnesses":  [
-                      "claude",
-                      "gemini",
-                      "codex",
-                      "opencode",
-                      "hermes",
-                      "fcc"
-                  ]
+{
+  "name": "test-driven-development",
+  "description": "Alias for mandatory TDD skill (RED -> GREEN -> REFACTOR) ensuring compatibility with harnesses expecting test-driven-development.",
+  "version": "2.0.0",
+  "entry": "SKILL.md",
+  "harnesses": [
+    "claude",
+    "gemini",
+    "codex",
+    "hermes",
+    "opencode",
+    "agy"
+  ]
 }

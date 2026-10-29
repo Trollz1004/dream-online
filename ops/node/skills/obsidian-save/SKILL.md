@@ -1,6 +1,6 @@
-﻿---
+---
 name: obsidian-save
-description: "Mandatory session-start read and session-end write to the Obsidian Vault (C:\DREAM\Antigravity\<NODE>\<agent>-to-<agent>.md) with automatic backup to Shared ai-memory (:49374), Graphy, OpenViking, Supabase, and Supermemory."
+description: "Mandatory session-start read and session-end write to the synced Obsidian Vault (<NODE>/<agent>-to-<agent>.md) with automatic backup to Shared ai-memory (:49374), Graphy, OpenViking, Supabase, and Supermemory."
 version: 2.0.0
 platforms: [windows, linux, macos]
 ---
@@ -9,11 +9,12 @@ platforms: [windows, linux, macos]
 
 ## Mandatory Session Protocol (Every Agent, Every Node, Every Session)
 1. **Session Start**:
-   - Read C:\DREAM\Antigravity\T5500\gemini-to-gemini.md and C:\DREAM\Antigravity\<NODE>\<agent>-to-<agent>.md (Alienware, T5500, Sabretooth).
-   - Query Shared i-memory MCP (http://192.168.0.15:49374) with scope: "global".
-2. **Session End (scripts/obsidian/session-note.ps1)**:
-   - Append a timestamped entry (## YYYY-MM-DD HH:MM TZ | node: <NODE> | use case: <summary>) to C:\DREAM\Antigravity\<NODE>\<agent>-to-<agent>.md and memory/obsidian-vault/.
+   - Read `T5500/gemini-to-gemini.md` and `<NODE>/<agent>-to-<agent>.md` (`Alienware`, `T5500`, `Sabretooth`) in the synced Obsidian vault (`C:/DREAM/Antigravity` on Alienware, `C:/ANTIGRAVITY/Antigravity` on T5500, `C:/Ai-Dream-Team/Antigravity` on Sabretooth, or via Obsidian Local REST API `:27123`).
+   - Query Shared `ai-memory` MCP (`http://192.168.0.15:49374`) with `scope: "global"`.
+2. **Session End (`scripts/obsidian/session-note.ps1`)**:
+   - Append a timestamped entry (`## YYYY-MM-DD HH:MM TZ | node: <NODE> | use case: <summary>`) to `<NODE>/<agent>-to-<agent>.md`, root `<agent>-to-<agent>.md`, and `memory/obsidian-vault/`.
    - Mirror the entry to:
-     - **Shared i-memory MCP**: http://192.168.0.15:49374 (memory_write_page)
-     - **Graphy & Local 4-Tier Bridge**: POST http://127.0.0.1:20128/api/memory/store (syncs Obsidian + Viking iking://dream/... + Supabase pgvector + Supermemory recall backup)
-   - Never write raw secrets, API keys, or tokens (always redact as XXXX).
+     - **Obsidian Local REST API (`:27123`)**: `PUT http://127.0.0.1:27123/vault/<NODE>/<agent>-to-<agent>.md` and `http://192.168.0.15:27123/vault/<NODE>/<agent>-to-<agent>.md` so Obsidian Sync ($5 plan, 1 vault 1 sync) propagates immediately across all nodes.
+     - **Shared `ai-memory` MCP**: `http://192.168.0.15:49374` (`memory_write_page`)
+     - **Graphy & Local 4-Tier Bridge**: `POST http://127.0.0.1:20128/api/memory/store` (syncs Obsidian + Viking `viking://dream/...` + Supabase pgvector + Supermemory recall backup)
+   - Never write raw secrets, API keys, or tokens (always redact as `XXXX`).

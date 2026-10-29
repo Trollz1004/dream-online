@@ -1,4 +1,4 @@
-﻿---
+---
 name: caveman
 description: "Ultra-terse, outcome-first communication and organic anti-slop hook drafting. Cuts filler while keeping technical accuracy 100% intact."
 version: 2.0.0

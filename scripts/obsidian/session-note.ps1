@@ -1,13 +1,28 @@
-# Cross-Node Obsidian Session-End Writer & 4-Tier Backup Mirror (2026-10-28)
+# Cross-Node Obsidian Session-End Writer & 4-Tier Backup Mirror (2026-10-29)
+# Syncs across the 1 synced Obsidian Vault ($5 plan):
+# - Alienware (.40): 9f7e513d0604b00d (C:\DREAM\Antigravity)
+# - T5500 (.15):     518a720fa231c3cc (C:\ANTIGRAVITY\Antigravity)
+# - Sabretooth (.8): c5231ee3994c364e (C:\Ai-Dream-Team\Antigravity)
+
 param(
-    [string]$NodeName = "Alienware",
+    [Alias("Node")]
+    [string]$NodeName = "",
+    [Alias("Agent")]
     [string]$AgentName = "gemini",
     [string]$UseCase = "Autonomous session checkpoint & multi-harness sync",
     [string]$Summary = ""
 )
 
 $ErrorActionPreference = "SilentlyContinue"
+if (-not $NodeName) {
+    $hn = hostname
+    if ($hn -match "Sabretooth") { $NodeName = "Sabretooth" }
+    elseif ($hn -match "T5500") { $NodeName = "T5500" }
+    else { $NodeName = "Alienware" }
+}
+
 $vaultRoot = if (Test-Path "C:\DREAM\Antigravity") { "C:\DREAM\Antigravity" } elseif (Test-Path "C:\Ai-Dream-Team\Antigravity") { "C:\Ai-Dream-Team\Antigravity" } else { "C:\ANTIGRAVITY\Antigravity" }
+$repoVaultMirror = "C:\Users\joshl\antigravity\DREAM-Engine\memory\obsidian-vault"
 
 function Protect-Secrets([string]$Text) {
     if (-not $Text) { return "" }
@@ -15,7 +30,7 @@ function Protect-Secrets([string]$Text) {
 }
 
 if (-not $Summary) {
-    $Summary = "Verified 3-node ports, multi-harness skills (caveman, i-have-adhd, find-skills, create-skills, brainstorming, superpowers, tdd), api.workflow.json, and Trust Level Max judge gates."
+    $Summary = "Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374)."
 }
 $Summary = Protect-Secrets $Summary
 
@@ -53,6 +68,12 @@ $entryLines = @(
 )
 Add-Content -Path $agentFile -Value ($entryLines -join "`r`n") -Encoding UTF8
 
+if (Test-Path $repoVaultMirror) {
+    $mirrorNodeDir = Join-Path $repoVaultMirror $NodeName
+    New-Item -ItemType Directory -Path $mirrorNodeDir -Force | Out-Null
+    Copy-Item -Path $agentFile -Destination (Join-Path $mirrorNodeDir "${pairName}.md") -Force -ErrorAction SilentlyContinue
+}
+
 # 2. Also append to Daily Note in Vault Root
 $dailyFile = Join-Path $vaultRoot "${dateStr}.md"
 if (-not (Test-Path $dailyFile) -or ((Get-Item $dailyFile).Length -eq 0)) {
@@ -69,7 +90,23 @@ if (-not (Test-Path $dailyFile) -or ((Get-Item $dailyFile).Length -eq 0)) {
 }
 Add-Content -Path $dailyFile -Value "- **$timeStr [$NodeName / $AgentName]** ($UseCase): $Summary" -Encoding UTF8
 
-# 3. Mirror to Local 4-Tier Memory & Graphy Bridge (:20128/api/memory/store)
+# 3. Push directly to Obsidian Local REST API (:27123) on local node + T5500 (.15)
+$restConfigPath = Join-Path $vaultRoot ".obsidian\plugins\obsidian-local-rest-api\data.json"
+if (Test-Path $restConfigPath) {
+    $restCfg = Get-Content $restConfigPath -Raw | ConvertFrom-Json
+    $apiKey = $restCfg.apiKey
+    if ($apiKey) {
+        $headers = @{ Authorization = "Bearer $apiKey"; "Content-Type" = "text/markdown" }
+        $bytes = [System.IO.File]::ReadAllBytes($agentFile)
+        foreach ($ep in @("http://127.0.0.1:27123", "http://192.168.0.15:27123")) {
+            try {
+                Invoke-RestMethod -Method Put -Uri "$ep/vault/$NodeName/${pairName}.md" -Headers $headers -Body $bytes -TimeoutSec 2 | Out-Null
+            } catch {}
+        }
+    }
+}
+
+# 4. Mirror to Local 4-Tier Memory & Graphy Bridge (:20128/api/memory/store)
 try {
     $bodyJson = (@{
         title = "$NodeName $AgentName Session ($dateStr)"

@@ -1,4 +1,5 @@
-﻿name = "create-skills"
+name = "create-skills"
 description = "Author and synchronize new skills across all harness formats (SKILL.md, agents/openai.yaml, agents/gemini.toml, skill.json) on Alienware (.40) and Sabretooth (.8) so zero drift occurs."
 version = "2.0.0"
+model = "gemini-4-high-reasoning"
 instructions = "../SKILL.md"

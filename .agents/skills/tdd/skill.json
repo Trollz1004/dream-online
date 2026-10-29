@@ -1,14 +1,14 @@
-﻿{
-    "description":  "Mandatory Test-Driven Development (RED -\u003e GREEN -\u003e REFACTOR). Every feature or bugfix requires automated tests written and verified before completion.",
-    "name":  "tdd",
-    "version":  "2.0.0",
-    "entry":  "SKILL.md",
-    "harnesses":  [
-                      "claude",
-                      "gemini",
-                      "codex",
-                      "opencode",
-                      "hermes",
-                      "fcc"
-                  ]
+{
+  "name": "tdd",
+  "description": "Mandatory Test-Driven Development (RED -> GREEN -> REFACTOR). Every feature or bugfix requires automated tests written and verified before completion.",
+  "version": "2.0.0",
+  "entry": "SKILL.md",
+  "harnesses": [
+    "claude",
+    "gemini",
+    "codex",
+    "hermes",
+    "opencode",
+    "agy"
+  ]
 }
