@@ -1,0 +1,160 @@
+{
+  "name": "DREAM & ANTIGRAVITY Unified Multi-Harness Agent Workflow & Graphy",
+  "description": "Agent Workflow Graphy - Shows agents what skills to load, profiles/souls, CLI auth (agy --dangerously-skip-permissions, grok, fcc), Dual Graphies, and 6-layer Obsidian memory sync",
+  "version": "2.1.0",
+  "lastUpdated": "2026-10-29",
+  "usedBy": [
+    "Google Gemini (Gemini 4 Argon High Reasoning / Spark / Ultra / agy --dangerously-skip-permissions)",
+    "Claude Code (Opus 5.5 / Fable)",
+    "OpenAI (Codex)",
+    "Free Claude Code (:8082/admin fcc-claude / fcc-opencode / fcc-hermes / fcc-agy / fcc-grok / fcc-codex)",
+    "Hermes (OPSis :9119 default orchestrator & child profiles)",
+    "xAI (Grok CLI)",
+    "OpenCode"
+  ],
+  "authority": {
+    "updated": "2026-10-29 (Joshua Coleman)",
+    "human": "Joshua Coleman is the sole human authority over every node, repo, and agent",
+    "trustLevelMaxJudges": [
+      "gemini-4-high-reasoning",
+      "opus-5.5-fable"
+    ],
+    "cliRules": {
+      "geminiCli": "agy --dangerously-skip-permissions (never gemini cmd)",
+      "harveyLeadGen": "grok auth for X/social prospecting + agy --dangerously-skip-permissions",
+      "freeClaudeCode": "fcc-server on http://127.0.0.1:8082/admin (proxied in Sabretooth GUI :8392)"
+    },
+    "entryFilesMustAgree": "AGENTS.md, CLAUDE.md, GEMINI.md, AGENT.md, api.workflow.json, workflow_api.json, and Agent Universal/agent-workflow-graphy.json are 100% synchronized across all 3 nodes."
+  },
+  "fleetTopology": {
+    "updated": "2026-10-29",
+    "nodes": {
+      "Alienware": {
+        "ip": "192.168.0.40",
+        "user": "joshl",
+        "role": "Pure 3D Game Engine & DREAM Maker Studio Node (Separate from Sabretooth & T5500)",
+        "hardware": "11th-Gen Intel i7-11700F, 40 GB RAM, NVIDIA GeForce RTX 3070 (8 GB CUDA)",
+        "ports": {
+          "20128": "DREAM Engine & 4-Tier Memory/Graphy Bridge",
+          "8390": "OPSis Cut & Reach Studio (.40)",
+          "8082": "Free Claude Code Server (.40)",
+          "9127": "Live NPC Lab",
+          "9133": "DreamOps Bridge"
+        }
+      },
+      "T5500": {
+        "ip": "192.168.0.15",
+        "user": "joshi",
+        "role": "Production Domains, Separate Streamable Mission Control (:3130), OmniRoute (:20128), & Shared ai-memory (:49374)",
+        "hardware": "Dual Xeons, 72 GB ECC RAM, GTX 1050 Ti 4 GB",
+        "ports": {
+          "3130": "Mission Control (http://192.168.0.15:3130/live — separate streamable OPSis mission board)",
+          "20128": "OmniRoute Gateway (http://192.168.0.15:20128/v1)",
+          "49374": "Shared ai-memory v3.2.5 MCP Server (http://192.168.0.15:49374)",
+          "27123": "Obsidian Local REST API (.15 Sync Hub)"
+        }
+      },
+      "Sabretooth": {
+        "ip": "192.168.0.8",
+        "user": "joshl",
+        "role": "Node-Specific Hermes Lead Gen, Multi-Channel YouTube Automation, Free Claude Code (:8082), & 16 GB AMD GPU Offload Box",
+        "hardware": "16 GB AMD Radeon RX 6800 GPU (DirectML/Vulkan), 64 GB RAM, 1 TB SSD",
+        "autoBootTask": "DREAM-Sabretooth-BootAll + SABRETOOTH-GEMINI-EASY-BUTTON.bat Desktop Bootstrap",
+        "ports": {
+          "8392": "HermesLeadGen Sabretooth GUI Dashboard (http://192.168.0.8:8392/)",
+          "9119": "Hermes Default Orchestrator Session & Gateway (http://127.0.0.1:9119/chat?profile=default&resume=local-profile)",
+          "8082": "Free Claude Code Server & Admin Chat (http://127.0.0.1:8082/admin)",
+          "8391": "Sabretooth OPSis Shorts (<= 59.0s) & Natural Female Voice Worker (http://192.168.0.8:8391/health)",
+          "11434": "Local Ollama 16 GB AMD GPU Server (http://192.168.0.8:11434)",
+          "27123": "Obsidian Local REST API & Synced Vault c5231ee3994c364e (http://127.0.0.1:27123)"
+        }
+      }
+    }
+  },
+  "sabretoothProfiles": {
+    "default": {
+      "name": "Default Research & Master Orchestrator (Hermes + Gemini Argon)",
+      "sessionUrl": "http://127.0.0.1:9119/chat?profile=default&resume=local-profile",
+      "soulFile": "HermesLeadGen/souls/default-orchestrator-agent.md",
+      "cliCmd": "agy --dangerously-skip-permissions",
+      "model": "gemini-4-argon-high-reasoning",
+      "skills": ["humanizer", "caveman", "i-have-adhd", "brainstorming", "agent-reach", "last30days", "test-driven-development", "verification-before-completion", "rea"],
+      "orchestratesTo": ["kanban", "youtube", "harvey", "editor", "notes", "fcc"]
+    },
+    "harvey": {
+      "name": "Harvey Marketing & Multi-Source Lead Gen Agent",
+      "soulFile": "HermesLeadGen/souls/harvey-agent.md",
+      "cliCmd": "grok / agy --dangerously-skip-permissions",
+      "leadTypes": [
+        "1-affiliate-dateapp (50% lifetime affiliate links for youandinotai.com)",
+        "2-subscriptions-dateapp (Actual Date App verified human subscriptions & $1 Bot-Shield)",
+        "3-funding-dream-online (DREAM Online Open Collective crowdfunding & onlinerecycle.net e-waste)"
+      ],
+      "skills": ["humanizer", "caveman", "i-have-adhd", "brainstorming", "agent-reach", "last30days", "test-driven-development", "conversion-psychology", "conversion-copywriting", "social-growth-engineer"]
+    },
+    "youtube": {
+      "name": "YouTube Shorts (<= 59.0s) & Female Voice Podcast Agent",
+      "soulFile": "HermesLeadGen/souls/youtube-agent.md",
+      "cliCmd": "agy --dangerously-skip-permissions",
+      "allowedVoices": ["Aoede", "Kore", "af_heart", "af_bella", "LFM3-Omni-2B"],
+      "bannedTts": ["pyttsx3", "espeak", "sapi", "sam", "robotic-default"],
+      "skills": ["humanizer", "caveman", "i-have-adhd", "brainstorming", "agent-reach", "last30days", "test-driven-development"]
+    },
+    "editor": {
+      "name": "Editor (REA Media & ComfyUI 16GB AMD GPU)",
+      "soulFile": "HermesLeadGen/souls/editor-agent.md",
+      "cliCmd": "agy --dangerously-skip-permissions",
+      "mcps": ["rea-agents", "comfyui-mcp"],
+      "skills": ["humanizer", "caveman", "i-have-adhd", "brainstorming", "agent-reach", "last30days", "test-driven-development", "comfyui-directml-amd"]
+    },
+    "kanban": {
+      "name": "Kanban Task Orchestrator Agent",
+      "soulFile": "HermesLeadGen/souls/kanban-agent.md",
+      "cliCmd": "agy --dangerously-skip-permissions",
+      "skills": ["humanizer", "caveman", "i-have-adhd", "brainstorming", "agent-reach", "last30days", "test-driven-development"]
+    },
+    "notes": {
+      "name": "FluxInk Notes, Ideas & Obsidian Memory Agent",
+      "soulFile": "HermesLeadGen/souls/notes-agent.md",
+      "cliCmd": "agy --dangerously-skip-permissions",
+      "skills": ["humanizer", "caveman", "i-have-adhd", "brainstorming", "obsidian-save", "test-driven-development"]
+    },
+    "fcc": {
+      "name": "Free Claude Code (:8082/admin) Wrapper & MCP Agent",
+      "adminUrl": "http://127.0.0.1:8082/admin",
+      "soulFile": "HermesLeadGen/souls/fcc-agent.md",
+      "cliCmd": "fcc-claude / fcc-opencode / fcc-hermes / fcc-agy / fcc-grok",
+      "skills": ["humanizer", "caveman", "i-have-adhd", "brainstorming", "agent-reach", "last30days", "test-driven-development", "rooflo-opsis-cut-and-reach"]
+    }
+  },
+  "dualGraphies": {
+    "workflowGraphy": "C:\\Ai-Dream-Team\\Antigravity\\api.workflow.json & Agent Universal\\agent-workflow-graphy.json",
+    "codebaseGraphy": "C:\\Ai-Dream-Team\\Antigravity\\HermesLeadGen\\graphify-out\\graph.json & GRAPH_REPORT.md (built via graphifyy)"
+  },
+  "memoryAndSessionProtocol": {
+    "rule": "Every agent reads its Obsidian node note at session start and writes a timestamped entry at session end to Sabretooth/<agent>-to-<agent>.md, mirrored across all 6 memory layers.",
+    "obsidianVault": {
+      "sabretoothVaultId": "c5231ee3994c364e",
+      "sabretoothPath": "C:\\Ai-Dream-Team\\Antigravity",
+      "t5500VaultId": "518a720fa231c3cc",
+      "alienwareVaultId": "9f7e513d0604b00d",
+      "nodeFiles": [
+        "Sabretooth/gemini-to-gemini.md",
+        "Sabretooth/hermes-to-hermes.md",
+        "Sabretooth/claude-to-claude.md",
+        "Sabretooth/codex-to-codex.md",
+        "T5500/gemini-to-gemini.md",
+        "Alienware/gemini-to-gemini.md"
+      ],
+      "sessionEndScript": "session-note.ps1"
+    },
+    "fallbackChain": [
+      "1. Obsidian Sync Vault (:27123 local + 192.168.0.15:27123)",
+      "2. Shared ai-memory MCP on T5500 (http://192.168.0.15:49374, scope='global')",
+      "3. Supermemory (fast cross-session recall backup)",
+      "4. OpenViking (viking://dream/Sabretooth/...)",
+      "5. Supabase (pgvector SQL checkpoint backup)",
+      "6. Dual Graphies (api.workflow.json + graphify-out/graph.json)"
+    ]
+  }
+}

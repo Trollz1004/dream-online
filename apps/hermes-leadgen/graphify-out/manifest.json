@@ -1,0 +1,98 @@
+{
+  "main.js": {
+    "mtime": 1793314059.4198604,
+    "seen": 1793316582.5569994,
+    "ast_hash": "9e833194e204c9170bd374fc89523989",
+    "semantic_hash": ""
+  },
+  "package.json": {
+    "mtime": 1793314118.9874723,
+    "seen": 1793316582.5570078,
+    "ast_hash": "7dd87a7d1a2b64a2a5259eebd8e6d823",
+    "semantic_hash": ""
+  },
+  "preload.js": {
+    "mtime": 1793235518.9238343,
+    "seen": 1793316582.5570126,
+    "ast_hash": "1658ce7df4f7f4011d1d0f0207293b8b",
+    "semantic_hash": ""
+  },
+  "renderer.js": {
+    "mtime": 1793317311.3777506,
+    "seen": 1793317386.2146955,
+    "ast_hash": "5c78ff00c63fc769153dd707f6e5411a",
+    "semantic_hash": ""
+  },
+  "server.js": {
+    "mtime": 1793317110.6905923,
+    "seen": 1793317386.2146993,
+    "ast_hash": "ce47a6092f2253b47f07ef62e2a61317",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1793235848.4994886,
+    "seen": 1793316582.5570211,
+    "ast_hash": "56f6172a2b37caf28d12206ef9b80336",
+    "semantic_hash": ""
+  },
+  "index.html": {
+    "mtime": 1793317209.2454636,
+    "seen": 1793317386.214712,
+    "ast_hash": "5fe5feb1761d711bbabd1ed708e1e29b",
+    "semantic_hash": ""
+  },
+  "souls/editor-agent.md": {
+    "mtime": 1793316910.1056817,
+    "seen": 1793317386.2147171,
+    "ast_hash": "081f9aff5cb968aa8e2cfcb0692aea5f",
+    "semantic_hash": ""
+  },
+  "souls/harvey-agent.md": {
+    "mtime": 1793316905.9952126,
+    "seen": 1793317386.2147245,
+    "ast_hash": "d4dc6416f7026223ca9dc6a885b5e035",
+    "semantic_hash": ""
+  },
+  "souls/kanban-agent.md": {
+    "mtime": 1793316911.6168969,
+    "seen": 1793317386.2147274,
+    "ast_hash": "2aba2f940425855211a113014fdc2e7d",
+    "semantic_hash": ""
+  },
+  "souls/notes-agent.md": {
+    "mtime": 1793316912.9898608,
+    "seen": 1793317386.2147303,
+    "ast_hash": "1a8b233f0268f125029ca2df22bd0d83",
+    "semantic_hash": ""
+  },
+  "souls/youtube-agent.md": {
+    "mtime": 1793316908.2734323,
+    "seen": 1793317386.2147331,
+    "ast_hash": "c2aac072ac750144404e7b1b8aa22bed",
+    "semantic_hash": ""
+  },
+  "skills.json": {
+    "mtime": 1793317128.44522,
+    "seen": 1793317386.2147026,
+    "ast_hash": "22d85895b774ebc311b72d53627dd3e2",
+    "semantic_hash": ""
+  },
+  "test/hermes-leadgen.test.js": {
+    "mtime": 1793316628.328389,
+    "seen": 1793317386.2147055,
+    "ast_hash": "966445771e8c3749658690f5da904e47",
+    "semantic_hash": ""
+  },
+  "souls/default-orchestrator-agent.md": {
+    "mtime": 1793316902.3939815,
+    "seen": 1793317386.2147145,
+    "ast_hash": "ebf2e3a3c3c97218251ef79cfafc4c2f",
+    "semantic_hash": ""
+  },
+  "souls/fcc-agent.md": {
+    "mtime": 1793316904.2141788,
+    "seen": 1793317386.2147217,
+    "ast_hash": "fe1ce1c47d1342eb8ceb63245029dddf",
+    "semantic_hash": ""
+  }
+}
