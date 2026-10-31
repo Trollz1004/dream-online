@@ -1,0 +1,32 @@
+[
+  {
+    "id": "default_1",
+    "type": "youtube",
+    "typeLabel": "YouTube Short",
+    "title": "DREAM Online Day/Night Cycle",
+    "meta": "@DreamOnlineMMO — world morph demo",
+    "status": "todo",
+    "createdAt": "2026-10-29T22:44:47.232Z",
+    "updatedAt": "2026-10-29T22:44:47.233Z"
+  },
+  {
+    "id": "default_2",
+    "type": "outreach",
+    "typeLabel": "Cold Outreach",
+    "title": "E-Waste Partner Outreach",
+    "meta": "@UntilNoKidInNeed — onlinerecycle.net leads",
+    "status": "todo",
+    "createdAt": "2026-10-29T22:44:47.233Z",
+    "updatedAt": "2026-10-29T22:44:47.233Z"
+  },
+  {
+    "id": "default_3",
+    "type": "affiliate",
+    "typeLabel": "Affiliate Check",
+    "title": "Review Affiliate Links",
+    "meta": "@AIDreamTeamStudio — check conversions",
+    "status": "doing",
+    "createdAt": "2026-10-29T22:44:47.233Z",
+    "updatedAt": "2026-10-29T22:44:47.233Z"
+  }
+]

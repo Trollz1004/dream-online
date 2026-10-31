@@ -10,6 +10,9 @@ JOSHUAS.ENV
 
 # Local/private agent state
 .codex/
+.aistudio/
+.antigravity/
+bun.lock
 # .claude is local state, except the Spec Kit skills, which travel with the repo
 .claude/*
 !.claude/skills/
@@ -131,3 +134,12 @@ game/godot/*/demo/
 
 # Exported builds (web and desktop) - never committed
 /build/
+.ai-memory.toml
+*env-inventory*.json
+public/assets/aistudio/
+
+# Local session exports and worktrees
+/Artifacts/
+/DREAM-Engine/
+/Projects/
+/Scheduled/

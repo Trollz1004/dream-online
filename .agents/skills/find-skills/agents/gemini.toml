@@ -1,0 +1,5 @@
+name = "find-skills"
+description = "Automatic skill discovery across .agents/skills, .claude/skills, agent/skills, ops/node/skills, and the Agent Marketplace before improvising workarounds."
+version = "2.0.0"
+model = "gemini-4-high-reasoning"
+instructions = "../SKILL.md"

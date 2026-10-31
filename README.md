@@ -89,6 +89,20 @@ If founder access attempts to cross this boundary, the canonical response is:
 
 ## Local prototypes
 
+### DREAM Engine & DREAM Maker Studio (WebGPU / WebGL2 3D Engine + REA + Ultra Agent SDK)
+
+Merged directly into the root of this repository (src/, server.ts, 	ests/):
+
+```powershell
+cd "C:\DREAM\dream-online"
+npm install
+npm run dev
+```
+
+- **Studio & 3D Viewport**: http://127.0.0.1:3000
+- **Typecheck & Test Suite (26/26 tests)**: 
+pm run lint
+
 ### Live NPC Lab
 
 ```powershell

@@ -1,17 +1,37 @@
 name: ollama-local
-version: 0.2
+version: 0.3
 source: local-cli
-description: "Local Ollama via OpenCode bridge. Self-hosted free models from http://localhost:11434. Zero cloud cost."
+description: "Dedicated 16 GB AMD VRAM local GPU inference on Sabretooth (192.168.0.8:11434) — Ollama, Liquid AI LFM3-Omni-2B (24kHz speech + omni-modal), Kokoro-82M, artokun/gemma4-comfyui-mcp, and Hob on-device Gemma 4 + MCP. Zero local LLM weights on Alienware (.40) so 100% of RTX 3070 8GB VRAM stays on the 3D DREAM Engine."
 owner: sabretooth
-node_id: alienware
-cli_command: "opencode"
-health_check: "curl -s http://localhost:11434/api/tags -o NUL && echo ollama-local:healthy || echo 'ollama may be at alt host; check 192.168.0.x:11434'"
-paperclip_adapter_type: "opencode_local"
-paperclip_adapter_config:
-  cwd: "C:\\DREAM\\dream-online"
-  model: "qwen2.5-coder:7b"
-paperclip_alias: "ollama-local"
-opencode_provider: "ollama-local"
-opencode_model: "qwen2.5-coder:7b"
-notes: "Uses `opencode_local` Paperclip adapter type with ollama-local provider. Separated from cloud providers. Local-only routing, no cloud cost. Fallbacks via hermes-router."
-
+node_id: sabretooth
+host_ip: "192.168.0.8"
+cli_command: "ollama"
+health_check: "curl -s http://192.168.0.8:11434/api/tags -o NUL && echo ollama-sabretooth:healthy"
+provider: "ollama-local"
+default_model: "gemma4:latest"
+models:
+  - id: "lfm3-omni-2b"
+    vendor: "Liquid AI"
+    params: "2.17B"
+    context_window: 32768
+    formats: ["GGUF", "ONNX", "MLX"]
+    modalities_in: ["text", "image", "video", "audio_16khz"]
+    modalities_out: ["text", "speech_24khz"]
+    license: "LFM Open License v1.0"
+    role: "Local 16 GB GPU multimodal & 24 kHz natural speech agent on Sabretooth (.8) for T0 ambient NPCs and zero-cloud voice synthesis"
+  - id: "gemma4:latest"
+    vendor: "Google"
+    context_window: 131072
+    role: "Local Gemma 4 coding, Hob on-device document/code MCP processor, and artokun/gemma4-comfyui-mcp asset generation"
+  - id: "qwen2.5-coder:7b"
+    vendor: "Alibaba Qwen"
+    context_window: 32768
+    role: "Fast local code & script helper on Sabretooth (.8)"
+local_companions:
+  - name: "Hob"
+    license: "MIT"
+    role: "On-device document, file, and code processor using local Gemma 4 & GPT-OSS with MCP connectors"
+  - name: "Graph-MIND"
+    license: "Open-Source"
+    role: "Local directed-graph codebase memory (entities, call hierarchies, session history) with zero LLM calls on save"
+notes: "Zero Paperclip anywhere. Runs strictly on Sabretooth (192.168.0.8, 16 GB AMD Radeon RX 6800 VRAM) so Alienware (.40) dedicates 100% of its 8 GB RTX 3070 VRAM to the 100% In-House DREAM Engine."

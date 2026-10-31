@@ -1,0 +1,79 @@
+[
+  {
+    "id": "agent-reach",
+    "name": "Agent-Reach (Multi-Platform Search & Transcripts)",
+    "description": "Terms-compliant read-only research across official X/Grok search, Reddit API, YouTube Data API v3 transcripts, GitHub API, and permitted web sources.",
+    "cli": "agy --dangerously-skip-permissions",
+    "mandatory": true
+  },
+  {
+    "id": "last30days",
+    "name": "Last 30 Days Research Skill (last30days)",
+    "description": "Finds high-signal skills, GitHub repos, MCPs, creator threads, and buyer intent from the last 30 days.",
+    "cli": "agy --dangerously-skip-permissions",
+    "mandatory": true
+  },
+  {
+    "id": "rea-mcp",
+    "name": "REA Clean-Room Verification & Media MCP (rea-agents mcp)",
+    "description": "Binary/protocol verification and CapCut 9.7.0.4153 clean-room 6-stage video timeline assembly.",
+    "cli": "rea-agents mcp",
+    "mandatory": true
+  },
+  {
+    "id": "test-driven-development",
+    "name": "Test-Driven Development (TDD: RED -> GREEN -> REFACTOR)",
+    "description": "Mandatory automated test execution (node --test) before marking any agent task or PR complete.",
+    "cli": "node --test",
+    "mandatory": true
+  },
+  {
+    "id": "verification-before-completion",
+    "name": "Verification Before Completion (Rule One Screenshot Proof)",
+    "description": "Requires live HTTP checks, real rendered screenshots, and playable media previews in the GUI.",
+    "cli": "agy --dangerously-skip-permissions",
+    "mandatory": true
+  },
+  {
+    "id": "humanizer",
+    "name": "Humanizer (Zero AI Slop / <75w Natural Outbound)",
+    "description": "Strips robotic phrasing so every Harvey lead outreach and YouTube script sounds 100% human.",
+    "cli": "agy --dangerously-skip-permissions",
+    "mandatory": true
+  },
+  {
+    "id": "caveman",
+    "name": "Caveman (Outcome-First Ultra-Direct Copy)",
+    "description": "Cuts filler while keeping technical accuracy and conversion hooks 100% intact.",
+    "cli": "agy --dangerously-skip-permissions",
+    "mandatory": true
+  },
+  {
+    "id": "i-have-adhd",
+    "name": "I-Have-ADHD & Low-Vision Accessibility",
+    "description": "Enforces high-contrast UI (>= 18px text), outcome-first summaries, and clear visual previews for Founder Joshua Coleman.",
+    "cli": "agy --dangerously-skip-permissions",
+    "mandatory": true
+  },
+  {
+    "id": "brainstorming",
+    "name": "Brainstorming (Multi-Angle Clean-Room Strategy)",
+    "description": "Evaluates conversion angles, compliance walls, and clean-room architecture before execution.",
+    "cli": "agy --dangerously-skip-permissions",
+    "mandatory": true
+  },
+  {
+    "id": "obsidian-save",
+    "name": "Obsidian Session Save + 6-Layer Memory Fallbacks",
+    "description": "Appends timestamped node-specific entries to Sabretooth/*-to-*.md and mirrors to T5500 ai-memory (:49374), Supermemory, OpenViking, Supabase, and Graphy.",
+    "cli": "powershell -File ../session-note.ps1",
+    "mandatory": true
+  },
+  {
+    "id": "graphy",
+    "name": "Dual Graphy (Agent Workflow Graphy + Codebase Knowledge Graphy)",
+    "description": "Maintains api.workflow.json and graphify-out/graph.json so all agents share a live map of skills, souls, and code.",
+    "cli": "python -m graphify update . --force",
+    "mandatory": true
+  }
+]

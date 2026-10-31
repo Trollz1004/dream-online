@@ -1,0 +1,5 @@
+name: brainstorming
+description: "Structured multi-angle design exploration before implementation. Evaluates clean-room architecture, zero-TOS-risk compliance, and accessibility before writing code."
+version: 2.0.0
+model: gpt-5.5
+instructions_file: ../SKILL.md

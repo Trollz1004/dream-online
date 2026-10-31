@@ -1,0 +1,5 @@
+name: verification-before-completion
+description: "Rule One enforcement: done means the real human user would accept it. Requires live HTTP/process verification, full test pass, and real screenshots for any UI."
+version: 2.0.0
+model: gpt-5.5
+instructions_file: ../SKILL.md

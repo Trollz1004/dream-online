@@ -1,0 +1,164 @@
+{
+  "schema_version": "2026-10-27.1",
+  "pipeline_name": "DREAM Online & Until No Kid In Need — Multi-Channel YouTube Shorts & Natural Female Voice Podcast Engine",
+  "governance": {
+    "marketing_lead": "Google Gemini (GM #1 — Primary Co-CEO & Marketing Director)",
+    "execution_agent": "Hermes (OPSis) on Sabretooth (192.168.0.8)",
+    "paperclip_enabled": false,
+    "paperclip_policy": "NO_PAPERCLIP — All Paperclip references permanently removed. Hermes executes directly under Google Gemini (GM #1) marketing strategy and creative direction.",
+    "engine_identity": "100% In-House DREAM-Engine (WebGPU/WebGL2) — Zero Unreal Engine, Zero Godot — 100% Built and Governed by AI (Built with Google Gemini)",
+    "world_evolution_modes": [
+      "MODERN_3D_DAYDREAM",
+      "NIGHTMARE_CRISIS",
+      "RETRO_16BIT_CIRCLES"
+    ],
+    "voxel_geometry_rule": "RETRO_16BIT_CIRCLES uses 16-bit cylindrical/circle-voxels only — never square Minecraft blocks."
+  },
+  "shorts_algorithm_gate": {
+    "min_target_duration_seconds": 45.0,
+    "max_duration_seconds": 58.5,
+    "hard_algorithm_ceiling_seconds": 59.0,
+    "aspect_ratio": "9:16",
+    "resolution": "1080x1920",
+    "fps": 60,
+    "rule": "Every YouTube Short MUST be strictly <= 59.0 seconds (target 45.0s-58.5s) verified via RIFF/container header and ffprobe/ffmpeg so it never spills into 60s+ and stays locked in the YouTube Shorts shelf algorithm."
+  },
+  "voice_policy": {
+    "zero_robotic_tts_rule": "MANDATORY: Never use robotic default TTS engines. All voiceovers and podcasts must use expressive, natural human-cadence female voices.",
+    "primary_cloud_engine": {
+      "provider": "google-gemini-tts",
+      "model": "gemini-2.5-flash-preview-tts",
+      "sample_rate_hz": 24000,
+      "channels": 1,
+      "bit_depth": 16,
+      "approved_female_voices": {
+        "Aoede": {
+          "role": "Lead Female Podcast Host & Primary Narrator",
+          "tone": "Warm, articulate, expressive studio podcast host",
+          "gender": "female"
+        },
+        "Kore": {
+          "role": "Female Co-Host & High-Retention Shorts Narrator",
+          "tone": "Bright, engaging, natural human-cadence delivery",
+          "gender": "female"
+        }
+      }
+    },
+    "local_amd_gpu_engine": {
+      "node": "Sabretooth (192.168.0.8 — 16 GB AMD Radeon RX 6800)",
+      "primary_local_model": "kokoro-82m",
+      "secondary_local_models": [
+        "lfm3-omni-2b",
+        "f5-tts",
+        "chatterbox"
+      ],
+      "omni_modal_24khz_engine": {
+        "model": "Liquid AI LFM3-Omni-2B",
+        "params": "2.17B",
+        "context_window": 32768,
+        "formats": ["GGUF", "ONNX", "MLX"],
+        "input_modalities": ["text", "image", "video", "audio_16khz"],
+        "output_modalities": ["text", "speech_24khz"],
+        "license": "LFM Open License v1.0"
+      },
+      "approved_female_voices": {
+        "af_heart": {
+          "engine": "kokoro-82m",
+          "role": "Lead Local Female Voice",
+          "tone": "Warm, natural, expressive studio female narration",
+          "gender": "female"
+        },
+        "af_bella": {
+          "engine": "kokoro-82m",
+          "role": "Co-Host Local Female Voice",
+          "tone": "Clear, dynamic, natural conversational female voice",
+          "gender": "female"
+        }
+      }
+    },
+    "banned_tts_engines": [
+      "pyttsx3",
+      "espeak",
+      "sapi",
+      "sam",
+      "robotic-default"
+    ]
+  },
+  "channels": [
+    {
+      "id": "dream-online-mmorpg",
+      "name": "DREAM Online — 100% AI-Built Evolving 3D MMORPG",
+      "handle_slug": "@DreamOnlineMMO",
+      "focus": "Day Dream (Modern 3D) -> Nightmare -> 16-Bit Circle-Craft (RETRO_16BIT_CIRCLES cylindrical/circle-voxels) world morphs, 100% in-house DREAM-Engine devlogs, zero Unreal, zero Godot.",
+      "default_lead_voice": "Aoede",
+      "default_cohost_voice": "Kore",
+      "local_fallback_voice": "af_heart",
+      "required_badges": [
+        "Built with Google Gemini",
+        "100% AI-Built DREAM-Engine"
+      ],
+      "max_duration_seconds": 58.5
+    },
+    {
+      "id": "until-no-kid-in-need",
+      "name": "Until No Kid In Need — AI For Good & E-Waste Mission",
+      "handle_slug": "@UntilNoKidInNeed",
+      "focus": "onlinerecycle.net e-waste recycling education, transparent AI-for-good engineering, #ForTheKids #UntilNoKidInNeed community stories.",
+      "default_lead_voice": "Aoede",
+      "default_cohost_voice": "Kore",
+      "local_fallback_voice": "af_heart",
+      "required_badges": [
+        "Built with Google Gemini",
+        "#UntilNoKidInNeed"
+      ],
+      "max_duration_seconds": 58.5
+    },
+    {
+      "id": "ai-dream-team-studio",
+      "name": "AI Dream Team Studio — Built with Google Gemini",
+      "handle_slug": "@AIDreamTeamStudio",
+      "focus": "Behind-the-scenes multi-agent engineering across Alienware (.40), T5500 (.15), and Sabretooth (.8), zero-slop AI breakthroughs, female-hosted AI engineering podcast.",
+      "default_lead_voice": "Aoede",
+      "default_cohost_voice": "Kore",
+      "local_fallback_voice": "af_bella",
+      "required_badges": [
+        "Built with Google Gemini",
+        "AI Council"
+      ],
+      "max_duration_seconds": 58.5
+    }
+  ],
+  "opsis_24x7_stream_gate": {
+    "stream_name": "OPSis / Jarvis 24/7 Mission Control Live Stream",
+    "enabled": false,
+    "public_dao_wallet_tracking": false,
+    "onlinerecycle_ai_intake_verified": false,
+    "dream_online_mtx_verified": false,
+    "exclude_founder_personal_ebay_donations": true,
+    "pre_gassed_base_mainnet_dao_wallets": {
+      "network": "base-mainnet",
+      "chain_id": 8453,
+      "rpc_url": "https://mainnet.base.org",
+      "revenue_model": "FOR_PROFIT_LLC",
+      "founder_and_taxable_percentage": 90,
+      "charity_tax_deduction_ceiling_percentage": 10,
+      "full_charity_100_percent_retired": true,
+      "tax_law_policy": "Under the post-Big-Beautiful-Bill tax law, 90% of every dollar is taxable income and only 10% can be tax-deducted. Never use FOUNDER_PERCENTAGE=0 or CHARITY_PERCENTAGE=100.",
+      "gospel_splitter_contract": "0x9855B75061D4c841791382998f0CE8B2BCC965A4",
+      "gospel_charity_shriners_safe": "0x8d3dEADbE2b4B857A43331D459270B5eedC7084e",
+      "charity_ein": "36-2193608",
+      "gospel_infra_safe": "0xe0a42f83900af719019eBeD3D9473BE8E8f2920b",
+      "gospel_founder_wallet": "0x7c3E283119718395Ef5EfBAC4F52738C2018daA7"
+    },
+    "genie4_and_2026_ai_stack": {
+      "world_previs_engine": "Google DeepMind Genie 4 (Gemini 3.8 Flash live 3D scene steering + native ambient audio + speaking NPCs)",
+      "visual_brand_hub": "Google Gemini Small Business Hub (Nano Banana 2.1 + automated receipt/ledger charts)",
+      "decisions_api": "OpenAI gpt-6-luna Decisions API ($0.10/1M input tokens, 10x faster structured JSON)",
+      "cross_agent_skill_sync": "MuscleMemory (Codex <-> Claude Code <-> Gemini)",
+      "local_16gb_omni_voice_model": "Liquid AI LFM3-Omni-2B (2.17B GGUF/ONNX, 32K ctx, 16kHz audio/video/image in -> 24kHz natural speech out on Sabretooth .8)",
+      "local_desktop_mcp_processor": "Hob (MIT open-source on-device Gemma 4 + MCP document/code processor)",
+      "local_codebase_graph_memory": "Graph-MIND (local directed-graph entity & call-hierarchy memory with zero LLM calls on save)"
+    },
+    "verification_policy": "The 24/7 OPSis/Jarvis Mission Control livestream is strictly gated until AI verifiably helps fund the mission (AI-driven e-waste intake on onlinerecycle.net broken down for Shriners, automated DREAM Online microtransactions, or verified public transparent crypto wallet / Shriners DAO ledger on Base Mainnet 8453). Founder Joshua Coleman's personal out-of-pocket eBay donations to Shriners are NEVER counted as AI-generated funding. Zero fake metrics, zero slop."
+  }
+}
