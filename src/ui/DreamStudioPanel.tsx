@@ -50,6 +50,7 @@ interface DreamStudioPanelProps {
   onClose: () => void;
   onOpenRea: () => void;
   onOpenGmControl: () => void;
+  onOpenOpenUiIde?: () => void;
 }
 
 type StudioTab = 'world' | 'character' | 'graph' | 'agent-memory' | 'npcs';
@@ -79,6 +80,7 @@ export const DreamStudioPanel: React.FC<DreamStudioPanelProps> = ({
   onClose,
   onOpenRea,
   onOpenGmControl,
+  onOpenOpenUiIde,
 }) => {
   const [activeTab, setActiveTab] = useState<StudioTab>('world');
   const [, setVersion] = useState(0);
@@ -333,6 +335,15 @@ export const DreamStudioPanel: React.FC<DreamStudioPanelProps> = ({
           </p>
         </div>
         <div className="flex items-center gap-1.5">
+          {onOpenOpenUiIde && (
+            <button
+              onClick={onOpenOpenUiIde}
+              className="px-2.5 py-1 text-[11px] font-mono font-bold bg-[#00E5A3] hover:bg-[#22f5b8] text-[#0A0B0D] rounded-xs transition cursor-pointer whitespace-nowrap shrink-0"
+              title="Open OpenUI Lang 1.0 + REA City + Remake Swap Cloud IDE (U)"
+            >
+              OpenUI IDE (U)
+            </button>
+          )}
           <button
             onClick={onOpenRea}
             className="px-2.5 py-1 text-[11px] font-mono bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/40 rounded-xs transition cursor-pointer whitespace-nowrap shrink-0"

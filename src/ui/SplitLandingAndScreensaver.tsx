@@ -49,6 +49,7 @@ interface SplitLandingAndScreensaverProps {
   onOpenStudio: () => void;
   onOpenRea: () => void;
   onOpenGmControl: () => void;
+  onOpenOpenUiIde?: () => void;
   onTriggerManualScreensaver: () => void;
 }
 
@@ -65,6 +66,7 @@ export const SplitLandingAndScreensaver: React.FC<SplitLandingAndScreensaverProp
   onOpenStudio,
   onOpenRea,
   onOpenGmControl,
+  onOpenOpenUiIde,
   onTriggerManualScreensaver,
 }) => {
   const [selectedGraphyId, setSelectedGraphyId] = useState<string>('studio-config');
@@ -241,7 +243,7 @@ export const SplitLandingAndScreensaver: React.FC<SplitLandingAndScreensaverProp
               <h1 className="text-base font-bold tracking-tight text-white truncate">
                 {isIdleScreensaver
                   ? 'DREAM ENGINE · IDLE AFK CODE SHIELD & LIVE MEMORY SCREENSAVER'
-                  : 'DREAM ENGINE STUDIO · SPLIT-SCREEN CO-GM WORKFLOW & OBSIDIAN MEMORY HOME'}
+                  : 'DREAM ENGINE STUDIO · CO-GM & OBSIDIAN MEMORY HOME'}
               </h1>
               <span className="text-xs font-mono text-cyan-300">
                 Built with Google Gemini
@@ -270,7 +272,7 @@ export const SplitLandingAndScreensaver: React.FC<SplitLandingAndScreensaverProp
         {/* Right Action Controls */}
         <div className="flex items-center gap-2.5 shrink-0">
           {/* AFK Idle Timeout Selector */}
-          <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded bg-slate-900 border border-slate-800 text-xs font-mono text-slate-300">
+          <div className="hidden 2xl:flex items-center gap-2 px-3 py-1.5 rounded bg-slate-900 border border-slate-800 text-xs font-mono text-slate-300">
             <EyeOff className="w-3.5 h-3.5 text-amber-400" />
             <span>AFK Shield:</span>
             <select
@@ -299,26 +301,18 @@ export const SplitLandingAndScreensaver: React.FC<SplitLandingAndScreensaverProp
             </button>
           )}
 
-          <a
-            href="/assets/aistudio/migrate-alienware-joshl-and-install-agy.ps1"
-            download="migrate-alienware-joshl-and-install-agy.ps1"
-            className="flex items-center gap-1.5 px-3 py-2 rounded bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/50 text-xs font-mono font-bold text-cyan-200 shadow-[0_0_15px_rgba(34,211,238,0.25)] transition cursor-pointer"
-            title="Download PowerShell script for Alienware .40 (joshl migration + path scrubber + Antigravity agy CLI installer)"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>.40 joshl + AGY Script (.ps1)</span>
-          </a>
 
-          <a
-            href="/assets/aistudio/CLAUDE_DREAM_MAKER_AUDIT.md"
-            download="CLAUDE_DREAM_MAKER_AUDIT.md"
-            className="flex items-center gap-1.5 px-3 py-2 rounded bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/50 text-xs font-mono font-bold text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.25)] transition cursor-pointer"
-            title="Download the complete CLAUDE_DREAM_MAKER_AUDIT.md file to upload to Claude"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Claude Audit (.md)</span>
-          </a>
 
+          {onOpenOpenUiIde && (
+            <button
+              onClick={onOpenOpenUiIde}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded bg-[#00E5A3] hover:bg-[#22f5b8] text-[#0A0B0D] font-bold text-xs tracking-wide uppercase shadow-[0_0_18px_rgba(0,229,163,0.4)] transition cursor-pointer"
+              title="Open OpenUI Lang 1.0 + REA Procedural City + Remake Swap Board Cloud IDE (U)"
+            >
+              <Terminal className="w-3.5 h-3.5" />
+              <span>OpenUI + Remake IDE (U)</span>
+            </button>
+          )}
           <button
             onClick={onOpenStudio}
             className="flex items-center gap-1.5 px-3 py-2 rounded bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-medium text-cyan-300 transition cursor-pointer"
@@ -370,6 +364,47 @@ export const SplitLandingAndScreensaver: React.FC<SplitLandingAndScreensaverProp
           </button>
         </div>
       )}
+
+            {/* AAA Game Dev Engine Showcase Bar: OpenUI Lang 1.0 + REA Procedural City + Remake 98.8% Swap Board */}
+      <div className="bg-[#0B0F1A] border-b border-emerald-500/30 px-6 py-2.5 flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="px-2.5 py-0.5 rounded bg-[#00E5A3]/20 border border-[#00E5A3]/50 text-[#00E5A3] font-mono text-xs font-bold">
+            NEW · AAA CLOUD GAME DEV ENGINE
+          </span>
+          <span className="text-xs sm:text-sm font-bold text-white">
+            OPENUI LANG 1.0 + REA PROCEDURAL CITY (.BDF) + REMAKE 98.8% SWAP BOARD
+          </span>
+          <span className="text-xs font-mono text-slate-300 hidden xl:inline">
+            Unreal / Unity / PlayCanvas / Spline Clean-Room Architecture · Day Dream 3D · Nightfall 3D · 16-Bit Circle-Craft
+          </span>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <a
+            href="/assets/aistudio/migrate-alienware-joshl-and-install-agy.ps1"
+            download="migrate-alienware-joshl-and-install-agy.ps1"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/40 text-xs font-mono font-semibold text-cyan-200 transition cursor-pointer"
+          >
+            <Download className="w-3 h-3" />
+            <span>.40 AGY Script</span>
+          </a>
+          <a
+            href="/assets/aistudio/CLAUDE_DREAM_MAKER_AUDIT.md"
+            download="CLAUDE_DREAM_MAKER_AUDIT.md"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/40 text-xs font-mono font-semibold text-emerald-300 transition cursor-pointer"
+          >
+            <Download className="w-3 h-3" />
+            <span>Claude Audit</span>
+          </a>
+          {onOpenOpenUiIde && (
+            <button
+              onClick={onOpenOpenUiIde}
+              className="px-3.5 py-1.5 rounded bg-[#FFD21E] hover:bg-[#ffe055] text-[#0A0B0D] font-mono font-bold text-xs uppercase cursor-pointer shadow-[0_0_14px_rgba(255,210,30,0.3)]"
+            >
+              Launch OpenUI + REA + Remake Studio (U)
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* MAIN SPLIT-SCREEN WORKSPACE (LEFT: GRAPHY AST WORKFLOWS | RIGHT: OBSIDIAN SESSION MEMORY & SYSTEM SOUL) */}
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-800/90 overflow-hidden">

@@ -2,13 +2,14 @@
  * DREAM Engine — Stage 1: Full-Stack AI Engine Studio & Action Combat
  * Client runtime with pure WebGPU / WebGL2 platform renderer.
  * Supports Mouse, Keyboard, and Hardware Gamepad Controller API.
- * Includes Unreal-style 3D World & Character Studio, REA Binary Inspector,
- * GM Control (.40 / .15 / :3130), and 100% AI-Built Crowdfunding Showcase.
+ * Includes Unreal-style 3D World & Character Studio, OpenUI Lang 1.0 + REA + Remake Cloud IDE,
+ * REA Binary Inspector, GM Control (.40 / .15 / :3130), and 100% AI-Built Crowdfunding Showcase.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
 import { DreamEngine } from './engine/engine.ts';
 import { RenderMetrics } from './engine/renderer/types.ts';
+import { EvolutionPhase } from './engine/world/world-evolution.ts';
 import {
   Sun,
   Moon,
@@ -25,6 +26,8 @@ import {
   Shield,
   Heart,
   Network,
+  Code2,
+  Orbit,
 } from 'lucide-react';
 import { SettingsModal } from './ui/SettingsModal.tsx';
 import { VisorOverlay } from './ui/VisorOverlay.tsx';
@@ -38,6 +41,7 @@ import { ReaInspectorModal } from './ui/ReaInspectorModal.tsx';
 import { GmControlModal } from './ui/GmControlModal.tsx';
 import { CrowdfundingShowcaseModal } from './ui/CrowdfundingShowcaseModal.tsx';
 import { SplitLandingAndScreensaver } from './ui/SplitLandingAndScreensaver.tsx';
+import { OpenUiGameDevStudioModal } from './ui/OpenUiGameDevStudioModal.tsx';
 
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -57,6 +61,7 @@ export default function App() {
   const [playerPos, setPlayerPos] = useState<[number, number, number]>([0, 0, 0]);
   const [cameraYaw, setCameraYaw] = useState(0);
   const [viewMode, setViewMode] = useState<'third-person' | 'first-person'>('third-person');
+  const [evolutionPhase, setEvolutionPhase] = useState<EvolutionPhase>('day_dream_3d');
   const [, setIsControlActive] = useState(false);
   const [, setIsPointerLocked] = useState(false);
   const [isOverlayDismissed, setIsOverlayDismissed] = useState(false);
@@ -74,6 +79,7 @@ export default function App() {
   const [isComboListOpen, setIsComboListOpen] = useState(false);
   const [isGeminEyeOpen, setIsGeminEyeOpen] = useState(false);
   const [isStudioOpen, setIsStudioOpen] = useState(false);
+  const [isOpenUiIdeOpen, setIsOpenUiIdeOpen] = useState(false);
   const [isReaOpen, setIsReaOpen] = useState(false);
   const [isGmControlOpen, setIsGmControlOpen] = useState(false);
   const [isPitchOpen, setIsPitchOpen] = useState(false);
@@ -136,6 +142,7 @@ export default function App() {
       setIsPointerLocked(locked);
       setCameraYaw(yaw);
       setViewMode(mode);
+      setEvolutionPhase(engine.evolution.phase);
       setCombatTick((t) => t + 1);
     };
 
@@ -194,6 +201,12 @@ export default function App() {
         setIsOverlayDismissed(true);
         setIsAfkScreensaver(false);
         setIsStudioOpen((prev) => !prev);
+      } else if (e.code === 'KeyU') {
+        e.preventDefault();
+        engine.releaseControl();
+        setIsOverlayDismissed(true);
+        setIsAfkScreensaver(false);
+        setIsOpenUiIdeOpen((prev) => !prev);
       } else if (e.code === 'KeyG') {
         e.preventDefault();
         engine.releaseControl();
@@ -253,6 +266,7 @@ export default function App() {
     isSettingsOpen ||
     isCodexOpen ||
     isComboListOpen ||
+    isOpenUiIdeOpen ||
     isReaOpen ||
     isGmControlOpen ||
     isPitchOpen;
@@ -268,6 +282,15 @@ export default function App() {
 
   const handleToggleDayNight = () => {
     engineRef.current?.toggleDayNight();
+    if (engineRef.current) {
+      setEvolutionPhase(engineRef.current.evolution.phase);
+    }
+  };
+
+  const handleCycleRealityPhase = () => {
+    if (!engineRef.current) return;
+    const next = engineRef.current.cycleEvolutionPhase();
+    setEvolutionPhase(next);
   };
 
   const handleToggleViewMode = () => {
@@ -330,37 +353,44 @@ export default function App() {
           engineRef.current?.releaseControl();
           setIsGmControlOpen(true);
         }}
+        onOpenOpenUiIde={() => {
+          engineRef.current?.releaseControl();
+          setIsOpenUiIdeOpen(true);
+        }}
       />
 
-      {/* Top Bar — Calm, Dark, See-Through HUD */}
+      {/* Top Bar — High-Contrast AAA Game Engine HUD */}
       <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none z-20">
-        <div className="flex items-center space-x-3 bg-neutral-900/85 backdrop-blur-md border border-neutral-700/60 px-4 py-2 rounded-sm shadow-lg pointer-events-auto">
+        <div className="flex items-center space-x-3 bg-neutral-900/90 backdrop-blur-md border border-neutral-700/70 px-4 py-2 rounded-sm shadow-lg pointer-events-auto">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-sm font-semibold tracking-wider uppercase text-neutral-200">
+              <h1 className="text-sm font-semibold tracking-wider uppercase text-neutral-100">
                 DREAM Engine Studio
               </h1>
               <span className="text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
                 Built with Google Gemini
               </span>
+              <span className="text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                OpenUI + REA + Remake 98.8%
+              </span>
             </div>
-            <p className="text-[10px] tracking-wide text-neutral-400">
-              100% AI-Built Unreal Alternative • Co-GM Council • <span className="text-rose-400 font-semibold">#UntilNoKidInNeed</span>
+            <p className="text-[10px] tracking-wide text-neutral-300">
+              100% AI-Built WebGPU Game Engine • Co-GM Council • <span className="text-rose-400 font-semibold">#UntilNoKidInNeed</span>
             </p>
           </div>
         </div>
 
         {/* Center / Controls Reminder */}
-        <div className="hidden 2xl:flex items-center space-x-2.5 bg-neutral-900/75 backdrop-blur-md border border-neutral-800 px-3 py-1.5 rounded-sm text-xs text-neutral-300 pointer-events-auto">
+        <div className="hidden 2xl:flex items-center space-x-2.5 bg-neutral-900/80 backdrop-blur-md border border-neutral-800 px-3 py-1.5 rounded-sm text-xs text-neutral-300 pointer-events-auto">
           <span className="flex items-center gap-1">
             <kbd className="px-1.5 py-0.5 bg-neutral-800 border border-neutral-700 rounded text-[10px] font-mono">WASD</kbd>
             <span className="text-neutral-400">move</span>
           </span>
           <span className="text-neutral-600">|</span>
           <span className="flex items-center gap-1">
-            <kbd className="px-1.5 py-0.5 bg-neutral-800 border border-neutral-700 rounded text-[10px] font-mono">LMB/RMB</kbd>
-            <span className="text-neutral-400">attack</span>
+            <kbd className="px-1.5 py-0.5 bg-neutral-800 border border-neutral-700 rounded text-[10px] font-mono">U</kbd>
+            <span className="text-emerald-300 font-semibold">OpenUI IDE</span>
           </span>
           <span className="text-neutral-600">|</span>
           <span className="flex items-center gap-1">
@@ -376,11 +406,6 @@ export default function App() {
           <span className="flex items-center gap-1">
             <kbd className="px-1.5 py-0.5 bg-neutral-800 border border-neutral-700 rounded text-[10px] font-mono">G</kbd>
             <span className="text-emerald-300 font-semibold">GM .40/.15</span>
-          </span>
-          <span className="text-neutral-600">|</span>
-          <span className="flex items-center gap-1">
-            <kbd className="px-1.5 py-0.5 bg-neutral-800 border border-neutral-700 rounded text-[10px] font-mono">P</kbd>
-            <span className="text-rose-300 font-semibold">pitch</span>
           </span>
           <span className="text-neutral-600">|</span>
           <span className="flex items-center gap-1">
@@ -401,6 +426,37 @@ export default function App() {
               <span className="text-[11px] font-mono hidden md:inline">Controller</span>
             </div>
           )}
+
+          {/* OpenUI Lang 1.0 + REA + Remake Cloud IDE Button */}
+          <button
+            onClick={() => {
+              engineRef.current?.releaseControl();
+              setIsOverlayDismissed(true);
+              setIsAfkScreensaver(false);
+              setIsOpenUiIdeOpen((prev) => !prev);
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-bold border transition duration-150 cursor-pointer ${
+              isOpenUiIdeOpen
+                ? 'bg-[#00E5A3] text-[#0A0B0D] border-[#00E5A3] shadow-[0_0_16px_rgba(0,229,163,0.4)]'
+                : 'bg-[#00E5A3]/20 hover:bg-[#00E5A3]/30 text-[#00E5A3] border-[#00E5A3]/60'
+            }`}
+            title="Open OpenUI Lang 1.0 + REA Procedural City + Remake Swap Board Cloud IDE (U)"
+          >
+            <Code2 className="w-3.5 h-3.5" />
+            <span>OpenUI + Remake IDE (U)</span>
+          </button>
+
+          {/* One-Click Reality Morph Button (Day Dream 3D / Nightfall 3D / 16-Bit Circle-Craft) */}
+          <button
+            onClick={handleCycleRealityPhase}
+            className="flex items-center gap-1.5 bg-neutral-900/90 hover:bg-neutral-800 text-[#FFD21E] border border-[#FFD21E]/50 px-2.5 py-1.5 rounded-sm text-xs font-mono font-bold transition duration-150 cursor-pointer"
+            title="Cycle AI Reality Morph: Day Dream 3D -> Nightfall 3D -> 16-Bit Circle-Craft (Cylindrical Voxels)"
+          >
+            <Orbit className="w-3.5 h-3.5 text-[#FFD21E]" />
+            <span className="hidden md:inline">
+              Morph: {evolutionPhase === 'circle_16bit' ? '16-Bit Circle-Craft' : evolutionPhase === 'nightmare_3d' ? 'Nightfall 3D' : 'Day Dream 3D'}
+            </span>
+          </button>
 
           {/* Split-Screen Graphy + Obsidian Memory Home & AFK Code Shield Button */}
           <button
@@ -583,7 +639,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Split-Screen Landing Home Page & AFK Idle Code Shield (Left: Graphy AST Workflow Dashboard | Right: Obsidian Session-End ri Memory Graph + GEMINI_SOUL.MD + Auto-XXXX Secret Redactor) */}
+      {/* Split-Screen Landing Home Page & AFK Idle Code Shield */}
       <SplitLandingAndScreensaver
         engine={engineRef.current}
         isOpen={(!isOverlayDismissed && !isAnyModalOpen && !isStudioOpen) || isAfkScreensaver}
@@ -601,6 +657,12 @@ export default function App() {
           setIsAfkScreensaver(false);
           setIsOverlayDismissed(true);
           setIsStudioOpen(true);
+        }}
+        onOpenOpenUiIde={() => {
+          lastActivityRef.current = Date.now();
+          setIsAfkScreensaver(false);
+          setIsOverlayDismissed(true);
+          setIsOpenUiIdeOpen(true);
         }}
         onOpenRea={() => {
           lastActivityRef.current = Date.now();
@@ -658,6 +720,14 @@ export default function App() {
         onClose={() => setIsGeminEyeOpen(false)}
         playerPos={playerPos}
         cameraYaw={cameraYaw}
+      />
+
+      {/* OpenUI Lang 1.0 + REA Procedural City + Remake Swap Board Cloud IDE Modal */}
+      <OpenUiGameDevStudioModal
+        engine={engineRef.current}
+        isOpen={isOpenUiIdeOpen}
+        onClose={() => setIsOpenUiIdeOpen(false)}
+        onEnter3dViewport={handleTakeControl}
       />
 
       {/* REA Binary & Asset Reverse-Engineering Modal */}
@@ -734,8 +804,8 @@ export default function App() {
         </div>
 
         <div className="flex items-center justify-between text-[11px]">
-          <span className="text-neutral-400">Profile:</span>
-          <span className="text-neutral-300 capitalize">{metrics.worldMode} Dream</span>
+          <span className="text-neutral-400">Reality:</span>
+          <span className="text-cyan-300 font-semibold">{evolutionPhase}</span>
         </div>
 
         <div className="flex items-center justify-between text-[11px]">
@@ -753,4 +823,3 @@ export default function App() {
     </div>
   );
 }
-

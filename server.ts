@@ -15,6 +15,21 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI, Type } from '@google/genai';
 import {
+  OPENUI_GAME_DEV_PRESETS,
+  parseOpenUiProgram,
+  evaluateOpenUiProgram,
+} from './src/engine/openui/openui-engine.ts';
+import {
+  ReaCityArchitect,
+  REA_CITY_ARCHETYPES,
+  REA_RECONSTRUCTION_EVIDENCE_LEDGER,
+  ReaArchetypeId,
+} from './src/engine/world/rea-city-architect.ts';
+import {
+  RemakeSwapBoard,
+  IDE_BENCHMARK_PROFILES,
+} from './src/engine/remake/remake-swap-board.ts';
+import {
   CANONICAL_NODE_TOPOLOGY,
   CO_GM_COUNCIL,
   DEFAULT_AGENT_SDK_LANES,
@@ -628,6 +643,55 @@ app.post('/api/studio/generate-design', async (req, res) => {
 // ============================================================================
 // Server Startup (Vite Dev Middleware or Static Production)
 // ============================================================================
+
+
+// ============================================================================
+// 5. OpenUI Lang 1.0 + REA Procedural City + Remake Swap Board API
+// ============================================================================
+
+const serverCityArchitect = new ReaCityArchitect();
+const serverRemakeBoard = new RemakeSwapBoard();
+
+app.get('/api/openui/presets', (_req, res) => {
+  res.json({
+    status: 'ok',
+    presets: OPENUI_GAME_DEV_PRESETS,
+    reaArchetypes: REA_CITY_ARCHETYPES,
+    reaEvidenceLedger: REA_RECONSTRUCTION_EVIDENCE_LEDGER,
+    remakeBenchmarkProfiles: IDE_BENCHMARK_PROFILES,
+    remakeReport: serverRemakeBoard.computeFrameFreezeScore(),
+  });
+});
+
+app.post('/api/openui/evaluate', (req, res) => {
+  const source = String(req.body?.source || OPENUI_GAME_DEV_PRESETS[0].openUiSource);
+  const stateOverrides = (req.body?.state as Record<string, unknown>) || {};
+  const ast = parseOpenUiProgram(source);
+  const evaluated = evaluateOpenUiProgram(ast, stateOverrides);
+  res.json({
+    status: 'ok',
+    ast,
+    evaluated,
+  });
+});
+
+app.post('/api/rea/generate-city', (req, res) => {
+  const archetypeId = (String(req.body?.archetypeId || 'SFA') as ReaArchetypeId);
+  const seed = Number(req.body?.seed) || 1004;
+  const phase = (req.body?.phase || 'day_dream_3d') as 'day_dream_3d' | 'nightmare_3d' | 'circle_16bit';
+  const block = serverCityArchitect.generateUrbanBlock({ archetypeId, seed, phase });
+  appendAudit('REA-CITY', `Generated REA ${block.archetypeId} block (${block.floorsGenerated}F, ${block.geometryPrimitive})`, true);
+  res.json({ status: 'ok', block });
+});
+
+app.get('/api/remake/swap-board', (_req, res) => {
+  res.json({
+    status: 'ok',
+    slots: serverRemakeBoard.getSlots(),
+    report: serverRemakeBoard.computeFrameFreezeScore(),
+    benchmarks: IDE_BENCHMARK_PROFILES,
+  });
+});
 
 async function startServer() {
   const PORT = Number(process.env.PORT) || 20128;
