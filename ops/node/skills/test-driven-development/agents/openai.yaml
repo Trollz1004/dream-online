@@ -1,0 +1,5 @@
+name: test-driven-development
+description: "Alias for mandatory TDD skill (RED -> GREEN -> REFACTOR) ensuring compatibility with harnesses expecting test-driven-development."
+version: 2.0.0
+model: gpt-5.5
+instructions_file: ../SKILL.md

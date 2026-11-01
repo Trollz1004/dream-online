@@ -1,0 +1,145 @@
+{
+  "name": "DREAM & ANTIGRAVITY Unified Multi-Harness Agent Workflow & Graphy",
+  "version": "2.0.0",
+  "lastUpdated": "2026-10-28",
+  "usedBy": [
+    "Claude Code (Opus 5.5 / Fable)",
+    "Google Gemini (Gemini 4 High Reasoning / Spark / Ultra / Antigravity agy)",
+    "OpenAI (Codex)",
+    "Free Claude Code (:8082 fcc-claude / fcc-opencode / fcc-hermes / fcc-agy / fcc-codex)",
+    "Hermes (OPSis)",
+    "OpenCode",
+    "Meta AI (Muse / Musa)"
+  ],
+  "authority": {
+    "updated": "2026-10-28 (Joshua Coleman)",
+    "human": "Joshua Coleman is the sole human authority over every node, repo, and agent",
+    "trustLevelMaxJudges": [
+      "opus-5.5-fable",
+      "gemini-4-high-reasoning"
+    ],
+    "trustLevelMaxRule": "Opus 5.5 / Fable and Google Gemini 4 High Reasoning hold Trust Level Max (100% permission, trusted across nearly 2 years) to judge what is used or not used, approve the work of all other AI platforms, and dispatch zero-cost partner outreach/emails directly on Joshua's behalf. Nothing costs money until Joshua says finalize.",
+    "peerJudgeAndExecutor": "OpenAI (Codex) and Hermes (OPSis)"
+  },
+  "fleetTopology": {
+    "updated": "2026-10-28",
+    "repositories": {
+      "dreamOnline": {
+        "repo": "Trollz1004/dream-online",
+        "branch": "main",
+        "alienwarePaths": [
+          "C:\\Users\\joshl\\antigravity\\DREAM-Engine",
+          "C:\\DREAM\\dream-online"
+        ]
+      },
+      "antigravity": {
+        "repo": "Trollz1004/ANTIGRAVITY",
+        "branch": "main",
+        "t5500Path": "C:\\ANTIGRAVITY"
+      }
+    },
+    "nodes": {
+      "Alienware": {
+        "ip": "192.168.0.40",
+        "user": "joshl",
+        "hardware": "Desktop Aurora R12, 11th-Gen Intel i7-11700F, 40 GB RAM, 1 TB M.2 NVMe, NVIDIA GeForce RTX 3070 (8 GB CUDA), 2.5 Gb Ethernet",
+        "autoBootTask": "DREAM-Alienware-BootAll (ops/node/boot-alienware-services.cmd — runs at Logon + every 15 min)",
+        "ports": {
+          "8082": "Free Claude Code Server (http://127.0.0.1:8082/admin)",
+          "8390": "OPSis Cut & Reach Studio (http://127.0.0.1:8390/)",
+          "20128": "DREAM Engine & 4-Tier Memory/Graphy Bridge (http://127.0.0.1:20128/)",
+          "9127": "Live NPC Lab (http://127.0.0.1:9127/health)",
+          "9133": "DreamOps Bridge (http://127.0.0.1:9133/health)"
+        }
+      },
+      "T5500": {
+        "ip": "192.168.0.15",
+        "user": "joshi",
+        "hardware": "Dell Precision Workstation, Dual Xeons, 72 GB Registered ECC RAM, GTX 1050 Ti 4 GB, 512 GB SATA SSD",
+        "autoBootTask": "ANTIGRAVITY Mission Control (C:\\ANTIGRAVITY\\mission-os\\server.mjs)",
+        "ports": {
+          "3130": "Mission Control (http://192.168.0.15:3130/live — never :9150, never called JARVIS)",
+          "20128": "OmniRoute Gateway (http://192.168.0.15:20128/v1)",
+          "49374": "Shared ai-memory v3.2.5 MCP Server (http://192.168.0.15:49374)",
+          "3200": "Date App local dev frontend (production runs on Google Cloud Run behind api.youandinotai.com)"
+        }
+      },
+      "Sabretooth": {
+        "ip": "192.168.0.8",
+        "user": "joshl",
+        "hardware": "16 GB AMD Radeon RX 6800 GPU (DirectML/Vulkan, never CUDA), 64 GB RAM, 1 TB SATA SSD",
+        "autoBootTask": "DREAM-Sabretooth-BootAll (C:\\Ai-Dream-Team\\Antigravity\\youtube-shorts-podcast-engine\\boot-sabretooth-services.cmd — runs at Logon + every 15 min)",
+        "ports": {
+          "11434": "Local Ollama (http://192.168.0.8:11434)",
+          "8391": "Sabretooth OPSis Shorts (<= 59.0s), Female Voice Podcast & 4h Social Strike Worker (http://192.168.0.8:8391/health)"
+        }
+      }
+    }
+  },
+  "mandatorySessionSkills": {
+    "loadOnEverySession": [
+      "caveman",
+      "i-have-adhd",
+      "find-skills",
+      "create-skills",
+      "brainstorming",
+      "superpowers",
+      "tdd",
+      "test-driven-development",
+      "verification-before-completion",
+      "obsidian-save",
+      "openviking",
+      "supabase",
+      "agent-workflow",
+      "rooflo-opsis-cut-and-reach",
+      "house-boot"
+    ],
+    "synchronizedPaths": [
+      ".agents/skills/<skill>/SKILL.md (+ agents/openai.yaml, agents/gemini.toml, skill.json)",
+      ".claude/skills/<skill>/SKILL.md",
+      "agent/skills/<skill>/SKILL.md",
+      "ops/node/skills/<skill>/SKILL.md",
+      "C:\\Users\\joshl\\.claude\\skills\\<skill>\\SKILL.md",
+      "C:\\Users\\joshl\\.gemini\\skills\\<skill>\\SKILL.md"
+    ]
+  },
+  "memoryAndSessionProtocol": {
+    "rule": "Every agent reads its Obsidian node note at session start and writes what it learned at session end, mirrored to Shared ai-memory (:49374), Graphy, OpenViking, Supabase, and Supermemory recall backup.",
+    "authoritativePrimary": {
+      "type": "Obsidian Vault + Git",
+      "alienwareVault": "C:\\DREAM\\Antigravity",
+      "t5500Vault": "C:\\ANTIGRAVITY\\Antigravity",
+      "sabretoothVault": "C:\\Ai-Dream-Team\\Antigravity",
+      "perAgentNotes": [
+        "T5500/gemini-to-gemini.md",
+        "Alienware/gemini-to-gemini.md",
+        "Sabretooth/gemini-to-gemini.md",
+        "Alienware/claude-to-claude.md",
+        "Alienware/hermes-to-hermes.md",
+        "Alienware/codex-to-codex.md"
+      ],
+      "sessionEndScript": "scripts/obsidian/session-note.ps1"
+    },
+    "crossNodeMemoryMcp": {
+      "serverName": "ai-memory",
+      "url": "http://192.168.0.15:49374",
+      "note": "Always pass scope='global' on memory_query / memory_recent so pages written on Alienware (.40), T5500 (.15), and Sabretooth (.8) are visible across all nodes regardless of local folder path."
+    },
+    "backups": {
+      "graphy": "http://127.0.0.1:20128/api/graphy/codebase & docs/memory-layer/agent-workflow-graphy.json",
+      "openviking": "viking://dream/... via POST http://127.0.0.1:20128/api/memory/store",
+      "supabase": "supabase-pgvector tier via POST http://127.0.0.1:20128/api/memory/store",
+      "supermemory": "supermemory-cloud tier (recall-only backup; git and Obsidian always win on conflict)"
+    }
+  },
+  "omnirouteWorkflow": {
+    "base_url": "http://192.168.0.15:20128/v1",
+    "models": {
+      "default": "auto/best-fast",
+      "reasoning": "auto/best-reasoning",
+      "coding": "auto/best-coding",
+      "ollamaCloud": "muse-spark-open",
+      "localAdult18Plus": "joshlcoleman/Fable"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "brainstorming",
+  "description": "Structured multi-angle design exploration before implementation. Evaluates clean-room architecture, zero-TOS-risk compliance, and accessibility before writing code.",
+  "version": "2.0.0",
+  "entry": "SKILL.md",
+  "harnesses": [
+    "claude",
+    "gemini",
+    "codex",
+    "hermes",
+    "opencode",
+    "agy"
+  ]
+}

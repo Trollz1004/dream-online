@@ -1,0 +1,22 @@
+{
+  "name": "hermes-leadgen",
+  "version": "1.0.0",
+  "private": true,
+  "description": "HermesLeadGen - YouTube shorts and marketing lead-gen Command Studio for Sabretooth",
+  "main": "main.js",
+  "scripts": {
+    "start": "node server.js",
+    "electron": "electron .",
+    "test": "node --test test/hermes-leadgen.test.js"
+  },
+  "keywords": [
+    "hermes",
+    "opsis",
+    "leadgen",
+    "youtube",
+    "shorts"
+  ],
+  "author": "Joshua Coleman",
+  "license": "ISC",
+  "type": "commonjs"
+}

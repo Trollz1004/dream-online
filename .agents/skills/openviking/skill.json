@@ -1,0 +1,14 @@
+{
+  "name": "openviking",
+  "description": "Hierarchical L0/L1/L2 context indexing and backup (viking://dream/...) paired with Obsidian and Shared ai-memory (:49374).",
+  "version": "2.0.0",
+  "entry": "SKILL.md",
+  "harnesses": [
+    "claude",
+    "gemini",
+    "codex",
+    "hermes",
+    "opencode",
+    "agy"
+  ]
+}

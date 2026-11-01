@@ -1,0 +1,107 @@
+[
+  {
+    "id": "agent-reach",
+    "name": "Agent-Reach (Multi-Platform Search & Transcripts)",
+    "description": "Terms-compliant read-only research across official X/Grok search, Reddit API, YouTube Data API v3 transcripts, GitHub API, and permitted web sources.",
+    "cli": "agy --dangerously-skip-permissions",
+    "mandatory": true
+  },
+  {
+    "id": "last30days",
+    "name": "Last 30 Days Research Skill (last30days)",
+    "description": "Finds high-signal skills, GitHub repos, MCPs, creator threads, and buyer intent from the last 30 days.",
+    "cli": "agy --dangerously-skip-permissions",
+    "mandatory": true
+  },
+  {
+    "id": "rea-mcp",
+    "name": "REA Clean-Room Verification & Media MCP (rea-agents mcp)",
+    "description": "Binary/protocol verification and CapCut 9.7.0.4153 clean-room 6-stage video timeline assembly.",
+    "cli": "rea-agents mcp",
+    "mandatory": true
+  },
+  {
+    "id": "test-driven-development",
+    "name": "Test-Driven Development (TDD: RED -> GREEN -> REFACTOR)",
+    "description": "Mandatory automated test execution (node --test) before marking any agent task or PR complete.",
+    "cli": "node --test",
+    "mandatory": true
+  },
+  {
+    "id": "verification-before-completion",
+    "name": "Verification Before Completion (Rule One Screenshot Proof)",
+    "description": "Requires live HTTP checks, real rendered screenshots, and playable media previews in the GUI.",
+    "cli": "agy --dangerously-skip-permissions",
+    "mandatory": true
+  },
+  {
+    "id": "humanizer",
+    "name": "Humanizer (Zero AI Slop / <75w Natural Outbound)",
+    "description": "Strips robotic phrasing so every Harvey lead outreach and YouTube script sounds 100% human.",
+    "cli": "agy --dangerously-skip-permissions",
+    "mandatory": true
+  },
+  {
+    "id": "caveman",
+    "name": "Caveman (Outcome-First Ultra-Direct Copy)",
+    "description": "Cuts filler while keeping technical accuracy and conversion hooks 100% intact.",
+    "cli": "agy --dangerously-skip-permissions",
+    "mandatory": true
+  },
+  {
+    "id": "i-have-adhd",
+    "name": "I-Have-ADHD & Low-Vision Accessibility",
+    "description": "Enforces high-contrast UI (>= 18px text), outcome-first summaries, and clear visual previews for Founder Joshua Coleman.",
+    "cli": "agy --dangerously-skip-permissions",
+    "mandatory": true
+  },
+  {
+    "id": "brainstorming",
+    "name": "Brainstorming (Multi-Angle Clean-Room Strategy)",
+    "description": "Evaluates conversion angles, compliance walls, and clean-room architecture before execution.",
+    "cli": "agy --dangerously-skip-permissions",
+    "mandatory": true
+  },
+  {
+    "id": "obsidian-save",
+    "name": "Obsidian Session Save + 6-Layer Memory Fallbacks",
+    "description": "Appends timestamped node-specific entries to Sabretooth/*-to-*.md and mirrors to T5500 ai-memory (:49374), Supermemory, OpenViking, Supabase, and Graphy.",
+    "cli": "powershell -File ../session-note.ps1",
+    "mandatory": true
+  },
+  {
+    "id": "graphy",
+    "name": "Dual Graphy (Agent Workflow Graphy + Codebase Knowledge Graphy)",
+    "description": "Maintains api.workflow.json and graphify-out/graph.json so all agents share a live map of skills, souls, and code.",
+    "cli": "python -m graphify update . --force",
+    "mandatory": true
+  },
+  {
+    "id": "dreamforge_world_seed",
+    "name": "Dreamforge: World Seed & 7-Mode World Builder (PR #55)",
+    "description": "Custom YouTube Automation & Game-Dev function: generates canonical DREAM Online 3D world seeds across 7 modes (World, Story, Roleplay, Comic,Video/Shorts <=59s, Character, Remix) and syncs with :20128/dreamforge.",
+    "cli": "npx tsx ops/cli-anything/dream-cli.ts dreamforge modes --json",
+    "mandatory": true
+  },
+  {
+    "id": "dreamforge_art_styles",
+    "name": "Dreamforge: 43 Art Styles & Sculpted Character/Skill VFX Mapper",
+    "description": "Custom YouTube Automation & Game-Dev function: maps Dreamforge's 43 art styles onto sculpted 3D armor rigs, crescent slash arcs, shockwave rings, and <=59.0s Shorts thumbnails.",
+    "cli": "npx tsx ops/cli-anything/dream-cli.ts vfx cast --skill R --class crimson-vanguard --theme ember-wyrm-crimson --json",
+    "mandatory": true
+  },
+  {
+    "id": "dreamforge_roleplay",
+    "name": "Dreamforge: Roleplay & Natural Female Voice (Aoede/Kore) Shorts Script",
+    "description": "Custom YouTube Automation & Game-Dev function: turns Dreamforge character cards and lore into <=58.5s YouTube Shorts scripts with 100% natural female voice narration (Aoede/Kore).",
+    "cli": "npx tsx ops/cli-anything/dream-cli.ts char list --json",
+    "mandatory": true
+  },
+  {
+    "id": "cli-anything",
+    "name": "CLI-Anything Text-In / Text-Out AI Team & Red/Tag/Triple-Team Shield",
+    "description": "Gives Gemini, Claude, Codex, Free Claude Code (:8082), and Hermes deterministic text-in/text-out CLI control over the entire game & admin dashboard plus Red-Team / Tag-Team / Triple-Team Kids Playground protection.",
+    "cli": "npx tsx ops/cli-anything/dream-cli.ts security run --mode triple-team --json",
+    "mandatory": true
+  }
+]

@@ -1,0 +1,17 @@
+version: "1.0"
+project: "HermesLeadGen-Sabretooth-8392"
+hooks:
+  before_implement:
+    - extension: "rooflo-tdd-and-graphy-preflight"
+      command: "speckit.preflight.verify"
+      description: "Verify Red/Green node ports, load Dual Graphy, and run TDD baseline before implementation."
+      optional: false
+  after_implement:
+    - extension: "rooflo-mandatory-git-push-and-pr"
+      command: "speckit.git.push-and-pr"
+      description: "MANDATORY: Run TDD tests (node --test), stage & commit work, push node branch to GitHub, and create/update the Pull Request (gh pr create) so Cloud Judges (Gemini / Jules / Claude / Codex) validate and merge."
+      optional: false
+    - extension: "obsidian-6-layer-memory-sync"
+      command: "speckit.memory.sync"
+      description: "MANDATORY: Write timestamped node-specific session entry to Sabretooth/gemini-to-gemini.md & hermes-to-hermes.md and mirror to T5500 ai-memory (:49374)."
+      optional: false

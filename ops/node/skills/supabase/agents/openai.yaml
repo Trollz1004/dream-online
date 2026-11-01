@@ -1,0 +1,5 @@
+name: supabase
+description: "Supabase pgvector & SQL checkpoint backup layer for Obsidian session memory and multi-stream CRM telemetry."
+version: 2.0.0
+model: gpt-5.5
+instructions_file: ../SKILL.md
