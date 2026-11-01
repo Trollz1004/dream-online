@@ -28,6 +28,8 @@ import {
   createSculptedSentinelColossusParts,
   createWeatheredCragRockGeometry,
   createSparkDiamondGeometry,
+  createBlueFlameFloorSigilGeometry,
+  createArrivalShieldDomeGeometry,
   MeshGeometry,
   MaterialProperties,
 } from './scene/mesh.ts';
@@ -38,6 +40,8 @@ import { CombatManager } from './combat/combat-manager.ts';
 import { SkillVfxDirector, ActionMmoClassId, SkillVfxThemeId } from './combat/skill-vfx.ts';
 import { StudioConfigManager } from './studioConfig.ts';
 import { WorldEvolutionDirector, quantizeColor16Bit, EvolutionPhase } from './world/world-evolution.ts';
+import { OathcallTownshipServer, OathcallDemoState } from './combat/oathcall-system.ts';
+import { PvpTacticalCoordinator } from './combat/pvp-tactical-ping.ts';
 
 declare global {
   interface Window {
@@ -61,6 +65,8 @@ export class DreamEngine {
   readonly skillVfx: SkillVfxDirector = new SkillVfxDirector();
   readonly studio: StudioConfigManager = new StudioConfigManager();
   readonly evolution: WorldEvolutionDirector = new WorldEvolutionDirector();
+  readonly oathcallServer: OathcallTownshipServer = new OathcallTownshipServer();
+  readonly pvpTactical: PvpTacticalCoordinator = new PvpTacticalCoordinator();
 
   // Scene entities
   private sceneRoot: SceneNode;
@@ -95,6 +101,8 @@ export class DreamEngine {
   private ringWaveMesh: MeshGeometry;
   private pillarSpikeMesh: MeshGeometry;
   private aegisBarrierMesh: MeshGeometry;
+  private blueFlameSigilMesh: MeshGeometry;
+  private arrivalShieldMesh: MeshGeometry;
 
   // Loop, procedural animation & deterministic 7-second autopilot director
   private isRunning = false;
@@ -103,10 +111,13 @@ export class DreamEngine {
   private animClock = 0;
 
   isAutopilotMode = false;
+  isOathcallDemoMode = false;
   isCaptureMode = false;
   isManualStepping = false;
   scriptedTimeSec = 0;
   isEndCardVisible = false;
+  isChampionRegaliaEquipped = false;
+  oathcallDemoState: OathcallDemoState;
   private scriptedMilestones = new Set<string>();
   private dustSpawnAccumulator = 0;
 
@@ -148,8 +159,39 @@ export class DreamEngine {
 
     const search = typeof window !== 'undefined' ? window.location.search : '';
     this.isCaptureMode = search.includes('capture=1');
-    this.isAutopilotMode = search.includes('autopilot=1') || this.isCaptureMode;
+    this.isOathcallDemoMode = search.includes('oathcallDemo=1');
+    this.isAutopilotMode = search.includes('autopilot=1') || this.isCaptureMode || this.isOathcallDemoMode;
     this.isManualStepping = search.includes('manualStep=1');
+
+    this.oathcallDemoState = {
+      active: this.isOathcallDemoMode,
+      phase: 1,
+      phaseTitle: 'PART 1 — OATHCALL BULLY MARK & ZERO-LOSS KNOCKOUT',
+      phaseSubtitle: 'Lv.85 Attacker (Valkor) knocks out Lv.24 Victim (Pip) -> Flash of Light, 0 Loss, 17m 30s Bully Mark (+18% Valor)',
+      elapsedSec: 0,
+      victimName: 'Pip',
+      victimLevel: 24,
+      victimGear: 110,
+      attackerName: 'Valkor',
+      attackerLevel: 85,
+      attackerGear: 480,
+      attackerHpPct: 100,
+      isBullyMark: true,
+      markDurationLabel: '17m 30s (1.75x Bully Rule)',
+      valorBuffPct: 18,
+      warningBannerText: null,
+      arrivalShieldRemainingSec: 0,
+      summonedAllies: [],
+      knockoutFlashAlpha: 0,
+      championRegaliaActive: false,
+      townshipSummary: {
+        name: 'Sunspire Stronghold',
+        holdingGuild: 'Vanguard Sovereign',
+        taxRatePct: 25,
+        guildBankGold: 4250,
+        nextBattleWindow: 'Sat 20:00 UTC (Mandatory Defense)',
+      },
+    };
 
     // Start in melee range (-6.8) during normal play so immediate clicks/keys hit the boss,
     // or at (-0.4) at the start of the 7-second sprint-in sequence!
@@ -185,6 +227,8 @@ export class DreamEngine {
     this.ringWaveMesh = this.burstMesh;
     this.pillarSpikeMesh = createSkillPillarSpikeGeometry(0.38, 0.05, 3.4, 10);
     this.aegisBarrierMesh = createAegisBarrierShieldGeometry(1.15, 1.65, Math.PI * 0.75, 16);
+    this.blueFlameSigilMesh = createBlueFlameFloorSigilGeometry();
+    this.arrivalShieldMesh = createArrivalShieldDomeGeometry();
 
     // Apply default clean-room Crimson Wyrm-Vanguard class & Ember-Wyrm VFX theme
     const initPreset = this.skillVfx.setClassAndTheme('crimson-vanguard', 'ember-wyrm-crimson');
@@ -349,12 +393,171 @@ export class DreamEngine {
     this.combat.sentinel.reset();
     this.combat.sentinel.riseProgress = 0.0;
 
-    this.controller.position.set(0, 0, -0.4);
+    this.controller.position.set(0, 0, this.isOathcallDemoMode ? -6.8 : -0.4);
     this.controller.facingYaw = 0;
-    this.controller.isSprinting = true;
+    this.controller.isSprinting = !this.isOathcallDemoMode;
     this.camera.yaw = 0;
     this.camera.pitch = -0.14;
     this.camera.setUltimatePullback(0);
+    if (this.isOathcallDemoMode) {
+      this.combat.sentinel.riseProgress = 1.0;
+    }
+  }
+
+  /**
+   * Drives the deterministic 7-Second Oathcall + Townships + Champion Regalia Demo (`?oathcallDemo=1`):
+   * - Phase 1 (0.0s - 1.8s): High-level player (`Valkor`, Lv.85, Gear 480) knocks out low-level player (`Pip`, Lv.24, Gear 110)
+   *   with a clean Flash of Light (`0 XP / 0 Gold / 0 Item loss`). Victim receives the `17m 30s` Bully Oathcall Mark (`+18% Valor`)
+   *   and picks 3 guild allies (`Kaelen`, `Lyra`, `Vex`).
+   * - Phase 2 (1.8s - 3.6s): `"Oathcall answered: 3 incoming"` warning banner triggers for the attacker; 3 allies arrive at the
+   *   attacker's location encased in glowing `2.0s` Arrival Shields.
+   * - Phase 3 (3.6s - 5.4s): Coordinated 3-ally team fight + `Shift + Right-Click` Tactical Map Ping (`FOCUS TARGET: Valkor`)
+   *   overwhelms and defeats the high-level attacker.
+   * - Phase 4 (5.4s - 7.2s): Victorious Champion stands in the original DREAM Sovereign Aether-Plate Regalia inside the
+   *   glowing, slowly turning Blue-Flame Holographic Floor Sigil (`0 Combat Stats · Earned Only`).
+   */
+  private updateOathcallDemoDirector(dt: number): void {
+    this.scriptedTimeSec += dt;
+    const t = this.scriptedTimeSec;
+    const pos = this.controller.position;
+    this.controller.facingYaw = 0;
+    this.camera.yaw = 0;
+
+    if (!this.isManualStepping && t >= 8.0) {
+      this.resetScripted7sSequence();
+      return;
+    }
+
+    this.combat.sentinel.riseProgress = 1.0;
+    this.combat.sentinel.setCycleTime(1.0);
+    this.oathcallDemoState.active = true;
+    this.oathcallDemoState.elapsedSec = t;
+
+    // Phase 1: 0.0 - 1.8s — Bully Knockout (Flash of Light, Zero Loss) & Oathcall Mark Placed
+    if (t < 1.8) {
+      this.oathcallDemoState.phase = 1;
+      this.oathcallDemoState.phaseTitle = 'PART 1 — OATHCALL BULLY MARK & KID-SAFE LIGHT-FLASH KNOCKOUT';
+      this.oathcallDemoState.phaseSubtitle =
+        'Lv.85 Attacker (Valkor, Gear 480) knocks out Lv.24 Victim (Pip, Gear 110) · 0 XP/Gold/Item Loss · 17m 30s Bully Mark (+18% Valor)';
+      this.oathcallDemoState.warningBannerText = null;
+      this.oathcallDemoState.arrivalShieldRemainingSec = 0;
+      this.oathcallDemoState.summonedAllies = [];
+      this.oathcallDemoState.attackerHpPct = 100;
+      this.oathcallDemoState.championRegaliaActive = false;
+      this.isChampionRegaliaEquipped = false;
+      this.camera.setUltimatePullback(0.2);
+
+      // Clean white-gold Flash of Light at knockout moment (t = 0.6s .. 1.4s)
+      if (t >= 0.5 && t <= 1.5) {
+        this.oathcallDemoState.knockoutFlashAlpha = Math.sin(((t - 0.5) / 1.0) * Math.PI) * 0.65;
+      } else {
+        this.oathcallDemoState.knockoutFlashAlpha = 0;
+      }
+
+      if (t >= 0.65 && !this.scriptedMilestones.has('oath-knockout')) {
+        this.scriptedMilestones.add('oath-knockout');
+        pos.set(0, 0, -6.8);
+        this.skillVfx.spawnGuardAegisVfx(pos.x, pos.y + 0.5, pos.z, 0);
+        this.combat.say('OATHCALL MARK: Valkor (Lv.85) · 17m 30s Bully Timer · Pick up to 5 Allies');
+      }
+      return;
+    }
+
+    // Phase 2: 1.8 - 3.6s — "Oathcall answered: 3 incoming" Warning & 3 Allies Arrive with 2.0s Shields
+    if (t < 3.6) {
+      this.oathcallDemoState.phase = 2;
+      this.oathcallDemoState.phaseTitle = 'PART 1 — OATHCALL ANSWERED: 3 ALLIES INCOMING & 2.0s ARRIVAL SHIELD';
+      this.oathcallDemoState.phaseSubtitle =
+        'Victim selects 3 Guild Allies (Kaelen, Lyra, Vex) · Travel to Attacker Location (Never Safe Zones) · 2.0s Arrival Shield Active';
+      this.oathcallDemoState.warningBannerText = 'Oathcall answered: 3 incoming';
+      this.oathcallDemoState.knockoutFlashAlpha = 0;
+      const shieldRem = Math.max(0, 2.0 - (t - 1.8));
+      this.oathcallDemoState.arrivalShieldRemainingSec = Number(shieldRem.toFixed(1));
+      this.oathcallDemoState.attackerHpPct = 88;
+      this.oathcallDemoState.championRegaliaActive = false;
+      this.isChampionRegaliaEquipped = false;
+      this.camera.setUltimatePullback(0.85);
+
+      this.oathcallDemoState.summonedAllies = [
+        { id: 'ally_kaelen', name: 'Kaelen [Guild]', level: 82, position: [-2.15, 0, -7.4], yaw: -0.25, hasShield: shieldRem > 0 },
+        { id: 'ally_lyra', name: 'Lyra [Party]', level: 80, position: [2.15, 0, -7.4], yaw: 0.25, hasShield: shieldRem > 0 },
+        { id: 'ally_vex', name: 'Vex [Friend]', level: 84, position: [-1.25, 0, -5.8], yaw: -0.15, hasShield: shieldRem > 0 },
+      ];
+
+      if (!this.scriptedMilestones.has('oath-arrival')) {
+        this.scriptedMilestones.add('oath-arrival');
+        this.skillVfx.spawnGuardAegisVfx(-2.15, 0, -7.4, 0);
+        this.skillVfx.spawnGuardAegisVfx(2.15, 0, -7.4, 0);
+        this.combat.say('Oathcall answered: 3 incoming (+18% Valor · 2.0s Arrival Shield)');
+      }
+      return;
+    }
+
+    // Phase 3: 3.6 - 5.4s — Coordinated Team Fight + Shift+Right-Click Tactical Map Ping
+    if (t < 5.4) {
+      this.oathcallDemoState.phase = 3;
+      this.oathcallDemoState.phaseTitle = 'PART 1 & 2 — TEAM FIGHT SETTLEMENT & SHIFT+RIGHT-CLICK FOCUS PING';
+      this.oathcallDemoState.phaseSubtitle =
+        'Shift+Right-Click Focus Ping on Valkor · 3 Summoned Allies + Victim settle the fight · Sunspire Township Tax Capped at 33% Gold';
+      this.oathcallDemoState.warningBannerText = 'FOCUS TARGET: VALKOR [SHIFT+RMB PING]';
+      this.oathcallDemoState.arrivalShieldRemainingSec = 0;
+      this.oathcallDemoState.championRegaliaActive = false;
+      this.isChampionRegaliaEquipped = false;
+      this.camera.setUltimatePullback(1.1);
+
+      const fightProg = Math.min(1, (t - 3.6) / 1.6);
+      this.oathcallDemoState.attackerHpPct = Math.max(0, Math.round((1 - fightProg) * 72));
+      this.oathcallDemoState.summonedAllies = [
+        { id: 'ally_kaelen', name: 'Kaelen [Guild]', level: 82, position: [-1.65, 0, -8.1], yaw: -0.32, hasShield: false },
+        { id: 'ally_lyra', name: 'Lyra [Party]', level: 80, position: [1.65, 0, -8.1], yaw: 0.32, hasShield: false },
+        { id: 'ally_vex', name: 'Vex [Friend]', level: 84, position: [0.95, 0, -6.9], yaw: 0.15, hasShield: false },
+      ];
+
+      if (!this.scriptedMilestones.has('oath-teamfight-ping')) {
+        this.scriptedMilestones.add('oath-teamfight-ping');
+        this.pvpTactical.applyPreset('pvp-centered');
+        this.pvpTactical.triggerShiftRightClickPing({
+          worldX: 0,
+          worldZ: -10,
+          kind: 'focus',
+          senderName: 'Kaelen',
+          targetEntityName: 'Valkor (Bully Target)',
+          nowSec: t,
+        });
+        this.combat.executeAuthoritativeSkillStrike('l3', pos, 0, 42);
+        this.skillVfx.spawnHeavyCleaveVfx(pos.x, pos.y, pos.z, 0);
+        this.skillVfx.spawnLightSlashVfx(2, -1.65, 0, -8.1, -0.32);
+        this.skillVfx.spawnLightSlashVfx(3, 1.65, 0, -8.1, 0.32);
+      }
+      if (t >= 4.35 && !this.scriptedMilestones.has('oath-teamfight-finisher')) {
+        this.scriptedMilestones.add('oath-teamfight-finisher');
+        this.combat.executeAuthoritativeSkillStrike('burst', pos, 0, 78);
+        this.skillVfx.spawnNightveilBurstVfx(pos.x, pos.y, pos.z, 0);
+      }
+      return;
+    }
+
+    // Phase 4: 5.4 - 7.2s — Champion Regalia & Rotating Blue-Flame Holographic Floor Sigil
+    this.oathcallDemoState.phase = 4;
+    this.oathcallDemoState.phaseTitle = 'PART 3 — EARNED-ONLY CHAMPION REGALIA & BLUE-FLAME HOLOGRAPHIC FLOOR SIGIL';
+    this.oathcallDemoState.phaseSubtitle =
+      'DREAM Sovereign Aether-Plate + Rotating Blue-Flame Sigil · 0 Combat Stats (Status, Not Power) · Earned in Sunspire Township Battle';
+    this.oathcallDemoState.warningBannerText = null;
+    this.oathcallDemoState.arrivalShieldRemainingSec = 0;
+    this.oathcallDemoState.attackerHpPct = 0;
+    this.oathcallDemoState.summonedAllies = [];
+    this.oathcallDemoState.championRegaliaActive = true;
+    this.isChampionRegaliaEquipped = true;
+    this.combat.sentinel.health = 0;
+    pos.set(0, 0, -6.5);
+    this.camera.setUltimatePullback(0.35);
+
+    if (!this.scriptedMilestones.has('oath-regalia-showcase')) {
+      this.scriptedMilestones.add('oath-regalia-showcase');
+      this.combat.damageFloaters = [];
+      this.skillVfx.resetDeterministicState(2026);
+      this.combat.say('CHAMPION REGALIA: Sunspire Sovereign · 0 Combat Stats · Earned Only');
+    }
   }
 
   /**
@@ -835,11 +1038,17 @@ export class DreamEngine {
   }
 
   stepFrame(dt: number): void {
-    // Advance scripted 7s sequence if autopilot/capture is active
-    if (this.isAutopilotMode) {
+    // Advance scripted 7s sequence or Oathcall Demo if autopilot/capture is active
+    if (this.isOathcallDemoMode) {
+      this.updateOathcallDemoDirector(dt);
+      this.camera.updateOrbit(this.controller.position, dt);
+    } else if (this.isAutopilotMode) {
       this.updateScripted7sDirector(dt);
       this.camera.updateOrbit(this.controller.position, dt);
     }
+
+    // Prune expired tactical map pings
+    this.pvpTactical.pruneExpiredPings(this.animClock);
 
     // Hit-stop (60-90ms freeze on heavy hits, L3 finishers, and ultimate) freezes character/boss motion
     // while camera punch and VFX continue to sparkle!
@@ -938,9 +1147,12 @@ export class DreamEngine {
         this.combat.lunge.isLunging() ||
         this.skillVfx.slashRibbons.length > 0;
 
-      // Material 1: Forged Gunmetal-Obsidian Steel Plate (Cuirass & Helm)
+      // Material 1: Forged Gunmetal-Obsidian Steel Plate (or DREAM Sovereign Aether-Plate when Champion Regalia is active)
+      const isChamp = this.isChampionRegaliaEquipped;
       const steelRgb = q16(
-        glow.isGlow
+        isChamp
+          ? [0.14, 0.34, 0.72]
+          : glow.isGlow
           ? ([glow.r, glow.g, glow.b] as [number, number, number])
           : isNight
           ? [0.12, 0.15, 0.22]
@@ -948,16 +1160,18 @@ export class DreamEngine {
       );
       const steelPlateMat: MaterialProperties = {
         baseColor: [steelRgb[0], steelRgb[1], steelRgb[2], 1.0],
-        roughness: glow.isGlow ? 0.16 : 0.28,
-        metallic: 0.88,
-        emissive: glow.isGlow ? steelRgb : [0, 0, 0],
-        emissiveIntensity: glow.isGlow ? 0.95 : 0.0,
-        rimIntensity: glow.isGlow ? 0.9 : 0.65,
+        roughness: isChamp ? 0.14 : glow.isGlow ? 0.16 : 0.28,
+        metallic: 0.92,
+        emissive: isChamp ? [0.06, 0.28, 0.68] : glow.isGlow ? steelRgb : [0, 0, 0],
+        emissiveIntensity: isChamp ? 0.45 : glow.isGlow ? 0.95 : 0.0,
+        rimIntensity: isChamp ? 0.95 : glow.isGlow ? 0.9 : 0.65,
       };
 
-      // Material 2: Gilded Royal Bronze-Gold Trim (Winged Pauldrons, Waist Tassets, Helm Crest Horns)
+      // Material 2: Gilded Royal Bronze-Gold Trim (or Platinum-Starlight Cyan Trim on Champion Regalia)
       const goldRgb = q16(
-        glow.isGlow
+        isChamp
+          ? [0.76, 0.88, 0.98]
+          : glow.isGlow
           ? ([glow.r, glow.g, glow.b] as [number, number, number])
           : isNight
           ? [0.58, 0.38, 0.10]
@@ -965,26 +1179,26 @@ export class DreamEngine {
       );
       const gildedBronzeMat: MaterialProperties = {
         baseColor: [goldRgb[0], goldRgb[1], goldRgb[2], 1.0],
-        roughness: 0.24,
-        metallic: 0.90,
-        emissive: glow.isGlow ? goldRgb : [0, 0, 0],
-        emissiveIntensity: glow.isGlow ? 0.85 : 0.0,
-        rimIntensity: 0.68,
+        roughness: isChamp ? 0.16 : 0.24,
+        metallic: 0.94,
+        emissive: isChamp ? [0.18, 0.58, 0.96] : glow.isGlow ? goldRgb : [0, 0, 0],
+        emissiveIntensity: isChamp ? 0.62 : glow.isGlow ? 0.85 : 0.0,
+        rimIntensity: isChamp ? 0.92 : 0.68,
       };
 
       // Material 3: Tempered Charcoal-Silver Articulated Limbs (Vambraces & Greaves)
-      const silverRgb = q16(isNight ? [0.22, 0.25, 0.32] : [0.28, 0.31, 0.38]);
+      const silverRgb = q16(isChamp ? [0.58, 0.72, 0.92] : isNight ? [0.22, 0.25, 0.32] : [0.28, 0.31, 0.38]);
       const silverLimbMat: MaterialProperties = {
         baseColor: [silverRgb[0], silverRgb[1], silverRgb[2], 1.0],
-        roughness: 0.30,
-        metallic: 0.82,
-        emissive: [0, 0, 0],
-        emissiveIntensity: 0.0,
-        rimIntensity: 0.58,
+        roughness: 0.26,
+        metallic: 0.86,
+        emissive: isChamp ? [0.08, 0.25, 0.55] : [0, 0, 0],
+        emissiveIntensity: isChamp ? 0.25 : 0.0,
+        rimIntensity: 0.68,
       };
 
-      // Material 4: Matte Woven Royal Crimson Velvet Battle-Cape (Never unlit neon!)
-      const capeRgb = q16(isNight ? [0.42, 0.05, 0.09] : [0.54, 0.06, 0.11]);
+      // Material 4: Matte Woven Royal Velvet Battle-Cape (Deep Celestial Azure on Champion Regalia)
+      const capeRgb = q16(isChamp ? [0.05, 0.18, 0.46] : isNight ? [0.42, 0.05, 0.09] : [0.54, 0.06, 0.11]);
       const crimsonCapeMat: MaterialProperties = {
         baseColor: [capeRgb[0], capeRgb[1], capeRgb[2], 1.0],
         roughness: 0.82,
@@ -1085,6 +1299,147 @@ export class DreamEngine {
       );
       if (!isCircle16) {
         items.push({ geometry: this.cyberKnightGeoms.horns, modelMatrix: torsoWm, material: gildedBronzeMat });
+      }
+
+      // 3b. Champion Regalia: Glowing, slowly turning Blue-Flame Holographic Floor Sigil under the Champion
+      if (this.isChampionRegaliaEquipped || this.oathcallDemoState.championRegaliaActive) {
+        const sigilNode = new SceneNode('BlueFlameFloorSigil');
+        sigilNode.position.set(this.controller.position.x, 0.03, this.controller.position.z);
+        sigilNode.rotation.setFromEuler(0, this.animClock * 0.85, 0);
+        const pulse = 1.0 + Math.sin(this.animClock * 3.2) * 0.04;
+        sigilNode.scale.set(pulse, 1.0 + Math.sin(this.animClock * 4.5) * 0.15, pulse);
+        sigilNode.updateWorldMatrix(this.sceneRoot.worldMatrix);
+
+        const blueFlameRgb = q16([0.12, 0.62, 1.0]);
+        const sigilMat: MaterialProperties = {
+          baseColor: [blueFlameRgb[0], blueFlameRgb[1], blueFlameRgb[2], 0.92],
+          roughness: 0.08,
+          metallic: 0.92,
+          emissive: [0.16, 0.68, 1.0],
+          emissiveIntensity: 2.25,
+          rimIntensity: 1.0,
+        };
+        items.push({
+          geometry: this.blueFlameSigilMesh,
+          modelMatrix: sigilNode.worldMatrix,
+          material: sigilMat,
+        });
+
+        // Counter-rotating inner holographic ring for rich depth
+        const innerSigilNode = new SceneNode('BlueFlameFloorSigilInner');
+        innerSigilNode.position.set(this.controller.position.x, 0.05, this.controller.position.z);
+        innerSigilNode.rotation.setFromEuler(0, -this.animClock * 1.25, 0);
+        innerSigilNode.scale.set(0.68, 1.25, 0.68);
+        innerSigilNode.updateWorldMatrix(this.sceneRoot.worldMatrix);
+
+        const cyanFlameMat: MaterialProperties = {
+          baseColor: [0.38, 0.88, 1.0, 0.95],
+          roughness: 0.06,
+          metallic: 0.95,
+          emissive: [0.35, 0.85, 1.0],
+          emissiveIntensity: 2.6,
+          rimIntensity: 1.0,
+        };
+        items.push({
+          geometry: this.blueFlameSigilMesh,
+          modelMatrix: innerSigilNode.worldMatrix,
+          material: cyanFlameMat,
+        });
+      }
+
+      // 3c. Summoned Oathcall Allies + 2-Second Arrival Shields
+      for (const ally of this.oathcallDemoState.summonedAllies) {
+        const allyNode = new SceneNode(ally.id);
+        allyNode.position.set(ally.position[0], ally.position[1], ally.position[2]);
+        allyNode.rotation.setFromEuler(0, ally.yaw, 0);
+        allyNode.scale.set(avScale * 0.95, avScale * 0.95, avScale * 0.95);
+        allyNode.updateWorldMatrix(this.sceneRoot.worldMatrix);
+
+        const allyPlateRgb = q16([0.16, 0.36, 0.62]);
+        const allyTrimRgb = q16([0.28, 0.78, 0.96]);
+        const allyPlateMat: MaterialProperties = {
+          baseColor: [allyPlateRgb[0], allyPlateRgb[1], allyPlateRgb[2], 1.0],
+          roughness: 0.22,
+          metallic: 0.88,
+          emissive: [0.06, 0.22, 0.45],
+          emissiveIntensity: 0.45,
+          rimIntensity: 0.85,
+        };
+        const allyTrimMat: MaterialProperties = {
+          baseColor: [allyTrimRgb[0], allyTrimRgb[1], allyTrimRgb[2], 1.0],
+          roughness: 0.16,
+          metallic: 0.92,
+          emissive: allyTrimRgb,
+          emissiveIntensity: 1.15,
+          rimIntensity: 0.95,
+        };
+
+        items.push(
+          { geometry: ck.torso, modelMatrix: allyNode.worldMatrix, material: allyPlateMat },
+          { geometry: ck.head, modelMatrix: allyNode.worldMatrix, material: allyPlateMat },
+          { geometry: ck.pauldronL, modelMatrix: allyNode.worldMatrix, material: allyTrimMat },
+          { geometry: ck.pauldronR, modelMatrix: allyNode.worldMatrix, material: allyTrimMat },
+          { geometry: ck.armL, modelMatrix: allyNode.worldMatrix, material: silverLimbMat },
+          { geometry: ck.armR, modelMatrix: allyNode.worldMatrix, material: silverLimbMat },
+          { geometry: ck.legL, modelMatrix: allyNode.worldMatrix, material: silverLimbMat },
+          { geometry: ck.legR, modelMatrix: allyNode.worldMatrix, material: silverLimbMat },
+          { geometry: ck.blade, modelMatrix: allyNode.worldMatrix, material: allyTrimMat }
+        );
+
+        if (ally.hasShield) {
+          const shieldDomeNode = new SceneNode(`${ally.id}_shield`);
+          shieldDomeNode.position.set(ally.position[0], 0.04, ally.position[2]);
+          shieldDomeNode.rotation.setFromEuler(0, this.animClock * 2.4, 0);
+          shieldDomeNode.scale.set(1.05, 1.0, 1.05);
+          shieldDomeNode.updateWorldMatrix(this.sceneRoot.worldMatrix);
+
+          const domeMat: MaterialProperties = {
+            baseColor: [0.22, 0.82, 1.0, 0.78],
+            roughness: 0.08,
+            metallic: 0.92,
+            emissive: [0.20, 0.78, 1.0],
+            emissiveIntensity: 2.1,
+            rimIntensity: 1.0,
+          };
+          items.push({
+            geometry: this.arrivalShieldMesh,
+            modelMatrix: shieldDomeNode.worldMatrix,
+            material: domeMat,
+          });
+        }
+      }
+
+      // 3d. Render Active 3D Tactical Map Ping Beacons (`Shift + Right-Click`)
+      for (const ping of this.pvpTactical.pings) {
+        const pingNode = new SceneNode(ping.id);
+        pingNode.position.set(ping.worldX, 0.05, ping.worldZ);
+        pingNode.rotation.setFromEuler(0, this.animClock * 3.5, 0);
+        const pingPulse = 1.0 + Math.sin(this.animClock * 6.0) * 0.18;
+        pingNode.scale.set(0.95 * pingPulse, 1.35, 0.95 * pingPulse);
+        pingNode.updateWorldMatrix(this.sceneRoot.worldMatrix);
+
+        const pingRgb: [number, number, number] =
+          ping.kind === 'focus'
+            ? [1.0, 0.22, 0.32]
+            : ping.kind === 'attack'
+            ? [1.0, 0.65, 0.12]
+            : ping.kind === 'regroup'
+            ? [0.18, 0.85, 0.98]
+            : [0.95, 0.18, 0.88];
+
+        const pingMat: MaterialProperties = {
+          baseColor: [pingRgb[0], pingRgb[1], pingRgb[2], 0.9],
+          roughness: 0.12,
+          metallic: 0.88,
+          emissive: pingRgb,
+          emissiveIntensity: 2.2,
+          rimIntensity: 1.0,
+        };
+        items.push({
+          geometry: this.ringWaveMesh,
+          modelMatrix: pingNode.worldMatrix,
+          material: pingMat,
+        });
       }
     }
 

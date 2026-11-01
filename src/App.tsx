@@ -322,10 +322,23 @@ export default function App() {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-neutral-950 text-neutral-100 select-none font-sans">
-      {/* 3D Canvas Viewport */}
+      {/* 3D Canvas Viewport (Also supports Shift + Right-Click Tactical Map Ping) */}
       <canvas
         ref={canvasRef}
         onClick={handleTakeControl}
+        onContextMenu={(e) => {
+          if (e.shiftKey && engineRef.current) {
+            e.preventDefault();
+            engineRef.current.pvpTactical.triggerShiftRightClickPing({
+              worldX: playerPos[0],
+              worldZ: playerPos[2] - 3.2,
+              kind: 'focus',
+              senderName: 'Joshua',
+              targetEntityName: 'Hollow Sentinel',
+            });
+            setCombatTick((t) => t + 1);
+          }
+        }}
         tabIndex={0}
         className="w-full h-full block cursor-crosshair outline-none"
       />
@@ -333,11 +346,19 @@ export default function App() {
       {/* First-Person Visor / Goggles HUD Overlay */}
       <VisorOverlay viewMode={viewMode} cameraYaw={cameraYaw} />
 
-      {/* Action Combat HUD: Prompt band, health/stamina, sentinel target bar, Awakening Skill Callouts & clickable hotbar */}
+      {/* Action Combat HUD: Prompt band, health/stamina, sentinel target bar, Movable PvP GUI & Oathcall/Township/Regalia Overlay */}
       {engineRef.current && (
         <CombatHud
           combat={engineRef.current.combat}
           skillVfx={engineRef.current.skillVfx}
+          pvpTactical={engineRef.current.pvpTactical}
+          oathcallDemoState={engineRef.current.oathcallDemoState}
+          isChampionRegaliaEquipped={engineRef.current.isChampionRegaliaEquipped}
+          onToggleChampionRegalia={() => {
+            if (!engineRef.current) return;
+            engineRef.current.isChampionRegaliaEquipped = !engineRef.current.isChampionRegaliaEquipped;
+            setCombatTick((t) => t + 1);
+          }}
           isCaptureMode={isCaptureMode}
           isEndCardVisible={Boolean(engineRef.current.isEndCardVisible)}
           onCastSkill={(move) => {
@@ -348,12 +369,13 @@ export default function App() {
         />
       )}
 
-      {/* Real-time Circular Radar Minimap (Top Right) */}
+      {/* Real-time Circular Radar Minimap (Top Right — Supports Shift + Right-Click Map Ping) */}
       {!isCaptureMode && (
         <RadarMinimap
           playerPos={playerPos}
           cameraYaw={cameraYaw}
           combat={engineRef.current?.combat}
+          pvpTactical={engineRef.current?.pvpTactical}
           studioEntities={engineRef.current?.studio.entities}
         />
       )}

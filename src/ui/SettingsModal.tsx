@@ -1,6 +1,7 @@
 /**
- * DREAM Engine — System & World Settings Modal
- * Calm, dark, see-through HUD interface with sliders for every category.
+ * DREAM Engine — System, Movable PvP GUI Layout, & Oathcall/Township Tuning Settings Modal
+ * Calm, dark, see-through HUD interface with sliders for Graphics, Camera, Controls,
+ * Movable PvP GUI Action Bars & Shift+Right-Click Map Pings, and Founder Oathcall/Township Tuning.
  */
 
 import React, { useState } from 'react';
@@ -14,10 +15,14 @@ import {
   Cpu,
   X,
   RotateCcw,
-  Sparkles,
+  Swords,
+  Move,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 import { DreamEngine } from '../engine/engine.ts';
 import { RenderMetrics } from '../engine/renderer/types.ts';
+import { DEFAULT_OATHCALL_TUNING, OathcallTuningConfig } from '../engine/combat/oathcall-system.ts';
 
 export interface SettingsState {
   // Graphics
@@ -74,8 +79,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   engine,
   metrics,
 }) => {
-  const [activeTab, setActiveTab] = useState<'graphics' | 'camera' | 'controls' | 'audio' | 'system'>('graphics');
+  const [activeTab, setActiveTab] = useState<
+    'graphics' | 'pvp_hud' | 'camera' | 'controls' | 'audio' | 'system'
+  >('pvp_hud');
   const [settings, setSettings] = useState<SettingsState>(DEFAULT_SETTINGS);
+  const [tuning, setTuning] = useState<OathcallTuningConfig>(
+    engine?.oathcallServer.tuning || DEFAULT_OATHCALL_TUNING
+  );
+  const [, setHudTick] = useState(0);
 
   if (!isOpen) return null;
 
@@ -137,9 +148,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
+  const updateOathcallTuning = <K extends keyof OathcallTuningConfig>(
+    key: K,
+    value: OathcallTuningConfig[K]
+  ) => {
+    const next = { ...tuning, [key]: value };
+    setTuning(next);
+    engine?.oathcallServer.updateTuning({ [key]: value });
+  };
+
   const handleReset = () => {
     setSettings(DEFAULT_SETTINGS);
+    setTuning(DEFAULT_OATHCALL_TUNING);
     if (!engine) return;
+    engine.oathcallServer.updateTuning(DEFAULT_OATHCALL_TUNING);
+    engine.pvpTactical.resetLayout();
     engine.setExposureMultiplier(DEFAULT_SETTINGS.exposure);
     engine.setFogDensityMultiplier(DEFAULT_SETTINGS.fogDensity);
     engine.setKeyEnergyMultiplier(DEFAULT_SETTINGS.sunIntensity);
@@ -156,7 +179,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     engine.setAudioEnabled(DEFAULT_SETTINGS.audioEnabled);
     engine.setMasterVolume(DEFAULT_SETTINGS.masterVolume);
     engine.setAmbientVolume(DEFAULT_SETTINGS.ambientVolume);
+    setHudTick((t) => t + 1);
   };
+
+  const pvpTactical = engine?.pvpTactical;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 select-none">
@@ -165,7 +191,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800 bg-neutral-950/60">
           <div className="flex items-center space-x-2.5">
             <Sliders className="w-4 h-4 text-emerald-400" />
-            <span className="font-semibold text-sm tracking-wider uppercase">DREAM System Settings</span>
+            <span className="font-semibold text-sm tracking-wider uppercase">
+              DREAM System, Movable PvP GUI & Oathcall Tuning
+            </span>
           </div>
           <div className="flex items-center space-x-2">
             <button
@@ -186,8 +214,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-neutral-800 bg-neutral-950/40 px-6 pt-2 space-x-1">
+        <div className="flex flex-wrap border-b border-neutral-800 bg-neutral-950/40 px-6 pt-2 space-x-1">
           {[
+            { id: 'pvp_hud', label: 'PvP GUI & Oathcall', icon: Swords },
             { id: 'graphics', label: 'Graphics', icon: Sun },
             { id: 'camera', label: 'Camera', icon: Eye },
             { id: 'controls', label: 'Controls', icon: Compass },
@@ -200,7 +229,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                className={`flex items-center space-x-1.5 px-4 py-2 text-xs font-medium border-b-2 transition cursor-pointer ${
+                className={`flex items-center space-x-1.5 px-3.5 py-2 text-xs font-medium border-b-2 transition cursor-pointer ${
                   isActive
                     ? 'border-emerald-400 text-emerald-400 bg-neutral-800/40'
                     : 'border-transparent text-neutral-400 hover:text-neutral-200'
@@ -215,6 +244,194 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         {/* Body Area */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
+          {/* PvP GUI Layout & Founder Oathcall/Township Tuning Tab */}
+          {activeTab === 'pvp_hud' && pvpTactical && (
+            <div className="space-y-6">
+              {/* Section 1: Movable Action Bars & HUD Presets */}
+              <div className="p-4 bg-neutral-950/80 border border-cyan-500/40 rounded-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <Move className="w-3.5 h-3.5" />
+                      Movable GUI Action Bars & PvP Layout Presets
+                    </div>
+                    <div className="text-[10px] text-neutral-400 mt-0.5">
+                      Unlock HUD bars to drag the Action Bar, Vitals, Boss Target, and Squad Focus frame anywhere on screen.
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      pvpTactical.setLocked(!pvpTactical.layout.locked);
+                      setHudTick((t) => t + 1);
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded font-mono text-xs font-bold border cursor-pointer transition ${
+                      !pvpTactical.layout.locked
+                        ? 'bg-cyan-500 text-neutral-950 border-cyan-300'
+                        : 'bg-neutral-900 text-cyan-300 border-cyan-500/50'
+                    }`}
+                  >
+                    {!pvpTactical.layout.locked ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                    <span>{!pvpTactical.layout.locked ? 'UNLOCKED (Drag on Screen)' : 'Unlock GUI Bars'}</span>
+                  </button>
+                </div>
+
+                {/* Layout Presets */}
+                <div className="grid grid-cols-3 gap-2 pt-1">
+                  {(['default', 'pvp-centered', 'minimalist'] as const).map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => {
+                        pvpTactical.applyPreset(preset);
+                        setHudTick((t) => t + 1);
+                      }}
+                      className="px-3 py-2 rounded bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-neutral-200 font-mono text-[11px] uppercase font-semibold cursor-pointer transition"
+                    >
+                      Preset: {preset}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Action Bar Orientation */}
+                <div className="flex items-center justify-between pt-2 border-t border-neutral-800">
+                  <span className="text-neutral-300 font-medium">Action Bar Orientation:</span>
+                  <div className="flex gap-1.5">
+                    {(['horizontal', 'compact-2row', 'vertical'] as const).map((ori) => (
+                      <button
+                        key={ori}
+                        type="button"
+                        onClick={() => {
+                          pvpTactical.setActionBarOrientation(ori);
+                          setHudTick((t) => t + 1);
+                        }}
+                        className={`px-2.5 py-1 rounded font-mono text-[10px] uppercase cursor-pointer border ${
+                          pvpTactical.layout.actionBarOrientation === ori
+                            ? 'bg-emerald-500/25 text-emerald-300 border-emerald-400 font-bold'
+                            : 'bg-neutral-900 text-neutral-400 border-neutral-700'
+                        }`}
+                      >
+                        {ori}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Founder Tunable Numbers for Oathcall & Townships */}
+              <div className="p-4 bg-neutral-950/80 border border-amber-500/40 rounded-sm space-y-4">
+                <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
+                  <div>
+                    <div className="font-bold text-amber-300 uppercase tracking-wider">
+                      ⚔️ Founder Tunable Values — Oathcall, Bully Rule & Townships
+                    </div>
+                    <div className="text-[10px] text-neutral-400">
+                      Live server-authoritative parameters (`OathcallTuningConfig`). Zero pay-to-win, kid-safe zero-loss protection.
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex justify-between mb-1 text-neutral-300">
+                      <span>Base Oathcall Mark Timer</span>
+                      <span className="font-mono text-amber-300">{tuning.baseMarkDurationSec}s ({Math.round(tuning.baseMarkDurationSec / 60)}m)</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="180"
+                      max="1800"
+                      step="60"
+                      value={tuning.baseMarkDurationSec}
+                      onChange={(e) => updateOathcallTuning('baseMarkDurationSec', parseInt(e.target.value, 10))}
+                      className="w-full accent-amber-400 bg-neutral-800 rounded h-1 cursor-pointer"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between mb-1 text-neutral-300">
+                      <span>Max Allies Per Oathcall</span>
+                      <span className="font-mono text-amber-300">{tuning.maxAlliesPerCall} Allies</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      step="1"
+                      value={tuning.maxAlliesPerCall}
+                      onChange={(e) => updateOathcallTuning('maxAlliesPerCall', parseInt(e.target.value, 10))}
+                      className="w-full accent-amber-400 bg-neutral-800 rounded h-1 cursor-pointer"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between mb-1 text-neutral-300">
+                      <span>Arrival Shield Duration</span>
+                      <span className="font-mono text-cyan-300">{tuning.arrivalShieldDurationSec.toFixed(1)}s</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1.0"
+                      max="5.0"
+                      step="0.5"
+                      value={tuning.arrivalShieldDurationSec}
+                      onChange={(e) => updateOathcallTuning('arrivalShieldDurationSec', parseFloat(e.target.value))}
+                      className="w-full accent-cyan-400 bg-neutral-800 rounded h-1 cursor-pointer"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between mb-1 text-neutral-300">
+                      <span>Bully Ally Valor Buff</span>
+                      <span className="font-mono text-emerald-400">+{tuning.bullyAllyValorBuffPct}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="5"
+                      max="40"
+                      step="1"
+                      value={tuning.bullyAllyValorBuffPct}
+                      onChange={(e) => updateOathcallTuning('bullyAllyValorBuffPct', parseInt(e.target.value, 10))}
+                      className="w-full accent-emerald-400 bg-neutral-800 rounded h-1 cursor-pointer"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between mb-1 text-neutral-300">
+                      <span>Bully Level Gap Threshold</span>
+                      <span className="font-mono text-rose-300">+{tuning.bullyLevelDeltaThreshold} Levels</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="5"
+                      max="25"
+                      step="1"
+                      value={tuning.bullyLevelDeltaThreshold}
+                      onChange={(e) => updateOathcallTuning('bullyLevelDeltaThreshold', parseInt(e.target.value, 10))}
+                      className="w-full accent-rose-400 bg-neutral-800 rounded h-1 cursor-pointer"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between mb-1 text-neutral-300">
+                      <span>Township Trade Tax Cap</span>
+                      <span className="font-mono text-amber-300">{tuning.townshipMaxTaxRatePct}% (In-Game Gold Only)</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="5"
+                      max="33"
+                      step="1"
+                      value={tuning.townshipMaxTaxRatePct}
+                      onChange={(e) => updateOathcallTuning('townshipMaxTaxRatePct', parseInt(e.target.value, 10))}
+                      className="w-full accent-amber-400 bg-neutral-800 rounded h-1 cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Graphics Tab */}
           {activeTab === 'graphics' && (
             <div className="space-y-5">
@@ -232,9 +449,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   onChange={(e) => updateSetting('exposure', parseFloat(e.target.value))}
                   className="w-full accent-emerald-400 bg-neutral-800 rounded h-1 cursor-pointer"
                 />
-                <p className="text-[10px] text-neutral-400 mt-1">
-                  Adjusts overall scene luminance and exposure compensation in real time.
-                </p>
               </div>
 
               <div>
@@ -251,9 +465,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   onChange={(e) => updateSetting('fogDensity', parseFloat(e.target.value))}
                   className="w-full accent-emerald-400 bg-neutral-800 rounded h-1 cursor-pointer"
                 />
-                <p className="text-[10px] text-neutral-400 mt-1">
-                  Controls horizon distance falloff and atmospheric haze thickness.
-                </p>
               </div>
 
               <div>
@@ -288,7 +499,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 />
               </div>
 
-              {/* Motion Blur (Permanent Zero Blur Policy) */}
               <div className="flex items-center justify-between p-3 bg-neutral-950/70 border border-neutral-800 rounded-sm">
                 <div>
                   <div className="font-medium text-neutral-200 flex items-center gap-2">
@@ -325,9 +535,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   onChange={(e) => updateSetting('fov', parseInt(e.target.value, 10))}
                   className="w-full accent-emerald-400 bg-neutral-800 rounded h-1 cursor-pointer"
                 />
-                <p className="text-[10px] text-neutral-400 mt-1">
-                  Horizontal angle of perspective. Higher values widen peripheral sight.
-                </p>
               </div>
 
               <div>
@@ -375,7 +582,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <button
                   onClick={() => updateSetting('invertNorthSouth', !settings.invertNorthSouth)}
                   className={`px-3 py-1 rounded text-xs font-mono transition cursor-pointer ${
-                    settings.invertNorthSouth ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-neutral-800 text-neutral-400'
+                    settings.invertNorthSouth
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                      : 'bg-neutral-800 text-neutral-400'
                   }`}
                 >
                   {settings.invertNorthSouth ? 'REVERSED' : 'STANDARD'}
@@ -390,107 +599,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <button
                   onClick={() => updateSetting('invertLeftRight', !settings.invertLeftRight)}
                   className={`px-3 py-1 rounded text-xs font-mono transition cursor-pointer ${
-                    settings.invertLeftRight ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-neutral-800 text-neutral-400'
+                    settings.invertLeftRight
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                      : 'bg-neutral-800 text-neutral-400'
                   }`}
                 >
                   {settings.invertLeftRight ? 'REVERSED' : 'STANDARD'}
                 </button>
-              </div>
-
-              <div className="flex items-center justify-between p-3 bg-neutral-950/60 border border-neutral-800 rounded-sm">
-                <div>
-                  <div className="font-medium text-neutral-200">Invert Mouse Look (Horizontal Left / Right)</div>
-                  <div className="text-[10px] text-neutral-400">Standard: Moving mouse right turns view right.</div>
-                </div>
-                <button
-                  onClick={() => updateSetting('invertMouseX', !settings.invertMouseX)}
-                  className={`px-3 py-1 rounded text-xs font-mono transition cursor-pointer ${
-                    settings.invertMouseX ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-neutral-800 text-neutral-400'
-                  }`}
-                >
-                  {settings.invertMouseX ? 'INVERTED' : 'STANDARD'}
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between p-3 bg-neutral-950/60 border border-neutral-800 rounded-sm">
-                <div>
-                  <div className="font-medium text-neutral-200">Invert Mouse Pitch (Vertical Up / Down)</div>
-                  <div className="text-[10px] text-neutral-400">Standard: Moving mouse forward looks up.</div>
-                </div>
-                <button
-                  onClick={() => updateSetting('invertMouseY', !settings.invertMouseY)}
-                  className={`px-3 py-1 rounded text-xs font-mono transition cursor-pointer ${
-                    settings.invertMouseY ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-neutral-800 text-neutral-400'
-                  }`}
-                >
-                  {settings.invertMouseY ? 'INVERTED' : 'STANDARD'}
-                </button>
-              </div>
-
-              {/* Gamepad / Controller API Section */}
-              <div className="pt-3 border-t border-neutral-800 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="font-semibold text-neutral-200 flex items-center gap-2">
-                    <Compass className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Hardware Gamepad / Controller</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div
-                      className={`w-2 h-2 rounded-full ${
-                        engine?.isGamepadConnected() ? 'bg-emerald-400 animate-pulse' : 'bg-neutral-600'
-                      }`}
-                    />
-                    <span className="text-[10px] font-mono text-neutral-400">
-                      {engine?.isGamepadConnected()
-                        ? `Connected (${engine.getGamepadId().slice(0, 24)}...)`
-                        : 'No Gamepad Detected (Plug in USB/BT Controller)'}
-                    </span>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between mb-1.5 text-neutral-300">
-                    <span>Gamepad Look Sensitivity</span>
-                    <span className="font-mono text-emerald-400">{settings.gamepadSensitivity.toFixed(1)}x</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1.0"
-                    max="5.0"
-                    step="0.2"
-                    value={settings.gamepadSensitivity}
-                    onChange={(e) => updateSetting('gamepadSensitivity', parseFloat(e.target.value))}
-                    className="w-full accent-emerald-400 bg-neutral-800 rounded h-1 cursor-pointer"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex justify-between mb-1.5 text-neutral-300">
-                    <span>Stick Deadzone (prevents drift)</span>
-                    <span className="font-mono text-emerald-400">{Math.round(settings.gamepadDeadzone * 100)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0.05"
-                    max="0.35"
-                    step="0.05"
-                    value={settings.gamepadDeadzone}
-                    onChange={(e) => updateSetting('gamepadDeadzone', parseFloat(e.target.value))}
-                    className="w-full accent-emerald-400 bg-neutral-800 rounded h-1 cursor-pointer"
-                  />
-                </div>
-
-                {/* Controller Button Map Reference */}
-                <div className="grid grid-cols-2 gap-2 p-3 bg-neutral-950/70 border border-neutral-800 rounded text-[10px] text-neutral-300 font-mono">
-                  <div><span className="text-emerald-400">Left Stick:</span> Walk & Strafe</div>
-                  <div><span className="text-emerald-400">Right Stick:</span> 360° Camera Look</div>
-                  <div><span className="text-emerald-400">L3 / Triggers:</span> Sprint / Dash</div>
-                  <div><span className="text-emerald-400">R3 Click:</span> Toggle 1st/3rd View</div>
-                  <div><span className="text-emerald-400">Y / Triangle:</span> Day / Night</div>
-                  <div><span className="text-emerald-400">Select / Share:</span> C0D3X & Radar</div>
-                  <div><span className="text-emerald-400">Start / Menu:</span> System Settings</div>
-                  <div><span className="text-emerald-400">B / Circle:</span> Close / Free Pointer</div>
-                </div>
               </div>
             </div>
           )}
@@ -513,7 +628,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <button
                   onClick={() => updateSetting('audioEnabled', !settings.audioEnabled)}
                   className={`px-3 py-1 rounded text-xs font-mono transition cursor-pointer ${
-                    settings.audioEnabled ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-neutral-800 text-neutral-400'
+                    settings.audioEnabled
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                      : 'bg-neutral-800 text-neutral-400'
                   }`}
                 >
                   {settings.audioEnabled ? 'ACTIVE' : 'MUTED'}
@@ -536,23 +653,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className="w-full accent-emerald-400 bg-neutral-800 rounded h-1 cursor-pointer disabled:opacity-40"
                 />
               </div>
-
-              <div>
-                <div className="flex justify-between mb-1.5 text-neutral-300">
-                  <span>Ambient Wind & Tone</span>
-                  <span className="font-mono text-emerald-400">{Math.round(settings.ambientVolume * 100)}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={settings.ambientVolume}
-                  onChange={(e) => updateSetting('ambientVolume', parseFloat(e.target.value))}
-                  disabled={!settings.audioEnabled}
-                  className="w-full accent-emerald-400 bg-neutral-800 rounded h-1 cursor-pointer disabled:opacity-40"
-                />
-              </div>
             </div>
           )}
 
@@ -571,29 +671,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div className="text-sm font-semibold text-neutral-200 capitalize mt-0.5">{metrics.worldMode} Dream</div>
                   <div className="text-[10px] text-neutral-400 mt-1">Press N in-game to switch</div>
                 </div>
-
-                <div className="p-3 bg-neutral-950/60 border border-neutral-800 rounded-sm">
-                  <div className="text-[10px] text-neutral-400 uppercase tracking-wider">Performance</div>
-                  <div className="text-sm font-semibold text-emerald-400 mt-0.5">{metrics.fps} FPS</div>
-                  <div className="text-[10px] text-neutral-400 mt-1">{metrics.frameTimeMs} ms frame time</div>
-                </div>
-
-                <div className="p-3 bg-neutral-950/60 border border-neutral-800 rounded-sm">
-                  <div className="text-[10px] text-neutral-400 uppercase tracking-wider">Average Luma</div>
-                  <div className="text-sm font-semibold text-amber-300 mt-0.5">{metrics.luma.toFixed(3)}</div>
-                  <div className="text-[10px] text-neutral-400 mt-1">Real-time pixel readback</div>
-                </div>
-              </div>
-
-              {/* Attribution & Provenance Badge */}
-              <div className="p-3 bg-neutral-950/80 border border-neutral-700/60 rounded-sm flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-medium text-neutral-200">Built with Google Gemini</div>
-                  <div className="text-[10px] text-neutral-400">Zero-cost preview prototype • 0 runtime engine dependencies</div>
-                </div>
-                <div className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 border border-emerald-500/30 rounded">
-                  v0.1.0-stage1
-                </div>
               </div>
             </div>
           )}
@@ -601,7 +678,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         {/* Footer */}
         <div className="flex items-center justify-between px-6 py-3 border-t border-neutral-800 bg-neutral-950/60 text-[11px] text-neutral-400">
-          <span>Settings persist for current session</span>
+          <span>Settings & Oathcall tuning persist for current session</span>
           <button
             onClick={onClose}
             className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-sm font-medium transition cursor-pointer"

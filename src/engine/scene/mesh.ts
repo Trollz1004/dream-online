@@ -1161,3 +1161,63 @@ export function createCircleCraftCharacterGeometries() {
     spine: createCylinderDiscGeometry(0.06, 0.54, 0.06, 0, 1.18, -0.20, 12),
   };
 }
+
+/**
+ * Part 3 — Champion Regalia (`blue_flame_holographic_sigil`):
+ * Creates the original DREAM Blue-Flame Holographic Floor Sigil geometry that glows
+ * and slowly turns on the floor under the champion.
+ * Consists of:
+ * - Outer runic ring (`r = 1.95m .. 2.25m`)
+ * - Middle counter-etched star-compass ring (`r = 1.15m .. 1.38m`)
+ * - Inner sovereign crest ring (`r = 0.45m .. 0.65m`)
+ * - 8 rising blue-flame holographic lotus petals around the perimeter
+ */
+export function createBlueFlameFloorSigilGeometry(): MeshGeometry {
+  const outerRing = createRingWaveGeometry(1.92, 2.26, 0.06, 36);
+  const middleRing = createRingWaveGeometry(1.12, 1.36, 0.08, 28);
+  const innerRing = createRingWaveGeometry(0.42, 0.64, 0.10, 20);
+
+  const flamePetals: MeshGeometry[] = [];
+  const petalCount = 8;
+  for (let i = 0; i < petalCount; i++) {
+    const angle = (i / petalCount) * Math.PI * 2;
+    const r = 1.65;
+    const px = Math.cos(angle) * r;
+    const pz = Math.sin(angle) * r;
+    const petal = createSculptedArmorSegmentGeometry(
+      [0.14, 0.19, 0.12, 0.03],
+      [0.08, 0.11, 0.07, 0.02],
+      [0.02, 0.16, 0.34, 0.54],
+      px,
+      0.02,
+      pz,
+      8,
+      undefined,
+      3,
+      0.04
+    );
+    flamePetals.push(petal);
+  }
+
+  return mergeGeometries([outerRing, middleRing, innerRing, ...flamePetals]);
+}
+
+/**
+ * Part 1 — Oathcall (`arrivalShieldDurationSec = 2.0s`):
+ * Creates a protective 2-second Arrival Shield Aegis ring/crown around an arriving ally
+ * (open-sided concentric rings + 4 floating aegis pillars so the ally character stays 100% visible inside).
+ */
+export function createArrivalShieldDomeGeometry(): MeshGeometry {
+  const baseRing = createRingWaveGeometry(0.76, 0.98, 0.14, 24);
+  const waistRing = createRingWaveGeometry(0.84, 0.96, 0.08, 24);
+  // Shift waistRing up to y = 1.05m
+  for (let i = 1; i < waistRing.positions.length; i += 3) {
+    waistRing.positions[i] += 1.05;
+  }
+  const haloRing = createRingWaveGeometry(0.45, 0.58, 0.06, 20);
+  for (let i = 1; i < haloRing.positions.length; i += 3) {
+    haloRing.positions[i] += 1.92;
+  }
+  return mergeGeometries([baseRing, waistRing, haloRing]);
+}
+
