@@ -30,6 +30,21 @@ import {
   IDE_BENCHMARK_PROFILES,
 } from './src/engine/remake/remake-swap-board.ts';
 import {
+  ACTION_MMO_CLASSES,
+  ActionMmoClassId,
+  SKILL_VFX_THEMES,
+  SkillVfxThemeId,
+  DREAMFORGE_MODES,
+  DREAMFORGE_STYLES,
+} from './src/engine/combat/skill-vfx.ts';
+import {
+  DREAM_CLI_HELP_TEXT,
+  WHALE_SECURITY_PATRON_TIERS,
+  executeCliAnythingCommand,
+  runKidsPlaygroundSecurityAudit,
+  SecurityTeamMode,
+} from './src/engine/cli-anything/cli-anything-bridge.ts';
+import {
   CANONICAL_NODE_TOPOLOGY,
   CO_GM_COUNCIL,
   DEFAULT_AGENT_SDK_LANES,
@@ -51,6 +66,7 @@ const __dirname = path.dirname(__filename);
 
 export const app = express();
 app.use(express.json({ limit: '10mb' }));
+app.use('/dreamforge', express.static(path.join(__dirname, 'dreamforge')));
 
 // Initialize server-side GoogleGenAI per @google/genai guidelines
 function getGenAiClient(): GoogleGenAI | null {
@@ -690,6 +706,96 @@ app.get('/api/remake/swap-board', (_req, res) => {
     slots: serverRemakeBoard.getSlots(),
     report: serverRemakeBoard.computeFrameFreezeScore(),
     benchmarks: IDE_BENCHMARK_PROFILES,
+  });
+});
+
+// ============================================================================
+// 6. CLI-Anything (Text-In / Text-Out AI Team Control), Red/Tag/Triple-Team
+//    Kids Playground Security & Dreamforge World-Builder API
+// ============================================================================
+
+app.get('/api/cli-anything/help', (_req, res) => {
+  const result = executeCliAnythingCommand('dream-cli --help');
+  res.json({
+    status: 'ok',
+    helpText: DREAM_CLI_HELP_TEXT,
+    whalePatronTiers: WHALE_SECURITY_PATRON_TIERS,
+    helpResult: result,
+  });
+});
+
+app.post('/api/cli-anything/execute', (req, res) => {
+  const command = String(req.body?.command || 'dream-cli --help').trim();
+  const result = executeCliAnythingCommand(command, {
+    activePlayers: serverState.world.activePlayers,
+    dreamShift: serverState.world.dreamShift.state,
+    needsTotalMinted: serverState.economy.currency.NEEDs.totalMinted,
+  });
+  appendAudit('CLI-ANYTHING', `Executed text-in/text-out command: "${command}" (${result.ok ? 'PASS' : 'WARN'})`, result.ok);
+  res.json({
+    status: 'ok',
+    result,
+  });
+});
+
+app.post('/api/cli-anything/red-team', (req, res) => {
+  const rawMode = String(req.body?.mode || 'triple-team').toLowerCase();
+  const mode: SecurityTeamMode =
+    rawMode === 'red-team' || rawMode === 'tag-team' || rawMode === 'triple-team'
+      ? rawMode
+      : 'triple-team';
+  const report = runKidsPlaygroundSecurityAudit(mode);
+  appendAudit(
+    'RED-TEAM',
+    `[${mode.toUpperCase()}] Kids Playground Security Audit: ${report.vectorsBlocked}/${report.vectorsTested} BLOCKED (Safety ${report.kidsPlaygroundSafetyScore}%)`,
+    report.vectorsBlocked === report.vectorsTested
+  );
+  res.json({
+    status: 'ok',
+    report,
+    whalePatronTiers: WHALE_SECURITY_PATRON_TIERS,
+  });
+});
+
+app.get('/api/dreamforge/modes', (_req, res) => {
+  res.json({
+    status: 'ok',
+    modes: DREAMFORGE_MODES,
+    styles: DREAMFORGE_STYLES,
+    classes: ACTION_MMO_CLASSES,
+    vfxThemes: SKILL_VFX_THEMES,
+  });
+});
+
+app.post('/api/dreamforge/generate', (req, res) => {
+  const modeId = String(req.body?.mode || 'world-seed');
+  const styleId = String(req.body?.style || 'stylized-semi-real-3d-game');
+  const classId = (String(req.body?.classId || 'crimson-dekan') as ActionMmoClassId);
+  const vfxThemeId = (String(req.body?.vfxThemeId || 'bdo-black-spirit') as SkillVfxThemeId);
+  const prompt = String(req.body?.prompt || 'Crimson Dragon-Knight awakening in First Gate Sanctuary').trim();
+
+  const mode = DREAMFORGE_MODES.find((m) => m.id === modeId) || DREAMFORGE_MODES[0];
+  const style = DREAMFORGE_STYLES.find((s: string) => s === styleId) || DREAMFORGE_STYLES[0];
+  const mmoClass = ACTION_MMO_CLASSES[classId] || ACTION_MMO_CLASSES['crimson-dekan'];
+  const vfxTheme = SKILL_VFX_THEMES[vfxThemeId] || SKILL_VFX_THEMES['bdo-black-spirit'];
+
+  appendAudit(
+    'DREAMFORGE',
+    `Forged [${mode.label}] with style "${style}" & class "${mmoClass.name}" (${vfxTheme.name})`,
+    true
+  );
+
+  res.json({
+    status: 'ok',
+    generated: {
+      mode,
+      style,
+      mmoClass,
+      vfxTheme,
+      prompt,
+      worldSeed: `DF-${mode.id.toUpperCase()}-${style.toUpperCase()}-${Date.now().toString(36).toUpperCase()}`,
+      shortsHook59s: `[<= 58.5s Female TTS Aoede/Kore] Watch the ${mmoClass.name} unleash ${vfxTheme.name} in ${style} — 100% Built by AI (#UntilNoKidInNeed)!`,
+    },
   });
 });
 

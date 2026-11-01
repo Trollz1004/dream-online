@@ -329,8 +329,18 @@ export default function App() {
       {/* First-Person Visor / Goggles HUD Overlay */}
       <VisorOverlay viewMode={viewMode} cameraYaw={cameraYaw} />
 
-      {/* Action Combat HUD: Prompt band, health/stamina, sentinel target bar & hotbar */}
-      {engineRef.current && <CombatHud combat={engineRef.current.combat} />}
+      {/* Action Combat HUD: Prompt band, health/stamina, sentinel target bar, BDO/Rohan Awakening Skill Callouts & clickable hotbar */}
+      {engineRef.current && (
+        <CombatHud
+          combat={engineRef.current.combat}
+          skillVfx={engineRef.current.skillVfx}
+          onCastSkill={(move) => {
+            setIsOverlayDismissed(true);
+            setIsAfkScreensaver(false);
+            engineRef.current?.castSkillWithVfx(move);
+          }}
+        />
+      )}
 
       {/* Real-time Circular Radar Minimap (Top Right) */}
       <RadarMinimap

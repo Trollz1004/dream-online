@@ -1,7 +1,9 @@
 /**
- * DREAM Engine — OpenUI Lang 1.0 + REA Procedural City + Remake Swap Board Cloud IDE
+ * DREAM Engine — OpenUI Lang 1.0 + REA Procedural City + Remake Swap Board +
+ * BDO/Rohan Sculpted Character & Skill Forge + CLI-Anything AI Team & Red/Tag/Triple-Team Shield
+ *
  * 100% In-House AI-Built (`Built with Google Gemini` + Co-GM Council).
- * Zero Unreal Engine, Zero Godot, Zero Paperclip.
+ * Zero Unreal Engine, Zero Godot, Zero Paperclip, Zero Box Primitives.
  *
  * Designed for Founder Joshua Coleman (high-contrast `#121316` obsidian surface,
  * crisp `#F5F7FA` typography, large one-click emerald `#00E5A3` & gold `#FFD21E` buttons).
@@ -25,14 +27,24 @@ import {
 import {
   RemakeSwapBoard,
   IDE_BENCHMARK_PROFILES,
-  verifyFl496405PublicCopyGate,
 } from '../engine/remake/remake-swap-board.ts';
+import {
+  ACTION_MMO_CLASSES,
+  ActionMmoClassId,
+  DREAMFORGE_MODES,
+  DREAMFORGE_STYLES,
+  SKILL_VFX_THEMES,
+  SkillVfxThemeId,
+} from '../engine/combat/skill-vfx.ts';
+import {
+  executeCliAnythingCommand,
+  runKidsPlaygroundSecurityAudit,
+  SecurityTeamMode,
+  WHALE_SECURITY_PATRON_TIERS,
+  WhaleSecurityPatronTierId,
+} from '../engine/cli-anything/cli-anything-bridge.ts';
 import { EvolutionPhase } from '../engine/world/world-evolution.ts';
 import {
-  Sparkles,
-  Layers,
-  Cpu,
-  RefreshCw,
   Play,
   CheckCircle2,
   Download,
@@ -41,6 +53,11 @@ import {
   Sliders,
   ShieldCheck,
   Code2,
+  Swords,
+  Flame,
+  Terminal,
+  ShieldAlert,
+  ExternalLink,
 } from 'lucide-react';
 
 interface OpenUiGameDevStudioModalProps {
@@ -48,17 +65,24 @@ interface OpenUiGameDevStudioModalProps {
   isOpen: boolean;
   onClose: () => void;
   onEnter3dViewport: () => void;
+  initialTab?: IdeWorkspaceTab;
 }
 
-type IdeWorkspaceTab = 'openui-architect' | 'rea-city-grammar' | 'remake-swap-board';
+export type IdeWorkspaceTab =
+  | 'openui-architect'
+  | 'rea-city-grammar'
+  | 'remake-swap-board'
+  | 'char-skill-forge'
+  | 'cli-anything-security';
 
 export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> = ({
   engine,
   isOpen,
   onClose,
   onEnter3dViewport,
+  initialTab = 'char-skill-forge',
 }) => {
-  const [activeTab, setActiveTab] = useState<IdeWorkspaceTab>('openui-architect');
+  const [activeTab, setActiveTab] = useState<IdeWorkspaceTab>(initialTab);
 
   // 1. OpenUI Lang 1.0 state
   const [selectedPresetId, setSelectedPresetId] = useState<string>(OPENUI_GAME_DEV_PRESETS[0].id);
@@ -77,6 +101,39 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
   // 3. Remake Swap Board state
   const [swapBoard] = useState(() => new RemakeSwapBoard());
   const [, setSwapTick] = useState(0);
+
+  // 4. BDO / Rohan Character & Skill Forge + Dreamforge state
+  const [selectedClassId, setSelectedClassId] = useState<ActionMmoClassId>(
+    engine?.skillVfx.activeClassId || 'crimson-dekan'
+  );
+  const [selectedVfxTheme, setSelectedVfxTheme] = useState<SkillVfxThemeId>(
+    engine?.skillVfx.activeThemeId || 'rohan-blood-crimson'
+  );
+  const [selectedDreamforgeMode, setSelectedDreamforgeMode] = useState<string>('ip-jump');
+  const [selectedDreamforgeStyle, setSelectedDreamforgeStyle] = useState<string>(
+    'stylized-semi-real-3d-game'
+  );
+  const [dreamforgeSeedPrompt, setDreamforgeSeedPrompt] = useState<string>(
+    'Obsidian Dragon-Knight Sanctuary where awakened crimson blades guard the free kids playground.'
+  );
+
+  // 5. CLI-Anything Text-In / Text-Out AI Team & Red/Tag/Triple-Team Security state
+  const [cliCommandInput, setCliCommandInput] = useState<string>(
+    'dream-cli security run --mode triple-team --tier sovereign-triple-architect --json'
+  );
+  const [cliOutputResult, setCliOutputResult] = useState(() =>
+    executeCliAnythingCommand(
+      'dream-cli security run --mode triple-team --tier sovereign-triple-architect'
+    )
+  );
+  const [securityMode, setSecurityMode] = useState<SecurityTeamMode>('triple-team');
+  const [patronTierId, setPatronTierId] = useState<WhaleSecurityPatronTierId>(
+    'sovereign-triple-architect'
+  );
+  const securityReport = useMemo(
+    () => runKidsPlaygroundSecurityAudit(securityMode, patronTierId),
+    [securityMode, patronTierId]
+  );
 
   const parsedAst = useMemo(() => parseOpenUiProgram(openUiSource), [openUiSource]);
   const evaluatedProgram = useMemo(
@@ -207,6 +264,77 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
     URL.revokeObjectURL(url);
   };
 
+  const handleApplyClassAndVfx = (
+    classId: ActionMmoClassId,
+    themeId: SkillVfxThemeId,
+    dfStyle: string
+  ) => {
+    setSelectedClassId(classId);
+    setSelectedVfxTheme(themeId);
+    setSelectedDreamforgeStyle(dfStyle);
+    if (engine) {
+      engine.setCharacterClassAndVfx(classId, themeId, dfStyle);
+      engine.castSkillWithVfx('combo-all');
+    }
+    const cls = ACTION_MMO_CLASSES[classId];
+    const th = SKILL_VFX_THEMES[themeId];
+    setActionStatusBanner(
+      `Equipped Sculpted Hero "${cls.name}" (${cls.awakeningWeaponName}) + ${th.badge} VFX!`
+    );
+  };
+
+  const handleFireSkillIn3D = (
+    move: 'l1' | 'l2' | 'l3' | 'heavy' | 'lunge' | 'burst' | 'dash' | 'guard' | 'combo-all'
+  ) => {
+    if (engine) {
+      const skillName = engine.castSkillWithVfx(move);
+      setActionStatusBanner(
+        `Unleashed 3D Skill Visuals: ${skillName} (Crescent Slashes + Shockwaves + Pillars Active!)`
+      );
+    }
+  };
+
+  const handleExecuteCliCommand = (cmdStr?: string) => {
+    const toRun = cmdStr || cliCommandInput;
+    if (cmdStr) setCliCommandInput(cmdStr);
+    const res = executeCliAnythingCommand(toRun);
+    setCliOutputResult(res);
+
+    // Apply mutation to live 3D engine if present
+    if (engine && res.mutation) {
+      if (res.mutation.type === 'set-character-class') {
+        const cId = (res.mutation.payload.classId as ActionMmoClassId) || 'crimson-dekan';
+        const vId = (res.mutation.payload.vfxThemeId as SkillVfxThemeId) || 'rohan-blood-crimson';
+        const st = String(res.mutation.payload.dreamforgeStyle || 'stylized-semi-real-3d-game');
+        setSelectedClassId(cId);
+        setSelectedVfxTheme(vId);
+        setSelectedDreamforgeStyle(st);
+        engine.setCharacterClassAndVfx(cId, vId, st);
+      } else if (res.mutation.type === 'cast-skill') {
+        const mv = (res.mutation.payload.move || 'combo-all') as
+          | 'l1'
+          | 'l2'
+          | 'l3'
+          | 'heavy'
+          | 'lunge'
+          | 'burst'
+          | 'dash'
+          | 'guard'
+          | 'combo-all';
+        engine.castSkillWithVfx(mv);
+      } else if (res.mutation.type === 'set-evolution-phase') {
+        engine.setEvolutionPhase((res.mutation.payload.phase as EvolutionPhase) || 'nightmare_3d');
+      } else if (res.mutation.type === 'security-audit') {
+        setSecurityMode((res.mutation.payload.mode as SecurityTeamMode) || 'triple-team');
+        setPatronTierId(
+          (res.mutation.payload.tierId as WhaleSecurityPatronTierId) || 'sovereign-triple-architect'
+        );
+      }
+    }
+
+    setActionStatusBanner(`CLI-Anything executed: ${toRun.slice(0, 68)}`);
+  };
+
   // Recursive OpenUI Lang Node Renderer
   const renderOpenUiNode = (node: EvaluatedOpenUiNode, idx: number): React.ReactNode => {
     switch (node.component) {
@@ -267,7 +395,6 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
         const label = String(node.args[0] || 'Select');
         const currentVal = String(node.args[1] ?? '');
         const options = Array.isArray(node.args[2]) ? (node.args[2] as string[]) : [];
-        // Determine state key from raw statement
         const stmt = parsedAst.statements.find((s) => s.name === node.name);
         const stateMatch = stmt?.rawExpr.match(/\$([A-Za-z0-9_]+)/);
         const stateKey = stateMatch ? stateMatch[1] : 'worldPhase';
@@ -280,7 +407,7 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
             <div className="flex items-center justify-between">
               <span className="text-sm font-bold text-[#F5F7FA]">{label}</span>
               <span className="text-xs font-mono text-cyan-300">
-                ${stateKey} = "{currentVal}"
+                ${stateKey} = &quot;{currentVal}&quot;
               </span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -306,8 +433,8 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
       }
 
       case 'SliderControl': {
-        const label = String(node.args[0] || 'Parameter');
-        const val = Number(node.args[1] ?? 0);
+        const label = String(node.args[0] || 'Slider');
+        const currentVal = Number(node.args[1] ?? 1.0);
         const min = Number(node.args[2] ?? 0);
         const max = Number(node.args[3] ?? 100);
         const step = Number(node.args[4] ?? 1);
@@ -318,35 +445,33 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
         return (
           <div
             key={`${node.name}-${idx}`}
-            className="p-4 rounded-md bg-[#161920] border border-slate-700/80 space-y-2"
+            className="p-3 rounded-md bg-[#161920] border border-slate-700/80 space-y-1.5"
           >
             <div className="flex items-center justify-between">
               <span className="text-sm font-bold text-[#F5F7FA]">{label}</span>
-              <span className="text-sm font-mono font-bold text-[#FFD21E]">
-                ${stateKey}: {val}
-              </span>
+              <span className="text-sm font-mono font-bold text-[#FFD21E]">{currentVal}</span>
             </div>
             <input
               type="range"
               min={min}
               max={max}
               step={step}
-              value={val}
+              value={currentVal}
               onChange={(e) => handleStateChange(stateKey, Number(e.target.value))}
-              className="w-full accent-[#00E5A3] cursor-pointer h-2"
+              className="w-full accent-[#00E5A3] cursor-pointer"
             />
           </div>
         );
       }
 
-      case 'ActionCard': {
-        const btnLabel = String(node.args[0] || 'Execute Action');
-        const desc = String(node.args[1] || '');
-        const cmd = String(node.args[2] || 'applyShaderAndSpawnCity');
+      case 'ActionButton': {
+        const btnLabel = String(node.args[0] || 'Execute in 3D Engine');
+        const cmd = String(node.args[1] || 'spawnReaCitySector');
+        const desc = String(node.args[2] || '');
         return (
           <div
             key={`${node.name}-${idx}`}
-            className="p-4 rounded-md bg-[#0D1518] border-2 border-[#00E5A3]/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+            className="p-4 rounded-md bg-[#0D131A] border-2 border-[#00E5A3]/70 flex items-center justify-between gap-4 flex-wrap"
           >
             <div>
               <div className="text-base font-bold text-[#F5F7FA]">{btnLabel}</div>
@@ -368,40 +493,51 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
     }
   };
 
+  const activeClassProfile = ACTION_MMO_CLASSES[selectedClassId];
+
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 select-none">
       <div className="w-full max-w-7xl h-[92vh] bg-[#121316] border border-slate-700/90 rounded-md shadow-2xl flex flex-col overflow-hidden text-[#F5F7FA]">
         {/* Top IDE Bar */}
-        <header className="flex items-center justify-between gap-4 px-6 py-4 bg-[#0A0B0E] border-b border-slate-800">
+        <header className="flex items-center justify-between gap-4 px-6 py-3.5 bg-[#0A0B0E] border-b border-slate-800">
           <div className="flex items-center gap-3.5 min-w-0">
             <div className="w-10 h-10 rounded bg-[#00E5A3]/15 border border-[#00E5A3]/50 flex items-center justify-center text-[#00E5A3] font-mono font-bold text-sm shrink-0">
               IDE
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h2 className="text-lg font-bold tracking-tight text-white">
-                  DREAM ENGINE CLOUD STUDIO · OPENUI + REA + REMAKE ARCHITECT
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base sm:text-lg font-bold tracking-tight text-white">
+                  DREAM ENGINE STUDIO · BDO/ROHAN SKILL FORGE + DREAMFORGE + CLI-ANYTHING
                 </h2>
-                <span className="px-2 py-0.5 rounded bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 font-mono text-xs font-semibold">
-                  Built with Google Gemini
+                <span className="px-2 py-0.5 rounded bg-rose-500/20 border border-rose-400/40 text-rose-300 font-mono text-xs font-semibold">
+                  Zero Box Primitives · 3D Skill VFX
                 </span>
                 <span className="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 font-mono text-xs font-semibold">
-                  Remake Lock: {frameFreezeReport.desktopScore}%
+                  CLI-Anything Text-In/Out Ready
                 </span>
               </div>
-              <p className="text-xs text-slate-300 font-mono mt-0.5 truncate">
-                100% In-House AI-Built Unreal/Unity/PlayCanvas/Spline Alternative · Zero External Engine TOS · RTX 3070 (.40)
+              <p className="text-xs text-slate-300 font-mono mt-0.5">
+                Sculpted Action-MMO Heroes · BDO/Rohan 3D Slash/Shockwave/Pillar VFX · Dreamforge 43 Styles · Triple-Team Kids Shield
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href="/dreamforge/index.html"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 px-3 py-2 rounded bg-purple-600/30 hover:bg-purple-600/50 border border-purple-400/50 text-purple-200 font-bold text-xs uppercase tracking-wider transition"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Dreamforge App</span>
+            </a>
             <button
               onClick={() => {
                 onClose();
                 onEnter3dViewport();
               }}
-              className="flex items-center gap-2 px-4 py-2.5 rounded bg-[#00E5A3] hover:bg-[#22f5b8] text-[#0A0B0D] font-bold text-xs uppercase tracking-wider shadow-[0_0_16px_rgba(0,229,163,0.35)] transition cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2 rounded bg-[#00E5A3] hover:bg-[#22f5b8] text-[#0A0B0D] font-bold text-xs uppercase tracking-wider shadow-[0_0_16px_rgba(0,229,163,0.35)] transition cursor-pointer"
             >
               <Play className="w-3.5 h-3.5 fill-current" />
               <span>View Live 3D World</span>
@@ -416,50 +552,74 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
           </div>
         </header>
 
-        {/* Workspace Navigation Tabs */}
-        <div className="flex items-center justify-between gap-4 px-6 py-3 bg-[#0E1015] border-b border-slate-800 flex-wrap">
-          <div className="flex items-center gap-2 flex-wrap">
+        {/* Workspace Navigation Tabs (5 Power Tabs) */}
+        <div className="flex items-center justify-between gap-2 px-6 py-2 bg-[#0E1015] border-b border-slate-800">
+          <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto">
+            <button
+              onClick={() => setActiveTab('char-skill-forge')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+                activeTab === 'char-skill-forge'
+                  ? 'bg-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.45)]'
+                  : 'bg-[#161920] text-rose-200 hover:bg-slate-800 border border-rose-500/40'
+              }`}
+            >
+              <Swords className="w-3.5 h-3.5" />
+              <span>1. BDO/Rohan Character &amp; Skill VFX Forge</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('cli-anything-security')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+                activeTab === 'cli-anything-security'
+                  ? 'bg-[#00E5A3] text-[#0A0B0D] shadow-[0_0_15px_rgba(0,229,163,0.4)]'
+                  : 'bg-[#161920] text-emerald-200 hover:bg-slate-800 border border-emerald-500/40'
+              }`}
+            >
+              <Terminal className="w-3.5 h-3.5" />
+              <span>2. CLI-Anything AI Team &amp; Red/Tag/Triple Shield</span>
+            </button>
+
             <button
               onClick={() => setActiveTab('openui-architect')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded text-sm font-bold transition cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold whitespace-nowrap transition cursor-pointer ${
                 activeTab === 'openui-architect'
                   ? 'bg-[#FFD21E] text-[#0A0B0D] shadow-[0_0_15px_rgba(255,210,30,0.35)]'
                   : 'bg-[#161920] text-slate-200 hover:bg-slate-800 border border-slate-700'
               }`}
             >
-              <Code2 className="w-4 h-4" />
-              <span>1. OpenUI Lang 1.0 Live Architect</span>
+              <Code2 className="w-3.5 h-3.5" />
+              <span>3. OpenUI Lang 1.0</span>
             </button>
 
             <button
               onClick={() => setActiveTab('rea-city-grammar')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded text-sm font-bold transition cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold whitespace-nowrap transition cursor-pointer ${
                 activeTab === 'rea-city-grammar'
                   ? 'bg-[#FFD21E] text-[#0A0B0D] shadow-[0_0_15px_rgba(255,210,30,0.35)]'
                   : 'bg-[#161920] text-slate-200 hover:bg-slate-800 border border-slate-700'
               }`}
             >
-              <Building2 className="w-4 h-4" />
-              <span>2. REA Procedural City Architect (.bdf)</span>
+              <Building2 className="w-3.5 h-3.5" />
+              <span>4. REA City (.bdf)</span>
             </button>
 
             <button
               onClick={() => setActiveTab('remake-swap-board')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded text-sm font-bold transition cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold whitespace-nowrap transition cursor-pointer ${
                 activeTab === 'remake-swap-board'
                   ? 'bg-[#FFD21E] text-[#0A0B0D] shadow-[0_0_15px_rgba(255,210,30,0.35)]'
                   : 'bg-[#161920] text-slate-200 hover:bg-slate-800 border border-slate-700'
               }`}
             >
-              <Sliders className="w-4 h-4" />
-              <span>3. Remake Swap Board & 98.8% Benchmark</span>
+              <Sliders className="w-3.5 h-3.5" />
+              <span>5. Remake Swap Board</span>
             </button>
           </div>
 
           {actionStatusBanner && (
-            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded bg-emerald-500/15 border border-emerald-400/40 text-emerald-300 text-xs font-mono">
+            <div className="flex items-center gap-2 px-3 py-1 rounded bg-emerald-500/15 border border-emerald-400/40 text-emerald-300 text-xs font-mono">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span className="truncate max-w-xl">{actionStatusBanner}</span>
+              <span className="truncate max-w-md">{actionStatusBanner}</span>
             </div>
           )}
         </div>
@@ -467,11 +627,434 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
         {/* Main Tab Content Area */}
         <div className="flex-1 min-h-0 overflow-y-auto p-6">
           {/* =================================================================
-              TAB 1: OPENUI LANG 1.0 LIVE GAME ENGINE ARCHITECT
+              TAB 1: BDO / ROHAN SCULPTED CHARACTER & SKILL VFX FORGE + DREAMFORGE
+             ================================================================= */}
+          {activeTab === 'char-skill-forge' && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Left 7 Cols: 4 Sculpted Action-MMO Classes + 4 Skill VFX Themes */}
+              <div className="lg:col-span-7 space-y-5">
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-rose-400 mb-2.5">
+                    Select Sculpted Action-MMORPG Hero Class (Zero Box Primitives — Contoured 3D Armor &amp; Greatswords)
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {Object.values(ACTION_MMO_CLASSES).map((cls) => {
+                      const active = cls.id === selectedClassId;
+                      return (
+                        <button
+                          key={cls.id}
+                          onClick={() =>
+                            handleApplyClassAndVfx(cls.id, cls.defaultVfxTheme, cls.defaultDreamforgeStyle)
+                          }
+                          className={`p-4 rounded-md border text-left transition cursor-pointer ${
+                            active
+                              ? 'bg-[#1F131A] border-rose-500 shadow-[0_0_18px_rgba(244,63,94,0.3)]'
+                              : 'bg-[#161920] border-slate-700/80 hover:border-rose-400/60'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-base font-bold text-white">{cls.name}</span>
+                            <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono text-[11px] font-bold">
+                              {cls.id}
+                            </span>
+                          </div>
+                          <div className="text-xs font-bold text-[#FFD21E] mt-1">
+                            Awakening: {cls.awakeningWeaponName}
+                          </div>
+                          <p className="text-xs text-slate-300 mt-1">{cls.inspirationNote}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 4 BDO / Rohan Skill Visual Themes */}
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-[#FFD21E] mb-2.5">
+                    Select 3D Combat Skill Visual Theme (Crescent Slash Ribbons · Shockwaves · Awakening Pillars)
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {Object.values(SKILL_VFX_THEMES).map((th) => {
+                      const active = th.id === selectedVfxTheme;
+                      return (
+                        <button
+                          key={th.id}
+                          onClick={() =>
+                            handleApplyClassAndVfx(selectedClassId, th.id, selectedDreamforgeStyle)
+                          }
+                          className={`p-3.5 rounded-md border text-left transition cursor-pointer ${
+                            active
+                              ? 'bg-[#1B2230] border-[#FFD21E] shadow-[0_0_16px_rgba(255,210,30,0.3)]'
+                              : 'bg-[#161920] border-slate-700/80 hover:border-amber-400/60'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-bold text-white">{th.badge}</span>
+                            <span
+                              className="w-5 h-5 rounded-full border border-white/40"
+                              style={{
+                                background: `linear-gradient(135deg, ${th.cssAccentHex}, ${th.cssGlowHex})`,
+                              }}
+                            />
+                          </div>
+                          <div className="text-xs text-slate-300 mt-1">{th.name}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Dreamforge 7 Modes & 43 Art Styles Integration */}
+                <div className="p-4 rounded-md bg-[#161920] border border-purple-500/40 space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <span className="text-sm font-bold text-purple-300 uppercase">
+                      Dreamforge World &amp; Character Art-Style Engine (7 Modes · 43 Styles)
+                    </span>
+                    <span className="text-xs font-mono text-cyan-300">
+                      PR #55 Integrated (`dreamforge/`)
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-mono text-slate-400 block mb-1">
+                        DREAMFORGE WORLD MODE (7 MODES)
+                      </label>
+                      <select
+                        value={selectedDreamforgeMode}
+                        onChange={(e) => setSelectedDreamforgeMode(e.target.value)}
+                        className="w-full px-3 py-2 rounded bg-[#0B0D11] border border-slate-700 text-xs font-mono text-white"
+                      >
+                        {DREAMFORGE_MODES.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.emoji} {m.label} — {m.engineMapping}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-mono text-slate-400 block mb-1">
+                        DREAMFORGE ART STYLE (43 PRESETS)
+                      </label>
+                      <select
+                        value={selectedDreamforgeStyle}
+                        onChange={(e) =>
+                          handleApplyClassAndVfx(selectedClassId, selectedVfxTheme, e.target.value)
+                        }
+                        className="w-full px-3 py-2 rounded bg-[#0B0D11] border border-slate-700 text-xs font-mono text-white"
+                      >
+                        {DREAMFORGE_STYLES.map((st) => (
+                          <option key={st} value={st}>
+                            🎨 {st}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-mono text-slate-400 block mb-1">
+                      ONE-SENTENCE WORLD / CHARACTER SEED (&lt;=59.0s YouTube Short &amp; Scene Generator)
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={dreamforgeSeedPrompt}
+                        onChange={(e) => setDreamforgeSeedPrompt(e.target.value)}
+                        className="flex-1 px-3 py-2 rounded bg-[#0B0D11] border border-slate-700 text-xs font-mono text-white"
+                      />
+                      <button
+                        onClick={() =>
+                          handleExecuteCliCommand(
+                            `dream-cli dreamforge generate --mode ${selectedDreamforgeMode} --style ${selectedDreamforgeStyle} --seed "${dreamforgeSeedPrompt}"`
+                          )
+                        }
+                        className="px-4 py-2 rounded bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs uppercase cursor-pointer shrink-0"
+                      >
+                        Forge Seed
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right 5 Cols: Live 3D Skill Visuals Trigger Deck */}
+              <div className="lg:col-span-5 space-y-4">
+                <div className="p-5 rounded-md bg-[#0B0D11] border-2 border-rose-500/70 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-mono text-rose-400 uppercase font-bold">
+                        ACTIVE SCULPTED HERO LOADOUT
+                      </div>
+                      <h4 className="text-lg font-extrabold text-white mt-0.5">
+                        {activeClassProfile.name}
+                      </h4>
+                    </div>
+                    <span className="px-2.5 py-1 rounded bg-rose-500/20 border border-rose-400/40 text-rose-300 font-mono text-xs font-bold">
+                      120Hz 3D VFX
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded bg-[#161920] border border-slate-800 font-mono text-xs space-y-1">
+                    <div className="text-slate-300">
+                      <strong className="text-white">Primary Weapon:</strong>{' '}
+                      {activeClassProfile.weaponName}
+                    </div>
+                    <div className="text-amber-300">
+                      <strong className="text-white">Awakening Weapon:</strong>{' '}
+                      {activeClassProfile.awakeningWeaponName}
+                    </div>
+                    <div className="text-cyan-300">
+                      <strong className="text-white">Dreamforge Art Style:</strong>{' '}
+                      {selectedDreamforgeStyle}
+                    </div>
+                  </div>
+
+                  {/* Individual Skill Preview Buttons */}
+                  <div className="space-y-2">
+                    <div className="text-xs font-mono uppercase text-slate-400 font-bold">
+                      CLICK ANY SKILL TO SPAWN REAL 3D SLASHES &amp; PILLARS:
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(
+                        [
+                          ['l1', activeClassProfile.skillNames.l1],
+                          ['l2', activeClassProfile.skillNames.l2],
+                          ['l3', activeClassProfile.skillNames.l3],
+                          ['heavy', activeClassProfile.skillNames.heavy],
+                          ['lunge', activeClassProfile.skillNames.lunge],
+                          ['burst', activeClassProfile.skillNames.burst],
+                          ['dash', activeClassProfile.skillNames.dash],
+                          ['guard', activeClassProfile.skillNames.guard],
+                        ] as const
+                      ).map(([moveKey, label]) => (
+                        <button
+                          key={moveKey}
+                          onClick={() => handleFireSkillIn3D(moveKey)}
+                          className="p-2.5 rounded bg-[#161920] hover:bg-rose-950/60 border border-slate-700 hover:border-rose-400 text-left transition cursor-pointer"
+                        >
+                          <div className="text-[10px] font-mono text-rose-400 uppercase font-bold">
+                            {moveKey.toUpperCase()}
+                          </div>
+                          <div className="text-xs font-bold text-white truncate">{label}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Giant Unleash Full Awakening Combo Button */}
+                  <button
+                    onClick={() => {
+                      handleFireSkillIn3D('combo-all');
+                      onClose();
+                      onEnter3dViewport();
+                    }}
+                    className="w-full py-4 px-5 rounded bg-gradient-to-r from-rose-600 via-purple-600 to-amber-500 hover:brightness-110 text-white font-black text-sm uppercase tracking-wider shadow-[0_0_24px_rgba(244,63,94,0.5)] transition cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Flame className="w-5 h-5" />
+                    <span>Unleash Full Awakening Combo in 3D Viewport!</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* =================================================================
+              TAB 2: CLI-ANYTHING AI TEAM TERMINAL & RED/TAG/TRIPLE-TEAM SHIELD
+             ================================================================= */}
+          {activeTab === 'cli-anything-security' && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Left 6 Cols: CLI-Anything Text-In / Text-Out AI Team Console */}
+              <div className="lg:col-span-6 space-y-4">
+                <div className="p-4 rounded-md bg-[#161920] border border-emerald-500/40 space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <Terminal className="w-4 h-4 text-[#00E5A3]" />
+                      <h3 className="text-sm font-bold uppercase tracking-wider text-[#00E5A3]">
+                        CLI-Anything (`dream-cli`) Text-In / Text-Out AI Team Bus
+                      </h3>
+                    </div>
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono text-[11px] font-bold">
+                      HKUDS/CLI-Anything Native
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    AI agents excel at deterministic <strong>text-in, text-out</strong> commands (`--help`, `--json`) instead of brittle screenshot/Playwright pixel clicking. Every Co-GM (`Gemini`, `Claude`, `Codex`, `FCC :8082`, `Hermes`) controls the entire engine and dashboard through this bus.
+                  </p>
+
+                  {/* Quick AI Team Command Chips */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      ['--help', 'dream-cli --help'],
+                      ['Inspect All (--json)', 'dream-cli inspect --target all --json'],
+                      [
+                        'Equip Crimson Dekan',
+                        'dream-cli char set --class crimson-dekan --vfx rohan-blood-crimson',
+                      ],
+                      [
+                        'Equip BDO Dark-Knight',
+                        'dream-cli char set --class abyssal-awakening --vfx bdo-black-spirit',
+                      ],
+                      ['Fire Awakening Combo', 'dream-cli skill cast --move combo-all'],
+                      [
+                        'Triple-Team Kids Audit',
+                        'dream-cli security run --mode triple-team --tier sovereign-triple-architect',
+                      ],
+                    ].map(([label, cmd]) => (
+                      <button
+                        key={label}
+                        onClick={() => handleExecuteCliCommand(cmd)}
+                        className="px-2.5 py-1.5 rounded bg-[#0B0D11] hover:bg-emerald-950/60 border border-slate-700 hover:border-[#00E5A3] text-xs font-mono text-cyan-300 cursor-pointer transition"
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Command Input Bar */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={cliCommandInput}
+                      onChange={(e) => setCliCommandInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleExecuteCliCommand();
+                      }}
+                      className="flex-1 px-3 py-2.5 rounded bg-[#05070A] border border-slate-700 font-mono text-xs text-[#00E5A3] outline-none focus:border-[#00E5A3]"
+                    />
+                    <button
+                      onClick={() => handleExecuteCliCommand()}
+                      className="px-4 py-2.5 rounded bg-[#00E5A3] hover:bg-[#22f5b8] text-[#0A0B0D] font-bold text-xs uppercase cursor-pointer shrink-0"
+                    >
+                      Run CLI
+                    </button>
+                  </div>
+
+                  {/* Deterministic Text-Out & JSON Viewport */}
+                  <div className="p-3.5 rounded bg-[#05070A] border border-slate-800 font-mono text-xs text-emerald-300 whitespace-pre-wrap max-h-80 overflow-y-auto leading-relaxed">
+                    {cliOutputResult.textOut}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right 6 Cols: Red-Team / Tag-Team / Triple-Team Kids Playground Shield & Whale Patronage */}
+              <div className="lg:col-span-6 space-y-4">
+                <div className="p-4 rounded-md bg-[#161920] border border-[#FFD21E]/50 space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <ShieldAlert className="w-4 h-4 text-[#FFD21E]" />
+                      <h3 className="text-sm font-bold uppercase tracking-wider text-[#FFD21E]">
+                        Red-Team / Tag-Team / Triple-Team Kids Playground Shield
+                      </h3>
+                    </div>
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono text-xs font-bold">
+                      100% Free For Kids · 0% P2W
+                    </span>
+                  </div>
+
+                  {/* 3 Team Modes */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {(
+                      [
+                        ['red-team', '🔴 Red-Team Probe', 'Offensive Fuzzer'],
+                        ['tag-team', '🤝 Tag-Team Duel', 'Red vs Blue AI'],
+                        ['triple-team', '🛡️⚡🔥 Triple-Team', '3-Lane Council'],
+                      ] as const
+                    ).map(([mId, title, sub]) => (
+                      <button
+                        key={mId}
+                        onClick={() => {
+                          setSecurityMode(mId);
+                          handleExecuteCliCommand(
+                            `dream-cli security run --mode ${mId} --tier ${patronTierId}`
+                          );
+                        }}
+                        className={`p-2.5 rounded border text-left transition cursor-pointer ${
+                          securityMode === mId
+                            ? 'bg-[#1F2430] border-[#FFD21E] text-white shadow-[0_0_12px_rgba(255,210,30,0.25)]'
+                            : 'bg-[#0B0D11] border-slate-700 text-slate-300'
+                        }`}
+                      >
+                        <div className="text-xs font-bold">{title}</div>
+                        <div className="text-[10px] font-mono text-cyan-300 mt-0.5">{sub}</div>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Whale Security & Creative Patronage Tiers */}
+                  <div>
+                    <div className="text-xs font-mono uppercase text-slate-400 mb-1.5">
+                      WHALE AI SECURITY &amp; CREATIVE PATRONAGE TIERS (FUNDS FREE KIDS PLAYGROUND):
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {Object.values(WHALE_SECURITY_PATRON_TIERS).map((tier) => {
+                        const active = tier.id === patronTierId;
+                        return (
+                          <button
+                            key={tier.id}
+                            onClick={() => {
+                              setPatronTierId(tier.id);
+                              handleExecuteCliCommand(
+                                `dream-cli security run --mode ${securityMode} --tier ${tier.id}`
+                              );
+                            }}
+                            className={`p-3 rounded border text-left transition cursor-pointer ${
+                              active
+                                ? 'bg-[#18222D] border-[#00E5A3] text-white'
+                                : 'bg-[#0B0D11] border-slate-800 text-slate-300 hover:border-slate-600'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-white">{tier.name}</span>
+                              <span className="text-[10px] font-mono text-[#00E5A3] font-bold">
+                                0% P2W
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-amber-300 font-mono mt-0.5">
+                              {tier.badge}
+                            </div>
+                            <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">
+                              {tier.kidAccessNote}
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 6 Hardened Security Vectors */}
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    {securityReport.vectors.map((vec) => (
+                      <div
+                        key={vec.vectorId}
+                        className="p-2.5 rounded bg-[#0B0D11] border border-slate-800 font-mono text-xs"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-white font-bold">{vec.title}</span>
+                          <span className="text-emerald-400 font-bold">
+                            {vec.status} ({vec.latencyMs}ms)
+                          </span>
+                        </div>
+                        <div className="text-rose-300 text-[11px] mt-0.5">
+                          Red: {vec.redTeamAttackPayload}
+                        </div>
+                        <div className="text-cyan-300 text-[11px]">
+                          Blue/Triple: {vec.blueTeamInterceptAction}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* =================================================================
+              TAB 3: OPENUI LANG 1.0 LIVE GAME ENGINE ARCHITECT
              ================================================================= */}
           {activeTab === 'openui-architect' && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Left Column: One-Click Presets + OpenUI Lang Source */}
               <div className="lg:col-span-5 space-y-4">
                 <div>
                   <h3 className="text-sm font-bold uppercase tracking-wider text-cyan-300 mb-2.5">
@@ -505,7 +1088,6 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
                   </div>
                 </div>
 
-                {/* Live Declarative OpenUI Lang Editor */}
                 <div className="p-4 rounded-md bg-[#0B0D11] border border-slate-700/90 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-mono font-bold uppercase text-[#FFD21E]">
@@ -524,14 +1106,16 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
                 </div>
               </div>
 
-              {/* Right Column: Live Evaluated OpenUI Interactive Surface */}
               <div className="lg:col-span-7 space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-bold uppercase tracking-wider text-[#00E5A3]">
                     Live Rendered OpenUI Studio Surface (Two-Way Bound to 3D Engine)
                   </h3>
                   <span className="text-xs font-mono text-slate-400">
-                    Active Reality: <strong className="text-white">{String(openUiState.worldPhase || 'day_dream_3d')}</strong>
+                    Active Reality:{' '}
+                    <strong className="text-white">
+                      {String(openUiState.worldPhase || 'day_dream_3d')}
+                    </strong>
                   </span>
                 </div>
 
@@ -549,12 +1133,11 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
           )}
 
           {/* =================================================================
-              TAB 2: REA PROCEDURAL CITY & BINARY RECONSTRUCTION ARCHITECT
+              TAB 4: REA PROCEDURAL CITY & BINARY RECONSTRUCTION ARCHITECT
              ================================================================= */}
           {activeTab === 'rea-city-grammar' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* Left 7 Cols: Archetype Selector & Reality Mode */}
                 <div className="lg:col-span-7 space-y-4">
                   <h3 className="text-sm font-bold uppercase tracking-wider text-cyan-300">
                     Select Clean-Room BLDG_ECO_primary.bdf Urban Zoning Archetype
@@ -589,11 +1172,10 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
                     })}
                   </div>
 
-                  {/* Reality Phase & Seed Controls */}
                   <div className="p-4 rounded-md bg-[#161920] border border-slate-700/80 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <span className="text-xs font-mono uppercase text-slate-400 block mb-2">
-                        Target Geometry & Palette Phase
+                        Target Geometry &amp; Palette Phase
                       </span>
                       <div className="flex gap-2">
                         {(['day_dream_3d', 'nightmare_3d', 'circle_16bit'] as EvolutionPhase[]).map(
@@ -637,7 +1219,6 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
                   </div>
                 </div>
 
-                {/* Right 5 Cols: Generated Urban Block Preview & Spawn Action */}
                 <div className="lg:col-span-5 space-y-4">
                   <div className="p-5 rounded-md bg-[#0B0D11] border-2 border-[#00E5A3]/60 space-y-4">
                     <div className="flex items-center justify-between">
@@ -680,7 +1261,6 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
                     </button>
                   </div>
 
-                  {/* REA Cryptographic Evidence Ledger */}
                   <div className="p-4 rounded-md bg-[#161920] border border-slate-700/80 space-y-2.5">
                     <div className="flex items-center gap-2 text-xs font-mono font-bold text-cyan-300 uppercase">
                       <ShieldCheck className="w-4 h-4 text-emerald-400" />
@@ -710,11 +1290,10 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
           )}
 
           {/* =================================================================
-              TAB 3: REMAKE SWAP BOARD & 98.8% PIXEL-FREEZE BENCHMARK
+              TAB 5: REMAKE SWAP BOARD & 98.8% PIXEL-FREEZE BENCHMARK
              ================================================================= */}
           {activeTab === 'remake-swap-board' && (
             <div className="space-y-6">
-              {/* Top Benchmark KPI Strip */}
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div className="p-4 rounded-md bg-[#161920] border border-emerald-500/40">
                   <div className="text-xs font-mono text-slate-400">DESKTOP 1440×900 SCORE</div>
@@ -747,7 +1326,6 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* Left 6 Cols: Interactive Swap Board (content.json) */}
                 <div className="lg:col-span-6 space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-bold uppercase tracking-wider text-[#FFD21E]">
@@ -803,7 +1381,6 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
                   </div>
                 </div>
 
-                {/* Right 6 Cols: Clean-Room AAA Game Engine Developer Site Benchmark Matrix */}
                 <div className="lg:col-span-6 space-y-4">
                   <h3 className="text-sm font-bold uppercase tracking-wider text-cyan-300">
                     Clean-Room Game Engine Studio Benchmark Matrix

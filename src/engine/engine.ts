@@ -18,6 +18,12 @@ import {
   createCyberKnightGeometries,
   createCircleCraftCharacterGeometries,
   createCylinderDiscGeometry,
+  createCrescentSlashArcGeometry,
+  createRingWaveGeometry,
+  createSkillPillarSpikeGeometry,
+  createAegisBarrierShieldGeometry,
+  createSculptedObeliskGeometry,
+  createSculptedSentinelColossusGeometry,
   MeshGeometry,
   MaterialProperties
 } from './scene/mesh.ts';
@@ -25,6 +31,7 @@ import { RenderItem, RenderMetrics } from './renderer/types.ts';
 import { Vec3 } from './math/vec3.ts';
 import { AmbientSynth } from './audio/ambient-synth.ts';
 import { CombatManager } from './combat/combat-manager.ts';
+import { SkillVfxDirector, ActionMmoClassId, SkillVfxThemeId } from './combat/skill-vfx.ts';
 import { StudioConfigManager } from './studioConfig.ts';
 import { WorldEvolutionDirector, quantizeColor16Bit, EvolutionPhase } from './world/world-evolution.ts';
 
@@ -37,8 +44,9 @@ export class DreamEngine {
   private cyberKnightGeoms: ReturnType<typeof createCyberKnightGeometries>;
   private circleKnightGeoms: ReturnType<typeof createCircleCraftCharacterGeometries>;
 
-  // Authoritative Combat Manager, Live DREAM Studio Config & AI World Evolution Director
+  // Authoritative Combat Manager, Skill VFX Director, Live DREAM Studio Config & AI World Evolution Director
   readonly combat: CombatManager = new CombatManager();
+  readonly skillVfx: SkillVfxDirector = new SkillVfxDirector();
   readonly studio: StudioConfigManager = new StudioConfigManager();
   readonly evolution: WorldEvolutionDirector = new WorldEvolutionDirector();
 
@@ -68,11 +76,16 @@ export class DreamEngine {
   private telegraphMesh: MeshGeometry;
   private slashMesh: MeshGeometry;
   private burstMesh: MeshGeometry;
+  private crescentSlashMesh: MeshGeometry;
+  private ringWaveMesh: MeshGeometry;
+  private pillarSpikeMesh: MeshGeometry;
+  private aegisBarrierMesh: MeshGeometry;
 
-  // Loop
+  // Loop & procedural skeletal animation clock
   private isRunning = false;
   private animFrameId: number | null = null;
   private lastTime = 0;
+  private animClock = 0;
 
   // Callbacks
   onMetricsUpdate?: (
@@ -114,24 +127,32 @@ export class DreamEngine {
 
     this.sceneRoot = new SceneNode('WorldRoot');
 
-    // Create persistent geometries once
+    // Create persistent geometries once (sculpted Action-MMO geometries — zero flat boxes)
     this.skyMesh = createSkyDomeGeometry(800, 24, 12);
     this.groundMesh = createGroundPlane(300, 16);
     this.playerCapsuleMesh = createCapsuleGeometry(0.45, 1.9, 24, 8);
     this.cyberKnightGeoms = createCyberKnightGeometries();
     this.circleKnightGeoms = createCircleCraftCharacterGeometries();
-    this.monolithMesh = createMonolithGeometry(1, 1, 1);
+    this.monolithMesh = createSculptedObeliskGeometry();
     this.circleMonolithMesh = createCylinderDiscGeometry(0.55, 1.0, 0.55, 0, 0.5, 0, 16);
     this.visorMesh = createMonolithGeometry(1, 1, 1);
 
-    // Combat Geometries
-    this.sentinelMesh = createMonolithGeometry(1.2, 2.6, 1.2);
+    // Combat & Boss Geometries (Sculpted Colossus Sentinel + 3D Skill VFX Meshes)
+    this.sentinelMesh = createSculptedSentinelColossusGeometry();
     this.circleSentinelMesh = createCylinderDiscGeometry(0.6, 2.6, 0.6, 0, 1.3, 0, 16);
-    this.sentinelEyeMesh = createMonolithGeometry(0.35, 0.25, 0.35);
-    this.beamMesh = createMonolithGeometry(2.2, 1.8, 26.0);
+    this.sentinelEyeMesh = createCylinderDiscGeometry(0.24, 0.18, 0.22, 0, 0, 0, 12);
+    this.beamMesh = createCylinderDiscGeometry(1.1, 26.0, 1.1, 0, 0, 0, 16);
     this.telegraphMesh = createMonolithGeometry(0.2, 0.05, 26.0);
-    this.slashMesh = createMonolithGeometry(0.12, 0.25, 2.6);
-    this.burstMesh = createMonolithGeometry(4.0, 0.08, 4.0);
+    this.slashMesh = createCrescentSlashArcGeometry(1.05, 2.85, Math.PI * 1.18, 28, 0.09);
+    this.burstMesh = createRingWaveGeometry(1.5, 2.45, 0.24, 32);
+    this.crescentSlashMesh = this.slashMesh;
+    this.ringWaveMesh = this.burstMesh;
+    this.pillarSpikeMesh = createSkillPillarSpikeGeometry(0.36, 0.04, 3.2, 10);
+    this.aegisBarrierMesh = createAegisBarrierShieldGeometry(1.15, 1.65, Math.PI * 0.75, 16);
+
+    // Apply default Crimson Dragon-Knight class & Rohan/BDO VFX theme
+    const initPreset = this.skillVfx.setClassAndTheme('crimson-dekan', 'rohan-blood-crimson');
+    this.studio.updateCharacter(initPreset.characterPatch);
 
     // Build scene hierarchy
     // 1. Sky
@@ -266,6 +287,69 @@ export class DreamEngine {
   cycleEvolutionPhase(): EvolutionPhase {
     const evt = this.evolution.cyclePhase();
     return this.setEvolutionPhase(evt.phase);
+  }
+
+  /**
+   * Switches the playable 3D character archetype, Dreamforge art style, and BDO/Rohan Skill VFX theme in real time.
+   */
+  setCharacterClassAndVfx(
+    classId: ActionMmoClassId,
+    themeId?: SkillVfxThemeId,
+    dreamforgeStyle?: string
+  ): void {
+    const preset = this.skillVfx.setClassAndTheme(classId, themeId, dreamforgeStyle);
+    this.studio.updateCharacter(preset.characterPatch);
+    this.studio.updateShader(preset.shaderPatch);
+    this.combat.say(`${this.skillVfx.currentClass.name} · ${this.skillVfx.currentTheme.badge}`);
+  }
+
+  /**
+   * Fires a combat skill and its full 3D Action-MMO visual effects on demand (from HUD, Studio, or CLI-Anything).
+   */
+  castSkillWithVfx(
+    skillKey: 'l1' | 'l2' | 'l3' | 'heavy' | 'lunge' | 'burst' | 'dash' | 'guard' | 'combo-all'
+  ): string {
+    const pos = this.controller.position;
+    const yaw = this.controller.facingYaw;
+    this.combat.stamina = CombatManager.STAMINA_MAX;
+
+    if (skillKey === 'combo-all') {
+      this.skillVfx.triggerAwakeningComboShowcase(pos.x, pos.y, pos.z, yaw);
+      this.combat.say(`AWAKENING COMBO: ${this.skillVfx.currentClass.awakeningWeaponName}`);
+      return this.combat.lastEventText;
+    }
+    if (skillKey === 'l1' || skillKey === 'l2' || skillKey === 'l3') {
+      const stepNum = skillKey === 'l1' ? 1 : skillKey === 'l2' ? 2 : 3;
+      this.combat.trySkill('', false, 'LMB', yaw, pos);
+      this.skillVfx.spawnLightSlashVfx(stepNum, pos.x, pos.y, pos.z, yaw);
+      return this.skillVfx.currentClass.skillNames[skillKey];
+    }
+    if (skillKey === 'heavy') {
+      this.combat.trySkill('', false, 'RMB', yaw, pos);
+      this.skillVfx.spawnHeavyCleaveVfx(pos.x, pos.y, pos.z, yaw);
+      return this.skillVfx.currentClass.skillNames.heavy;
+    }
+    if (skillKey === 'lunge') {
+      this.combat.trySkill('W', false, 'F', yaw, pos);
+      this.skillVfx.spawnDreamLungeVfx(pos.x, pos.y, pos.z, yaw);
+      return this.skillVfx.currentClass.skillNames.lunge;
+    }
+    if (skillKey === 'burst') {
+      this.combat.trySkill('', false, 'R', yaw, pos);
+      this.skillVfx.spawnNightveilBurstVfx(pos.x, pos.y, pos.z, yaw);
+      return this.skillVfx.currentClass.skillNames.burst;
+    }
+    if (skillKey === 'dash') {
+      this.combat.trySkill('W', true, 'F', yaw, pos);
+      this.skillVfx.spawnDashPhantomVfx(pos.x, pos.y, pos.z, yaw);
+      return this.skillVfx.currentClass.skillNames.dash;
+    }
+    if (skillKey === 'guard') {
+      this.combat.trySkill('', false, 'Q', yaw, pos);
+      this.skillVfx.spawnGuardAegisVfx(pos.x, pos.y, pos.z, yaw);
+      return this.skillVfx.currentClass.skillNames.guard;
+    }
+    return 'Ready';
   }
 
   toggleViewMode(): 'third-person' | 'first-person' {
@@ -519,6 +603,18 @@ export class DreamEngine {
     // 2. Update Combat State (stamina, health, sentinel AI, hit resolution, event logs)
     this.combat.update(dt, this.controller.position, this.controller.isSprinting, this.camera.yaw);
 
+    // 2b. Advance Procedural Animation Clock & 3D Skill VFX Director (Rohan / BDO style skill visuals)
+    this.animClock += dt;
+    this.skillVfx.update(dt, this.controller.position, this.controller.facingYaw, {
+      attackStep: this.combat.attack.step(),
+      isAttacking: this.combat.attack.isAttacking(),
+      isHeavy: this.combat.heavy.isAttacking(),
+      isLunging: this.combat.lunge.isLunging(),
+      isBursting: this.combat.burst.isActive(),
+      isDashing: this.combat.dash.isDashing(),
+      isGuarding: this.combat.guard.isActive(),
+    });
+
     // 3. Sync Player SceneNode transform & Studio Avatar Scale
     this.playerNode.position.copy(this.controller.position);
     this.controller.getRotationQuaternion(this.playerNode.rotation);
@@ -631,21 +727,216 @@ export class DreamEngine {
 
       const ck = isCircle16 ? this.circleKnightGeoms : this.cyberKnightGeoms;
       const wm = this.playerNode.worldMatrix;
+
+      // Dynamic procedural locomotion & combat swing articulation (arms, legs, blade, cape)
+      const isMoving =
+        this.input.isDown('KeyW') ||
+        this.input.isDown('KeyS') ||
+        this.input.isDown('KeyA') ||
+        this.input.isDown('KeyD') ||
+        this.combat.dash.isDashing() ||
+        this.combat.lunge.isLunging();
+      const strideFreq = this.controller.isSprinting ? 13.0 : 8.5;
+      const strideAmp = isMoving ? (this.controller.isSprinting ? 0.42 : 0.26) : 0.03;
+      const legSwing = Math.sin(this.animClock * strideFreq) * strideAmp;
+      const breathBob = Math.sin(this.animClock * 2.8) * 0.015;
+
+      // Weapon arm & blade swing angle during skills
+      const hasActiveVfxRibbon = this.skillVfx.slashRibbons.length > 0;
+      const swingAngle = isAttacking || hasActiveVfxRibbon
+        ? Math.sin(this.animClock * 24.0) * 0.85
+        : Math.sin(this.animClock * 2.4) * 0.06;
+
+      const makeLimbMatrix = (rx: number, ry: number, rz: number, dy = 0) => {
+        const n = new SceneNode('LimbPart');
+        n.position.set(0, dy, 0);
+        n.rotation.setFromEuler(rx, ry, rz);
+        n.updateWorldMatrix(wm);
+        return n.worldMatrix;
+      };
+
+      const torsoWm = makeLimbMatrix(isMoving ? 0.06 : 0, swingAngle * 0.22, 0, breathBob);
+      const legLWm = makeLimbMatrix(legSwing, 0, 0, 0);
+      const legRWm = makeLimbMatrix(-legSwing, 0, 0, 0);
+      const armLWm = makeLimbMatrix(-legSwing * 0.7, 0, 0, breathBob);
+      const armRWm = makeLimbMatrix(swingAngle * 0.9, swingAngle * 0.45, 0, breathBob);
+      const capeWm = makeLimbMatrix(0.08 + Math.abs(legSwing) * 0.35, Math.sin(this.animClock * 4.2) * 0.08, 0, breathBob);
+
       items.push(
-        { geometry: ck.torso, modelMatrix: wm, material: armorMat },
-        { geometry: ck.head, modelMatrix: wm, material: armorMat },
-        { geometry: ck.pauldronL, modelMatrix: wm, material: armorMat },
-        { geometry: ck.pauldronR, modelMatrix: wm, material: armorMat },
-        { geometry: ck.armL, modelMatrix: wm, material: armorMat },
-        { geometry: ck.armR, modelMatrix: wm, material: armorMat },
+        { geometry: ck.torso, modelMatrix: torsoWm, material: armorMat },
+        { geometry: ck.head, modelMatrix: torsoWm, material: armorMat },
+        { geometry: ck.pauldronL, modelMatrix: torsoWm, material: armorMat },
+        { geometry: ck.pauldronR, modelMatrix: torsoWm, material: armorMat },
+        { geometry: ck.armL, modelMatrix: armLWm, material: armorMat },
+        { geometry: ck.armR, modelMatrix: armRWm, material: armorMat },
         { geometry: ck.hip, modelMatrix: wm, material: armorMat },
-        { geometry: ck.legL, modelMatrix: wm, material: armorMat },
-        { geometry: ck.legR, modelMatrix: wm, material: armorMat },
-        { geometry: ck.spine, modelMatrix: wm, material: armorMat },
-        { geometry: ck.visor, modelMatrix: wm, material: opticMat },
-        { geometry: ck.core, modelMatrix: wm, material: opticMat },
-        { geometry: ck.blade, modelMatrix: wm, material: bladeMat }
+        { geometry: ck.legL, modelMatrix: legLWm, material: armorMat },
+        { geometry: ck.legR, modelMatrix: legRWm, material: armorMat },
+        { geometry: ck.spine, modelMatrix: capeWm, material: opticMat },
+        { geometry: ck.visor, modelMatrix: torsoWm, material: opticMat },
+        { geometry: ck.core, modelMatrix: torsoWm, material: opticMat },
+        { geometry: ck.blade, modelMatrix: armRWm, material: bladeMat }
       );
+      if (!isCircle16) {
+        items.push({ geometry: this.cyberKnightGeoms.horns, modelMatrix: torsoWm, material: opticMat });
+      }
+    }
+
+    // 7b. Render Active 3D Action-MMO Skill Visuals (BDO / Rohan: Blood Feud Crescent Slashes, Shockwaves, Pillars & Clones)
+    for (const rib of this.skillVfx.slashRibbons) {
+      const t = Math.min(1, rib.elapsed / Math.max(0.01, rib.duration));
+      const fade = Math.max(0.2, 1.0 - t * 0.75);
+      const curScale = rib.scale * (0.28 + t * 0.12);
+      const fwdX = -Math.sin(rib.yaw) * 2.15;
+      const fwdZ = -Math.cos(rib.yaw) * 2.15;
+
+      const ribNode = new SceneNode(rib.id);
+      ribNode.position.set(rib.x + fwdX, rib.y, rib.z + fwdZ);
+      ribNode.rotation.setFromEuler(rib.pitchRad, rib.yaw, rib.rollRad);
+      ribNode.scale.set(curScale, curScale * 0.75, curScale);
+      ribNode.updateWorldMatrix(this.sceneRoot.worldMatrix);
+
+      const slashColor = q16(rib.colorRgb);
+      const slashMat: MaterialProperties = {
+        baseColor: [slashColor[0] * 0.85, slashColor[1] * 0.18, slashColor[2] * 0.25, fade],
+        roughness: 0.25,
+        metallic: 0.75,
+        emissive: [slashColor[0], slashColor[1] * 0.28, slashColor[2] * 0.35],
+        emissiveIntensity: 1.15 * fade,
+        rimIntensity: 0.9,
+      };
+      items.push({
+        geometry: this.crescentSlashMesh,
+        modelMatrix: ribNode.worldMatrix,
+        material: slashMat,
+      });
+
+      // Inner blazing core ribbon
+      const coreNode = new SceneNode(`${rib.id}-core`);
+      coreNode.position.set(rib.x + fwdX, rib.y + 0.03, rib.z + fwdZ);
+      coreNode.rotation.setFromEuler(rib.pitchRad, rib.yaw, rib.rollRad);
+      coreNode.scale.set(curScale * 0.76, curScale * 0.85, curScale * 0.76);
+      coreNode.updateWorldMatrix(this.sceneRoot.worldMatrix);
+
+      const coreColor = q16(rib.coreRgb);
+      const coreMat: MaterialProperties = {
+        baseColor: [coreColor[0], coreColor[1] * 0.65, coreColor[2] * 0.25, fade],
+        roughness: 0.18,
+        metallic: 0.85,
+        emissive: [coreColor[0], coreColor[1] * 0.65, coreColor[2] * 0.25],
+        emissiveIntensity: 1.35 * fade,
+        rimIntensity: 1.0,
+      };
+      items.push({
+        geometry: this.crescentSlashMesh,
+        modelMatrix: coreNode.worldMatrix,
+        material: coreMat,
+      });
+    }
+
+    // 3D Shockwave Rings
+    for (const sw of this.skillVfx.shockwaveRings) {
+      const t = Math.min(1, sw.elapsed / Math.max(0.01, sw.duration));
+      const fade = Math.max(0.15, 1.0 - t * 0.8);
+      const s = (sw.startScale + (sw.endScale - sw.startScale) * t) * 0.46;
+
+      const swNode = new SceneNode(sw.id);
+      swNode.position.set(sw.x, sw.y, sw.z - 1.85);
+      swNode.rotation.setFromEuler(0, this.animClock * 4.0, 0);
+      swNode.scale.set(s * 0.72, Math.max(0.2, 0.55 - t * 0.3), s * 0.72);
+      swNode.updateWorldMatrix(this.sceneRoot.worldMatrix);
+
+      const swColor = q16(sw.colorRgb);
+      const swMat: MaterialProperties = {
+        baseColor: [swColor[0] * 0.9, swColor[1] * 0.28, swColor[2] * 0.35, fade],
+        roughness: 0.22,
+        metallic: 0.8,
+        emissive: [swColor[0], swColor[1] * 0.32, swColor[2] * 0.4],
+        emissiveIntensity: 1.05 * fade,
+        rimIntensity: 0.85,
+      };
+      items.push({
+        geometry: this.ringWaveMesh,
+        modelMatrix: swNode.worldMatrix,
+        material: swMat,
+      });
+    }
+
+    // 3D Awakening Lightning / Dragon-Flame Pillars & Tectonic Spikes
+    for (const pil of this.skillVfx.pillarSpikes) {
+      const t = Math.min(1, pil.elapsed / Math.max(0.01, pil.duration));
+      const pop = t < 0.25 ? t / 0.25 : Math.max(0.2, 1.0 - (t - 0.25) / 0.75);
+
+      const pilNode = new SceneNode(pil.id);
+      pilNode.position.set(pil.x, pil.y, pil.z - 2.1);
+      pilNode.rotation.setFromEuler(0, pil.orbitAngle + this.animClock * 3.0, 0);
+      pilNode.scale.set(0.42 + pop * 0.14, pil.maxScaleY * 0.55 * pop, 0.42 + pop * 0.14);
+      pilNode.updateWorldMatrix(this.sceneRoot.worldMatrix);
+
+      const pilColor = q16(pil.colorRgb);
+      const pilMat: MaterialProperties = {
+        baseColor: [pilColor[0] * 0.88, pilColor[1] * 0.22, pilColor[2] * 0.35, 1.0],
+        roughness: 0.24,
+        metallic: 0.82,
+        emissive: [pilColor[0], pilColor[1] * 0.28, pilColor[2] * 0.42],
+        emissiveIntensity: 1.2 * pop,
+        rimIntensity: 0.9,
+      };
+      items.push({
+        geometry: this.pillarSpikeMesh,
+        modelMatrix: pilNode.worldMatrix,
+        material: pilMat,
+      });
+    }
+
+    // 3D Phantom Afterimage Clones (Dash & Dream Lunge)
+    for (const clone of this.skillVfx.phantomClones) {
+      const t = Math.min(1, clone.elapsed / Math.max(0.01, clone.duration));
+      const fade = Math.max(0.2, 1.0 - t);
+      const cloneNode = new SceneNode(clone.id);
+      cloneNode.position.set(clone.x - 1.35, clone.y, clone.z - 0.9);
+      cloneNode.rotation.setFromEuler(0, clone.yaw, 0);
+      cloneNode.scale.set(avScale * 0.96, avScale * 0.96, avScale * 0.96);
+      cloneNode.updateWorldMatrix(this.sceneRoot.worldMatrix);
+
+      const cRgb = q16(clone.colorRgb);
+      const cloneMat: MaterialProperties = {
+        baseColor: [cRgb[0] * 0.75, cRgb[1] * 0.18, cRgb[2] * 0.85, fade],
+        roughness: 0.2,
+        metallic: 0.9,
+        emissive: [cRgb[0] * 0.8, cRgb[1] * 0.18, cRgb[2] * 0.95],
+        emissiveIntensity: 1.15 * fade,
+        rimIntensity: 1.0,
+      };
+      const ck = isCircle16 ? this.circleKnightGeoms : this.cyberKnightGeoms;
+      items.push(
+        { geometry: ck.torso, modelMatrix: cloneNode.worldMatrix, material: cloneMat },
+        { geometry: ck.head, modelMatrix: cloneNode.worldMatrix, material: cloneMat },
+        { geometry: ck.blade, modelMatrix: cloneNode.worldMatrix, material: cloneMat }
+      );
+    }
+
+    // 3D Sacred Aegis Barrier Shield when Guard ('Q') is active
+    if (this.combat.guard.isActive()) {
+      const guardNode = new SceneNode('ActiveAegisBarrier');
+      guardNode.position.copy(this.controller.position);
+      guardNode.rotation.setFromEuler(0, this.controller.facingYaw, 0);
+      guardNode.updateWorldMatrix(this.sceneRoot.worldMatrix);
+
+      const shieldRgb = q16(this.skillVfx.currentTheme.aegisShieldRgb);
+      const shieldMat: MaterialProperties = {
+        baseColor: [shieldRgb[0], shieldRgb[1], shieldRgb[2], 0.9],
+        roughness: 0.05,
+        metallic: 0.95,
+        emissive: shieldRgb,
+        emissiveIntensity: 5.5,
+        rimIntensity: 1.0,
+      };
+      items.push({
+        geometry: this.aegisBarrierMesh,
+        modelMatrix: guardNode.worldMatrix,
+        material: shieldMat,
+      });
     }
 
     // 8. Hollow Sentinel items

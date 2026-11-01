@@ -60,6 +60,20 @@
   ],
   "events": [
     {
+      "id": "hook-1793495741551",
+      "ts": "2026-11-01T01:15:41.551Z",
+      "source": "fs.watch-hook",
+      "repo": "Trollz1004/ANTIGRAVITY",
+      "branch": "sabretooth/hermes-leadgen",
+      "commitSha": null,
+      "pushSuccess": false,
+      "prNumber": null,
+      "prUrl": null,
+      "testsPassed": null,
+      "judgeStatus": "LOCAL_EVENT_RECORDED_NOT_PUSHED",
+      "summary": "File change detected on souls/default-orchestrator-agent.md -> synced dashboard state."
+    },
+    {
       "id": "hook-1793404510049",
       "ts": "2026-10-30T23:55:10.049Z",
       "source": "fs.watch-hook",
@@ -576,24 +590,11 @@
       "testsPassed": true,
       "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
       "summary": "File change detected on Sabretooth/hermes-to-hermes.md -> synced dashboard & queued PR webhook check."
-    },
-    {
-      "id": "hook-1793320413291",
-      "ts": "2026-10-30T00:33:33.291Z",
-      "source": "gui-hook-trigger",
-      "repo": "Trollz1004/ANTIGRAVITY",
-      "branch": "sabretooth/auto-pr-sync",
-      "commitSha": "HEAD",
-      "pushSuccess": true,
-      "prUrl": "https://github.com/Trollz1004/ANTIGRAVITY/compare/main...sabretooth/auto-pr-sync?expand=1",
-      "testsPassed": true,
-      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
-      "summary": "TDD verify mandatory auto-push & PR creation endpoint"
     }
   ],
   "lastPushPr": {
-    "id": "hook-1793404510049",
-    "ts": "2026-10-30T23:55:10.049Z",
+    "id": "hook-1793495741551",
+    "ts": "2026-11-01T01:15:41.551Z",
     "source": "fs.watch-hook",
     "repo": "Trollz1004/ANTIGRAVITY",
     "branch": "sabretooth/hermes-leadgen",
@@ -603,7 +604,7 @@
     "prUrl": null,
     "testsPassed": null,
     "judgeStatus": "LOCAL_EVENT_RECORDED_NOT_PUSHED",
-    "summary": "File change detected on Sabretooth/hermes-to-hermes.md -> synced dashboard state."
+    "summary": "File change detected on souls/default-orchestrator-agent.md -> synced dashboard state."
   },
   "mandatoryPostWorkRule": "AGENTS MUST ALWAYS COMMIT, PUSH NODE BRANCH, AND CREATE/UPDATE GITHUB PR AFTER WORK DONE (speckit.git.push-and-pr via scripts/node-auto-pr-push.ps1)"
 }

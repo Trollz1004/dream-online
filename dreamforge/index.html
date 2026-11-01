@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
 <meta name="theme-color" content="#0a0a0a"/>
-<link rel="icon" type="image/svg+xml" href="../brand/favicon.svg"/>
+<link rel="icon" type="image/svg+xml" href="./brand/favicon.svg"/>
 <title>Dreamforge — AI World Builder & Game Generator</title>
 <meta name="description" content="Build a living AI world with Dreamforge"/>
 <style>
@@ -214,15 +214,15 @@ body.dark .admin-btn{color:#cbd2dd}
 <body>
 <div id="app">
 
-  <div class="banner" id="banner">
-    <span>✨</span>
-    <span class="copy">For just $5 – with 3-day limited-time trial of premium benefits. Full subscription includes a 50% discount</span>
-    <button class="plans-btn" onclick="openOverlay('plans-modal')">Explore plans</button>
-    <button class="x" onclick="dismissBanner()">×</button>
+  <div class="banner" id="banner" style="background:#0f172a;color:#f8fafc;border-bottom:1px solid #334155;">
+    <span>⚔️</span>
+    <span class="copy"><strong>DREAMFORGE × DREAM ENGINE (:20128)</strong> — 100% Free For Every Kid · 7 World-Builder Modes · 43 Art Styles · Sculpted BDO/Rohan 3D Action-MMORPG (Built with Google Gemini)</span>
+    <button class="plans-btn" style="background:#10b981;color:#052e16;border-color:#10b981;font-weight:700;" onclick="location.href='/'">▶ Play Live 3D World</button>
+    <button class="x" style="color:#94a3b8;" onclick="dismissBanner()">×</button>
   </div>
 
   <header>
-    <div class="logo" onclick="location.href='/world/new'"><span class="mark">⚒️</span> DREAMFORGE</div>
+    <div class="logo" onclick="location.href='/'"><span class="mark">⚒️</span> DREAMFORGE</div>
     <nav>
       <button class="tab active" data-tab="home" onclick="switchTab(this)">🏠 Home</button>
       <button class="tab" data-tab="showcase" onclick="switchTab(this)">🎨 Showcase</button>
@@ -388,13 +388,13 @@ body.dark .admin-btn{color:#cbd2dd}
 <script>
 /* ===== Data ===== */
 const MODES = [
-  { id: 'world-seed', label: 'World Seed', emoji: '🔮', sub: 'One sentence in, one world out.', cardline: 'Write one line of setting and get a whole world back', img: '../assets/world-seed.png', title: 'The Gilded Curse', subtitle: 'A web of power and fate', placeholder: 'A single heirloom changes hands across a divided pantheon…' },
-  { id: 'ip-jump', label: 'IP Jump', emoji: '🚪', sub: 'Step into a world you love.', cardline: 'Jump into a story you already know', img: '../assets/ip-jump.png', title: 'The Enchanted Hall', subtitle: 'Step into the story', placeholder: 'Drop into a familiar world and see what happens next.' },
-  { id: 'world-map', label: 'World Map', emoji: '🗺️', sub: 'Draw a line, the land appears.', cardline: 'Sketch borders and watch nations rise', img: '../assets/world-map.png', title: 'A Realm in Ink', subtitle: 'An illustrated map', placeholder: 'Name a realm. Its mountains, rivers and cities take shape.' },
-  { id: 'pov-video', label: 'POV Video', emoji: '🎬', sub: 'Shoot one shot, the rest tags along.', cardline: 'Shoot one shot, the rest tags along', img: '../assets/pov-video.png', title: 'Academy of Cats', subtitle: 'A first-person story', placeholder: 'Everyone at magic school wakes up as a cat. What happens next?' },
-  { id: 'roleplay', label: 'Roleplay', emoji: '🎭', sub: 'One character. One conversation.', cardline: 'Step into a character and start talking', img: '../assets/roleplay.png', title: 'A Quiet Carriage', subtitle: 'A slice-of-life scene', placeholder: 'Two strangers on a train start talking about a book. A quiet friendship begins.' },
-  { id: 'pixel-room', label: 'Pixel Room', emoji: '🧱', sub: 'Build a room, brick by brick.', cardline: 'Build a room you can walk through', img: '../assets/pixel-room.png', title: 'A Cozy Room', subtitle: 'Build it yourself', placeholder: 'Build the coziest room you can imagine and make it a home.' },
-  { id: 'scroll-world', label: 'Scroll World', emoji: '📜', sub: 'One scene, endlessly scrolling.', cardline: 'One scene, scrolling on forever', img: '../assets/scroll-world.png', title: 'The Long Corridor', subtitle: 'A gothic hall', placeholder: 'A hallway that goes on forever. What waits at the far end?' },
+  { id: 'world-seed', label: 'World Seed', emoji: '🔮', sub: 'One sentence in, one world out.', cardline: 'Write one line of setting and get a whole world back', img: './assets/world-seed.png', title: 'The Gilded Curse', subtitle: 'A web of power and fate', placeholder: 'A single heirloom changes hands across a divided pantheon…' },
+  { id: 'ip-jump', label: 'IP Jump', emoji: '🚪', sub: 'Step into a world you love.', cardline: 'Jump into a story you already know', img: './assets/ip-jump.png', title: 'The Enchanted Hall', subtitle: 'Step into the story', placeholder: 'Drop into a familiar world and see what happens next.' },
+  { id: 'world-map', label: 'World Map', emoji: '🗺️', sub: 'Draw a line, the land appears.', cardline: 'Sketch borders and watch nations rise', img: './assets/world-map.png', title: 'A Realm in Ink', subtitle: 'An illustrated map', placeholder: 'Name a realm. Its mountains, rivers and cities take shape.' },
+  { id: 'pov-video', label: 'POV Video', emoji: '🎬', sub: 'Shoot one shot, the rest tags along.', cardline: 'Shoot one shot, the rest tags along', img: './assets/pov-video.png', title: 'Academy of Cats', subtitle: 'A first-person story', placeholder: 'Everyone at magic school wakes up as a cat. What happens next?' },
+  { id: 'roleplay', label: 'Roleplay', emoji: '🎭', sub: 'One character. One conversation.', cardline: 'Step into a character and start talking', img: './assets/roleplay.png', title: 'A Quiet Carriage', subtitle: 'A slice-of-life scene', placeholder: 'Two strangers on a train start talking about a book. A quiet friendship begins.' },
+  { id: 'pixel-room', label: 'Pixel Room', emoji: '🧱', sub: 'Build a room, brick by brick.', cardline: 'Build a room you can walk through', img: './assets/pixel-room.png', title: 'A Cozy Room', subtitle: 'Build it yourself', placeholder: 'Build the coziest room you can imagine and make it a home.' },
+  { id: 'scroll-world', label: 'Scroll World', emoji: '📜', sub: 'One scene, endlessly scrolling.', cardline: 'One scene, scrolling on forever', img: './assets/scroll-world.png', title: 'The Long Corridor', subtitle: 'A gothic hall', placeholder: 'A hallway that goes on forever. What waits at the far end?' },
 ];
 
 const ALL_SKILLS = [
@@ -520,13 +520,16 @@ function toggleSkill(name,on){ on ? selectedSkills.add(name) : selectedSkills.de
 
 /* ===== Styles ===== */
 function renderStyles(){
-  const base = '../_ext/public.cohub.run/dev/s/9e9876c1-6e00-4e38-8859-8f2efdf6b7e6/style-library-v6-thumbnails/';
-  document.getElementById('style-grid').innerHTML = STYLES.map(s=>`
+  const fallbackImgs = MODES.map(m => m.img);
+  document.getElementById('style-grid').innerHTML = STYLES.map((s, idx)=>{
+    const imgSrc = fallbackImgs[idx % fallbackImgs.length];
+    const hue = (idx * 37) % 360;
+    return `
     <div class="style-cell ${selectedStyle===s?'selected':''}" onclick="pickStyle('${s}')">
-      <img src="${base}${s}/thumbnail.webp" alt="${s}" loading="lazy">
+      <img src="${imgSrc}" style="filter:hue-rotate(${hue}deg) contrast(1.08)" alt="${s}" loading="lazy">
       <div class="s-name">${s.replace(/-/g,' ')}</div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 function pickStyle(s){
   selectedStyle = s;

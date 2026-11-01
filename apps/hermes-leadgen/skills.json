@@ -75,5 +75,33 @@
     "description": "Maintains api.workflow.json and graphify-out/graph.json so all agents share a live map of skills, souls, and code.",
     "cli": "python -m graphify update . --force",
     "mandatory": true
+  },
+  {
+    "id": "dreamforge_world_seed",
+    "name": "Dreamforge: World Seed & 7-Mode World Builder (PR #55)",
+    "description": "Custom YouTube Automation & Game-Dev function: generates canonical DREAM Online 3D world seeds across 7 modes (World, Story, Roleplay, Comic,Video/Shorts <=59s, Character, Remix) and syncs with :20128/dreamforge.",
+    "cli": "npx tsx ops/cli-anything/dream-cli.ts dreamforge modes --json",
+    "mandatory": true
+  },
+  {
+    "id": "dreamforge_art_styles",
+    "name": "Dreamforge: 43 Art Styles & BDO/Rohan Character/Skill VFX Mapper",
+    "description": "Custom YouTube Automation & Game-Dev function: maps Dreamforge's 43 art styles onto sculpted BDO/Rohan 3D armor rigs, crescent slash arcs, shockwave rings, and <=59.0s Shorts thumbnails.",
+    "cli": "npx tsx ops/cli-anything/dream-cli.ts vfx cast --skill R --class crimson-dekan --theme bdo-black-spirit --json",
+    "mandatory": true
+  },
+  {
+    "id": "dreamforge_roleplay",
+    "name": "Dreamforge: Roleplay & Natural Female Voice (Aoede/Kore) Shorts Script",
+    "description": "Custom YouTube Automation & Game-Dev function: turns Dreamforge character cards and lore into <=58.5s YouTube Shorts scripts with 100% natural female voice narration (Aoede/Kore).",
+    "cli": "npx tsx ops/cli-anything/dream-cli.ts char list --json",
+    "mandatory": true
+  },
+  {
+    "id": "cli-anything",
+    "name": "CLI-Anything Text-In / Text-Out AI Team & Red/Tag/Triple-Team Shield",
+    "description": "Gives Gemini, Claude, Codex, Free Claude Code (:8082), and Hermes deterministic text-in/text-out CLI control over the entire game & admin dashboard plus Red-Team / Tag-Team / Triple-Team Kids Playground protection.",
+    "cli": "npx tsx ops/cli-anything/dream-cli.ts security run --mode triple-team --json",
+    "mandatory": true
   }
 ]
