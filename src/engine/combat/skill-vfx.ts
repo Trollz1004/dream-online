@@ -41,10 +41,14 @@ export interface ActionMmoClassProfile {
   };
 }
 
+export type SkillElementId = 'fire' | 'water' | 'wind' | 'earth';
+
 export interface SkillVfxThemePalette {
   id: SkillVfxThemeId;
   name: string;
   badge: string;
+  element: SkillElementId;
+  ribbonThicknessRatio: number; // Thin, fluid elemental ribbons (style > loudness)
   primarySlashRgb: [number, number, number];
   secondaryCoreRgb: [number, number, number];
   shockwaveRgb: [number, number, number];
@@ -58,55 +62,63 @@ export interface SkillVfxThemePalette {
 export const SKILL_VFX_THEMES: Record<SkillVfxThemeId, SkillVfxThemePalette> = {
   'ember-wyrm-crimson': {
     id: 'ember-wyrm-crimson',
-    name: 'Ember-Wyrm Sovereign (Molten Crimson & Solar Gold)',
-    badge: 'EMBER WYRM AWAKENING',
-    primarySlashRgb: [1.0, 0.24, 0.12],
-    secondaryCoreRgb: [1.0, 0.82, 0.22],
-    shockwaveRgb: [1.0, 0.48, 0.14],
-    lightningPillarRgb: [1.0, 0.72, 0.18],
-    phantomCloneRgb: [0.95, 0.28, 0.18],
-    aegisShieldRgb: [1.0, 0.78, 0.22],
+    name: 'Ember-Wyrm Sovereign (Fire — Warm Amber & Ember Curl)',
+    badge: 'FIRE · EMBER WYRM',
+    element: 'fire',
+    ribbonThicknessRatio: 0.42,
+    primarySlashRgb: [1.0, 0.34, 0.14],
+    secondaryCoreRgb: [1.0, 0.82, 0.28],
+    shockwaveRgb: [1.0, 0.48, 0.16],
+    lightningPillarRgb: [1.0, 0.72, 0.22],
+    phantomCloneRgb: [0.95, 0.34, 0.18],
+    aegisShieldRgb: [1.0, 0.78, 0.24],
     cssAccentHex: '#EF4444',
     cssGlowHex: '#F59E0B',
   },
   'nightveil-abyss': {
     id: 'nightveil-abyss',
-    name: 'Nightveil 100% Awakening (Abyssal Crimson-Violet)',
-    badge: 'NIGHTVEIL AWAKENING',
-    primarySlashRgb: [0.96, 0.16, 0.38],
-    secondaryCoreRgb: [0.72, 0.22, 1.0],
-    shockwaveRgb: [0.85, 0.18, 0.95],
-    lightningPillarRgb: [1.0, 0.15, 0.42],
-    phantomCloneRgb: [0.58, 0.18, 0.95],
-    aegisShieldRgb: [0.78, 0.35, 1.0],
-    cssAccentHex: '#F43F5E',
-    cssGlowHex: '#A855F7',
+    name: 'Tidal Nightveil Current (Water — Clear Turquoise & Seafoam)',
+    badge: 'WATER · TIDAL CURRENT',
+    element: 'water',
+    ribbonThicknessRatio: 0.38,
+    primarySlashRgb: [0.16, 0.78, 0.88],
+    secondaryCoreRgb: [0.76, 0.96, 1.0],
+    shockwaveRgb: [0.22, 0.84, 0.92],
+    lightningPillarRgb: [0.48, 0.92, 1.0],
+    phantomCloneRgb: [0.18, 0.68, 0.86],
+    aegisShieldRgb: [0.38, 0.88, 0.96],
+    cssAccentHex: '#06B6D4',
+    cssGlowHex: '#67E8F9',
   },
   'celestial-aether-gold': {
     id: 'celestial-aether-gold',
-    name: 'Celestial Solaris Aether (Solar Gold & Starlight Cyan)',
-    badge: 'SACRED AETHER',
-    primarySlashRgb: [1.0, 0.86, 0.25],
-    secondaryCoreRgb: [0.15, 0.92, 1.0],
-    shockwaveRgb: [1.0, 0.88, 0.35],
-    lightningPillarRgb: [0.22, 0.95, 1.0],
-    phantomCloneRgb: [0.25, 0.88, 1.0],
-    aegisShieldRgb: [1.0, 0.9, 0.35],
+    name: 'Amber-Dust Terra (Earth — Sunlit Sandstone & Leaf Motes)',
+    badge: 'EARTH · TERRA DUST',
+    element: 'earth',
+    ribbonThicknessRatio: 0.40,
+    primarySlashRgb: [0.88, 0.72, 0.42],
+    secondaryCoreRgb: [0.64, 0.86, 0.46],
+    shockwaveRgb: [0.82, 0.68, 0.40],
+    lightningPillarRgb: [0.92, 0.80, 0.48],
+    phantomCloneRgb: [0.74, 0.62, 0.38],
+    aegisShieldRgb: [0.88, 0.76, 0.44],
     cssAccentHex: '#FACC15',
-    cssGlowHex: '#22D3EE',
+    cssGlowHex: '#84CC16',
   },
   'venom-shadow-jade': {
     id: 'venom-shadow-jade',
-    name: 'Blood-Moon Shadow Tempest (Emerald Jade & Crimson)',
-    badge: 'SHADOW TEMPEST',
-    primarySlashRgb: [0.12, 0.98, 0.64],
-    secondaryCoreRgb: [0.95, 0.18, 0.35],
-    shockwaveRgb: [0.15, 0.92, 0.58],
-    lightningPillarRgb: [0.1, 1.0, 0.72],
-    phantomCloneRgb: [0.08, 0.82, 0.55],
-    aegisShieldRgb: [0.18, 0.95, 0.68],
+    name: 'Zephyr slipstream (Wind — Translucent Jade & Air Ribbons)',
+    badge: 'WIND · ZEPHYR SLIPSTREAM',
+    element: 'wind',
+    ribbonThicknessRatio: 0.34,
+    primarySlashRgb: [0.58, 0.94, 0.82],
+    secondaryCoreRgb: [0.88, 0.98, 0.96],
+    shockwaveRgb: [0.52, 0.90, 0.78],
+    lightningPillarRgb: [0.72, 0.96, 0.88],
+    phantomCloneRgb: [0.46, 0.84, 0.74],
+    aegisShieldRgb: [0.64, 0.94, 0.84],
     cssAccentHex: '#10B981',
-    cssGlowHex: '#F43F5E',
+    cssGlowHex: '#A7F3D0',
   },
 };
 
