@@ -42,8 +42,12 @@ import { GmControlModal } from './ui/GmControlModal.tsx';
 import { CrowdfundingShowcaseModal } from './ui/CrowdfundingShowcaseModal.tsx';
 import { SplitLandingAndScreensaver } from './ui/SplitLandingAndScreensaver.tsx';
 import { OpenUiGameDevStudioModal } from './ui/OpenUiGameDevStudioModal.tsx';
+import { AaaVisualWorldCanvas } from './ui/AaaVisualWorldCanvas.tsx';
 
 export default function App() {
+  const isLegacyWebgpuRequested =
+    typeof window !== 'undefined' && window.location.search.includes('legacyWebgpu=1');
+  const [useAaaVisualMode, setUseAaaVisualMode] = useState(!isLegacyWebgpuRequested);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const engineRef = useRef<DreamEngine | null>(null);
 
@@ -319,6 +323,10 @@ export default function App() {
     engineRef.current?.releaseControl();
     setIsSettingsOpen(true);
   };
+
+  if (useAaaVisualMode) {
+    return <AaaVisualWorldCanvas onOpenStudioDrawer={() => setUseAaaVisualMode(false)} />;
+  }
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-neutral-950 text-neutral-100 select-none font-sans">
