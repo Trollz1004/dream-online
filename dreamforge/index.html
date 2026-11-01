@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#0a0a0a"/>
+<link rel="icon" type="image/svg+xml" href="../brand/favicon.svg"/>
+<title>Dreamforge — AI World Builder & Game Generator</title>
+<meta name="description" content="Build a living AI world with Dreamforge"/>
+<style>
+
+
+
+
+
+
+:root{
+  --bg:#ffffff; --ink:#0a0a0a; --grey:#71717a; --line:#e4e4e7;
+  --accent:#0ea5e1; --accent-soft:#eff6ff; --purple:#8b5cf6;
+  --card:#111418; --gold:#eab308;
+}
+*{box-sizing:border-box;-webkit-font-smoothing:antialiased}
+html,body{margin:0;padding:0}
+body{font-family:'Figtree',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;overflow-x:hidden}
+#app{min-height:100vh;display:flex;flex-direction:column;background-image:radial-gradient(circle,#e5e5e5 1px,transparent 1px);background-size:24px 24px}
+
+/* ---- banner ---- */
+.banner{background:#FFEB7B;color:#0b0e13;padding:9px 18px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:14px;transition:max-height .25s ease, padding .25s ease, opacity .2s;overflow:hidden}
+.banner.collapsed{max-height:0;padding:0 18px;opacity:0}
+.banner .copy{flex:1;text-align:center}
+.banner .plans-btn{background:#ffffff;border:1px solid #0b0e13;padding:5px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.banner .plans-btn:hover{background:#0b0e13;color:#ffffff}
+.banner .x{cursor:pointer;font-size:16px;line-height:1;color:#0b0e13;background:none;border:none;padding:2px 4px}
+
+/* ---- header ---- */
+header{position:sticky;top:0;z-index:60;display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:rgba(255,255,255,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line);height:64px;transition:height .35s ease, box-shadow .35s ease, background .35s ease}
+header.scrolled{height:50px;background:rgba(255,255,255,.96);box-shadow:0 4px 24px rgba(0,0,0,.08)}
+header .logo, header nav, header .nav-right{transition:transform .35s ease, opacity .35s ease}
+header.scrolled .logo{transform:scale(.94)}
+header.scrolled nav .tab{font-size:13px}
+.logo{display:flex;align-items:center;gap:8px;font-size:20px;font-weight:800;letter-spacing:.5px;cursor:pointer;font-family:'Figtree',sans-serif}
+.logo .mark{font-size:22px}
+nav{display:flex;gap:2px}
+nav .tab{font-family:'Nunito Sans','Figtree',sans-serif;display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:14px;font-weight:700;color:#3f3f46;cursor:pointer;background:none;border:none}
+nav .tab:hover{background:#f3ecdf}
+nav .tab.active{background:var(--accent-soft);color:var(--accent)}
+.nav-right{display:flex;align-items:center;gap:10px}
+.signin-btn{background:#111418;color:#ffffff;border:none;padding:9px 16px;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:6px}
+.signin-btn:hover{background:#0b0e13}
+
+/* ---- hero ---- */
+main#hero{position:relative;min-height:155vh}
+#hero-inner{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 24px;will-change:transform,opacity;transform-origin:center center}
+.hero-headline{text-align:center;margin:0 0 2px}
+.hero-headline h1{font-family:'Anton',Impact,'Figtree',sans-serif;font-size:50px;font-weight:400;margin:0;letter-spacing:1px}
+.hero-headline .tag{display:inline-flex;align-items:center;gap:8px;background:var(--accent-soft);color:var(--accent);padding:4px 16px;border-radius:999px;font-size:32px;font-weight:600;margin:0 6px;font-family:'Figtree',sans-serif;text-transform:none}
+.hero-headline .tag .gem{color:var(--purple)}
+.subheadline{font-family:'Fraunces',Georgia,serif;font-style:italic;font-size:18px;color:var(--grey);text-align:center;margin:6px 0 16px}
+
+/* ---- carousel ---- */
+.carousel{position:relative;width:100%;max-width:900px;display:flex;align-items:center;justify-content:center;gap:14px}
+.flank-card{flex:0 0 175px;height:250px;border-radius:14px;overflow:hidden;position:relative;cursor:pointer;opacity:.6;transform:scale(.94);transition:all .3s ease;filter:blur(2px) brightness(.6)}
+.flank-card:hover{opacity:.8;transform:scale(.97)}
+.flank-card img{width:100%;height:100%;object-fit:cover}
+.flank-card::after{content:'';position:absolute;inset:0;background:rgba(0,0,0,.35)}
+.active-card{flex:0 0 440px;height:288px;border-radius:16px;overflow:hidden;position:relative;cursor:pointer;box-shadow:0 18px 40px rgba(0,0,0,.28);z-index:2}
+.active-card img{width:100%;height:100%;object-fit:cover}
+.active-card .overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05) 0%,rgba(0,0,0,.78) 100%)}
+.active-card .card-label{position:absolute;left:16px;bottom:14px;right:16px;color:#ffffff}
+.active-card .card-title{font-size:20px;font-weight:800;margin:0 0 2px}
+.active-card .card-sub{font-size:13px;color:#d4d4d8;margin:0}
+.active-card .try-chip{position:absolute;right:14px;bottom:14px;background:#ffffff;color:#0b0e13;border:none;padding:7px 14px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:4px}
+.active-card .try-chip:hover{background:#e4e4e7}
+.car-arrow{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:#ffffff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:#3f3f46;transition:all .15s;flex:0 0 38px}
+.car-arrow:hover{background:#0b0e13;color:#ffffff;border-color:#0b0e13}
+.car-dots{position:absolute;bottom:-26px;left:50%;transform:translateX(-50%);display:flex;gap:6px}
+.car-dots .dot{width:7px;height:7px;border-radius:50%;background:#d4d4d8;cursor:pointer;transition:all .2s}
+.car-dots .dot.active{background:var(--accent);width:18px;border-radius:4px}
+
+.existing-lore{position:absolute;right:28px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:6px;color:var(--accent);font-size:14px;font-weight:600;cursor:pointer;background:rgba(255,255,255,.8);padding:8px 12px;border-radius:8px;border:1px solid var(--line)}
+.existing-lore:hover{background:#ffffff}
+
+/* ---- input dock ---- */
+.dock{width:100%;max-width:640px;margin-top:38px}
+.input-tags{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.new-world-btn{display:flex;align-items:center;gap:6px;background:#111418;color:#ffffff;border:none;padding:8px 14px;border-radius:16px;font-size:13px;font-weight:600;cursor:pointer}
+.new-world-btn:hover{background:#0b0e13}
+.chip{display:inline-flex;align-items:center;gap:6px;background:#ffffff;border:1px solid var(--line);padding:7px 14px;border-radius:16px;font-size:13px;font-weight:500;cursor:default}
+.chip .chip-x{background:none;border:none;cursor:pointer;color:#a1a1aa;font-size:14px;padding:0;margin-left:2px}
+.chip .chip-x:hover{color:#0b0e13}
+.input-box{background:#ffffff;border:1px solid #d1d5db;border-radius:14px;padding:14px 16px;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+.input-box:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(14,165,225,.12)}
+textarea{width:100%;border:none;outline:none;resize:none;font-family:inherit;font-size:15px;color:#18181b;background:transparent;min-height:44px}
+textarea::placeholder{color:#a1a1aa}
+.input-footer{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.input-footer-left{display:flex;gap:6px}
+.tool-btn{display:flex;align-items:center;gap:6px;background:#f3ecdf;border:none;padding:7px 13px;border-radius:9px;font-size:13px;font-weight:600;color:#3f3f46;cursor:pointer}
+.tool-btn:hover{background:#e4e4e7}
+.tool-btn.selected{background:var(--accent-soft);color:var(--accent)}
+.tool-icon{padding:7px 9px;font-size:15px}
+.send-btn{width:38px;height:38px;border-radius:50%;background:#111418;color:#ffffff;border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center}
+.send-btn:hover{background:#0b0e13}
+.send-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* ---- overlay / modal ---- */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:100}
+.overlay.show{display:flex}
+.modal{background:#ffffff;border-radius:16px;padding:26px;width:480px;max-width:92vw;max-height:84vh;overflow:auto;box-shadow:0 24px 60px rgba(0,0,0,.3)}
+.modal h3{margin:0 0 4px;font-size:20px;font-weight:800}
+.modal .m-sub{color:var(--grey);font-size:13px;margin:0 0 18px}
+.modal-close{float:right;background:none;border:none;font-size:22px;cursor:pointer;color:#a1a1aa}
+
+/* skills */
+.skill-list{display:flex;flex-direction:column;gap:2px}
+.skill-row{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;cursor:pointer;font-size:14px;font-weight:500}
+.skill-row:hover{background:#f3ecdf}
+.skill-row input{accent-color:var(--accent);width:16px;height:16px}
+.skill-emoji{font-size:18px}
+
+/* style grid */
+.style-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.style-cell{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;cursor:pointer;border:2px solid transparent}
+.style-cell img{width:100%;height:100%;object-fit:cover}
+.style-cell .s-name{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.8));color:#ffffff;font-size:10px;padding:14px 6px 5px;text-align:center;line-height:1.1}
+.style-cell.selected{border-color:var(--accent);box-shadow:0 0 0 3px rgba(14,165,225,.25)}
+.style-cell.selected::after{content:"✓";position:absolute;top:6px;right:6px;background:var(--accent);color:#ffffff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+
+/* signin */
+.google-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#ffffff;border:1px solid var(--line);padding:12px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer}
+.google-btn:hover{background:#fafafa}
+.google-btn img{width:20px;height:20px}
+.divider{text-align:center;color:var(--grey);font-size:12px;margin:16px 0;position:relative}
+.divider::before,.divider::after{content:"";position:absolute;top:50%;width:42%;height:1px;background:var(--line)}
+.divider::before{left:0}.divider::after{right:0}
+
+/* plans */
+.plan-row{display:flex;justify-content:space-between;align-items:center;padding:14px;border:1px solid var(--line);border-radius:12px;margin-bottom:10px}
+.plan-row .p-name{font-weight:700;font-size:15px}
+.plan-row .p-price{color:var(--accent);font-weight:800}
+.plan-row .p-sub{color:var(--grey);font-size:12px}
+
+/* result */
+.result-inner{padding:18px;background:#111418;border-radius:14px;text-align:center;color:#ffffff}
+.result-inner img{max-width:100%;border-radius:10px;margin-bottom:12px}
+.spinner{width:40px;height:40px;border:4px solid #e4e4e7;border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* dropdown */
+.dropdown{position:absolute;background:#ffffff;border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.12);padding:6px;min-width:190px;z-index:90;display:none}
+.dropdown.show{display:block}
+.dropdown .dd-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500}
+.dropdown .dd-item:hover{background:#f3ecdf}
+.dropdown .dd-item .dd-emoji{font-size:16px}
+
+/* toast */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#111418;color:#ffffff;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:500;z-index:200;transition:transform .3s ease;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+#toast.show{transform:translateX(-50%) translateY(0)}
+
+
+/* ---- scroll sections ---- */
+.feature-section{min-height:100vh;padding:90px 24px 60px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;position:relative;z-index:5}
+.feature-section h2{font-family:'Anton',Impact,sans-serif;font-size:38px;font-weight:400;letter-spacing:1px;margin:0 0 6px}
+.feature-section .lead,.cta-section .lead{font-family:'Fraunces',Georgia,serif;font-style:italic;font-size:17px;color:var(--grey);margin:0 0 36px}
+.modes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px;max-width:1100px;width:100%}
+.mode-card{border-radius:14px;overflow:hidden;background:#ffffff;border:1px solid var(--line);cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.05);transition:transform .35s ease, box-shadow .35s ease;text-align:left}
+.mode-card:hover{transform:translateY(-6px) scale(1.025);box-shadow:0 18px 42px rgba(0,0,0,.16)}
+.mode-card img{width:100%;height:150px;object-fit:cover;display:block}
+.mode-card .mode-card-meta{padding:14px 16px}
+.mode-card strong{font-size:16px;display:flex;align-items:center;gap:8px}
+.mode-card p{color:var(--grey);font-size:13px;margin:6px 0 0;line-height:1.4}
+.cta-section{min-height:55vh;padding:80px 24px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.cta-section h2{font-family:'Anton',Impact,sans-serif;font-size:42px;font-weight:400;letter-spacing:1px;margin:0 0 16px}
+footer{padding:26px;text-align:center;color:var(--grey);font-size:12px;border-top:1px solid var(--line)}
+.reveal{opacity:0;transform:translateY(44px) scale(.97);transition:opacity .7s ease, transform .7s ease}
+.reveal.in{opacity:1;transform:none}
+body.dark .mode-card{background:#11151c;border-color:#262a33}
+body.dark header{background:rgba(15,19,25,.82)}
+body.dark header.scrolled{background:rgba(15,19,25,.96)}
+
+/* ---- dark mode ---- */
+body.dark{--bg:#0b0e13;--ink:#e6e8ec;--grey:#8b93a1;--line:#262a33;--accent:#22b8e6;--accent-soft:#153240;--purple:#a78bfa;--card:#0f1319}
+body.dark #app{background-image:radial-gradient(circle,#2a2f3a 1px,transparent 1px)}
+body.dark header{background:#0f1319;border-color:#262a33}
+body.dark nav .tab{color:#cbd2dd}
+body.dark nav .tab:hover{background:#1a1f29}
+body.dark .modal{background:#11151c;color:#e6e8ec}
+body.dark .modal-close{color:#5b6572}
+body.dark .input-box{background:#11151c;border-color:#2a2f3a}
+body.dark textarea{color:#e6e8ec}
+body.dark textarea::placeholder{color:#5b6572}
+body.dark .chip{background:#161b24;border-color:#2a2f3a}
+body.dark .chip .chip-x{color:#6b7480}
+body.dark .chip .chip-x:hover{color:#e6e8ec}
+body.dark .tool-btn{background:#1a1f29;color:#cbd2dd}
+body.dark .tool-btn:hover{background:#242a36}
+body.dark .dropdown{background:#11151c;border-color:#2a2f3a}
+body.dark .dropdown .dd-item:hover{background:#1a1f29}
+body.dark .skill-row:hover{background:#1a1f29}
+body.dark .google-btn{background:#161b24;border-color:#2a2f3a;color:#e6e8ec}
+body.dark .google-btn:hover{background:#1a1f29}
+body.dark .plan-row{border-color:#2a2f3a}
+body.dark .car-arrow{background:#161b24;border-color:#2a2f3a;color:#cbd2dd}
+body.dark .existing-lore{background:rgba(17,21,28,.85);border-color:#2a2f3a}
+body.dark .banner{background:#3d3a00;color:#e6e8ec}
+body.dark .banner .plans-btn{background:#161b24;color:#e6e8ec;border-color:#e6e8ec}
+.theme-toggle{width:38px;height:38px;border-radius:8px;background:#f3ecdf;border:1px solid var(--line);cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center}
+body.dark .theme-toggle{background:#1a1f29}
+.admin-btn{height:38px;padding:0 12px;border-radius:8px;background:transparent;border:1px solid var(--line);cursor:pointer;font-size:13px;font-weight:600;color:#3f3f46;display:flex;align-items:center;gap:4px}
+body.dark .admin-btn{color:#cbd2dd}
+.admin-badge{background:var(--accent);color:#ffffff;font-size:9px;padding:1px 5px;border-radius:6px;margin-left:2px}
+
+</style>
+<link rel="stylesheet" href="/_remake/fonts.css"></head>
+<body>
+<div id="app">
+
+  <div class="banner" id="banner">
+    <span>✨</span>
+    <span class="copy">For just $5 – with 3-day limited-time trial of premium benefits. Full subscription includes a 50% discount</span>
+    <button class="plans-btn" onclick="openOverlay('plans-modal')">Explore plans</button>
+    <button class="x" onclick="dismissBanner()">×</button>
+  </div>
+
+  <header>
+    <div class="logo" onclick="location.href='/world/new'"><span class="mark">⚒️</span> DREAMFORGE</div>
+    <nav>
+      <button class="tab active" data-tab="home" onclick="switchTab(this)">🏠 Home</button>
+      <button class="tab" data-tab="showcase" onclick="switchTab(this)">🎨 Showcase</button>
+      <button class="tab" data-tab="hub" onclick="switchTab(this)">🌐 World Hub</button>
+    </nav>
+    <div class="nav-right">
+      <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+      <button class="admin-btn" id="admin-btn" onclick="adminAction()">🔑 Admin</button>
+      <button class="signin-btn" onclick="openOverlay('signin-modal')">🚪 Sign In</button>
+    </div>
+  </header>
+
+  <main id="hero">
+    <div id="hero-inner">
+    <div class="hero-headline"><h1>Start with <span class="tag" id="mode-tag"><span class="gem">🔮</span> <span id="mode-tag-text">World Seed</span></span></h1></div>
+    <p class="subheadline" id="subheadline">One sentence in, one world out.</p>
+
+    <div class="carousel" id="carousel"></div>
+
+    <a class="existing-lore" onclick="importLore()">Existing lore? <span>↗</span></a>
+    <input type="file" id="lore-file" accept=".txt,.md,.json,.png,.jpg,.jpeg,.webp,.pdf" style="display:none">
+
+    <div class="dock">
+      <div class="input-tags">
+        <button class="new-world-btn" id="new-world-btn" onclick="toggleDropdown()">+ New world <span>▾</span></button>
+        <span class="chip" id="mode-chip"><span id="chip-text">World Seed</span> <button class="chip-x" onclick="clearMode()">×</button></span>
+        <span class="chip" id="style-chip" style="display:none"><span id="chip-style-text">Style</span> <button class="chip-x" onclick="clearStyle()">×</button></span>
+      </div>
+      <div class="input-box">
+        <textarea id="world-input" placeholder="input your world idea, or upload your world files" rows="2"></textarea>
+        <div class="input-footer">
+          <div class="input-footer-left">
+            <button class="tool-btn" id="skills-btn" onclick="openOverlay('skills-modal')">✨ Skills</button>
+            <button class="tool-btn tool-icon" id="style-btn" onclick="openOverlay('style-modal')" title="Visual style">🎨</button>
+            <button class="tool-btn tool-icon" id="refresh-btn" onclick="randomIdea()" title="Surprise me">🎲</button>
+          </div>
+          <button class="send-btn" id="send-btn" onclick="generate()">↑</button>
+        </div>
+      </div>
+    </div>
+    </div>
+  </main>
+
+  <!-- Feature section: the 7 modes -->
+  <section class="feature-section reveal" id="modes-section">
+    <h2>Seven ways to build a world</h2>
+    <p class="lead">Pick a starting point — every one unfolds into something of your own.</p>
+    <div class="modes-grid" id="modes-grid"></div>
+  </section>
+
+  <!-- CTA section -->
+  <section class="cta-section reveal">
+    <h2>Build your first world</h2>
+    <p class="lead">One line in, a whole world out. Start free.</p>
+    <button class="signin-btn" style="font-size:16px;padding:12px 24px" onclick="document.getElementById('hero').scrollIntoView({behavior:'smooth'})">⬆ Back to the studio</button>
+  </section>
+
+  <footer>Dreamforge — AI World Builder &amp; Game Generator · Built with Gemini · &copy; 2026</footer>
+</div>
+
+<!-- New world dropdown -->
+<div class="dropdown" id="new-world-dropdown"></div>
+
+<!-- Skills modal -->
+<div class="overlay" id="skills-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeOverlay('skills-modal')">×</button>
+    <h3>Choose your Skills</h3>
+    <p class="m-sub">Attach capabilities that shape how your world is built.</p>
+    <div class="skill-list" id="skill-list"></div>
+    <div style="margin-top:16px;text-align:right">
+      <button class="send-btn" style="width:auto;border-radius:10px;padding:10px 18px" onclick="closeOverlay('skills-modal')">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Style library modal -->
+<div class="overlay" id="style-modal">
+  <div class="modal" style="width:620px">
+    <button class="modal-close" onclick="closeOverlay('style-modal')">×</button>
+    <h3>Visual Style</h3>
+    <p class="m-sub">Pick how your world looks.</p>
+    <div class="style-grid" id="style-grid"></div>
+  </div>
+</div>
+
+<!-- Sign in modal -->
+<div class="overlay" id="signin-modal">
+  <div class="modal" style="width:400px">
+    <button class="modal-close" onclick="closeOverlay('signin-modal')">×</button>
+    <h3>Sign in to Dreamforge</h3>
+    <p class="m-sub">Continue to build and remix worlds.</p>
+    <button class="google-btn" onclick="googleSignIn()"><img src="../_ext/accounts.google.com/gsi-static/google-logo.png" alt="Google"> Continue with Google</button>
+    <div class="divider">or</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <input placeholder="Email address" style="padding:12px;border:1px solid var(--line);border-radius:10px;font-size:14px">
+      <button class="signin-btn" style="justify-content:center" onclick="emailSignIn()">Continue with email</button>
+    </div>
+  </div>
+</div>
+
+<!-- Plans modal -->
+<div class="overlay" id="plans-modal">
+  <div class="modal" style="width:460px">
+    <button class="modal-close" onclick="closeOverlay('plans-modal')">×</button>
+    <h3>Choose your plan</h3>
+    <p class="m-sub">Every plan starts with a 3-day trial.</p>
+    <div class="plan-row"><div><div class="p-name">Free</div><div class="p-sub">3 worlds, basic styles</div></div><div class="p-price">$0</div></div>
+    <div class="plan-row" style="border-color:var(--accent);box-shadow:0 0 0 3px rgba(14,165,225,.12)"><div><div class="p-name">Plus</div><div class="p-sub">Unlimited worlds · all styles</div></div><div class="p-price">$5<span style="font-size:12px;color:var(--grey)">/mo</span></div></div>
+    <div class="plan-row"><div><div class="p-name">Pro</div><div class="p-sub">4K exports · priority queue</div></div><div class="p-price">$20<span style="font-size:12px;color:var(--grey)">/mo</span></div></div>
+    <div style="text-align:center;color:var(--grey);font-size:12px;margin-top:10px">50% off yearly · cancel anytime</div>
+  </div>
+</div>
+
+<!-- Result modal -->
+<div class="overlay" id="result-modal">
+  <div class="modal" style="width:520px">
+    <button class="modal-close" onclick="closeOverlay('result-modal')">×</button>
+    <h3 id="result-title">Building your world…</h3>
+    <p class="m-sub" id="result-sub">This usually takes under 30 seconds.</p>
+    <div class="result-inner" id="result-body">
+      <div class="spinner"></div>
+      <div id="result-text">Weaving your seed into a living world…</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Admin login -->
+<div class="overlay" id="admin-modal">
+  <div class="modal" style="width:380px">
+    <button class="modal-close" onclick="closeOverlay('admin-modal')">×</button>
+    <h3>Admin login</h3>
+    <p class="m-sub">Dreamforge control panel.</p>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <input id="admin-user" placeholder="Username" autocomplete="username" style="padding:12px;border:1px solid var(--line);border-radius:10px;font-size:14px;background:var(--bg);color:var(--ink)">
+      <input id="admin-pass" type="password" placeholder="Password" autocomplete="current-password" style="padding:12px;border:1px solid var(--line);border-radius:10px;font-size:14px;background:var(--bg);color:var(--ink)">
+      <button class="signin-btn" style="justify-content:center" onclick="adminLogin()">Sign in</button>
+    </div>
+    <div style="margin-top:12px;color:var(--grey);font-size:11px">Demo client-side auth — replace with real server auth before production.</div>
+  </div>
+</div>
+
+<!-- Admin panel -->
+<div class="overlay" id="admin-panel">
+  <div class="modal" style="width:420px">
+    <button class="modal-close" onclick="closeOverlay('admin-panel')">×</button>
+    <h3>⚙️ Admin — Dreamforge</h3>
+    <p class="m-sub">Administrator controls.</p>
+    <div class="skill-list">
+      <a class="dd-item" href="/_remake/swap/" target="_blank">🖼️ Remake swap board</a>
+      <a class="dd-item" href="/_remake/" target="_blank">🔀 Original vs remake</a>
+      <div class="dd-item" onclick="toggleTheme()">🌙 Toggle dark mode</div>
+      <div class="dd-item" onclick="resetSite()">🧹 Reset session data</div>
+      <div class="dd-item" onclick="adminSignOut()">🚪 Sign out admin</div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+
+<script>
+/* ===== Data ===== */
+const MODES = [
+  { id: 'world-seed', label: 'World Seed', emoji: '🔮', sub: 'One sentence in, one world out.', cardline: 'Write one line of setting and get a whole world back', img: '../assets/world-seed.png', title: 'The Gilded Curse', subtitle: 'A web of power and fate', placeholder: 'A single heirloom changes hands across a divided pantheon…' },
+  { id: 'ip-jump', label: 'IP Jump', emoji: '🚪', sub: 'Step into a world you love.', cardline: 'Jump into a story you already know', img: '../assets/ip-jump.png', title: 'The Enchanted Hall', subtitle: 'Step into the story', placeholder: 'Drop into a familiar world and see what happens next.' },
+  { id: 'world-map', label: 'World Map', emoji: '🗺️', sub: 'Draw a line, the land appears.', cardline: 'Sketch borders and watch nations rise', img: '../assets/world-map.png', title: 'A Realm in Ink', subtitle: 'An illustrated map', placeholder: 'Name a realm. Its mountains, rivers and cities take shape.' },
+  { id: 'pov-video', label: 'POV Video', emoji: '🎬', sub: 'Shoot one shot, the rest tags along.', cardline: 'Shoot one shot, the rest tags along', img: '../assets/pov-video.png', title: 'Academy of Cats', subtitle: 'A first-person story', placeholder: 'Everyone at magic school wakes up as a cat. What happens next?' },
+  { id: 'roleplay', label: 'Roleplay', emoji: '🎭', sub: 'One character. One conversation.', cardline: 'Step into a character and start talking', img: '../assets/roleplay.png', title: 'A Quiet Carriage', subtitle: 'A slice-of-life scene', placeholder: 'Two strangers on a train start talking about a book. A quiet friendship begins.' },
+  { id: 'pixel-room', label: 'Pixel Room', emoji: '🧱', sub: 'Build a room, brick by brick.', cardline: 'Build a room you can walk through', img: '../assets/pixel-room.png', title: 'A Cozy Room', subtitle: 'Build it yourself', placeholder: 'Build the coziest room you can imagine and make it a home.' },
+  { id: 'scroll-world', label: 'Scroll World', emoji: '📜', sub: 'One scene, endlessly scrolling.', cardline: 'One scene, scrolling on forever', img: '../assets/scroll-world.png', title: 'The Long Corridor', subtitle: 'A gothic hall', placeholder: 'A hallway that goes on forever. What waits at the far end?' },
+];
+
+const ALL_SKILLS = [
+  { emoji:'🗺️', name:'Map & Geography', desc:'Terrain, nations, borders, routes.' },
+  { emoji:'👤', name:'Character Creation', desc:'Names, backstories, reasons to care.' },
+  { emoji:'💬', name:'Dialogue Engine', desc:'Distinct, natural voices per character.' },
+  { emoji:'⚔️', name:'Combat System', desc:'Balanced action with real stakes.' },
+  { emoji:'🪄', name:'Magic System', desc:'Rules that keep the fantastic believable.' },
+  { emoji:'🏛️', name:'Factions & Politics', desc:'Alliances, power, and betrayals.' },
+  { emoji:'📜', name:'Lore & History', desc:'The past that shapes the present.' },
+  { emoji:'🌦️', name:'Weather & Ecology', desc:'Living climates and ecosystems.' },
+  { emoji:'🎵', name:'Music & Ambience', desc:'Sound that sets the mood.' },
+  { emoji:'🎥', name:'Camera & Cinematics', desc:'Shots, angles, and pacing for video.' },
+  { emoji:'🪙', name:'Economy & Trade', desc:'Currencies, markets, resources.' },
+  { emoji:'💡', name:'Lighting & Atmosphere', desc:'Mood through light and shadow.' },
+  { emoji:'⚡', name:'Procedural Events', desc:'Emergent moments that surprise.' },
+];
+
+const MODE_SKILLS = {
+  'world-seed':   ['Map & Geography','Character Creation','Lore & History','Magic System','Factions & Politics','Weather & Ecology'],
+  'ip-jump':      ['Character Creation','Dialogue Engine','Lore & History','Factions & Politics'],
+  'world-map':    ['Map & Geography','Weather & Ecology','Factions & Politics','Economy & Trade'],
+  'pov-video':    ['Camera & Cinematics','Music & Ambience','Lighting & Atmosphere','Dialogue Engine'],
+  'roleplay':     ['Dialogue Engine','Character Creation','Music & Ambience'],
+  'pixel-room':   ['Lighting & Atmosphere','Character Creation','Weather & Ecology'],
+  'scroll-world': ['Weather & Ecology','Music & Ambience','Camera & Cinematics','Procedural Events'],
+};
+
+const STYLES = [
+  'aged-paper-painting','american-comics','animation-sketch','anime-cel-painted-key-art',
+  'bold-line-comic','broad-brush-painting','cel-shaded-3d-game','cel-shading',
+  'clean-black-and-white-manga','clean-line-anime','commercial-game-painterly','crayon-watercolor',
+  'east-asian-grace-3d-animation','east-asian-style-acg','flat-webtoon','grainy-print',
+  'graphic-color-block','high-contrast-manga-ink','high-contrast-neon','idol-semi-3d-painterly',
+  'ink-gesture-wash','journal-doodle','line-scribble','marker-style',
+  'minimal-geometric-graphic','monochrome-ink-wash','pixel-art','realistic-3d-render',
+  'retro-halftone-comic','rough-ink-print','semi-realistic-painterly','soft-edge-pastel-airbrush',
+  'soft-flat-color','soft-polished-webtoon','soft-tone-brushwork','stop-motion-animation',
+  'structure-flat-cel','stuffed-plush-rendering','stylized-semi-real-3d-game','tenebrist-painterly',
+  'three-color-cutout-graphic','toy-figure-rendering','watercolor-sketch',
+];
+
+let currentMode = 1; // roleplay is index 1? no — start on world-seed (index 0)
+currentMode = 0;
+let selectedSkills = new Set();
+function resetSkillsForMode(){ selectedSkills = new Set((MODE_SKILLS[MODES[currentMode].id] || [])); }
+let selectedStyle = null;
+let autoTimer = null;
+
+/* ===== Carousel render ===== */
+function wrap(idx){ return (idx + MODES.length) % MODES.length; }
+function renderCarousel(){
+  const c = document.getElementById('carousel');
+  const prev = wrap(currentMode - 1), next = wrap(currentMode + 1);
+  const mPrev = MODES[prev], mCur = MODES[currentMode], mNext = MODES[next];
+  c.innerHTML = `
+    <button class="car-arrow" onclick="nudge(-1)" aria-label="Previous">‹</button>
+    <div class="flank-card" onclick="goTo(${prev})"><img src="${mPrev.img}" alt="${mPrev.label}"></div>
+    <div class="active-card" onclick="tryMode()">
+      <img src="${mCur.img}" alt="${mCur.label}">
+      <div class="overlay"></div>
+      <div class="card-label">
+        <div class="card-title">${mCur.label}</div>
+        <div class="card-sub">${mCur.cardline}</div>
+      </div>
+      <button class="try-chip" onclick="event.stopPropagation();tryMode()">TRY IT ↗</button>
+    </div>
+    <div class="flank-card" onclick="goTo(${next})"><img src="${mNext.img}" alt="${mNext.label}"></div>
+    <button class="car-arrow" onclick="nudge(1)" aria-label="Next">›</button>
+    <div class="car-dots">${MODES.map((m,i)=>`<div class="dot ${i===currentMode?'active':''}" onclick="goTo(${i})"></div>`).join('')}</div>
+  `;
+  syncMode();
+}
+function nudge(d){ goTo(wrap(currentMode + d)); }
+function goTo(i){ currentMode = i; resetSkillsForMode(); renderCarousel(); }
+function tryMode(){ toast('Selected: ' + MODES[currentMode].label + ' — type below to begin'); document.getElementById('world-input').focus(); }
+
+/* sync headline + chip */
+function syncMode(){
+  const m = MODES[currentMode];
+  document.getElementById('mode-tag-text').textContent = m.label;
+  document.getElementById('subheadline').textContent = m.sub;
+  document.getElementById('chip-text').textContent = m.label;
+}
+function clearMode(){
+  document.getElementById('mode-chip').style.display = 'none';
+  toast('Mode cleared');
+}
+
+/* ===== Dropdown ===== */
+function toggleDropdown(){
+  const d = document.getElementById('new-world-dropdown');
+  if(d.classList.contains('show')){ d.classList.remove('show'); return; }
+  // build fresh
+  d.innerHTML = MODES.map((m,i)=>`
+    <div class="dd-item" onclick="goTo(${i});hideDropdown()"><span class="dd-emoji">${m.emoji}</span> ${m.label}</div>
+  `).join('') + `<div class="dd-item" onclick="newBlankWorld()"><span class="dd-emoji">✨</span> Blank world</div>`;
+  const btn = document.getElementById('new-world-btn');
+  const r = btn.getBoundingClientRect();
+  d.style.left = r.left + 'px';
+  d.style.top = (r.bottom + 6) + 'px';
+  d.classList.add('show');
+}
+function hideDropdown(){ document.getElementById('new-world-dropdown').classList.remove('show'); }
+function newBlankWorld(){ clearMode(); hideDropdown(); document.getElementById('world-input').value=''; toast('Blank world started — describe it below'); document.getElementById('world-input').focus(); }
+
+/* ===== Skills ===== */
+function isAdmin(){ return localStorage.getItem('df-admin') === '1'; }
+function renderSkills(){
+  const modeId = MODES[currentMode].id;
+  const defaults = MODE_SKILLS[modeId] || [];
+  defaults.forEach(n => selectedSkills.add(n));   // preload the card's own skills
+  const visible = isAdmin() ? ALL_SKILLS : ALL_SKILLS.filter(s => defaults.includes(s.name));
+  const list = visible.length ? visible : ALL_SKILLS;
+  const limited = !isAdmin();
+  document.getElementById('skill-list').innerHTML = list.map(s=>`
+    <label class="skill-row"><input type="checkbox" ${selectedSkills.has(s.name)?'checked':''} onchange="toggleSkill('${s.name}',this.checked)"> <span class="skill-emoji">${s.emoji}</span> <span><strong>${s.name}</strong><small style="display:block;color:var(--grey);font-size:11px;font-weight:400">${s.desc}</small></span></label>
+  `).join('') + (limited
+    ? `<div style="margin-top:10px;padding:9px 12px;border-radius:8px;background:var(--accent-soft);color:var(--grey);font-size:11px">🔒 ${defaults.length} skills for ${MODES[currentMode].label}. The full ${ALL_SKILLS.length} unlock on a paid plan.</div>`
+    : `<div style="margin-top:10px;padding:9px 12px;border-radius:8px;background:rgba(234,179,8,.12);color:var(--gold);font-size:11px;font-weight:600">✨ Admin — all ${ALL_SKILLS.length} skills unlocked, no limits.</div>`);
+}
+function toggleSkill(name,on){ on ? selectedSkills.add(name) : selectedSkills.delete(name); }
+
+/* ===== Styles ===== */
+function renderStyles(){
+  const base = '../_ext/public.cohub.run/dev/s/9e9876c1-6e00-4e38-8859-8f2efdf6b7e6/style-library-v6-thumbnails/';
+  document.getElementById('style-grid').innerHTML = STYLES.map(s=>`
+    <div class="style-cell ${selectedStyle===s?'selected':''}" onclick="pickStyle('${s}')">
+      <img src="${base}${s}/thumbnail.webp" alt="${s}" loading="lazy">
+      <div class="s-name">${s.replace(/-/g,' ')}</div>
+    </div>
+  `).join('');
+}
+function pickStyle(s){
+  selectedStyle = s;
+  renderStyles();
+  const chip = document.getElementById('style-chip');
+  chip.style.display = 'inline-flex';
+  document.getElementById('chip-style-text').textContent = '🎨 ' + s.replace(/-/g,' ');
+  closeOverlay('style-modal');
+  toast('Style: ' + s.replace(/-/g,' '));
+}
+function clearStyle(){ selectedStyle=null; document.getElementById('style-chip').style.display='none'; }
+
+/* ===== Generate ===== */
+function generate(){
+  const text = document.getElementById('world-input').value.trim();
+  const m = MODES[currentMode];
+  if(!m){ toast('Pick a mode first'); return; }
+  // open result modal in loading state
+  openOverlay('result-modal');
+  document.getElementById('result-title').textContent = 'Building your world…';
+  document.getElementById('result-sub').textContent = MODES[currentMode].label + (selectedStyle ? ' · ' + selectedStyle.replace(/-/g,' ') : '') + (selectedSkills.size ? ' · ' + selectedSkills.size + ' skills' : '');
+  document.getElementById('result-body').innerHTML = `<div class="spinner"></div><div id="result-text">${text || 'Weaving your seed into a living world…'}</div>`;
+  const btn = document.getElementById('send-btn'); btn.disabled = true;
+  setTimeout(()=>{
+    document.getElementById('result-title').textContent = 'Ready!';
+    document.getElementById('result-sub').textContent = m.title + ' generated.';
+    document.getElementById('result-body').innerHTML = `
+      <img src="${m.img}" alt="${m.title}">
+      <div id="result-text" style="font-size:14px;color:#d4d4d8">${m.title} — ${m.subtitle}. ${text ? 'Based on: "'+text+'"' : ''}</div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:14px">
+        <button class="try-chip" style="position:static" onclick="closeOverlay('result-modal');toast('Opening ' + m.label + ' studio…')">Open in Studio</button>
+        <button class="try-chip" style="position:static;background:#3f3f46;color:#ffffff" onclick="closeOverlay('result-modal')">Keep editing</button>
+      </div>`;
+    btn.disabled = false;
+  }, 1800);
+}
+function randomIdea(){
+  const ideas = ['A city where memories are traded as currency.','The last dragon has a day job at a coffee shop.','Two stars fall in love across a billion light years.','A library that contains every book never written.'];
+  document.getElementById('world-input').value = ideas[Math.floor(Math.random()*ideas.length)];
+  toast('Idea dropped in — hit the arrow to build it');
+}
+
+/* ===== Side actions ===== */
+function dismissBanner(){ document.getElementById('banner').classList.add('collapsed'); }
+function switchTab(el){
+  document.querySelectorAll('nav .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  toast(el.dataset.tab === 'home' ? 'You are home' : 'Navigating to ' + el.dataset.tab + '…');
+}
+function importLore(){ document.getElementById('lore-file').click(); }
+document.getElementById('lore-file').addEventListener('change', e=>{
+  const f = e.target.files[0];
+  if(f){ toast('Loaded lore: ' + f.name + ' (' + (f.size/1024).toFixed(1) + ' KB)'); }
+});
+function googleSignIn(){ toast('Redirecting to Google sign-in…'); }
+function emailSignIn(){ closeOverlay('signin-modal'); toast('Check your inbox for a magic link'); }
+
+/* ===== Overlays ===== */
+function openOverlay(id){
+  if(id==='skills-modal') renderSkills();
+  if(id==='style-modal') renderStyles();
+  document.getElementById(id).classList.add('show');
+}
+function closeOverlay(id){ document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('show'); }));
+
+/* ===== Toast ===== */
+let toastTimer=null;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+/* ===== Autoplay carousel ===== */
+function startAuto(){ autoTimer = setInterval(()=>nudge(1), 4200); }
+function stopAuto(){ clearInterval(autoTimer); }
+document.getElementById('carousel').addEventListener('mouseenter', stopAuto);
+document.getElementById('carousel').addEventListener('mouseleave', startAuto);
+
+
+/* ===== Theme toggle ===== */
+function toggleTheme(){
+  const dark = document.body.classList.toggle('dark');
+  localStorage.setItem('df-theme', dark ? 'dark' : 'light');
+  document.getElementById('theme-toggle').textContent = dark ? '☀️' : '🌙';
+  document.getElementById('theme-toggle').title = dark ? 'Light mode' : 'Dark mode';
+}
+
+/* ===== Admin ===== */
+const ADMIN_USER = 'admin';
+const ADMIN_PASS = 'dreamforge2026';
+function adminAction(){
+  if(localStorage.getItem('df-admin') === '1'){ openOverlay('admin-panel'); }
+  else { openOverlay('admin-modal'); }
+}
+function adminLogin(){
+  const u = document.getElementById('admin-user').value.trim();
+  const p = document.getElementById('admin-pass').value;
+  if(u === ADMIN_USER && p === ADMIN_PASS){
+    localStorage.setItem('df-admin','1');
+    closeOverlay('admin-modal');
+    openOverlay('admin-panel');
+    document.getElementById('admin-btn').innerHTML = '🔑 Admin<span class="admin-badge">✓</span>';
+    toast('Admin signed in');
+  } else {
+    toast('Invalid credentials');
+  }
+}
+function adminSignOut(){
+  localStorage.removeItem('df-admin');
+  closeOverlay('admin-panel');
+  document.getElementById('admin-btn').innerHTML = '🔑 Admin';
+  toast('Admin signed out');
+}
+function resetSession(){
+  localStorage.clear();
+  closeOverlay('admin-panel');
+  toast('Session data cleared');
+}
+
+/* init theme + admin badge */
+(function initPrefs(){
+  if(localStorage.getItem('df-theme') === 'dark'){
+    document.body.classList.add('dark');
+    document.getElementById('theme-toggle').textContent = '☀️';
+    document.getElementById('theme-toggle').title = 'Light mode';
+  }
+  if(localStorage.getItem('df-admin') === '1'){
+    document.getElementById('admin-btn').innerHTML = '🔑 Admin<span class="admin-badge">✓</span>';
+  }
+})();
+
+
+/* ===== Scroll zoom + header motion ===== */
+const heroInner = document.getElementById('hero-inner');
+const headerEl = document.querySelector('header');
+let curScale = 1, curOpacity = 1, tScale = 1, tOpacity = 1;
+function onScroll(){
+  const sy = window.scrollY, vh = window.innerHeight || 1;
+  const p = Math.min(sy / vh, 1);   // 0..1 over first viewport
+  const scale = 1 + p * 0.7;        // zoom INTO the hero as you scroll
+  const op = 1 - p * 0.75;          // fade it out
+  heroInner.style.transform = 'scale(' + scale.toFixed(4) + ')';
+  heroInner.style.opacity = op.toFixed(4);
+  headerEl.classList.toggle('scrolled', sy > 24);
+}
+window.addEventListener('scroll', onScroll, { passive:true });
+onScroll();
+
+/* ===== Modes grid (features section) ===== */
+function renderModesGrid(){
+  const g = document.getElementById('modes-grid');
+  g.innerHTML = MODES.map((m,i)=>`
+    <div class="mode-card reveal" onclick="goTo(${i});document.getElementById('hero').scrollIntoView({behavior:'smooth'})">
+      <img src="${m.img}" alt="${m.label}">
+      <div class="mode-card-meta"><strong><span>${m.emoji}</span> ${m.label}</strong><p>${m.sub}</p></div>
+    </div>`).join('');
+}
+
+/* ===== Reveal on scroll ===== */
+let io;
+function wireReveals(){
+  if(!('IntersectionObserver' in window)){ document.querySelectorAll('.reveal').forEach(e=>e.classList.add('in')); return; }
+  io = new IntersectionObserver((es)=>{ es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } }); }, { threshold:0.15 });
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+}
+
+/* init */
+resetSkillsForMode();
+renderCarousel();
+renderSkills();
+renderStyles();
+renderModesGrid();
+wireReveals();
+setTimeout(startAuto, 6000);
+
+</script>
+</body>
+</html>
