@@ -170,3 +170,139 @@ otion_notion MCP (DAO LAUNCH: 2ca4be9-d37e-821c-bf0b-01b2facf2bc7 & 28ca4be9-d3
 ## 2026-10-31 21:19 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
 - Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
 - Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-31 22:08 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-31 22:09 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-31 22:25 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-31 23:26 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-31 23:50 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-31 23:52 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-31 23:54 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-31 23:55 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-31 23:56 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-31 23:57 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-31 23:57 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-10-31 23:58 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-11-01 00:03 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-11-01 00:04 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-11-01 00:04 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-11-01 00:07 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-11-01 00:07 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-11-01 00:11 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-11-01 00:12 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-11-01 00:36 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-11-01 00:37 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-11-01 00:46 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-11-01 01:08 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-11-01 01:47 -04:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-11-01 01:39 -05:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## [2026-11-01 02:01] VISUAL BAR LOCKED: AAA PBR + Blender 5.2.3 GLB + GLTF Ranger + Diablo 3 / BDO / Manhattan + Oathcall (9aeebf)
+- **Founder Ruling (Joshua Coleman)**: Confirmed major visual improvement. **Never revert :20128 to untextured procedural grey grids or capsule primitives.**
+- **Default Viewport (src/ui/AaaVisualWorldCanvas.tsx)**:
+  - Uses Three.js + UnrealBloomPass + ACESFilmicToneMapping + 2048x2048 soft shadows + 1K PBR normal/roughness/diffuse maps (ock_face_03, concrete_wall_003, metal_plate_02, ed_laterite_soil_stones, sphalt_02).
+  - Loads real rigged & normal-mapped Male_Ranger.gltf + UniversalBaseCharacter.glb (45 skeletal animations) + headless Blender 5.2.3 LTS forged inferno-boss-titan.glb and sovereign-greatsword.glb.
+  - 4 instant playable worlds (1: Inferno Keep (Diablo 3) � 2: Golden Desert (BDO) � 3: Sunset Manhattan (City) � 4: Oathcall + Blue-Flame Sigil) + dreamforge-showcase.html side-by-side proof.
+  - All 50/50 authoritative engine/PvP tests (	ests/oathcall-township-regalia.test.ts + engine suite) pass with  lint errors.
+
+## 2026-11-01 02:02 -05:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-11-01 03:35 -05:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-11-01 03:36 -05:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## 2026-11-01 03:39 -05:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory
+
+## Session Update — 2026-11-01 (Gemini 4 Argon High Reasoning — Alienware .40)
+- **Glitched Profile Purged**: Removed orphaned `Win32_UserProfile` SID and `C:\Users\NSFW_BOTS` 100% via `ops/node/purge-glitched-profile.ps1`.
+- **Free Claude Code (:8082/admin) & All 7 Alienware Services Auto-Boot Fixed**: Updated `ops/node/boot-alienware-services.ps1` to launch `free_claude_code.cli.entrypoints:serve(['--auto-started'])` via the signed Python 3.14.10 interpreter so Windows Smart App Control never blocks `fcc-server` on reboot. Verified `:8082/admin`, `:8390`, `:8392`, `:20128`, `:9127`, `:9133`, and `:27123` are all `UP`.
+- **Unified Rulebooks & JSON Workflows Synchronized**: Updated `README.md`, `AGENTS.md`, `AGENT.md`, `CLAUDE.md`, `GEMINI.md`, `GEMINI_SPARK_INSTRUCTIONS.md`, `api.workflow.json`, `workflow_api.json`, and `memory/obsidian-vault/Agent Universal/agent-workflow-graphy.json` to document:
+  1. **Graphy for AI Codebase Sync & Search to Repo-Specific Nodes** (`/api/graphy/codebase`, `graphify-out/graph.json`, `api.workflow.json`, `agent-workflow-graphy.json`) so zero duplicate files are created during Gordon's duplicate-file audits.
+  2. **Two Canonical Monorepos + Standalone `Misses Trollz`**: `Trollz1004/dream-online` (Unified Game Monorepo on Alienware `.40`) and `Trollz1004/ANTIGRAVITY` (Platform/Ops Monorepo on T5500 `.15` & Sabretooth `.8`), plus standalone `Misses Trollz`.
+  3. **One and Only One `/mo` Synced Obsidian Vault (`Antigravity`, `1 GB` Cap)**: All 3 nodes connect their local folders (`C:\DREAM\Antigravity`, `C:\ANTIGRAVITY\Antigravity`, `C:\Ai-Dream-Team\Antigravity`) to the single `/mo` remote vault and write to separated `<Node>/<agent>-to-<agent>.md` files (including `Alienware/gordon-to-gordon.md`).
+
+## 2026-11-01 18:42 -05:00 | node: Alienware | use case: Autonomous session checkpoint & multi-harness sync
+- Verified 3-node ports, 1 synced Obsidian vault (Alienware 9f7e513d0604b00d, T5500 518a720fa231c3cc, Sabretooth c5231ee3994c364e), 13/13 multi-harness skills, api.workflow.json, and Shared ai-memory (192.168.0.15:49374).
+- Backups mirrored: [[00 HOME]] | Shared ai-memory (192.168.0.15:49374) | Graphy | OpenViking (viking://dream/Alienware/gemini) | Supabase | Supermemory

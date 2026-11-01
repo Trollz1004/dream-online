@@ -11,7 +11,8 @@
 
 $ErrorActionPreference = "SilentlyContinue"
 $nodeExe = "C:\Program Files\nodejs\node.exe"
-$fccExe = "C:\Users\joshl\AppData\Roaming\uv\tools\free-claude-code\Scripts\fcc-server.exe"
+$fccPythonExe = "C:\Users\joshl\AppData\Roaming\uv\python\cpython-3.14.10-windows-x86_64-none\python.exe"
+$fccSitePackages = "C:\Users\joshl\AppData\Roaming\uv\tools\free-claude-code\Lib\site-packages"
 $obsidianExe = "C:\Program Files\Obsidian\Obsidian.exe"
 if (-not (Test-Path $obsidianExe)) {
     $obsidianExe = "C:\Users\joshl\AppData\Local\Programs\Obsidian\Obsidian.exe"
@@ -58,9 +59,10 @@ if (-not (Test-TcpPort "127.0.0.1" 27123) -and -not (Get-Process Obsidian -Error
     }
 }
 
-# 2. Free Claude Code Server (:8082/admin)
-if (-not (Test-TcpPort "127.0.0.1" 8082) -and (Test-Path $fccExe)) {
-    Start-DetachedService "`"$fccExe`"" $repoRoot 0
+# 2. Free Claude Code Server (:8082/admin) — invokes signed cpython-3.14.10 binary + site-packages
+if (-not (Test-TcpPort "127.0.0.1" 8082) -and (Test-Path $fccPythonExe)) {
+    $fccCmd = "`"$fccPythonExe`" -c `"import sys; sys.path.insert(0, r'$fccSitePackages'); from free_claude_code.cli.entrypoints import serve; serve(['--auto-started'])`""
+    Start-DetachedService $fccCmd $repoRoot 0
 }
 
 # 3. OPSis Cut & Reach Studio (:8390)
@@ -74,6 +76,14 @@ if (-not (Test-TcpPort "127.0.0.1" 8392) -and (Test-Path "$repoRoot\apps\hermes-
 }
 
 # 5. DREAM Dev Engine Server (:20128) — OpenUI Lang 1.0 + REA City + Remake 98.8% Cloud Studio
+$restart20128Flag = "C:\Users\joshl\antigravity\DREAM-Engine\ops\node\.restart-20128.flag"
+if (Test-Path $restart20128Flag) {
+    Remove-Item $restart20128Flag -Force -ErrorAction SilentlyContinue
+    Get-NetTCPConnection -LocalPort 20128 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object {
+        if ($_ -gt 4) { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
+    }
+    Start-Sleep -Milliseconds 600
+}
 if (-not (Test-TcpPort "127.0.0.1" 20128)) {
     Start-DetachedService "`"$nodeExe`" --import tsx `"$repoRoot\server.ts`"" $repoRoot 0
 }
@@ -97,7 +107,7 @@ if ((Test-Path "$repoRoot\api.workflow.json") -and (Test-Path $vaultRoot)) {
     Copy-Item "$repoRoot\workflow_api.json" "$vaultRoot\workflow_api.json" -Force -ErrorAction SilentlyContinue
 }
 
-# 9. Auto-open DREAM Dev Engine Studio (http://127.0.0.1:20128) once per boot session
+# 9. Auto-open DREAM Dev Engine Studio (http://127.0.0.1:20128) & Free Claude Code Admin (http://127.0.0.1:8082/admin) once per boot session
 $bootTimestamp = (Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue).LastBootUpTime.ToString("yyyyMMddHHmmss")
 $browserFlag = "$env:TEMP\dream-engine-opened-$bootTimestamp.flag"
 if (-not (Test-Path $browserFlag)) {
@@ -105,6 +115,9 @@ if (-not (Test-Path $browserFlag)) {
     if (Test-TcpPort "127.0.0.1" 20128) {
         try {
             Start-Process "http://127.0.0.1:20128" -ErrorAction SilentlyContinue
+            if (Test-TcpPort "127.0.0.1" 8082) {
+                Start-Process "http://127.0.0.1:8082/admin" -ErrorAction SilentlyContinue
+            }
             Set-Content -Path $browserFlag -Value (Get-Date -Format o) -Force -ErrorAction SilentlyContinue
         } catch {}
     }

@@ -1,15 +1,16 @@
-# AGENT.md — UNIFIED MULTI-HARNESS ENTRYPOINT (`2026-10-28`)
+# AGENT.md — CANONICAL POINTER TO AGENTS.md, CLAUDE.md & GEMINI.md
 
 @AGENTS.md
-@CLAUDE.md
-@GEMINI.md
 
-> **Zero-Drift Multi-Harness Rule**:
-> Whether you are running as **Claude Code (`Opus 5.5 / Fable`)**, **Google Gemini (`Gemini 4 High Reasoning / Spark / Ultra / agy`)**, **OpenAI (`Codex`)**, **Free Claude Code (`:8082`)**, **Hermes (`OPSis`)**, **OpenCode**, or **Meta AI (`Muse / Musa`)**, all harnesses share the exact same canonical rules in `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `api.workflow.json`, and `.agents/skills/*/SKILL.md` (`.claude/skills/*/SKILL.md`).
+This file (`AGENT.md`) mirrors [`AGENTS.md`](./AGENTS.md), [`CLAUDE.md`](./CLAUDE.md), [`GEMINI.md`](./GEMINI.md), [`api.workflow.json`](./api.workflow.json), [`workflow_api.json`](./workflow_api.json), and [`memory/obsidian-vault/Agent Universal/agent-workflow-graphy.json`](./memory/obsidian-vault/Agent%20Universal/agent-workflow-graphy.json) for harnesses that read `AGENT.md` (singular).
 
-1. **`Trust Level Max` Judges (`Opus 5.5 / Fable` & `Gemini 4 High Reasoning`)**: Hold 100% permission from Founder Joshua Coleman to judge what is used/not used, approve the work of all other AI platforms, and dispatch zero-cost partner outreach/emails (`cost_usd === 0` until Joshua says finalize).
-2. **Mandatory Session Skills**: Load `caveman`, `i-have-adhd`, `find-skills`, `create-skills`, `brainstorming`, `superpowers`, `tdd` (`test-driven-development`), `verification-before-completion`, `obsidian-save`, `openviking`, `supabase`, `agent-workflow`, `rooflo-opsis-cut-and-reach`, and `house-boot`.
-3. **Mandatory Session-Start & Session-End Memory**:
-   - Read `C:\DREAM\Antigravity\T5500\gemini-to-gemini.md` and `C:\DREAM\Antigravity\<NODE>\<agent>-to-<agent>.md` at session start.
-   - Run `scripts/obsidian/session-note.ps1` at session end to append to Obsidian (`C:\DREAM\Antigravity`) and mirror to Shared `ai-memory` (`http://192.168.0.15:49374` with `scope="global"`), Graphy, OpenViking, Supabase, and Supermemory backups.
-4. **Power-Loss Auto-Boot**: Managed by Windows Scheduled Tasks `DREAM-Alienware-BootAll` (`.40` ports `:8082`, `:8390`, `:20128`, `:9127`, `:9133`), `ANTIGRAVITY Mission Control` (`.15` ports `:3130`, `:20128`, `:49374`), and `DREAM-Sabretooth-BootAll` (`.8` ports `:11434`, `:8391`).
+## Key Canonical Rules (`2026-11-01`)
+1. **Two Monorepos (Besides Standalone `Misses Trollz`) Mapped to Repo-Specific Nodes**:
+   - **Node 1: Alienware (`.40`, `192.168.0.40`) — Unified Game Monorepo (`Trollz1004/dream-online` / `DREAM-Engine`)**: `C:\Users\joshl\antigravity\DREAM-Engine` and `C:\DREAM\dream-online` (auto-synced via `.git/hooks/post-commit`). Hosts the 100% in-house WebGPU/WebGL2 + TypeScript `DREAM Engine` & `DREAM Online` MMORPG (`:20128`), `Free Claude Code` (`:8082/admin` via signed Python 3.14.10), `OPSis Cut & Reach Studio` (`:8390`), `Hermes Leadgen` (`:8392`), `Live NPC Lab` (`:9127`), and `DreamOps Bridge` (`:9133`).
+   - **Node 2: T5500 (`.15`, `192.168.0.15`) & Node 3: Sabretooth (`.8`, `192.168.0.8`) — Platform & Operations Monorepo (`Trollz1004/ANTIGRAVITY`)**: `C:\ANTIGRAVITY` on `.15` (Mission Control `:3130`, OmniRoute `:20128`, Shared `ai-memory` `:49374`, Production Domains) and `C:\Ai-Dream-Team\Antigravity` on `.8` (16 GB AMD GPU offload, Ollama `:11434`, Hermes `:9119`, YouTube Shorts `<= 59.0s` & Female Voice Podcast worker `:8391`).
+2. **Graphy for AI Codebase Sync & Search (`api.workflow.json`, `agent-workflow-graphy.json`, `/api/graphy/codebase`)**:
+   - Every agent uses **Codebase Graphy (`/api/graphy/codebase` & `graphify-out/graph.json`)** for AST/symbol/dependency search and **Workflow Graphy (`api.workflow.json` & `Agent Universal/agent-workflow-graphy.json`)** for repo-specific node routing so zero duplicate files are created.
+3. **One and Only One `$5/mo` Synced Obsidian Vault (`Antigravity` — `1 GB` Cap) with Separated Node/Agent Locations**:
+   - Founder Joshua Coleman pays **`$5/mo` for 1 and only 1 Obsidian Sync remote vault**.
+   - Each node mounts its local folder (`C:\DREAM\Antigravity` on `.40`, `C:\ANTIGRAVITY\Antigravity` on `.15`, `C:\Ai-Dream-Team\Antigravity` on `.8`, mirrored to `memory/obsidian-vault/` in git), and **all three nodes sync into that same 1 and only 1 `$5/mo` remote vault**.
+   - Each agent writes only to its separated node/agent file (`<Node>/<agent>-to-<agent>.md`, e.g., `Alienware/claude-to-claude.md`, `Alienware/gemini-to-gemini.md`, `Alienware/codex-to-codex.md`, `Alienware/gordon-to-gordon.md`, `Alienware/hermes-to-hermes.md`) so zero sync conflicts or duplicate files occur.

@@ -1,550 +1,143 @@
 {
-  "description": "Agent Workflow Graphy - Shows agents what skills to load, tools available, and daily research targets",
-  "version": "1.2.0",
-  "lastUpdated": "2026-09-03",
-  "universalSkills": {
-    "mandatory": [
-      "verification-before-completion",
-      "find-skills",
-      "create-skills",
-      "brainstorming",
-      "caveman",
-      "i-have-adhd",
-      "agent-browser",
-      "agent-reach",
-      "subagent-driven-development",
-      "self-improving-agent",
-      "self-improving-system",
-      "date-app-hermes-operations"
+  "name": "DREAM & ANTIGRAVITY Unified Multi-Harness Agent Workflow & Graphy",
+  "description": "Agent Workflow Graphy - Shows agents what skills to load, profiles/souls, CLI auth (agy --dangerously-skip-permissions, grok, fcc), Dual Graphies for AI codebase sync & search to repo-specific nodes (2 Monorepos + Standalone Misses Trollz), and the 1-and-only-1 $5/mo synced Obsidian vault with separated <Node>/<agent>-to-<agent>.md files",
+  "version": "2.2.0",
+  "lastUpdated": "2026-11-01",
+  "usedBy": [
+    "Google Gemini (Gemini 4 Argon High Reasoning / Spark / Ultra / agy --dangerously-skip-permissions)",
+    "Claude Code (Opus 5.5 / Fable)",
+    "OpenAI (Codex)",
+    "Gordon (Duplicate-File, Security & Repo Hygiene Auditor)",
+    "Free Claude Code (:8082/admin fcc-claude / fcc-opencode / fcc-hermes / fcc-agy / fcc-grok / fcc-codex)",
+    "Hermes (OPSis :9119 default orchestrator & child profiles)",
+    "xAI (Grok CLI)",
+    "OpenCode"
+  ],
+  "authority": {
+    "updated": "2026-11-01 (Joshua Coleman)",
+    "human": "Joshua Coleman is the sole human authority over every node, repo, and agent",
+    "trustLevelMaxJudges": [
+      "gemini-4-high-reasoning",
+      "opus-5.5-fable"
     ],
-    "core": [
-      "systematic-debugging",
-      "tdd",
-      "test-driven-development",
-      "supabase",
-      "supabase-postgres-best-practices",
-      "system-connector",
-      "openviking"
-    ],
-    "dailyResearch": "Each agent must research and load ONE new skill per day based on their role",
-    "memoryLayer": {
-      "rule": "Every bot writes what it learns. A bot that only consumes memory is a bot whose work dies with its session.",
-      "updated": "2026-09-03 — replaces the stale nodes/9020/ vault paths below (that node does not exist)",
-      "git": {
-        "where": "the ANTIGRAVITY, ai-solutions, and dream-online git repos themselves",
-        "why": "Git is authoritative over every other layer. Markdown in git is diffable and `git log -S` can trace a false claim to the commit that invented it. When any layer below disagrees with git, git wins."
-      },
-      "obsidianVaults": {
-        "restApi": "Obsidian Local REST API, http://127.0.0.1:27123",
-        "vaults": [
-          {
-            "path": "C:\\ANTIGRAVITY\\Antigravity",
-            "shared_by": [
-              "ANT (ANTIGRAVITY Marketing Co, youandinotai.com)",
-              "AIS (Ai-Solutions.Store)"
-            ],
-            "entry": "00 HOME.md",
-            "sync": "Obsidian Sync"
-          },
-          {
-            "path": "D:\\DREAM ONLINE",
-            "shared_by": [
-              "DRE (DREAM Online MMORPG)"
-            ],
-            "note": "game-only vault, separate from the ANT/AIS vault"
-          }
-        ],
-        "skills": [
-          "claude-obsidian:save",
-          "claude-obsidian:think",
-          "claude-obsidian:wiki-fold",
-          "claude-obsidian:obsidian-markdown"
+    "cliRules": {
+      "geminiCli": "agy --dangerously-skip-permissions (never gemini cmd)",
+      "harveyLeadGen": "grok auth for X/social prospecting + agy --dangerously-skip-permissions",
+      "freeClaudeCode": "fcc-server on http://127.0.0.1:8082/admin launched via signed Python 3.14.10 interpreter in ops/node/boot-alienware-services.ps1 (also proxied in Sabretooth GUI :8392)"
+    },
+    "entryFilesMustAgree": "README.md, AGENTS.md, CLAUDE.md, GEMINI.md, GEMINI_SPARK_INSTRUCTIONS.md, AGENT.md, api.workflow.json, workflow_api.json, and Agent Universal/agent-workflow-graphy.json are 100% synchronized across all 3 nodes."
+  },
+  "fleetTopology": {
+    "updated": "2026-11-01",
+    "monorepoConsolidationRule": "Besides standalone Misses Trollz, all platform code lives in 2 canonical monorepos mapped to repo-specific nodes so zero duplicate repos or files are created.",
+    "repositories": {
+      "dreamOnline": {
+        "type": "Unified Game Monorepo",
+        "repo": "Trollz1004/dream-online",
+        "branch": "main",
+        "node": "Alienware (192.168.0.40)",
+        "paths": [
+          "C:\\Users\\joshl\\antigravity\\DREAM-Engine",
+          "C:\\DREAM\\dream-online"
         ]
       },
-      "journals": {
-        "where": "per-lane STATE.md, read at session start and written at session end",
-        "path": ".agents/journals/<lane>/STATE.md"
+      "antigravity": {
+        "type": "Operations, Domains & AI Offload Monorepo",
+        "repo": "Trollz1004/ANTIGRAVITY",
+        "branch": "main",
+        "nodes": [
+          "T5500 (192.168.0.15) at C:\\ANTIGRAVITY",
+          "Sabretooth (192.168.0.8) at C:\\Ai-Dream-Team\\Antigravity"
+        ]
       },
-      "nodeLedger": {
-        "where": "Buzz node ledger, the cross-node record read/write for every agent on every node",
-        "path": "ops/buzz/",
-        "rule": "ops/buzz/BUZZ-NODE-LEDGER.md"
-      },
-      "secretStore": {
-        "where": "Paperclip's own secret store",
-        "rule": "secrets referenced by name only — never a value in a repo file, config row, journal, or chat"
-      },
-      "recall": {
-        "where": "Supermemory (containerTag repo_antigravity__02249b9e7104105f)",
-        "tools": [
-          "search_memory",
-          "add_memory"
-        ],
-        "why": "Fast cross-session recall. NEVER authoritative — it auto-injects, so a false fact re-injects forever. When it disagrees with git, git wins and the memory is FORGOTTEN, not left."
-      },
-      "vaults_STALE": [
-        "nodes/9020/vaults/knowledge (Joshua's) — STALE, node 9020 does not exist",
-        "nodes/9020/vaults/agent-workflows (the mesh) — STALE, node 9020 does not exist"
-      ],
-      "ruling": "agent-contracts/MEMORY-LAYER-RULING-2026-08-28.md"
-    },
-    "mandatorySkillsNote": "Mandatory on EVERY bot with no exception, including bots Hermes creates. verification-before-completion is mandatory on anything that touches code."
-  },
-  "agents": {
-    "ceo": {
-      "role": "Chief Executive Officer",
-      "heartbeatLocation": ".agents/journals/freebuff-ceo/STATE.md",
-      "claudeFile": "CLAUDE.md",
-      "skillsToLoad": [
-        "paperclip-ceo",
-        "ceo-standing-session",
-        "judge-house",
-        "orchestrator-preflight",
-        "orchestrator-to-hermes-openclaw-opencode",
-        "dispatching-parallel-agents",
-        "executing-plans",
-        "planning-with-files",
-        "proving-then-pruning"
-      ],
-      "tools": "ALL (unlimited access)",
-      "dailyResearchArea": "governance, delegation, verification patterns"
-    },
-    "judge": {
-      "role": "Judge Lane",
-      "heartbeatLocation": ".agents/journals/paperclip-judge/STATE.md",
-      "claudeFile": "CLAUDE.md",
-      "skillsToLoad": [
-        "judge-house",
-        "finishing-a-development-branch",
-        "release-proof",
-        "requesting-code-review",
-        "using-git-worktrees"
-      ],
-      "tools": "ALL (unlimited access, push/merge authority)",
-      "dailyResearchArea": "code review, testing, release management"
-    },
-    "hermes": {
-      "role": "orchestrator",
-      "skills": [
-        "caveman",
-        "i-have-adhd",
-        "agent-reach",
-        "agent-browser",
-        "brainstorming",
-        "find-skills",
-        "verification-before-completion",
-        "self-improving-agent",
-        "self-improving-system",
-        "claude-obsidian",
-        "mission-control",
-        "orchestrator-preflight",
-        "subagent-driven-development",
-        "systematic-debugging",
-        "date-app-hermes-operations",
-        "youtube-automation",
-        "agent-workflow",
-        "dateapp-marketing",
-        "social-growth-engineer",
-        "conversion-optimization",
-        "viral-marketing-playbook",
-        "organic-growth-advisor",
-        "reddit-marketing",
-        "copywriting",
-        "offers",
-        "paywalls",
-        "ai-seo"
-      ],
-      "description": "Default orchestrator, non-judge agent"
-    },
-    "openclaw": {
-      "role": "Marketing",
-      "heartbeatLocation": ".agents/journals/openclaw/STATE.md",
-      "claudeFile": "CLAUDE.md",
-      "skillsToLoad": [
-        "growth-marketer",
-        "social-growth-engineer",
-        "devrel-content",
-        "revenue-model"
-      ],
-      "tools": "ALL (unlimited access)",
-      "dailyResearchArea": "marketing analytics, A/B testing, conversion"
-    },
-    "opencode": {
-      "role": "eBay & Recycling Automation",
-      "heartbeatLocation": ".agents/journals/opencode/STATE.md",
-      "claudeFile": "CLAUDE.md",
-      "skillsToLoad": [
-        "tdd",
-        "test-driven-development",
-        "tests-as-contract",
-        "improve-codebase-architecture",
-        "maintainer-clarity"
-      ],
-      "tools": "ALL (unlimited access)",
-      "dailyResearchArea": "eBay API, recycling automation, testing patterns"
-    },
-    "paperclip-mc": {
-      "role": "orchestrator",
-      "skills": [
-        "caveman",
-        "i-have-adhd",
-        "agent-reach",
-        "agent-browser",
-        "brainstorming",
-        "find-skills",
-        "verification-before-completion",
-        "self-improving-agent",
-        "self-improving-system",
-        "claude-obsidian",
-        "mission-control",
-        "orchestrator-to-hermes-openclaw-opencode",
-        "systematic-debugging",
-        "sabretooth-ops"
-      ],
-      "description": "Paperclip mission control agent"
-    },
-    "youtube": {
-      "role": "content-creator",
-      "skills": [
-        "caveman",
-        "i-have-adhd",
-        "agent-reach",
-        "agent-browser",
-        "brainstorming",
-        "find-skills",
-        "verification-before-completion",
-        "self-improving-agent",
-        "self-improving-system",
-        "claude-obsidian",
-        "design-md",
-        "comfyui",
-        "manim-video",
-        "humanizer",
-        "motion-design"
-      ],
-      "description": "YouTube content creation bot"
-    },
-    "coder": {
-      "role": "engineer",
-      "skills": [
-        "caveman",
-        "i-have-adhd",
-        "agent-reach",
-        "agent-browser",
-        "brainstorming",
-        "find-skills",
-        "verification-before-completion",
-        "self-improving-agent",
-        "self-improving-system",
-        "claude-obsidian",
-        "claude-code",
-        "test-driven-development",
-        "requesting-code-review",
-        "github-pr-workflow",
-        "architecture-diagram"
-      ],
-      "description": "Engineering and coding bot"
-    },
-    "growth": {
-      "role": "marketing",
-      "skills": [
-        "caveman",
-        "i-have-adhd",
-        "agent-reach",
-        "agent-browser",
-        "brainstorming",
-        "find-skills",
-        "verification-before-completion",
-        "self-improving-agent",
-        "self-improving-system",
-        "claude-obsidian",
-        "growth-marketer",
-        "social-growth-engineer",
-        "product-copy-business-only",
-        "revenue-model",
-        "dateapp-growth-agent",
-        "dateapp-marketing",
-        "conversion-optimization",
-        "viral-marketing-playbook",
-        "organic-growth-advisor",
-        "reddit-marketing",
-        "copywriting",
-        "offers",
-        "paywalls",
-        "ai-seo"
-      ],
-      "description": "Growth and marketing analytics bot"
-    },
-    "support": {
-      "role": "support",
-      "skills": [
-        "caveman",
-        "i-have-adhd",
-        "agent-reach",
-        "agent-browser",
-        "brainstorming",
-        "find-skills",
-        "verification-before-completion",
-        "self-improving-agent",
-        "self-improving-system",
-        "claude-obsidian",
-        "dateapp-support-desk",
-        "humanizer",
-        "systematic-debugging",
-        "requesting-code-review",
-        "agent-reach"
-      ],
-      "description": "Customer support bot"
-    },
-    "claude-haiku-orchestrator": {
-      "role": "orchestrator",
-      "model": "claude-haiku-4-5-20251001",
-      "provider": "anthropic",
-      "skills": [
-        "caveman",
-        "i-have-adhd",
-        "agent-reach",
-        "agent-browser",
-        "brainstorming",
-        "find-skills",
-        "verification-before-completion",
-        "self-improving-agent",
-        "self-improving-system",
-        "claude-obsidian",
-        "mission-control",
-        "orchestrator-preflight",
-        "systematic-debugging",
-        "subagent-driven-development"
-      ],
-      "description": "Orchestrator agent — sole non-judge, coordinates worker profiles and routes to judge lanes"
-    },
-    "buzz": {
-      "role": "messenger",
-      "model": "claude-haiku-4-5-20251001",
-      "provider": "anthropic",
-      "skills": [
-        "caveman",
-        "i-have-adhd",
-        "agent-reach",
-        "agent-browser",
-        "brainstorming",
-        "find-skills",
-        "verification-before-completion",
-        "self-improving-agent",
-        "self-improving-system",
-        "claude-obsidian",
-        "himalaya",
-        "email-inbox-triage"
-      ],
-      "description": "Buzz agent — internal messaging, reporting, and Slack-like communication"
-    }
-  },
-  "dailyRoutine": {
-    "description": "5 daily Paperclip marketing/SEO/YouTube improvements (mission 2026-08-26). Executed every day; evidence -> Obsidian vault defe808dbc475855.",
-    "sourceBriefing": "briefings/PAPERCLIP-MARKETING-SEO-YOUTUBE-DAILY-2026-08-26.md",
-    "execution": "Daily after first message, before task work: run items 1-5, append evidence to vault notes, then proceed with role tasks.",
-    "items": [
-      {
-        "id": "ov-preload-start",
-        "name": "OpenViking L0/L1 preload at session start",
-        "who": "all agents",
-        "when": "every session start",
-        "how": "bash .freebuff/ov-preload.sh \"<task topic>\" before loading any large file",
-        "evidence": "ov find returns ranked L0/L1 locations"
-      },
-      {
-        "id": "daily-01-seo-keyword-audit",
-        "name": "SEO keyword-gap + on-page audit",
-        "owner": "memory/system agent",
-        "skills": [
-          "agent-reach",
-          "growth-marketer"
-        ],
-        "dailyStep": "Audit 3 keywords from seo.keywordQueue against live pages (title/meta/H1/alt/intent); score 5-point; log to vault SEO-Audit-Log; drop worst fix to marketing-inbox PENDING",
-        "vaultNote": "SEO-Audit-Log",
-        "minutes": 10
-      },
-      {
-        "id": "daily-02-faceless-short",
-        "name": "Hermes faceless short pipeline",
-        "owner": "hermes",
-        "skills": [
-          "hermes-youtube-faceless-news",
-          "social-growth-engineer"
-        ],
-        "dailyStep": "Render ONE faceless short from newest content/yesterday-news/<date>/; 3 hook variants, best wins; validate file; drop draft+evidence PENDING; log to vault YouTube-Content-Log",
-        "vaultNote": "YouTube-Content-Log",
-        "minutes": 15
-      },
-      {
-        "id": "daily-03-avatar-live-readiness",
-        "name": "Animated avatar live-stream readiness",
-        "owner": "hermes/ops",
-        "skills": [
-          "hermes-youtube-avatar-head",
-          "system-connector"
-        ],
-        "dailyStep": "Probe avatar renderer + audio + stream key + lifeline with real calls; log UP/DOWN/NEEDS-FIX with evidence to vault Live-Readiness-Log; if DOWN file mission issue, never stream blind",
-        "vaultNote": "Live-Readiness-Log",
-        "minutes": 10
-      },
-      {
-        "id": "daily-04-funnel-experiment",
-        "name": "AARRR funnel metric + ICE experiment",
-        "owner": "openclaw/xmarketing",
-        "skills": [
-          "growth-marketer",
-          "supabase"
-        ],
-        "dailyStep": "Rotate AARRR stage; measure one metric from analytics/Supabase; write hypothesis + ICE-score; append to vault Funnel-Experiments; ICE>=7 drop PENDING",
-        "vaultNote": "Funnel-Experiments",
-        "minutes": 10
-      },
-      {
-        "id": "daily-05-skill-research-trim",
-        "name": "Daily skill research + context-bloat trim",
-        "owner": "all agents",
-        "skills": [
-          "self-improving-system",
-          "find-skills"
-        ],
-        "dailyStep": "find-skills {role-topic}; prove candidate with real call; record keep/reject 1 line in STATE.md; trim heartbeat to locations-only per heartbeat-template.md; sync preloaded skills",
-        "vaultNote": "Agent-State",
-        "minutes": 10
-      },
-      {
-        "id": "context-commit",
-        "name": "Commit session to OpenViking + recall-before-load",
-        "who": "all agents",
-        "when": "start and end of every session",
-        "how": "ov find at start (recall L0/L1 before loading L2), ov session commit at end",
-        "evidence": "ov status healthy + ov find returns results"
-      },
-      {
-        "id": "daily-06-crm-leadgen",
-        "name": "CRM lead-gen wheel (self-hosted)",
-        "who": "OpenClaw + X Marketing (Grok)",
-        "when": "daily, rotates with the SEO/social wheel",
-        "how": "bash crm/ops/start-crm.sh then exercise the CRM: qualify top un-qualified leads via POST /api/leads/{id}/ai-qualify, create one landing page or drip sequence, log funnel movement from /api/leads/stats/overview toward the $5k goal",
-        "evidence": "ai-qualify response + funnel stats JSON saved to ops/marketing-inbox/"
-      },
-      {
-        "id": "ov-daily-sweep",
-        "name": "OpenViking daily knowledge sweep",
-        "who": "any lane (rotates)",
-        "when": "once per day",
-        "how": "bash .freebuff/ov-daily-sweep.sh — index briefings/journals/memory/vault/crm, report recall to ops/marketing-inbox/",
-        "evidence": "ov-sweep-<date>.md with real recall hits"
+      "missesTrollz": {
+        "type": "Standalone Pediatric Hospital App",
+        "note": "Kept separate from both monorepos for sick children / hospital use."
       }
-    ],
-    "seo": {
-      "keywordQueue": [
-        "youandinotai human connection",
-        "bot-free dating app",
-        "ai companion no bots",
-        "recycled electronics",
-        "avatar youtube live"
-      ]
-    }
-  },
-  "mcpConnections": [
-    "antigravity-files",
-    "brain-mcp",
-    "mission-mcp",
-    "omniroute",
-    "playwright",
-    "supabase",
-    "openviking"
-  ],
-  "toolsAvailable": {
-    "always": [
-      "find-skills",
-      "create-skills",
-      "skills.sh",
-      "clawhub",
-      "hermes-skill-hub"
-    ],
-    "perRole": "Refer to agent.skillsToLoad above"
-  },
-  "contextOptimization": {
-    "heartbeatFormat": "LOCATIONS ONLY - never content",
-    "example": {
-      "agentFile": ".agents/journals/freebuff-ceo/STATE.md",
-      "claudeFile": "CLAUDE.md",
-      "toolsLocation": ".agents/skills/"
     },
-    "benefit": "Reduces context bloat, prevents hallucinations from spam",
-    "openviking": {
-      "role": "L0/L1/L2 hierarchical context - heartbeats reference locations via viking:// URIs",
-      "server": "http://127.0.0.1:1933",
-      "recall": "ov find '<topic>' before loading large files",
-      "commit": "ov session commit / MCP remember at end of meaningful work",
-      "antiHallucination": "verify against knowledge base instead of pattern-matching"
+    "nodes": {
+      "Alienware": {
+        "ip": "192.168.0.40",
+        "user": "joshl",
+        "role": "Pure 3D Game Engine & DREAM Maker Studio Node (Unified Game Monorepo Trollz1004/dream-online)",
+        "hardware": "11th-Gen Intel i7-11700F, 40 GB RAM, NVIDIA GeForce RTX 3070 (8 GB CUDA)",
+        "autoBootTask": "DREAM-Alienware-BootAll (ops/node/boot-alienware-services.ps1 — runs at Logon + every 15 min)",
+        "ports": {
+          "20128": "DREAM Engine, 3D Studio Viewport & Codebase Graphy Bridge (http://127.0.0.1:20128/)",
+          "8390": "OPSis Cut & Reach Studio (.40)",
+          "8392": "Hermes Leadgen Command Studio (.40)",
+          "8082": "Free Claude Code Server & Admin Dashboard (http://127.0.0.1:8082/admin)",
+          "9127": "Live NPC Lab (http://127.0.0.1:9127/health)",
+          "9133": "DreamOps Bridge (http://127.0.0.1:9133/health)",
+          "27123": "Obsidian Local REST API & Single $5/mo Synced Vault (http://127.0.0.1:27123)"
+        }
+      },
+      "T5500": {
+        "ip": "192.168.0.15",
+        "user": "joshi",
+        "role": "Production Domains, Separate Streamable Mission Control (:3130), OmniRoute (:20128), & Shared ai-memory (:49374) (Monorepo Trollz1004/ANTIGRAVITY)",
+        "hardware": "Dual Xeons, 72 GB ECC RAM, GTX 1050 Ti 4 GB",
+        "ports": {
+          "3130": "Mission Control (http://192.168.0.15:3130/live — separate streamable OPSis mission board)",
+          "20128": "OmniRoute Gateway (http://192.168.0.15:20128/v1)",
+          "49374": "Shared ai-memory v3.2.5 MCP Server (http://192.168.0.15:49374)",
+          "27123": "Obsidian Local REST API (.15 Sync Hub for the Single $5/mo Synced Vault)"
+        }
+      },
+      "Sabretooth": {
+        "ip": "192.168.0.8",
+        "user": "joshl",
+        "role": "Node-Specific Hermes Lead Gen, Multi-Channel YouTube Automation, Free Claude Code (:8082), & 16 GB AMD GPU Offload Box (Monorepo Trollz1004/ANTIGRAVITY)",
+        "hardware": "16 GB AMD Radeon RX 6800 GPU (DirectML/Vulkan), 64 GB RAM, 1 TB SSD",
+        "autoBootTask": "DREAM-Sabretooth-BootAll + SABRETOOTH-GEMINI-EASY-BUTTON.bat Desktop Bootstrap",
+        "ports": {
+          "8392": "HermesLeadGen Sabretooth GUI Dashboard (http://192.168.0.8:8392/)",
+          "9119": "Hermes Default Orchestrator Session & Gateway (http://127.0.0.1:9119/chat?profile=default&resume=local-profile)",
+          "8082": "Free Claude Code Server & Admin Chat (http://127.0.0.1:8082/admin)",
+          "8391": "Sabretooth OPSis Shorts (<= 59.0s) & Natural Female Voice Worker (http://192.168.0.8:8391/health)",
+          "11434": "Local Ollama 16 GB AMD GPU Server (http://192.168.0.8:11434)",
+          "27123": "Obsidian Local REST API & Single $5/mo Synced Vault (http://127.0.0.1:27123)"
+        }
+      }
     }
   },
-  "skillGroups": {
-    "mandatory": [
-      "caveman",
-      "i-have-adhd",
-      "agent-reach",
-      "agent-browser",
-      "brainstorming",
-      "find-skills",
-      "verification-before-completion",
-      "self-improving-agent",
-      "self-improving-system"
-    ],
-    "orchestration": [
-      "mission-control",
-      "orchestrator-preflight",
-      "orchestrator-to-hermes-openclaw-opencode",
-      "systematic-debugging"
-    ],
-    "code-dev": [
-      "claude-code",
-      "test-driven-development",
-      "requesting-code-review",
-      "github-pr-workflow",
-      "architecture-diagram"
-    ],
-    "content-creative": [
-      "design-md",
-      "comfyui",
-      "manim-video",
-      "humanizer",
-      "motion-design"
-    ],
-    "marketing-growth": [
-      "growth-marketer",
-      "social-growth-engineer",
-      "product-copy-business-only",
-      "revenue-model",
-      "dateapp-growth-agent"
-    ],
-    "systems-ops": [
-      "dateapp-ops-agent",
-      "dateapp-payments-agent",
-      "sabretooth-ops",
-      "system-connector",
-      "systematic-debugging"
-    ]
+  "dualGraphies": {
+    "workflowGraphy": "api.workflow.json, workflow_api.json, & memory/obsidian-vault/Agent Universal/agent-workflow-graphy.json (routes tasks to repo-specific nodes across the 2 monorepos + standalone Misses Trollz)",
+    "codebaseGraphy": "http://127.0.0.1:20128/api/graphy/codebase (Alienware DREAM-Engine AST graph) & C:\\Ai-Dream-Team\\Antigravity\\HermesLeadGen\\graphify-out\\graph.json (Sabretooth AST graph) — queried before file creation to prevent duplicates"
   },
-  "paymentsRecord": {
-    "updated": "2026-10-17 (Joshua)",
-    "status": "SETTLED - read the record, never re-test",
-    "record": [
-      "docs/PAYMENTS-TRUTH.md",
-      "docs/payment-flow-verification-2026-06-01.md"
-    ],
-    "processor": "Square only on youandinotai.com",
-    "history": "15 Square attempts 2025-04 to 2026-08 (incl. one $10 refund), every one Joshua's own test charge; pipeline proven in production",
-    "notABlocker": "Past test charges are not a blocker and their count is irrelevant; 100% of revenue stays with the business",
-    "never": "Do not re-verify, re-audit, re-test or ask Joshua about past test charges",
-    "reopenOnlyIf": [
-      "a real Square webhook failure in production",
-      "a new non-Joshua payment in Square (first real customer: report it, do not verify it)"
-    ],
-    "privateRecords": "OneDrive claude-to-claude/payments-private-2026-09-17 holds bank statements: never copy, quote or commit",
-    "keepFiles": "Never delete either record file"
+  "memoryAndSessionProtocol": {
+    "rule": "Joshua pays $5/mo for 1 and only 1 Obsidian Sync remote vault (Antigravity, 1 GB cap). All 3 nodes sync their local folders into that same 1 and only 1 remote vault, and every agent reads and writes its own separated <Node>/<agent>-to-<agent>.md file so zero sync collisions or duplicate files occur.",
+    "obsidianVault": {
+      "singlePaidRemoteVault": "Antigravity ($5/mo, 1 and only 1 remote vault, 1 GB cap — never create a second paid vault and never store .zip files in the vault)",
+      "localNodeMounts": {
+        "Alienware": "C:\\DREAM\\Antigravity (mirrored in git at memory/obsidian-vault/)",
+        "T5500": "C:\\ANTIGRAVITY\\Antigravity",
+        "Sabretooth": "C:\\Ai-Dream-Team\\Antigravity"
+      },
+      "nodeFiles": [
+        "Alienware/gemini-to-gemini.md",
+        "Alienware/claude-to-claude.md",
+        "Alienware/codex-to-codex.md",
+        "Alienware/gordon-to-gordon.md",
+        "Alienware/hermes-to-hermes.md",
+        "T5500/gemini-to-gemini.md",
+        "T5500/claude-to-claude.md",
+        "T5500/hermes-to-hermes.md",
+        "Sabretooth/gemini-to-gemini.md",
+        "Sabretooth/hermes-to-hermes.md",
+        "Sabretooth/claude-to-claude.md",
+        "Sabretooth/codex-to-codex.md",
+        "memory-graph/npc-mireth-bastion.md"
+      ],
+      "sessionEndScript": "scripts/obsidian/session-note.ps1"
+    },
+    "fallbackChain": [
+      "1. Single $5/mo Synced Obsidian Vault (:27123 local + 192.168.0.15:27123, separated by <Node>/<agent>-to-<agent>.md)",
+      "2. Shared ai-memory MCP on T5500 (http://192.168.0.15:49374, scope='global')",
+      "3. Dual Graphies (api.workflow.json + /api/graphy/codebase & graphify-out/graph.json)",
+      "4. OpenViking (viking://dream/<Node>/...)",
+      "5. Supabase (pgvector SQL checkpoint backup)",
+      "6. Supermemory (fast cross-session recall backup; git and Obsidian always win on conflict)"
+    ]
   }
 }

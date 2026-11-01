@@ -60,6 +60,62 @@
   ],
   "events": [
     {
+      "id": "hook-1793572325697",
+      "ts": "2026-11-01T22:32:05.697Z",
+      "source": "fs.watch-hook",
+      "repo": "Trollz1004/ANTIGRAVITY",
+      "branch": "sabretooth/hermes-leadgen",
+      "commitSha": null,
+      "pushSuccess": false,
+      "prNumber": null,
+      "prUrl": null,
+      "testsPassed": null,
+      "judgeStatus": "LOCAL_EVENT_RECORDED_NOT_PUSHED",
+      "summary": "File change detected on souls/youtube-agent.md -> synced dashboard state."
+    },
+    {
+      "id": "hook-1793519783929",
+      "ts": "2026-11-01T07:56:23.929Z",
+      "source": "fs.watch-hook",
+      "repo": "Trollz1004/ANTIGRAVITY",
+      "branch": "sabretooth/hermes-leadgen",
+      "commitSha": null,
+      "pushSuccess": false,
+      "prNumber": null,
+      "prUrl": null,
+      "testsPassed": null,
+      "judgeStatus": "LOCAL_EVENT_RECORDED_NOT_PUSHED",
+      "summary": "File change detected on Sabretooth/gemini-to-gemini.md -> synced dashboard state."
+    },
+    {
+      "id": "hook-1793509171399",
+      "ts": "2026-11-01T04:59:31.399Z",
+      "source": "fs.watch-hook",
+      "repo": "Trollz1004/ANTIGRAVITY",
+      "branch": "sabretooth/hermes-leadgen",
+      "commitSha": null,
+      "pushSuccess": false,
+      "prNumber": null,
+      "prUrl": null,
+      "testsPassed": null,
+      "judgeStatus": "LOCAL_EVENT_RECORDED_NOT_PUSHED",
+      "summary": "File change detected on Sabretooth/hermes-to-hermes.md -> synced dashboard state."
+    },
+    {
+      "id": "hook-1793506113794",
+      "ts": "2026-11-01T04:08:33.794Z",
+      "source": "fs.watch-hook",
+      "repo": "Trollz1004/ANTIGRAVITY",
+      "branch": "sabretooth/hermes-leadgen",
+      "commitSha": null,
+      "pushSuccess": false,
+      "prNumber": null,
+      "prUrl": null,
+      "testsPassed": null,
+      "judgeStatus": "LOCAL_EVENT_RECORDED_NOT_PUSHED",
+      "summary": "File change detected on souls/youtube-agent.md -> synced dashboard state."
+    },
+    {
       "id": "hook-1793503198345",
       "ts": "2026-11-01T03:19:58.345Z",
       "source": "fs.watch-hook",
@@ -541,63 +597,11 @@
       "testsPassed": true,
       "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
       "summary": "TDD verify mandatory auto-push & PR creation endpoint"
-    },
-    {
-      "id": "hook-1793326207498",
-      "ts": "2026-10-30T02:10:07.498Z",
-      "source": "tdd-test-suite",
-      "repo": "Trollz1004/ANTIGRAVITY",
-      "branch": "sabretooth/auto-pr-sync",
-      "commitSha": "HEAD",
-      "pushSuccess": true,
-      "prUrl": "https://github.com/Trollz1004/ANTIGRAVITY/compare/main...sabretooth/auto-pr-sync?expand=1",
-      "testsPassed": true,
-      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
-      "summary": "Verified circular Task -> Node Orchestrator -> GitHub PR Webhook -> Cloud Judge Merge loop."
-    },
-    {
-      "id": "hook-1793326108256",
-      "ts": "2026-10-30T02:08:28.256Z",
-      "source": "orchestrator->default",
-      "repo": "Trollz1004/ANTIGRAVITY",
-      "branch": "sabretooth/auto-pr-sync",
-      "commitSha": "HEAD",
-      "pushSuccess": true,
-      "prUrl": "https://github.com/Trollz1004/ANTIGRAVITY/compare/main...sabretooth/auto-pr-sync?expand=1",
-      "testsPassed": true,
-      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
-      "summary": "Default Orchestrator routed task to [default]: \"status\""
-    },
-    {
-      "id": "hook-1793326044992",
-      "ts": "2026-10-30T02:07:24.992Z",
-      "source": "fs.watch-hook",
-      "repo": "Trollz1004/ANTIGRAVITY",
-      "branch": "sabretooth/auto-pr-sync",
-      "commitSha": "HEAD",
-      "pushSuccess": true,
-      "prUrl": "https://github.com/Trollz1004/ANTIGRAVITY/compare/main...sabretooth/auto-pr-sync?expand=1",
-      "testsPassed": true,
-      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
-      "summary": "File change detected on souls/default-orchestrator-agent.md -> synced dashboard & queued PR webhook check."
-    },
-    {
-      "id": "hook-1793326044178",
-      "ts": "2026-10-30T02:07:24.178Z",
-      "source": "orchestrator->default",
-      "repo": "Trollz1004/ANTIGRAVITY",
-      "branch": "sabretooth/auto-pr-sync",
-      "commitSha": "HEAD",
-      "pushSuccess": true,
-      "prUrl": "https://github.com/Trollz1004/ANTIGRAVITY/compare/main...sabretooth/auto-pr-sync?expand=1",
-      "testsPassed": true,
-      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
-      "summary": "Default Orchestrator routed task to [default]: \"test say hii\""
     }
   ],
   "lastPushPr": {
-    "id": "hook-1793503198345",
-    "ts": "2026-11-01T03:19:58.345Z",
+    "id": "hook-1793572325697",
+    "ts": "2026-11-01T22:32:05.697Z",
     "source": "fs.watch-hook",
     "repo": "Trollz1004/ANTIGRAVITY",
     "branch": "sabretooth/hermes-leadgen",
@@ -607,7 +611,7 @@
     "prUrl": null,
     "testsPassed": null,
     "judgeStatus": "LOCAL_EVENT_RECORDED_NOT_PUSHED",
-    "summary": "File change detected on Sabretooth/hermes-to-hermes.md -> synced dashboard state."
+    "summary": "File change detected on souls/youtube-agent.md -> synced dashboard state."
   },
   "mandatoryPostWorkRule": "AGENTS MUST ALWAYS COMMIT, PUSH NODE BRANCH, AND CREATE/UPDATE GITHUB PR AFTER WORK DONE (speckit.git.push-and-pr via scripts/node-auto-pr-push.ps1)"
 }
