@@ -1,177 +1,164 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DREAM Engine & Dreamforge — Old Prototype vs. New AAA 3D Visuals</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DREAM ONLINE — Sunken Bastion Film-Set Visual Proof & Camera Orbit</title>
   <style>
     :root {
-      --bg: #07080c;
-      --card: #10121a;
-      --border: rgba(245, 158, 11, 0.38);
-      --gold: #f59e0b;
-      --cyan: #38bdf8;
-      --red: #ef4444;
-      --emerald: #10b981;
+      color-scheme: dark;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
     body {
-      background: radial-gradient(circle at top, #1b111c 0%, #07080c 60%);
+      background: radial-gradient(circle at top, #1c141d 0%, #09080c 60%, #040406 100%);
       color: #f8fafc;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      min-height: 100vh;
-      padding: 24px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 20px 28px;
     }
     .header {
-      max-width: 1420px;
-      margin: 0 auto 22px;
       display: flex;
-      flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
-      padding: 18px 24px;
-      background: rgba(16, 18, 26, 0.92);
-      border: 2px solid var(--border);
-      border-radius: 16px;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+      border-bottom: 1px solid rgba(245, 158, 11, 0.35);
+      padding-bottom: 14px;
+      margin-bottom: 18px;
     }
-    .title-block h1 {
+    .title {
       font-size: 22px;
       font-weight: 900;
       letter-spacing: 0.06em;
       text-transform: uppercase;
-      background: linear-gradient(90deg, #fde68a, #f59e0b, #fb923c);
+      background: linear-gradient(90deg, #fef3c7, #f59e0b, #ef4444);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
-    .title-block p {
-      font-size: 13px;
-      color: #94a3b8;
-      margin-top: 4px;
-    }
-    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
-    .btn {
-      text-decoration: none;
-      padding: 10px 18px;
-      border-radius: 10px;
-      font-size: 12px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      transition: transform 0.15s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .btn:hover { transform: translateY(-2px); }
-    .btn-primary {
-      background: linear-gradient(90deg, #f59e0b, #ea580c);
-      color: #090a0f;
-      box-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
-    }
-    .btn-cyan {
-      background: rgba(56, 189, 248, 0.16);
-      color: #7dd3fc;
-      border: 1px solid rgba(56, 189, 248, 0.5);
-    }
-    .compare-hero {
-      max-width: 1420px;
-      margin: 0 auto 28px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-    }
-    .panel {
-      background: var(--card);
-      border-radius: 16px;
-      overflow: hidden;
-      border: 2px solid rgba(255,255,255,0.12);
-      box-shadow: 0 18px 45px rgba(0,0,0,0.75);
-    }
-    .panel.old { border-color: rgba(239, 68, 68, 0.65); }
-    .panel.new { border-color: rgba(16, 185, 129, 0.75); }
-    .panel-banner {
-      padding: 12px 16px;
-      font-size: 12px;
-      font-weight: 900;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      display: flex;
-      justify-content: space-between;
-    }
-    .panel.old .panel-banner { background: rgba(127, 29, 29, 0.85); color: #fecaca; }
-    .panel.new .panel-banner { background: rgba(6, 78, 59, 0.9); color: #a7f3d0; }
-    .panel img { width: 100%; display: block; aspect-ratio: 16/9.3; object-fit: cover; }
-    .grid-4 {
-      max-width: 1420px;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 20px;
-    }
-    .caption {
-      padding: 12px 16px;
+    .subtitle {
       font-size: 12px;
       color: #cbd5e1;
-      border-top: 1px solid rgba(255,255,255,0.08);
+      margin-top: 3px;
     }
-    .caption b { color: #fde68a; }
+    .badge {
+      background: rgba(245, 158, 11, 0.16);
+      border: 1px solid rgba(245, 158, 11, 0.55);
+      color: #fde68a;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 6px 12px;
+      border-radius: 999px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .section-title {
+      font-size: 13px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #fcd34d;
+      margin: 12px 0 8px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    .card {
+      background: rgba(15, 15, 22, 0.92);
+      border: 1px solid rgba(245, 158, 11, 0.38);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.7);
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: rgba(245, 158, 11, 0.12);
+      border-bottom: 1px solid rgba(245, 158, 11, 0.25);
+      font-size: 11px;
+      font-weight: 800;
+      color: #fef3c7;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .card img {
+      width: 100%;
+      height: 215px;
+      object-fit: cover;
+      display: block;
+    }
+    .compare-row {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
   </style>
 </head>
 <body>
-  <header class="header">
-    <div class="title-block">
-      <h1>DREAM Engine & Dreamforge — Old Prototype vs. New AAA 3D Visuals</h1>
-      <p>Real Rigged GLTF Characters (Male_Ranger.gltf + 45 Skeletal Anims) · Blender 5.2.3 Boss Titan & Greatswords · 1K Normal-Mapped PBR · Unreal Bloom</p>
+  <div class="header">
+    <div>
+      <div class="title">DREAM ONLINE · THE SUNKEN BASTION OF ASHFALL (ONE FILM SET)</div>
+      <div class="subtitle">
+        100% Original Clean-Room DREAM Names · Myth@s (Spiked Black &amp; Crimson Plate) · Mireth Memory-Graph · Mouse Orbit + Scroll Zoom
+      </div>
     </div>
-    <div class="btn-row">
-      <a class="btn btn-primary" href="/?scene=inferno&cam=arpg_iso">▶ Play Live 3D: Diablo 3 Inferno Keep</a>
-      <a class="btn btn-cyan" href="/?scene=desert&cam=action_ots">▶ Play Live 3D: Black Desert Valencia</a>
-      <a class="btn btn-cyan" href="/?scene=manhattan&cam=action_ots">▶ Play Live 3D: Sunset Manhattan</a>
-      <a class="btn btn-cyan" href="/?scene=oathcall&cam=arpg_iso">▶ Play Live 3D: Oathcall + Blue-Flame Sigil</a>
-    </div>
-  </header>
+    <div class="badge">Built with Google Gemini · #UntilNoKidInNeed</div>
+  </div>
 
-  <section class="compare-hero">
-    <div class="panel old">
-      <div class="panel-banner">
-        <span>❌ BEFORE: Untextured Grey Grid & Capsule Primitives (Retired)</span>
-        <span>0 Textures · Box Primitives</span>
+  <div class="section-title">1. 7-Second Capture Path — Before vs. After at 3 Points (t = 1.0s · t = 3.0s · t = 5.5s)</div>
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-header">
+        <span>Point 1 (t = 1.0s): Vanguard Sprint</span>
+        <span>CC0 PBR Ground + Ruin Set</span>
       </div>
-      <img src="/captures/oathcall_part1_knockout_and_mark.png" alt="Old Prototype" />
-      <div class="caption">
-        <b>Why it failed Rule One:</b> Untextured procedural capsules on a flat checkerboard floor with cluttered developer dashboard buttons.
-      </div>
+      <img src="/captures/set_t1_0s_sprint_into_bastion.png" alt="t=1.0s Vanguard Sprint" />
     </div>
+    <div class="card">
+      <div class="card-header">
+        <span>Point 2 (t = 3.0s): Sunbreaker Cleave</span>
+        <span>Real Hit Impact + Ribbon Trail</span>
+      </div>
+      <img src="/captures/set_t3_0s_sunbreaker_cleave_hit.png" alt="t=3.0s Sunbreaker Cleave" />
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span>Point 3 (t = 5.5s): Sovereign Reckoning</span>
+        <span>Myth@s + Soft Ember Sprites</span>
+      </div>
+      <img src="/captures/set_t5_5s_sovereign_reckoning_climax.png" alt="t=5.5s Sovereign Reckoning" />
+    </div>
+  </div>
 
-    <div class="panel new">
-      <div class="panel-banner">
-        <span>✅ NOW: Diablo 3 Act 3 Inferno Keep · Whirlwind Tornado Crit Build + PBR + Unreal Bloom</span>
-        <span>Blender 5.2 GLB + 1K PBR</span>
+  <div class="section-title">2. Interactive Mouse Camera Proof — 3 Distinct Orbit &amp; Zoom Angles + Legacy Before Reference</div>
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-header">
+        <span>Before: Old Untextured Prototype</span>
+        <span>Legacy Reference</span>
       </div>
-      <img src="/captures/aaa_scene1_inferno_diablo3_whirlwind_crit.png" alt="New AAA Inferno Scene" />
-      <div class="caption">
-        <b>What changed:</b> Real rigged & normal-mapped <code>Male_Ranger.gltf</code>, Blender 5.2.3 sculpted <code>inferno-boss-titan.glb</code>, Gothic arches from <code>ModularRuinsPack.glb</code> over glowing magma, Whirlwind tornadoes, 340K+ Crit popups, and Diegetic Life/Fury Orbs.
-      </div>
+      <img src="/captures/oathcall_part1_knockout_and_mark.png" alt="Before Old Prototype" />
     </div>
-  </section>
-
-  <section class="grid-4">
-    <div class="panel new">
-      <div class="panel-banner">
-        <span>SCENE 2: Black Desert Valencia Golden Oasis & Temple Ruins (3rd-Person Action)</span>
-        <span>1K Normal-Mapped Sandstone</span>
+    <div class="card">
+      <div class="card-header">
+        <span>Mouse Drag Left Orbit (Yaw +41°)</span>
+        <span>Plain Drag Working</span>
       </div>
-      <img src="/captures/aaa_scene2_valencia_desert_bdo_awakening.png" alt="Valencia Desert Scene" />
+      <img src="/captures/camera_proof_angle2_mouse_drag_left.png" alt="Mouse Drag Left Orbit" />
     </div>
-    <div class="panel new">
-      <div class="panel-banner">
-        <span>SCENE 3: Sunset Manhattan Metropolis (Spider-Man / GTA Wet AsphaltReflections)</span>
-        <span>Reflective Wet Asphalt PBR</span>
+    <div class="card">
+      <div class="card-header">
+        <span>Mouse Drag Right + Scroll Wheel Zoom</span>
+        <span>Zoom Clamped &amp; Raycast Safe</span>
       </div>
-      <img src="/captures/aaa_scene3_sunset_manhattan_city_avenue.png" alt="Manhattan Sunset Scene" />
+      <img src="/captures/camera_proof_angle3_mouse_drag_right_zoomed.png" alt="Mouse Drag Right + Zoom" />
     </div>
-  </section>
+  </div>
 </body>
 </html>
