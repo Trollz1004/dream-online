@@ -1,7 +1,7 @@
 /**
  * DREAM Engine — Combat Authoritative Manager (100% In-House AI-Built)
  * Orchestrates combat state, stamina/health pools, consumables, GeminEYE companion shop,
- * inputs, hit resolution, sentinel interactions, and event logging.
+ * inputs, hit resolution, hit-stop (60-90ms), floating damage numbers, sentinel interactions, and event logging.
  */
 
 import { DashState } from './dash-state';
@@ -23,6 +23,17 @@ export interface CombatFeedback {
   eventAge: number;
   hitFlashTime: number;
   screenShakeTime: number;
+}
+
+export interface DamageFloater {
+  id: string;
+  amount: number;
+  label: string;
+  isCrit: boolean;
+  offsetX: number;
+  offsetY: number;
+  elapsed: number;
+  duration: number;
 }
 
 export class CombatManager {
@@ -58,11 +69,14 @@ export class CombatManager {
   dashDirection: Vec3 = new Vec3(0, 0, -1);
   lungeDirection: Vec3 = new Vec3(0, 0, -1);
 
-  // Readout & effects
+  // Readout, hit-stop (60-90ms) & floating damage numbers
   lastEventText: string = 'Ready';
   eventAge: number = 0.0;
   hitFlashTime: number = 0.0;
   screenShakeTime: number = 0.0;
+  hitStopTimer: number = 0.0;
+  damageFloaters: DamageFloater[] = [];
+  private floaterSeq = 0;
 
   // Visual effects queues for renderer
   activeSlashArcs: Array<{
@@ -293,6 +307,17 @@ export class CombatManager {
     isSprinting: boolean,
     cameraYaw: number
   ): void {
+    // Advance floating damage numbers and hit-stop timer even during hit-stop
+    if (this.hitStopTimer > 0.0) {
+      this.hitStopTimer = Math.max(0.0, this.hitStopTimer - delta);
+    }
+    for (let i = this.damageFloaters.length - 1; i >= 0; i--) {
+      this.damageFloaters[i].elapsed += delta;
+      if (this.damageFloaters[i].elapsed >= this.damageFloaters[i].duration) {
+        this.damageFloaters.splice(i, 1);
+      }
+    }
+
     this.dash.advance(delta);
     this.attack.advance(delta);
     this.heavy.advance(delta);
@@ -369,6 +394,163 @@ export class CombatManager {
     this.resolveAttackHits(playerPos, cameraYaw);
   }
 
+  /**
+   * Authoritative helper that applies damage to the Hollow Sentinel, triggers hit-stop (60-90ms),
+   * spawns a floating damage number over the boss, and records the world event.
+   */
+  recordBossHit(
+    damage: number,
+    attackType: 'light' | 'heavy' | 'lunge' | 'burst',
+    step = 1
+  ): boolean {
+    if (this.sentinel.isDown() || damage <= 0) return false;
+
+    const hitApplied = this.sentinel.takeHit(damage, () => {
+      this.say('Sentinel defeated! Rebuilding in 4.0s');
+      this.eventLog.append(
+        createWorldEvent('sentinel.defeated', 'first-gate', ['npc:sentinel-001'], {
+          respawnDuration: HollowSentinel.DOWN_DURATION,
+        })
+      );
+    });
+    if (!hitApplied) return false;
+
+    // Trigger hit-stop (60–90 ms) on finishers, heavy swings, lunges, and ultimate bursts
+    if (attackType === 'burst') {
+      this.hitStopTimer = 0.090;
+      this.screenShakeTime = 0.28;
+    } else if (attackType === 'heavy') {
+      this.hitStopTimer = 0.080;
+      this.screenShakeTime = 0.22;
+    } else if (attackType === 'lunge' || (attackType === 'light' && step >= 3)) {
+      this.hitStopTimer = 0.065;
+      this.screenShakeTime = 0.16;
+    } else {
+      this.screenShakeTime = 0.12;
+    }
+
+    // Spawn floating damage number above the boss
+    this.floaterSeq += 1;
+    const isCrit = attackType === 'burst' || attackType === 'heavy' || step >= 3;
+    const label =
+      attackType === 'burst'
+        ? 'ULTIMATE!'
+        : attackType === 'heavy'
+        ? 'HEAVY!'
+        : attackType === 'lunge'
+        ? 'LUNGE!'
+        : step >= 3
+        ? 'CRIT!'
+        : `SLASH ${step}`;
+    const spreadX = ((this.floaterSeq % 5) - 2) * 26;
+    const spreadY = (this.floaterSeq % 3) * 14;
+
+    this.damageFloaters.unshift({
+      id: `dmg-${this.floaterSeq}`,
+      amount: Math.round(damage),
+      label,
+      isCrit,
+      offsetX: spreadX,
+      offsetY: spreadY,
+      elapsed: 0,
+      duration: 1.35,
+    });
+    if (this.damageFloaters.length > 6) {
+      this.damageFloaters.length = 6;
+    }
+
+    if (attackType === 'light') {
+      this.say(`Swing ${step} hit for ${Math.round(damage)}`);
+    } else if (attackType === 'heavy') {
+      this.say(`Heavy swing hit for ${Math.round(damage)}`);
+    } else if (attackType === 'lunge') {
+      this.say(`Dream Lunge hit for ${Math.round(damage)}`);
+    } else {
+      this.say(`Nightveil Burst hit for ${Math.round(damage)}`);
+    }
+
+    this.eventLog.append(
+      createWorldEvent('player.hit_landed', 'first-gate', ['player:player-001', 'npc:sentinel-001'], {
+        attackType,
+        ...(attackType === 'light' ? { step } : {}),
+        damage,
+        sentinelHealthRemaining: this.sentinel.health,
+      })
+    );
+
+    return true;
+  }
+
+  /**
+   * Shared authoritative strike execution used by keyboard combat, HUD skill buttons,
+   * CLI-Anything, unit tests, and the 7-second autopilot sequence.
+   */
+  executeAuthoritativeSkillStrike(
+    move: 'l1' | 'l2' | 'l3' | 'heavy' | 'lunge' | 'burst',
+    playerPos: Vec3,
+    cameraYaw: number,
+    overrideDamage?: number
+  ): { hit: boolean; damage: number; bossHealthAfter: number; knockedDown: boolean } {
+    if (this.sentinel.isDown()) {
+      return { hit: false, damage: 0, bossHealthAfter: this.sentinel.health, knockedDown: true };
+    }
+
+    const toSentinelX = this.sentinel.position.x - playerPos.x;
+    const toSentinelZ = this.sentinel.position.z - playerPos.z;
+    const distToSentinel = Math.sqrt(toSentinelX * toSentinelX + toSentinelZ * toSentinelZ);
+
+    const facingX = -Math.sin(cameraYaw);
+    const facingZ = -Math.cos(cameraYaw);
+    const dot = (toSentinelX * facingX + toSentinelZ * facingZ) / (distToSentinel || 1);
+    const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
+
+    let maxReach = AttackState.REACH;
+    let halfArc = AttackState.HALF_ARC;
+    let dmg = 10;
+    let attackType: 'light' | 'heavy' | 'lunge' | 'burst' = 'light';
+    let step = 1;
+
+    if (move === 'l1' || move === 'l2' || move === 'l3') {
+      step = move === 'l1' ? 1 : move === 'l2' ? 2 : 3;
+      maxReach = AttackState.REACH;
+      halfArc = AttackState.HALF_ARC;
+      dmg = overrideDamage ?? this.attack.damageForStep(step);
+      attackType = 'light';
+    } else if (move === 'heavy') {
+      maxReach = HeavyAttackState.REACH;
+      halfArc = HeavyAttackState.HALF_ARC;
+      dmg = overrideDamage ?? HeavyAttackState.DAMAGE;
+      attackType = 'heavy';
+    } else if (move === 'lunge') {
+      maxReach = LungeState.REACH;
+      halfArc = LungeState.HALF_ARC;
+      dmg = overrideDamage ?? LungeState.DAMAGE;
+      attackType = 'lunge';
+    } else if (move === 'burst') {
+      maxReach = BurstState.RADIUS;
+      halfArc = Math.PI;
+      dmg = overrideDamage ?? BurstState.DAMAGE;
+      attackType = 'burst';
+    }
+
+    if (distToSentinel <= maxReach && angle <= halfArc) {
+      const hit = this.recordBossHit(dmg, attackType, step);
+      return {
+        hit,
+        damage: hit ? dmg : 0,
+        bossHealthAfter: this.sentinel.health,
+        knockedDown: this.sentinel.isDown(),
+      };
+    }
+
+    return {
+      hit: false,
+      damage: 0,
+      bossHealthAfter: this.sentinel.health,
+      knockedDown: this.sentinel.isDown(),
+    };
+  }
+
   // Attempt to hit player from external attack (e.g. Sentinel Focus Beam)
   tryTakeHit(damage: number, attackName: string = HollowSentinel.ATTACK_NAME): boolean {
     if (this.dash.isInvulnerable()) {
@@ -433,18 +615,7 @@ export class CombatManager {
         const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
         if (angle <= AttackState.HALF_ARC) {
           const dmg = this.attack.damageForStep(this.attack.step());
-          this.sentinel.takeHit(dmg);
-          this.say(`Swing ${this.attack.step()} hit for ${Math.round(dmg)}`);
-          this.screenShakeTime = 0.12;
-
-          this.eventLog.append(
-            createWorldEvent('player.hit_landed', 'first-gate', ['player:player-001', 'npc:sentinel-001'], {
-              attackType: 'light',
-              step: this.attack.step(),
-              damage: dmg,
-              sentinelHealthRemaining: this.sentinel.health,
-            })
-          );
+          this.recordBossHit(dmg, 'light', this.attack.step());
         } else {
           this.say(`Swing ${this.attack.step()} missed`);
         }
@@ -459,17 +630,7 @@ export class CombatManager {
         const dot = (toSentinelX * facingX + toSentinelZ * facingZ) / (distToSentinel || 1);
         const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
         if (angle <= HeavyAttackState.HALF_ARC) {
-          this.sentinel.takeHit(HeavyAttackState.DAMAGE);
-          this.say(`Heavy swing hit for ${Math.round(HeavyAttackState.DAMAGE)}`);
-          this.screenShakeTime = 0.22;
-
-          this.eventLog.append(
-            createWorldEvent('player.hit_landed', 'first-gate', ['player:player-001', 'npc:sentinel-001'], {
-              attackType: 'heavy',
-              damage: HeavyAttackState.DAMAGE,
-              sentinelHealthRemaining: this.sentinel.health,
-            })
-          );
+          this.recordBossHit(HeavyAttackState.DAMAGE, 'heavy');
         } else {
           this.say('Heavy swing missed');
         }
@@ -484,17 +645,7 @@ export class CombatManager {
         const dot = (toSentinelX * facingX + toSentinelZ * facingZ) / (distToSentinel || 1);
         const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
         if (angle <= LungeState.HALF_ARC) {
-          this.sentinel.takeHit(LungeState.DAMAGE);
-          this.say(`Dream Lunge hit for ${Math.round(LungeState.DAMAGE)}`);
-          this.screenShakeTime = 0.18;
-
-          this.eventLog.append(
-            createWorldEvent('player.hit_landed', 'first-gate', ['player:player-001', 'npc:sentinel-001'], {
-              attackType: 'lunge',
-              damage: LungeState.DAMAGE,
-              sentinelHealthRemaining: this.sentinel.health,
-            })
-          );
+          this.recordBossHit(LungeState.DAMAGE, 'lunge');
         } else {
           this.say('Dream Lunge missed');
         }
@@ -507,16 +658,7 @@ export class CombatManager {
     if (this.burst.takeHitWindow()) {
       this.screenShakeTime = 0.25;
       if (distToSentinel <= BurstState.RADIUS) {
-        this.sentinel.takeHit(BurstState.DAMAGE);
-        this.say(`Nightveil Burst hit for ${Math.round(BurstState.DAMAGE)}`);
-
-        this.eventLog.append(
-          createWorldEvent('player.hit_landed', 'first-gate', ['player:player-001', 'npc:sentinel-001'], {
-            attackType: 'burst',
-            damage: BurstState.DAMAGE,
-            sentinelHealthRemaining: this.sentinel.health,
-          })
-        );
+        this.recordBossHit(BurstState.DAMAGE, 'burst');
       }
     }
   }

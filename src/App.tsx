@@ -58,13 +58,16 @@ export default function App() {
     luma: 0.48,
   });
 
+  const isCaptureMode =
+    typeof window !== 'undefined' && window.location.search.includes('capture=1');
+
   const [playerPos, setPlayerPos] = useState<[number, number, number]>([0, 0, 0]);
   const [cameraYaw, setCameraYaw] = useState(0);
   const [viewMode, setViewMode] = useState<'third-person' | 'first-person'>('third-person');
   const [evolutionPhase, setEvolutionPhase] = useState<EvolutionPhase>('day_dream_3d');
   const [, setIsControlActive] = useState(false);
   const [, setIsPointerLocked] = useState(false);
-  const [isOverlayDismissed, setIsOverlayDismissed] = useState(false);
+  const [isOverlayDismissed, setIsOverlayDismissed] = useState(true);
   const [refusedMessage, setRefusedMessage] = useState<string | null>(null);
 
   // Split-Screen Landing Home Page & AFK Idle Screensaver Code Shield
@@ -91,6 +94,7 @@ export default function App() {
 
   // Idle AFK watcher — engages Split-Screen Graphy + Obsidian Memory Code Shield when idle
   useEffect(() => {
+    if (isCaptureMode) return;
     const resetIdle = () => {
       lastActivityRef.current = Date.now();
       setIdleSecondsRemaining(afkThresholdSec);
@@ -329,11 +333,13 @@ export default function App() {
       {/* First-Person Visor / Goggles HUD Overlay */}
       <VisorOverlay viewMode={viewMode} cameraYaw={cameraYaw} />
 
-      {/* Action Combat HUD: Prompt band, health/stamina, sentinel target bar, BDO/Rohan Awakening Skill Callouts & clickable hotbar */}
+      {/* Action Combat HUD: Prompt band, health/stamina, sentinel target bar, Awakening Skill Callouts & clickable hotbar */}
       {engineRef.current && (
         <CombatHud
           combat={engineRef.current.combat}
           skillVfx={engineRef.current.skillVfx}
+          isCaptureMode={isCaptureMode}
+          isEndCardVisible={Boolean(engineRef.current.isEndCardVisible)}
           onCastSkill={(move) => {
             setIsOverlayDismissed(true);
             setIsAfkScreensaver(false);
@@ -343,33 +349,38 @@ export default function App() {
       )}
 
       {/* Real-time Circular Radar Minimap (Top Right) */}
-      <RadarMinimap
-        playerPos={playerPos}
-        cameraYaw={cameraYaw}
-        combat={engineRef.current?.combat}
-        studioEntities={engineRef.current?.studio.entities}
-      />
+      {!isCaptureMode && (
+        <RadarMinimap
+          playerPos={playerPos}
+          cameraYaw={cameraYaw}
+          combat={engineRef.current?.combat}
+          studioEntities={engineRef.current?.studio.entities}
+        />
+      )}
 
-      {/* Unreal-Style 3D World & Character Studio Dock */}
-      <DreamStudioPanel
-        engine={engineRef.current}
-        isOpen={isStudioOpen}
-        onClose={() => setIsStudioOpen(false)}
-        onOpenRea={() => {
-          engineRef.current?.releaseControl();
-          setIsReaOpen(true);
-        }}
-        onOpenGmControl={() => {
-          engineRef.current?.releaseControl();
-          setIsGmControlOpen(true);
-        }}
-        onOpenOpenUiIde={() => {
-          engineRef.current?.releaseControl();
-          setIsOpenUiIdeOpen(true);
-        }}
-      />
+      {/* 3D World & Character Studio Dock */}
+      {!isCaptureMode && (
+        <DreamStudioPanel
+          engine={engineRef.current}
+          isOpen={isStudioOpen}
+          onClose={() => setIsStudioOpen(false)}
+          onOpenRea={() => {
+            engineRef.current?.releaseControl();
+            setIsReaOpen(true);
+          }}
+          onOpenGmControl={() => {
+            engineRef.current?.releaseControl();
+            setIsGmControlOpen(true);
+          }}
+          onOpenOpenUiIde={() => {
+            engineRef.current?.releaseControl();
+            setIsOpenUiIdeOpen(true);
+          }}
+        />
+      )}
 
       {/* Top Bar — High-Contrast AAA Game Engine HUD */}
+      {!isCaptureMode && (
       <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none z-20">
         <div className="flex items-center space-x-3 bg-neutral-900/90 backdrop-blur-md border border-neutral-700/70 px-4 py-2 rounded-sm shadow-lg pointer-events-auto">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -386,7 +397,7 @@ export default function App() {
               </span>
             </div>
             <p className="text-[10px] tracking-wide text-neutral-300">
-              100% AI-Built WebGPU Game Engine • Co-GM Council • <span className="text-rose-400 font-semibold">#UntilNoKidInNeed</span>
+              100% AI-Built WebGPU Game Engine • Live-World Action MMORPG
             </p>
           </div>
         </div>
@@ -634,9 +645,10 @@ export default function App() {
           </button>
         </div>
       </div>
+      )}
 
       {/* Pointer Lock Refused Plain Message Notification */}
-      {refusedMessage && (
+      {!isCaptureMode && refusedMessage && (
         <div className="absolute top-18 left-1/2 -translate-x-1/2 z-20 bg-neutral-900/95 border border-amber-500/50 text-neutral-200 text-xs px-4 py-2 rounded-sm shadow-xl flex items-center gap-2.5">
           <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
           <span>{refusedMessage}</span>
@@ -650,6 +662,7 @@ export default function App() {
       )}
 
       {/* Split-Screen Landing Home Page & AFK Idle Code Shield */}
+      {!isCaptureMode && (
       <SplitLandingAndScreensaver
         engine={engineRef.current}
         isOpen={(!isOverlayDismissed && !isAnyModalOpen && !isStudioOpen) || isAfkScreensaver}
@@ -692,8 +705,10 @@ export default function App() {
           setIsOverlayDismissed(false);
         }}
       />
+      )}
 
       {/* Avatar Coordinate & Provenance Pills (Bottom Left) */}
+      {!isCaptureMode && (
       <div className="absolute bottom-4 left-4 flex flex-col gap-2 pointer-events-none z-10">
         <div className="bg-neutral-900/85 backdrop-blur-md border border-neutral-800 px-3 py-1.5 rounded-sm text-xs font-mono text-neutral-300 flex items-center gap-2">
           <span className="text-neutral-500 uppercase tracking-widest text-[10px]">AVATAR</span>
@@ -709,19 +724,10 @@ export default function App() {
         <div className="bg-neutral-900/85 backdrop-blur-md border border-neutral-800/90 px-3 py-1.5 rounded-sm text-[10px] text-neutral-300 flex items-center gap-2 pointer-events-auto">
           <span className="font-semibold text-cyan-300">Built with Google Gemini</span>
           <span className="text-neutral-600">•</span>
-          <span className="text-neutral-400">Co-GM Council: Claude · Perplexity · Grok · OpenAI (Codex) · Hermes</span>
-          <span className="text-neutral-600">•</span>
-          <button
-            onClick={() => {
-              engineRef.current?.releaseControl();
-              setIsPitchOpen(true);
-            }}
-            className="text-rose-400 hover:text-rose-300 font-mono font-semibold cursor-pointer underline underline-offset-2"
-          >
-            #UntilNoKidInNeed
-          </button>
+          <span className="text-neutral-400">100% In-House DREAM Engine</span>
         </div>
       </div>
+      )}
 
       {/* geminEyE Cyber-Optic & Voice HUD */}
       <GeminEyeHud
@@ -796,6 +802,7 @@ export default function App() {
       />
 
       {/* Frame-Rate Pill at the Bottom Right */}
+      {!isCaptureMode && (
       <div className="absolute bottom-4 right-4 bg-neutral-900/90 backdrop-blur-md border border-neutral-700/70 px-3.5 py-2 rounded-sm shadow-xl font-mono text-xs text-neutral-200 flex flex-col gap-1 min-w-[210px] pointer-events-none z-10">
         <div className="flex items-center justify-between">
           <span className="font-bold text-emerald-400 tracking-wider">
@@ -830,6 +837,7 @@ export default function App() {
           </span>
         </div>
       </div>
+      )}
     </div>
   );
 }

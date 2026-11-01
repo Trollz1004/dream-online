@@ -4,7 +4,7 @@
  * Usage:
  *   npx tsx ops/cli-anything/dream-cli.ts --help
  *   npx tsx ops/cli-anything/dream-cli.ts inspect --json
- *   npx tsx ops/cli-anything/dream-cli.ts char set --class crimson-dekan --vfx rohan-blood-crimson
+ *   npx tsx ops/cli-anything/dream-cli.ts char set --class crimson-vanguard --vfx ember-wyrm-crimson
  *   npx tsx ops/cli-anything/dream-cli.ts skill cast --move combo-all
  *   npx tsx ops/cli-anything/dream-cli.ts security run --mode triple-team --json
  */

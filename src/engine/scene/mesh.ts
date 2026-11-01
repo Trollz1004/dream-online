@@ -1,6 +1,8 @@
 /**
- * DREAM Engine — Mesh & Procedural Geometries
+ * DREAM Engine — Mesh & Procedural Sculpted Geometries
  * Pure TypeScript, zero external dependencies.
+ * Includes smooth-beveled multi-material armor segments, Colossus Boss parts,
+ * 3D skill VFX meshes, weathered arena crag rocks, and GPU particle diamonds.
  */
 
 export interface GeometryData {
@@ -43,6 +45,38 @@ export class MeshGeometry {
 }
 
 /**
+ * Merges multiple MeshGeometry instances into a single MeshGeometry.
+ */
+export function mergeGeometries(parts: MeshGeometry[]): MeshGeometry {
+  let totalVerts = 0;
+  let totalIndices = 0;
+  for (const p of parts) {
+    totalVerts += p.vertexCount;
+    totalIndices += p.indexCount;
+  }
+
+  const positions = new Float32Array(totalVerts * 3);
+  const normals = new Float32Array(totalVerts * 3);
+  const uvs = new Float32Array(totalVerts * 2);
+  const indices = totalVerts > 65535 ? new Uint32Array(totalIndices) : new Uint16Array(totalIndices);
+
+  let vOffset = 0;
+  let iOffset = 0;
+  for (const p of parts) {
+    positions.set(p.positions, vOffset * 3);
+    normals.set(p.normals, vOffset * 3);
+    uvs.set(p.uvs, vOffset * 2);
+    for (let i = 0; i < p.indexCount; i++) {
+      indices[iOffset + i] = p.indices[i] + vOffset;
+    }
+    vOffset += p.vertexCount;
+    iOffset += p.indexCount;
+  }
+
+  return new MeshGeometry({ positions, normals, uvs, indices });
+}
+
+/**
  * Creates a ground plane centered at (0, 0, 0) in XZ plane with normals pointing up (0, 1, 0).
  */
 export function createGroundPlane(size = 200, subdivisions = 10): MeshGeometry {
@@ -62,7 +96,7 @@ export function createGroundPlane(size = 200, subdivisions = 10): MeshGeometry {
 
       positions.push(px, 0, pz);
       normals.push(0, 1, 0);
-      uvs.push((px / 10), (pz / 10)); // 1 UV unit per 10 world units
+      uvs.push(px / 10, pz / 10);
     }
   }
 
@@ -89,7 +123,6 @@ export function createGroundPlane(size = 200, subdivisions = 10): MeshGeometry {
 
 /**
  * Creates a 3D capsule centered along Y axis with base at y = 0.
- * Total height = height, radius = radius.
  */
 export function createCapsuleGeometry(
   radius = 0.4,
@@ -99,21 +132,19 @@ export function createCapsuleGeometry(
 ): MeshGeometry {
   const cylinderHeight = Math.max(0.1, height - radius * 2);
   const halfCyl = cylinderHeight * 0.5;
-  const centerY = radius + halfCyl; // Character center height
+  const centerY = radius + halfCyl;
 
   const positions: number[] = [];
   const normals: number[] = [];
   const uvs: number[] = [];
   const indices: number[] = [];
 
-  // Helper to add vertex
   function addVertex(x: number, y: number, z: number, nx: number, ny: number, nz: number, u: number, v: number) {
     positions.push(x, y, z);
     normals.push(nx, ny, nz);
     uvs.push(u, v);
   }
 
-  // Top Hemisphere
   for (let lat = 0; lat <= rings; lat++) {
     const theta = (lat * Math.PI) / (2 * rings);
     const sinTheta = Math.sin(theta);
@@ -132,11 +163,10 @@ export function createCapsuleGeometry(
       const py = centerY + halfCyl + radius * (ny - 1) + radius;
       const pz = radius * nz;
 
-      addVertex(px, py, pz, nx, ny, nz, lon / radialSegments, 1.0 - (lat / (rings * 4)));
+      addVertex(px, py, pz, nx, ny, nz, lon / radialSegments, 1.0 - lat / (rings * 4));
     }
   }
 
-  // Cylinder Body
   for (let i = 0; i <= 2; i++) {
     const yFrac = i / 2;
     const py = centerY + halfCyl - yFrac * cylinderHeight;
@@ -146,15 +176,10 @@ export function createCapsuleGeometry(
       const sinPhi = Math.sin(phi);
       const cosPhi = Math.cos(phi);
 
-      const nx = cosPhi;
-      const ny = 0;
-      const nz = sinPhi;
-
-      addVertex(radius * nx, py, radius * nz, nx, ny, nz, lon / radialSegments, 0.5);
+      addVertex(radius * cosPhi, py, radius * sinPhi, cosPhi, 0, sinPhi, lon / radialSegments, 0.5);
     }
   }
 
-  // Bottom Hemisphere
   for (let lat = 0; lat <= rings; lat++) {
     const theta = Math.PI * 0.5 + (lat * Math.PI) / (2 * rings);
     const sinTheta = Math.sin(theta);
@@ -173,12 +198,11 @@ export function createCapsuleGeometry(
       const py = centerY - halfCyl + radius * ny;
       const pz = radius * nz;
 
-      addVertex(px, py, pz, nx, ny, nz, lon / radialSegments, 0.25 - (lat / (rings * 4)));
+      addVertex(px, py, pz, nx, ny, nz, lon / radialSegments, 0.25 - lat / (rings * 4));
     }
   }
 
-  // Build index grid
-  const totalRings = (rings + 1) + 3 + (rings + 1);
+  const totalRings = rings + 1 + 3 + (rings + 1);
   const segCols = radialSegments + 1;
 
   for (let r = 0; r < totalRings - 1; r++) {
@@ -202,24 +226,18 @@ export function createCapsuleGeometry(
 }
 
 /**
- * Creates a scenic monolith/pillar mesh for world depth and spatial scale.
+ * Creates a scenic monolith/pillar mesh.
  */
 export function createMonolithGeometry(w = 1.2, h = 4.5, d = 1.2): MeshGeometry {
   const hw = w * 0.5;
   const hd = d * 0.5;
 
   const positions = new Float32Array([
-    // Front face
     -hw, 0,  hd,   hw, 0,  hd,   hw, h,  hd,  -hw, h,  hd,
-    // Back face
     -hw, 0, -hd,  -hw, h, -hd,   hw, h, -hd,   hw, 0, -hd,
-    // Top face
     -hw, h, -hd,  -hw, h,  hd,   hw, h,  hd,   hw, h, -hd,
-    // Bottom face
     -hw, 0, -hd,   hw, 0, -hd,   hw, 0,  hd,  -hw, 0,  hd,
-    // Right face
      hw, 0, -hd,   hw, h, -hd,   hw, h,  hd,   hw, 0,  hd,
-    // Left face
     -hw, 0, -hd,  -hw, 0,  hd,  -hw, h,  hd,  -hw, h, -hd,
   ]);
 
@@ -242,12 +260,12 @@ export function createMonolithGeometry(w = 1.2, h = 4.5, d = 1.2): MeshGeometry 
   ]);
 
   const indices = new Uint16Array([
-    0, 1, 2,      0, 2, 3,    // Front
-    4, 5, 6,      4, 6, 7,    // Back
-    8, 9, 10,     8, 10, 11,  // Top
-    12, 13, 14,   12, 14, 15, // Bottom
-    16, 17, 18,   16, 18, 19, // Right
-    20, 21, 22,   20, 22, 23  // Left
+    0, 1, 2,      0, 2, 3,
+    4, 5, 6,      4, 6, 7,
+    8, 9, 10,     8, 10, 11,
+    12, 13, 14,   12, 14, 15,
+    16, 17, 18,   16, 18, 19,
+    20, 21, 22,   20, 22, 23,
   ]);
 
   return new MeshGeometry({ positions, normals, uvs, indices });
@@ -263,7 +281,6 @@ export function createSkyDomeGeometry(radius = 800, segments = 24, rings = 12): 
   const indices: number[] = [];
 
   for (let r = 0; r <= rings; r++) {
-    // from zenith (0) down to slightly below horizon (PI * 0.55)
     const theta = (r * Math.PI * 0.55) / rings;
     const sinTheta = Math.sin(theta);
     const cosTheta = Math.cos(theta);
@@ -277,7 +294,6 @@ export function createSkyDomeGeometry(radius = 800, segments = 24, rings = 12): 
       const y = radius * cosTheta;
       const z = radius * sinPhi * sinTheta;
 
-      // Inverted normal facing inward
       positions.push(x, y, z);
       normals.push(-cosPhi * sinTheta, -cosTheta, -sinPhi * sinTheta);
       uvs.push(s / segments, r / rings);
@@ -318,17 +334,11 @@ export function createBoxGeometry(w = 1.0, h = 1.0, d = 1.0, ox = 0, oy = 0, oz 
   const minZ = oz - hd, maxZ = oz + hd;
 
   const positions = new Float32Array([
-    // Front face (Z+)
     minX, minY, maxZ,   maxX, minY, maxZ,   maxX, maxY, maxZ,   minX, maxY, maxZ,
-    // Back face (Z-)
     minX, minY, minZ,   minX, maxY, minZ,   maxX, maxY, minZ,   maxX, minY, minZ,
-    // Top face (Y+)
     minX, maxY, minZ,   minX, maxY, maxZ,   maxX, maxY, maxZ,   maxX, maxY, minZ,
-    // Bottom face (Y-)
     minX, minY, minZ,   maxX, minY, minZ,   maxX, minY, maxZ,   minX, minY, maxZ,
-    // Right face (X+)
     maxX, minY, minZ,   maxX, maxY, minZ,   maxX, maxY, maxZ,   maxX, minY, maxZ,
-    // Left face (X-)
     minX, minY, minZ,   minX, minY, maxZ,   minX, maxY, maxZ,   minX, maxY, minZ,
   ]);
 
@@ -363,8 +373,8 @@ export function createBoxGeometry(w = 1.0, h = 1.0, d = 1.0, ox = 0, oy = 0, oz 
 }
 
 /**
- * Creates a contoured multi-ring tapered 3D lathe / armor segment mesh.
- * Used for sculpted Dark-Fantasy Action-MMORPG armor, limbs, horns, and obelisks (never flat boxes).
+ * Creates a contoured multi-ring tapered 3D lathe / beveled armor segment mesh
+ * with analytical vertical slope normals (`ny = -dr/dy`) and anatomical plate ridges.
  */
 export function createSculptedArmorSegmentGeometry(
   radiiX: number[],
@@ -374,7 +384,9 @@ export function createSculptedArmorSegmentGeometry(
   oy = 0,
   oz = 0,
   radialSegments = 16,
-  curveZOffsets?: number[]
+  curveZOffsets?: number[],
+  fluteFreq = 4,
+  fluteAmp = 0.045
 ): MeshGeometry {
   const segs = Math.max(8, radialSegments);
   const rings = Math.min(radiiX.length, radiiZ.length, heights.length);
@@ -385,10 +397,18 @@ export function createSculptedArmorSegmentGeometry(
 
   for (let r = 0; r < rings; r++) {
     const v = rings > 1 ? r / (rings - 1) : 0;
-    const rx = radiiX[r];
-    const rz = radiiZ[r];
+    const rx = Math.max(0.005, radiiX[r]);
+    const rz = Math.max(0.005, radiiZ[r]);
     const y = oy + heights[r];
-    const zOff = curveZOffsets ? (curveZOffsets[r] || 0) : 0;
+    const zOff = curveZOffsets ? curveZOffsets[r] || 0 : 0;
+
+    // Compute vertical slope dr/dy from adjacent rings for accurate 3D bevel shading
+    const rPrev = Math.max(0, r - 1);
+    const rNext = Math.min(rings - 1, r + 1);
+    const dy = Math.max(0.01, heights[rNext] - heights[rPrev]);
+    const drX = radiiX[rNext] - radiiX[rPrev];
+    const drZ = radiiZ[rNext] - radiiZ[rPrev];
+    const slopeY = -0.5 * (drX / dy + drZ / dy);
 
     for (let s = 0; s <= segs; s++) {
       const u = s / segs;
@@ -396,11 +416,23 @@ export function createSculptedArmorSegmentGeometry(
       const cosP = Math.cos(phi);
       const sinP = Math.sin(phi);
 
-      const px = ox + rx * cosP;
-      const pz = oz + zOff + rz * sinP;
+      // Subtle armor plate fluting/bevel ridge modulation
+      const ridge = fluteAmp > 0 ? 1.0 + fluteAmp * Math.cos(phi * fluteFreq) : 1.0;
+      const dRidge = fluteAmp > 0 ? -fluteAmp * fluteFreq * Math.sin(phi * fluteFreq) : 0.0;
+
+      const px = ox + rx * ridge * cosP;
+      const pz = oz + zOff + rz * ridge * sinP;
+
+      let nx = cosP / rx - sinP * dRidge * 0.25;
+      let ny = slopeY;
+      let nz = sinP / rz + cosP * dRidge * 0.25;
+      const nLen = Math.hypot(nx, ny, nz) || 1.0;
+      nx /= nLen;
+      ny /= nLen;
+      nz /= nLen;
 
       positions.push(px, y, pz);
-      normals.push(cosP, 0.15, sinP);
+      normals.push(nx, ny, nz);
       uvs.push(u, v);
     }
   }
@@ -417,10 +449,9 @@ export function createSculptedArmorSegmentGeometry(
     }
   }
 
-  // Cap top and bottom
   if (rings >= 2) {
     const botCenterIdx = positions.length / 3;
-    const zOff0 = curveZOffsets ? (curveZOffsets[0] || 0) : 0;
+    const zOff0 = curveZOffsets ? curveZOffsets[0] || 0 : 0;
     positions.push(ox, oy + heights[0], oz + zOff0);
     normals.push(0, -1, 0);
     uvs.push(0.5, 0.5);
@@ -430,7 +461,7 @@ export function createSculptedArmorSegmentGeometry(
 
     const topRingStart = (rings - 1) * stride;
     const topCenterIdx = positions.length / 3;
-    const zOffTop = curveZOffsets ? (curveZOffsets[rings - 1] || 0) : 0;
+    const zOffTop = curveZOffsets ? curveZOffsets[rings - 1] || 0 : 0;
     positions.push(ox, oy + heights[rings - 1], oz + zOffTop);
     normals.push(0, 1, 0);
     uvs.push(0.5, 0.5);
@@ -448,8 +479,7 @@ export function createSculptedArmorSegmentGeometry(
 }
 
 /**
- * Creates a sweeping 3D Crescent Sword-Slash Ribbon Mesh for Black Desert Online / Rohan: Blood Feud
- * style combat skill visuals. Sweeps from -arcAngle/2 to +arcAngle/2 in the XZ plane with tapered blade tips.
+ * Creates a sweeping 3D Crescent Sword-Slash Ribbon Mesh for combat skill visuals.
  */
 export function createCrescentSlashArcGeometry(
   innerRadius = 1.1,
@@ -466,7 +496,6 @@ export function createCrescentSlashArcGeometry(
   const halfArc = arcRadians * 0.5;
   const halfThick = thickness * 0.5;
 
-  // Build top and bottom crescent surfaces so it is visible from any camera angle
   for (let side = 0; side < 2; side++) {
     const ny = side === 0 ? 1 : -1;
     const yOff = side === 0 ? halfThick : -halfThick;
@@ -474,23 +503,20 @@ export function createCrescentSlashArcGeometry(
 
     for (let i = 0; i <= segments; i++) {
       const t = i / segments;
-      // Taper crescent width at both ends (sin curve) so it looks like a razor crescent wave, never a box!
       const taper = Math.sin(t * Math.PI);
       const angle = -halfArc + t * arcRadians;
       const sinA = Math.sin(angle);
-      const cosA = -Math.cos(angle); // Forward is -Z
+      const cosA = -Math.cos(angle);
 
       const rMid = (innerRadius + outerRadius) * 0.5;
-      const halfSpan = ((outerRadius - innerRadius) * 0.5) * (0.18 + 0.82 * taper);
+      const halfSpan = (outerRadius - innerRadius) * 0.5 * (0.18 + 0.82 * taper);
       const rIn = rMid - halfSpan * 0.65;
       const rOut = rMid + halfSpan * 1.15;
 
-      // Inner vertex
       positions.push(sinA * rIn, yOff * taper, cosA * rIn);
       normals.push(0, ny, 0);
       uvs.push(t, 0);
 
-      // Outer razor crest vertex
       positions.push(sinA * rOut, yOff * taper * 1.4, cosA * rOut);
       normals.push(sinA * 0.3, ny * 0.9, cosA * 0.3);
       uvs.push(t, 1);
@@ -520,7 +546,7 @@ export function createCrescentSlashArcGeometry(
 }
 
 /**
- * Creates a 3D Expanding Shockwave Torus / Ring Wave Geometry for Heavy Cleave, Dream Lunge, and Nightveil Burst.
+ * Creates a 3D Expanding Shockwave Torus / Ring Wave Geometry.
  */
 export function createRingWaveGeometry(
   innerRadius = 1.6,
@@ -542,17 +568,14 @@ export function createRingWaveGeometry(
     const cosP = Math.cos(phi);
     const sinP = Math.sin(phi);
 
-    // 0: Inner ring base
     positions.push(innerRadius * cosP, 0.02, innerRadius * sinP);
     normals.push(-cosP * 0.5, 0.85, -sinP * 0.5);
     uvs.push(u, 0);
 
-    // 1: Raised shockwave crest
     positions.push(midRadius * cosP, crestHeight, midRadius * sinP);
     normals.push(0, 1, 0);
     uvs.push(u, 0.5);
 
-    // 2: Outer ring base
     positions.push(outerRadius * cosP, 0.02, outerRadius * sinP);
     normals.push(cosP * 0.5, 0.85, sinP * 0.5);
     uvs.push(u, 1);
@@ -561,10 +584,8 @@ export function createRingWaveGeometry(
   for (let i = 0; i < segs; i++) {
     const rowA = i * 3;
     const rowB = (i + 1) * 3;
-    // Inner slope
     indices.push(rowA, rowB, rowA + 1);
     indices.push(rowA + 1, rowB, rowB + 1);
-    // Outer slope
     indices.push(rowA + 1, rowB + 1, rowA + 2);
     indices.push(rowA + 2, rowB + 1, rowB + 2);
   }
@@ -578,23 +599,25 @@ export function createRingWaveGeometry(
 }
 
 /**
- * Creates a jagged 3D Awakening Lightning / Blood-Flame Pillar & Tectonic Spike Geometry.
+ * Creates a jagged 3D Awakening Flame / Lightning Pillar & Tectonic Spike Geometry.
  */
 export function createSkillPillarSpikeGeometry(
-  baseRadius = 0.35,
-  topRadius = 0.04,
-  height = 3.2,
+  baseRadius = 0.38,
+  topRadius = 0.05,
+  height = 3.4,
   radialSegments = 10
 ): MeshGeometry {
   return createSculptedArmorSegmentGeometry(
-    [baseRadius, baseRadius * 0.78, baseRadius * 0.52, baseRadius * 0.28, topRadius],
-    [baseRadius, baseRadius * 0.78, baseRadius * 0.52, baseRadius * 0.28, topRadius],
+    [baseRadius, baseRadius * 0.82, baseRadius * 0.56, baseRadius * 0.32, topRadius],
+    [baseRadius, baseRadius * 0.82, baseRadius * 0.56, baseRadius * 0.32, topRadius],
     [0, height * 0.25, height * 0.55, height * 0.82, height],
     0,
     0,
     0,
     radialSegments,
-    [0, 0.06, -0.05, 0.04, 0]
+    [0, 0.06, -0.05, 0.04, 0],
+    5,
+    0.09
   );
 }
 
@@ -650,150 +673,384 @@ export function createAegisBarrierShieldGeometry(
 }
 
 /**
- * Creates a sculpted Dark-Fantasy Action-MMORPG Hero (Rohan: Blood Feud / Black Desert Online inspired).
- * Replaces flat boxes with contoured plate cuirass, horned dragon-crest helm, curved winged pauldrons,
- * tapered vambraces & greaves, flowing royal battle-cape, and a runic double-edged greatsword!
+ * Creates a 3D Octahedron / Diamond Spark Mesh for GPU particle bursts, embers, and dust trails.
+ */
+export function createSparkDiamondGeometry(radius = 0.5, height = 1.0): MeshGeometry {
+  const hh = height * 0.5;
+  const r = radius;
+  const positions = new Float32Array([
+    // Top pyramid (4 faces)
+    0, hh, 0,  -r, 0, r,   r, 0, r,
+    0, hh, 0,   r, 0, r,   r, 0, -r,
+    0, hh, 0,   r, 0, -r, -r, 0, -r,
+    0, hh, 0,  -r, 0, -r, -r, 0, r,
+    // Bottom pyramid (4 faces)
+    0, -hh, 0,  r, 0, r,  -r, 0, r,
+    0, -hh, 0,  r, 0, -r,  r, 0, r,
+    0, -hh, 0, -r, 0, -r,  r, 0, -r,
+    0, -hh, 0, -r, 0, r,  -r, 0, -r,
+  ]);
+
+  const normals = new Float32Array([
+    0, 0.6, 0.8,   0, 0.6, 0.8,   0, 0.6, 0.8,
+    0.8, 0.6, 0,   0.8, 0.6, 0,   0.8, 0.6, 0,
+    0, 0.6, -0.8,  0, 0.6, -0.8,  0, 0.6, -0.8,
+    -0.8, 0.6, 0, -0.8, 0.6, 0,  -0.8, 0.6, 0,
+    0, -0.6, 0.8,  0, -0.6, 0.8,  0, -0.6, 0.8,
+    0.8, -0.6, 0,  0.8, -0.6, 0,  0.8, -0.6, 0,
+    0, -0.6, -0.8, 0, -0.6, -0.8, 0, -0.6, -0.8,
+    -0.8, -0.6, 0,-0.8, -0.6, 0, -0.8, -0.6, 0,
+  ]);
+
+  const uvs = new Float32Array(24 * 2);
+  const indices = new Uint16Array(24);
+  for (let i = 0; i < 24; i++) {
+    uvs[i * 2] = (i % 3) * 0.5;
+    uvs[i * 2 + 1] = i < 12 ? 1.0 : 0.0;
+    indices[i] = i;
+  }
+
+  return new MeshGeometry({ positions, normals, uvs, indices });
+}
+
+/**
+ * Creates a weathered 3D Crag Rock / Ruined Basalt Slab geometry for arena terrain variety.
+ */
+export function createWeatheredCragRockGeometry(): MeshGeometry {
+  return createSculptedArmorSegmentGeometry(
+    [1.15, 1.05, 0.88, 0.64, 0.35],
+    [0.95, 0.88, 0.72, 0.52, 0.28],
+    [0.0, 0.22, 0.52, 0.85, 1.12],
+    0,
+    0,
+    0,
+    9,
+    [0, 0.06, -0.05, 0.04, -0.02],
+    5,
+    0.14
+  );
+}
+
+/**
+ * Creates a sculpted Dark-Fantasy Action-MMORPG Hero with distinct multi-material armor parts:
+ * - Rounded knight bascinet helm (`head`) + twin lateral winged helm crests (`horns`)
+ * - V-tapered fluted breastplate (`torso`) + chest core crystal (`core`)
+ * - Flared multi-tiered shoulder pauldrons (`pauldronL`, `pauldronR`)
+ * - Beveled vambraces & gauntlets (`armL`, `armR`)
+ * - Layered waist fauld & tassets (`hip`) + contoured greaves (`legL`, `legR`)
+ * - Pleated royal crimson battle-cape (`spine`)
+ * - Broad crossguard greatsword (`blade`)
  */
 export function createCyberKnightGeometries() {
+  const hornLeft = createSculptedArmorSegmentGeometry(
+    [0.045, 0.038, 0.028, 0.012],
+    [0.045, 0.038, 0.028, 0.012],
+    [0.0, 0.09, 0.19, 0.28],
+    -0.16,
+    1.68,
+    -0.02,
+    10,
+    [0, -0.04, -0.10, -0.18],
+    4,
+    0.04
+  );
+  const hornRight = createSculptedArmorSegmentGeometry(
+    [0.045, 0.038, 0.028, 0.012],
+    [0.045, 0.038, 0.028, 0.012],
+    [0.0, 0.09, 0.19, 0.28],
+    0.16,
+    1.68,
+    -0.02,
+    10,
+    [0, -0.04, -0.10, -0.18],
+    4,
+    0.04
+  );
+
   return {
-    // Sculpted Dragon-Knight Helm with contoured crown & cheek guards
+    // Rounded Knight Bascinet Helm with brow ridge & gorget collar (never a cone)
     head: createSculptedArmorSegmentGeometry(
-      [0.12, 0.16, 0.17, 0.15, 0.08],
-      [0.13, 0.18, 0.19, 0.16, 0.10],
-      [-0.15, -0.06, 0.04, 0.13, 0.22],
-      0, 1.62, 0, 16,
-      [0, 0.01, 0.02, 0, -0.04]
+      [0.14, 0.165, 0.175, 0.17, 0.145, 0.10],
+      [0.14, 0.175, 0.19, 0.185, 0.155, 0.11],
+      [-0.14, -0.07, 0.01, 0.09, 0.16, 0.21],
+      0,
+      1.61,
+      0,
+      18,
+      [0, 0.01, 0.02, 0.01, 0, -0.01],
+      6,
+      0.035
     ),
-    // Curved wrap-around glowing optic visor
+    // Glowing Knight Visor Slit
     visor: createSculptedArmorSegmentGeometry(
-      [0.15, 0.165, 0.14],
+      [0.155, 0.17, 0.145],
       [0.09, 0.11, 0.08],
-      [-0.04, 0.0, 0.04],
-      0, 1.62, 0.11, 14,
-      [0.02, 0.04, 0.01]
+      [-0.035, 0.0, 0.035],
+      0,
+      1.62,
+      0.11,
+      14,
+      [0.02, 0.04, 0.01],
+      4,
+      0.02
     ),
-    // Sculpted V-Taper Heroic Plate Cuirass (narrow waist, broad armored chest)
+    // Sculpted V-Taper Heroic Plate Cuirass (narrow waist, broad armored chest with pectoral bevels)
     torso: createSculptedArmorSegmentGeometry(
-      [0.19, 0.22, 0.28, 0.30, 0.24],
-      [0.14, 0.16, 0.21, 0.22, 0.16],
-      [-0.29, -0.12, 0.06, 0.20, 0.29],
-      0, 1.16, 0, 18,
-      [0, 0.01, 0.03, 0.02, 0]
+      [0.19, 0.21, 0.29, 0.32, 0.26, 0.20],
+      [0.14, 0.15, 0.21, 0.23, 0.18, 0.14],
+      [-0.30, -0.14, 0.04, 0.18, 0.26, 0.31],
+      0,
+      1.16,
+      0,
+      20,
+      [0, 0.01, 0.03, 0.02, 0, -0.01],
+      6,
+      0.055
     ),
     // Faceted chest runic heart-core crystal
     core: createSculptedArmorSegmentGeometry(
-      [0.03, 0.09, 0.03],
-      [0.03, 0.06, 0.03],
+      [0.035, 0.095, 0.035],
+      [0.035, 0.065, 0.035],
       [-0.09, 0.0, 0.09],
-      0, 1.25, 0.19, 8
+      0,
+      1.26,
+      0.20,
+      8,
+      undefined,
+      4,
+      0.06
     ),
-    // Layered winged Dragon Pauldrons (Left & Right)
+    // Layered Winged Gilded Pauldrons (Left & Right)
     pauldronL: createSculptedArmorSegmentGeometry(
-      [0.15, 0.19, 0.16, 0.06],
-      [0.16, 0.20, 0.17, 0.08],
-      [-0.10, 0.0, 0.09, 0.18],
-      -0.38, 1.38, 0, 14,
-      [0, 0, -0.03, -0.08]
+      [0.16, 0.22, 0.19, 0.12],
+      [0.17, 0.22, 0.19, 0.13],
+      [-0.11, -0.01, 0.08, 0.16],
+      -0.38,
+      1.39,
+      0,
+      16,
+      [0, 0.01, -0.02, -0.05],
+      5,
+      0.065
     ),
     pauldronR: createSculptedArmorSegmentGeometry(
-      [0.15, 0.19, 0.16, 0.06],
-      [0.16, 0.20, 0.17, 0.08],
-      [-0.10, 0.0, 0.09, 0.18],
-      0.38, 1.38, 0, 14,
-      [0, 0, -0.03, -0.08]
+      [0.16, 0.22, 0.19, 0.12],
+      [0.17, 0.22, 0.19, 0.13],
+      [-0.11, -0.01, 0.08, 0.16],
+      0.38,
+      1.39,
+      0,
+      16,
+      [0, 0.01, -0.02, -0.05],
+      5,
+      0.065
     ),
-    // Tapered Armored Vambraces & Gauntlets
+    // Tapered Silvered Vambraces & Gauntlets
     armL: createSculptedArmorSegmentGeometry(
-      [0.065, 0.09, 0.075, 0.095],
-      [0.065, 0.09, 0.075, 0.095],
+      [0.07, 0.095, 0.08, 0.10],
+      [0.07, 0.095, 0.08, 0.10],
       [-0.26, -0.08, 0.10, 0.26],
-      -0.36, 1.02, 0, 12,
-      [0.04, 0.02, 0, 0]
+      -0.37,
+      1.02,
+      0,
+      14,
+      [0.04, 0.02, 0, 0],
+      4,
+      0.04
     ),
     armR: createSculptedArmorSegmentGeometry(
-      [0.065, 0.09, 0.075, 0.095],
-      [0.065, 0.09, 0.075, 0.095],
+      [0.07, 0.095, 0.08, 0.10],
+      [0.07, 0.095, 0.08, 0.10],
       [-0.26, -0.08, 0.10, 0.26],
-      0.36, 1.02, 0, 12,
-      [0.04, 0.02, 0, 0]
+      0.37,
+      1.02,
+      0,
+      14,
+      [0.04, 0.02, 0, 0],
+      4,
+      0.04
     ),
-    // Sculpted Runic Awakening Greatsword (pommel -> hilt -> crossguard -> fuller blade -> razor tip)
+    // Sculpted Runic Awakening Greatsword (pommel -> grip -> wide winged crossguard -> fuller blade -> tip)
     blade: createSculptedArmorSegmentGeometry(
-      [0.04, 0.028, 0.16, 0.065, 0.085, 0.055, 0.008],
-      [0.04, 0.028, 0.045, 0.022, 0.026, 0.018, 0.004],
-      [-0.28, -0.08, -0.02, 0.05, 0.48, 0.92, 1.28],
-      0.38, 0.85, -0.35, 10,
-      [0.12, 0.04, 0, -0.04, -0.22, -0.40, -0.56]
+      [0.045, 0.03, 0.22, 0.075, 0.095, 0.065, 0.01],
+      [0.045, 0.03, 0.05, 0.024, 0.028, 0.020, 0.005],
+      [-0.28, -0.08, -0.01, 0.06, 0.52, 0.98, 1.38],
+      0.38,
+      0.86,
+      -0.35,
+      12,
+      [0.12, 0.04, 0, -0.04, -0.24, -0.44, -0.62],
+      2,
+      0.08
     ),
-    // Armored Tassets / Waist Fauld
+    // Gilded Armored Tassets / Waist Fauld
     hip: createSculptedArmorSegmentGeometry(
-      [0.25, 0.22, 0.19],
-      [0.18, 0.16, 0.14],
-      [-0.12, 0.0, 0.10],
-      0, 0.78, 0, 16
+      [0.27, 0.24, 0.20],
+      [0.19, 0.17, 0.15],
+      [-0.14, -0.01, 0.10],
+      0,
+      0.78,
+      0,
+      16,
+      undefined,
+      6,
+      0.06
     ),
     // Contoured Armored Greaves & Sabatons
     legL: createSculptedArmorSegmentGeometry(
-      [0.085, 0.07, 0.105, 0.095, 0.11],
-      [0.12, 0.08, 0.11, 0.10, 0.115],
+      [0.09, 0.075, 0.115, 0.10, 0.115],
+      [0.13, 0.085, 0.12, 0.105, 0.12],
       [-0.35, -0.22, 0.0, 0.18, 0.35],
-      -0.15, 0.36, 0, 14,
-      [0.04, 0, 0.02, 0, 0]
+      -0.155,
+      0.36,
+      0,
+      14,
+      [0.04, 0, 0.025, 0, 0],
+      4,
+      0.045
     ),
     legR: createSculptedArmorSegmentGeometry(
-      [0.085, 0.07, 0.105, 0.095, 0.11],
-      [0.12, 0.08, 0.11, 0.10, 0.115],
+      [0.09, 0.075, 0.115, 0.10, 0.115],
+      [0.13, 0.085, 0.12, 0.105, 0.12],
       [-0.35, -0.22, 0.0, 0.18, 0.35],
-      0.15, 0.36, 0, 14,
-      [0.04, 0, 0.02, 0, 0]
+      0.155,
+      0.36,
+      0,
+      14,
+      [0.04, 0, 0.025, 0, 0],
+      4,
+      0.045
     ),
-    // Flowing Royal Battle-Cape & Dragon Spine Crest
+    // Pleated Royal Crimson Battle-Cape (drapes behind the shoulders down to the calves)
     spine: createSculptedArmorSegmentGeometry(
-      [0.34, 0.30, 0.25, 0.22, 0.18],
-      [0.03, 0.035, 0.04, 0.04, 0.03],
-      [-0.52, -0.25, 0.0, 0.20, 0.34],
-      0, 0.92, -0.22, 14,
-      [-0.18, -0.12, -0.06, -0.02, 0.02]
+      [0.42, 0.36, 0.30, 0.25, 0.22],
+      [0.035, 0.04, 0.045, 0.04, 0.03],
+      [-0.58, -0.28, 0.0, 0.22, 0.38],
+      0,
+      0.92,
+      -0.23,
+      16,
+      [-0.22, -0.14, -0.07, -0.02, 0.02],
+      7,
+      0.08
     ),
-    // Twin Swept Dragon-Helm Horns
-    horns: createSculptedArmorSegmentGeometry(
-      [0.14, 0.22, 0.28, 0.32],
-      [0.05, 0.04, 0.03, 0.015],
-      [0.0, 0.08, 0.18, 0.28],
-      0, 1.72, -0.02, 10,
-      [0, -0.04, -0.10, -0.18]
+    // Twin Outward-Swept Dragon-Helm Crest Horns (Left + Right merged, leaving helm crown visible)
+    horns: mergeGeometries([hornLeft, hornRight]),
+  };
+}
+
+/**
+ * Creates a sculpted Tapered Ancient Obelisk with crystal apex.
+ */
+export function createSculptedObeliskGeometry(): MeshGeometry {
+  return createSculptedArmorSegmentGeometry(
+    [0.62, 0.52, 0.44, 0.38, 0.32, 0.05],
+    [0.62, 0.52, 0.44, 0.38, 0.32, 0.05],
+    [0.0, 0.12, 0.18, 0.55, 0.86, 1.0],
+    0,
+    0,
+    0,
+    8,
+    undefined,
+    4,
+    0.05
+  );
+}
+
+/**
+ * Creates a sculpted Colossus Automaton Boss mesh for the Hollow Sentinel.
+ */
+export function createSculptedSentinelColossusGeometry(): MeshGeometry {
+  return createSculptedArmorSegmentGeometry(
+    [0.72, 0.55, 0.42, 0.72, 0.88, 0.56, 0.38, 0.16],
+    [0.72, 0.55, 0.40, 0.58, 0.68, 0.50, 0.38, 0.16],
+    [0.0, 0.35, 0.85, 1.35, 1.88, 2.24, 2.52, 2.82],
+    0,
+    0,
+    0,
+    16,
+    [0, 0, 0.02, 0.05, 0.06, 0.02, 0, -0.02],
+    6,
+    0.07
+  );
+}
+
+/**
+ * Creates articulated multi-material parts for the Hollow Sentinel Colossus Boss so its
+ * silhouette (broad spiked shoulders, crusher gauntlets, floating halo crown, chest core)
+ * reads immediately against the arena sky and ground.
+ */
+export function createSculptedSentinelColossusParts() {
+  const pauldronL = createSculptedArmorSegmentGeometry(
+    [0.24, 0.44, 0.38, 0.14],
+    [0.26, 0.42, 0.36, 0.16],
+    [-0.18, 0.02, 0.24, 0.45],
+    -0.96,
+    1.95,
+    0,
+    14,
+    [0, 0.02, -0.04, -0.10],
+    5,
+    0.08
+  );
+  const pauldronR = createSculptedArmorSegmentGeometry(
+    [0.24, 0.44, 0.38, 0.14],
+    [0.26, 0.42, 0.36, 0.16],
+    [-0.18, 0.02, 0.24, 0.45],
+    0.96,
+    1.95,
+    0,
+    14,
+    [0, 0.02, -0.04, -0.10],
+    5,
+    0.08
+  );
+
+  return {
+    torso: createSculptedSentinelColossusGeometry(),
+    shoulders: mergeGeometries([pauldronL, pauldronR]),
+    armL: createSculptedArmorSegmentGeometry(
+      [0.22, 0.28, 0.19, 0.24],
+      [0.22, 0.28, 0.19, 0.24],
+      [-0.58, -0.22, 0.18, 0.52],
+      -1.12,
+      1.32,
+      0.18,
+      12,
+      [0.14, 0.08, 0.02, 0],
+      4,
+      0.07
+    ),
+    armR: createSculptedArmorSegmentGeometry(
+      [0.22, 0.28, 0.19, 0.24],
+      [0.22, 0.28, 0.19, 0.24],
+      [-0.58, -0.22, 0.18, 0.52],
+      1.12,
+      1.32,
+      0.18,
+      12,
+      [0.14, 0.08, 0.02, 0],
+      4,
+      0.07
+    ),
+    crownRing: createRingWaveGeometry(0.48, 0.72, 0.12, 24),
+    reactorCore: createSculptedArmorSegmentGeometry(
+      [0.08, 0.24, 0.08],
+      [0.08, 0.16, 0.08],
+      [-0.22, 0.0, 0.22],
+      0,
+      1.68,
+      0.58,
+      10,
+      undefined,
+      4,
+      0.08
     ),
   };
 }
 
 /**
- * Creates a sculpted Tapered Ancient Obelisk with crystal apex (replaces box monoliths).
- */
-export function createSculptedObeliskGeometry(): MeshGeometry {
-  return createSculptedArmorSegmentGeometry(
-    [0.62, 0.52, 0.44, 0.38, 0.32, 0.04],
-    [0.62, 0.52, 0.44, 0.38, 0.32, 0.04],
-    [0.0, 0.12, 0.18, 0.55, 0.86, 1.0],
-    0, 0, 0, 8
-  );
-}
-
-/**
- * Creates a sculpted Colossus Automaton Boss mesh for the Hollow Sentinel (replaces the 1.2x2.6x1.2 box).
- */
-export function createSculptedSentinelColossusGeometry(): MeshGeometry {
-  return createSculptedArmorSegmentGeometry(
-    [0.72, 0.55, 0.42, 0.68, 0.82, 0.52, 0.35, 0.12],
-    [0.72, 0.55, 0.40, 0.56, 0.65, 0.48, 0.35, 0.12],
-    [0.0, 0.35, 0.85, 1.35, 1.85, 2.20, 2.48, 2.75],
-    0, 0, 0, 14,
-    [0, 0, 0.02, 0.05, 0.06, 0.02, 0, -0.04]
-  );
-}
-
-/**
  * Creates a radial cylinder / disc primitive (for "16-Bit Circle-Craft" mode — circles, never square cubes!).
- * Every cross-section in XZ is a true radial polygon/circle of `radialSegments` sides with top and bottom disc caps.
  */
 export function createCylinderDiscGeometry(
   radiusX = 0.5,
@@ -814,7 +1071,6 @@ export function createCylinderDiscGeometry(
   const uvs: number[] = [];
   const indices: number[] = [];
 
-  // 1. Cylindrical side wall
   for (let i = 0; i <= segs; i++) {
     const u = i / segs;
     const phi = u * Math.PI * 2;
@@ -824,18 +1080,12 @@ export function createCylinderDiscGeometry(
     const x = ox + radiusX * cosP;
     const z = oz + radiusZ * sinP;
 
-    // Normal along radial outward direction
-    const nx = cosP;
-    const nz = sinP;
-
-    // Bottom ring vertex
     positions.push(x, minY, z);
-    normals.push(nx, 0, nz);
+    normals.push(cosP, 0, sinP);
     uvs.push(u, 0);
 
-    // Top ring vertex
     positions.push(x, maxY, z);
-    normals.push(nx, 0, nz);
+    normals.push(cosP, 0, sinP);
     uvs.push(u, 1);
   }
 
@@ -848,7 +1098,6 @@ export function createCylinderDiscGeometry(
     indices.push(b, c, d);
   }
 
-  // 2. Top circular disc cap (Y+)
   const topCenterIdx = positions.length / 3;
   positions.push(ox, maxY, oz);
   normals.push(0, 1, 0);
@@ -866,7 +1115,6 @@ export function createCylinderDiscGeometry(
     indices.push(topCenterIdx, topCenterIdx + 1 + i + 1, topCenterIdx + 1 + i);
   }
 
-  // 3. Bottom circular disc cap (Y-)
   const botCenterIdx = positions.length / 3;
   positions.push(ox, minY, oz);
   normals.push(0, -1, 0);
@@ -894,8 +1142,7 @@ export function createCylinderDiscGeometry(
 
 /**
  * Creates the 16-Bit Circle-Craft character avatar where every limb, helm, visor,
- * torso, core, pauldron, and blade is constructed from radial cylinders & circular discs
- * ("16 bit circles chars not square like minecraft").
+ * torso, core, pauldron, and blade is constructed from radial cylinders & circular discs.
  */
 export function createCircleCraftCharacterGeometries() {
   return {

@@ -1,41 +1,35 @@
 /**
- * DREAM Engine — Platform WebGPU Renderer
- * Pure WebGPU platform API implementation with WGSL shaders.
- * Cached geometry buffers, dynamic uniform management, and [DREAM] error logging.
+ * DREAM Engine — Primary WebGPU Renderer
+ * Pure WebGPU implementation with WGSL shaders, PBR metallic/roughness shading,
+ * procedural Ancient Sanctuary stone/moss terrain, thresholded bloom, and ACES tonemapping.
  */
 
-import { IRenderer, RenderItem } from './types.ts';
 import { Mat4 } from '../math/mat4.ts';
 import { Vec3 } from '../math/vec3.ts';
-import { RenderProfileData } from './render-profile.ts';
 import { MeshGeometry } from '../scene/mesh.ts';
+import { IRenderer, RenderItem } from './types.ts';
+import { RenderProfileData, WorldMode } from './render-profile.ts';
 
-const WGSL_SOURCE = `
+interface GpuMeshCache {
+  vertexBuffer: GPUBuffer;
+  indexBuffer: GPUBuffer;
+  indexFormat: GPUIndexFormat;
+  indexCount: number;
+}
+
+const WGSL_SHADER = /* wgsl */ `
 struct SceneUniforms {
-  view: mat4x4<f32>,
-  projection: mat4x4<f32>,
-  cameraPos: vec3<f32>,
-  sunIntensity: f32,
-  sunDir: vec3<f32>,
-  exposure: f32,
-  sunColor: vec3<f32>,
-  ambientIntensity: f32,
-  skyTop: vec3<f32>,
-  fogDensity: f32,
-  skyHorizon: vec3<f32>,
-  isNight: f32,
-  groundHorizon: vec3<f32>,
-  fogHeight: f32,
-  fogColor: vec3<f32>,
-  pad: f32,
+  viewProj: mat4x4<f32>,
+  cameraPos: vec4<f32>,      // xyz = pos, w = worldMode (0=day, 1=night)
+  sunDirAndExposure: vec4<f32>, // xyz = sunDir, w = exposure
+  fogAndEnergy: vec4<f32>,   // x = fogDensity, y = keyEnergy, z = ambientEnergy, w = time
 };
 
 struct ObjectUniforms {
-  model: mat4x4<f32>,
+  modelMatrix: mat4x4<f32>,
   baseColor: vec4<f32>,
-  emissive: vec3<f32>,
-  emissiveIntensity: f32,
-  flags: vec4<f32>, // x: isSky, y: isGround, z: rimIntensity, w: unused
+  emissive: vec4<f32>,       // xyz = emissive color, w = emissiveIntensity
+  flags: vec4<f32>,          // x = isSky, y = isGround, z = rimIntensity, w = packed(roughness, metallic)
 };
 
 @group(0) @binding(0) var<uniform> scene: SceneUniforms;
@@ -48,453 +42,512 @@ struct VertexInput {
 };
 
 struct VertexOutput {
-  @builtin(position) clipPosition: vec4<f32>,
+  @builtin(position) clipPos: vec4<f32>,
   @location(0) worldPos: vec3<f32>,
-  @location(1) normal: vec3<f32>,
+  @location(1) worldNormal: vec3<f32>,
   @location(2) uv: vec2<f32>,
 };
+
+fn hash21(p: vec2<f32>) -> f32 {
+  var p3 = fract(vec3<f32>(p.xyx) * 0.1031);
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
+}
+
+fn valueNoise(p: vec2<f32>) -> f32 {
+  let i = floor(p);
+  let f = fract(p);
+  let u = f * f * (3.0 - 2.0 * f);
+  let a = hash21(i);
+  let b = hash21(i + vec2<f32>(1.0, 0.0));
+  let c = hash21(i + vec2<f32>(0.0, 1.0));
+  let d = hash21(i + vec2<f32>(1.0, 1.0));
+  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+
+fn fbm(p: vec2<f32>) -> f32 {
+  var v = 0.0;
+  var a = 0.5;
+  var pos = p;
+  for (var i = 0; i < 3; i = i + 1) {
+    v += a * valueNoise(pos);
+    pos = pos * 2.03 + vec2<f32>(17.1, 31.7);
+    a *= 0.5;
+  }
+  return v;
+}
+
+fn acesFilm(x: vec3<f32>) -> vec3<f32> {
+  let a = 2.51;
+  let b = 0.03;
+  let c = 2.43;
+  let d = 0.59;
+  let e = 0.14;
+  return clamp((x * (a * x + b)) / (x * (c * x + d) + e), vec3<f32>(0.0), vec3<f32>(1.0));
+}
 
 @vertex
 fn vs_main(in: VertexInput) -> VertexOutput {
   var out: VertexOutput;
-  let world = obj.model * vec4<f32>(in.position, 1.0);
-  out.worldPos = world.xyz;
-  out.normal = normalize((obj.model * vec4<f32>(in.normal, 0.0)).xyz);
+  let worldPos4 = obj.modelMatrix * vec4<f32>(in.position, 1.0);
+  out.worldPos = worldPos4.xyz;
+  out.clipPos = scene.viewProj * worldPos4;
+  let nMat = mat3x3<f32>(
+    obj.modelMatrix[0].xyz,
+    obj.modelMatrix[1].xyz,
+    obj.modelMatrix[2].xyz
+  );
+  out.worldNormal = normalize(nMat * in.normal);
   out.uv = in.uv;
-
-  var clip = scene.projection * scene.view * world;
-  if (obj.flags.x > 0.5) {
-    // For Sky, push to far plane (depth = 1.0)
-    clip.z = clip.w * 0.99999;
-  }
-  out.clipPosition = clip;
   return out;
 }
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-  // 1. Sky Rendering
+  let isNight = scene.cameraPos.w > 0.5;
+  let sunDir = normalize(scene.sunDirAndExposure.xyz);
+  let viewDir = normalize(scene.cameraPos.xyz - in.worldPos);
+
+  // 1. Sky Dome Atmosphere Gradient + Sun/Moon Disk + Horizon Cloud Haze
   if (obj.flags.x > 0.5) {
-    let dir = normalize(in.worldPos - scene.cameraPos);
-    let h = clamp(dir.y, 0.0, 1.0);
-    var sky = mix(scene.skyHorizon, scene.skyTop, pow(h, 0.45));
+    let rayDir = normalize(in.worldPos - scene.cameraPos.xyz);
+    let elevation = clamp(rayDir.y, 0.0, 1.0);
 
-    let sunDot = max(0.0, dot(dir, normalize(scene.sunDir)));
-    let sunDisc = smoothstep(0.9980, 0.9996, sunDot);
-    let glowPow = select(24.0, 90.0, scene.isNight > 0.5);
-    let sunGlow = pow(sunDot, glowPow) * 0.4;
-    sky += scene.sunColor * (sunDisc * 2.5 + sunGlow * scene.sunIntensity);
+    let zenithColor = select(vec3<f32>(0.11, 0.24, 0.52), vec3<f32>(0.02, 0.03, 0.09), isNight);
+    let midSkyColor = select(vec3<f32>(0.32, 0.50, 0.74), vec3<f32>(0.05, 0.08, 0.18), isNight);
+    let horizonColor = select(vec3<f32>(0.88, 0.72, 0.54), vec3<f32>(0.10, 0.14, 0.26), isNight);
 
-    // Stars at night
-    if (scene.isNight > 0.5 && dir.y > 0.08) {
-      let seed = floor(dir.xz / (dir.y + 0.25) * 280.0);
-      let rand = fract(sin(dot(seed, vec2<f32>(12.9898, 78.233))) * 43758.5453);
-      if (rand > 0.982) {
-        sky += vec3<f32>(0.9, 0.95, 1.0) * (rand - 0.982) * 50.0;
-      }
-    }
+    var skyCol = mix(horizonColor, midSkyColor, pow(elevation, 0.45));
+    skyCol = mix(skyCol, zenithColor, pow(elevation, 1.15));
 
-    return vec4<f32>(sky * scene.exposure, 1.0);
+    let sunDot = max(dot(rayDir, sunDir), 0.0);
+    let sunDisc = smoothstep(0.9982, 0.9997, sunDot);
+    let sunHalo = pow(sunDot, 24.0) * 0.45 + pow(sunDot, 6.0) * 0.18;
+    let sunCol = select(vec3<f32>(1.0, 0.88, 0.62), vec3<f32>(0.55, 0.68, 1.0), isNight);
+
+    skyCol += sunCol * (sunDisc * 2.2 + sunHalo);
+    skyCol = acesFilm(skyCol * scene.sunDirAndExposure.w);
+    return vec4<f32>(skyCol, 1.0);
   }
 
-  // 2. Geometry Shading
-  let N = normalize(in.normal);
-  let V = normalize(scene.cameraPos - in.worldPos);
-  let L = normalize(scene.sunDir);
-  let H = normalize(L + V);
+  var N = normalize(in.worldNormal);
+  let packedRM = obj.flags.w;
+  let roughness = clamp(floor(packedRM) / 255.0, 0.08, 0.98);
+  let metallic = clamp(fract(packedRM), 0.0, 0.98);
 
   var albedo = obj.baseColor.rgb;
+  var effRoughness = roughness;
+  var effMetallic = metallic;
+  var groundRuneEmissive = vec3<f32>(0.0);
 
-  // Ground plane grid
+  // 2. Varied Ancient Basalt Sanctuary Arena & Weathered Stone/Moss Terrain (Replaces flat brown grid)
   if (obj.flags.y > 0.5) {
-    let dayGround = vec3<f32>(0.28, 0.23, 0.18);
-    let nightGround = vec3<f32>(0.07, 0.08, 0.11);
-    albedo = select(dayGround, nightGround, scene.isNight > 0.5);
+    let arenaCenter = vec2<f32>(0.0, -8.5);
+    let relP = in.worldPos.xz - arenaCenter;
+    let r = length(relP);
+    let angle = atan2(relP.y, relP.x);
 
-    // Subtle grid lines
-    let coord = in.worldPos.xz * 0.5;
-    let grid = abs(fract(coord - 0.5) - 0.5);
-    let line = min(grid.x, grid.y);
-    if (line < 0.02) {
-      let lineColor = select(vec3<f32>(0.42, 0.35, 0.28), vec3<f32>(0.16, 0.20, 0.30), scene.isNight > 0.5);
-      albedo = mix(albedo, lineColor, 0.45);
-    }
+    let macroNoise = fbm(in.worldPos.xz * 0.14);
+    let microNoise = fbm(in.worldPos.xz * 1.35);
+    let fineGrain = valueNoise(in.worldPos.xz * 6.5);
+
+    // Polar sanctuary stone flagstone blocks inside the arena (r < 14.5m)
+    let ringStep = floor(r * 0.85);
+    let radialDivs = max(8.0, ringStep * 6.0);
+    let radialCell = fract((angle / 6.2831853) * radialDivs + ringStep * 0.37);
+    let ringFract = fract(r * 0.85);
+    let jointDist = min(min(ringFract, 1.0 - ringFract), min(radialCell, 1.0 - radialCell) * (r * 0.15 + 0.5));
+    let stoneJoint = smoothstep(0.02, 0.065, jointDist);
+    let blockHash = hash21(vec2<f32>(ringStep, floor((angle / 6.2831853) * radialDivs)));
+
+    let basaltSlate = select(vec3<f32>(0.33, 0.35, 0.40), vec3<f32>(0.10, 0.12, 0.18), isNight);
+    let warmSandstone = select(vec3<f32>(0.48, 0.41, 0.34), vec3<f32>(0.14, 0.13, 0.16), isNight);
+    let mossyEarth = select(vec3<f32>(0.22, 0.29, 0.21), vec3<f32>(0.07, 0.11, 0.10), isNight);
+    let groutColor = select(vec3<f32>(0.14, 0.13, 0.12), vec3<f32>(0.04, 0.05, 0.08), isNight);
+
+    var stoneColor = mix(basaltSlate, warmSandstone, blockHash * 0.55 + microNoise * 0.35);
+    stoneColor *= (0.88 + 0.22 * fineGrain);
+    stoneColor = mix(groutColor, stoneColor, stoneJoint);
+
+    // Outer terrain blends from carved flagstones into weathered mossy rock & earth
+    let arenaMask = 1.0 - smoothstep(11.5, 16.5, r);
+    let outerTerrain = mix(warmSandstone * 0.85, mossyEarth, smoothstep(0.35, 0.72, macroNoise));
+    albedo = mix(outerTerrain * (0.85 + 0.3 * microNoise), stoneColor, arenaMask);
+
+    // Carved sanctuary rings at r = 4.6m, 9.2m, and 13.5m
+    let ring1 = 1.0 - smoothstep(0.04, 0.18, abs(r - 4.6));
+    let ring2 = 1.0 - smoothstep(0.05, 0.22, abs(r - 9.2));
+    let ring3 = 1.0 - smoothstep(0.06, 0.25, abs(r - 13.5));
+    let runeGlowMask = max(ring1, ring2 * 0.75);
+    let bronzeInlay = select(vec3<f32>(0.72, 0.56, 0.28), vec3<f32>(0.25, 0.65, 0.95), isNight);
+    albedo = mix(albedo, bronzeInlay, (ring1 + ring2 + ring3) * 0.45);
+    groundRuneEmissive = bronzeInlay * runeGlowMask * 0.22;
+
+    // Perturb ground normal from flagstone joints & micro-relief for real directional shadow depth
+    let bumpX = (valueNoise(in.worldPos.xz * 3.5 + vec2<f32>(0.2, 0.0)) - valueNoise(in.worldPos.xz * 3.5 - vec2<f32>(0.2, 0.0))) * 0.35;
+    let bumpZ = (valueNoise(in.worldPos.xz * 3.5 + vec2<f32>(0.0, 0.2)) - valueNoise(in.worldPos.xz * 3.5 - vec2<f32>(0.0, 0.2))) * 0.35;
+    N = normalize(vec3<f32>(bumpX + (1.0 - stoneJoint) * 0.18, 1.0, bumpZ));
+    effRoughness = mix(0.78, 0.48, arenaMask * stoneJoint);
+    effMetallic = mix(0.04, 0.22, (ring1 + ring2));
+
+    // Dual Contact Shadows / Ambient Occlusion under Boss (0, -10) and Hero combat zone
+    let distBoss = length(in.worldPos.xz - vec2<f32>(0.0, -10.0));
+    let bossContactAO = smoothstep(0.35, 2.25, distBoss);
+    let distHeroLine = length(vec2<f32>(in.worldPos.x, max(0.0, abs(in.worldPos.z + 5.5) - 2.2)));
+    let heroContactAO = smoothstep(0.25, 1.35, distHeroLine);
+    let combinedGroundAO = (0.35 + 0.65 * bossContactAO) * (0.55 + 0.45 * heroContactAO);
+    albedo *= combinedGroundAO;
+  } else {
+    // 3. Procedural Armor / Stone Micro-Texture & Bevel Cavity Shading on 3D Meshes
+    let microTex = valueNoise(in.worldPos.xy * 18.0 + in.worldPos.zy * 14.0);
+    albedo *= (0.90 + 0.20 * microTex);
   }
 
-  // Lambertian diffuse
-  let NdotL = max(0.0, dot(N, L));
-  let diffuse = albedo * scene.sunColor * (NdotL * scene.sunIntensity);
+  // 4. Shadowed Key Light, Sky/Ground Hemisphere Ambient, PBR Specular & Rim Light
+  let NdotL = dot(N, sunDir);
+  let shadowTerm = smoothstep(-0.15, 0.45, NdotL);
+  let diff = max(NdotL, 0.0) * shadowTerm;
 
-  // Ambient lighting with sky/ground hemisphere bias
-  let ambFactor = clamp(N.y * 0.5 + 0.5, 0.0, 1.0);
-  let ambient = albedo * mix(scene.groundHorizon, scene.skyTop, ambFactor) * scene.ambientIntensity;
+  let H = normalize(sunDir + viewDir);
+  let NdotH = max(dot(N, H), 0.0);
+  let shininess = mix(14.0, 96.0, 1.0 - effRoughness);
+  let specStrength = mix(0.18, 1.15, effMetallic) * (1.0 - effRoughness * 0.65);
+  let spec = pow(NdotH, shininess) * specStrength * shadowTerm;
 
-  // Blinn-phong specular
-  let NdotH = max(0.0, dot(N, H));
-  let specular = pow(NdotH, 32.0) * 0.25 * scene.sunIntensity * (select(0.0, 1.0, NdotL > 0.0));
-  let specColor = scene.sunColor * specular;
+  let keyColor = select(vec3<f32>(1.0, 0.94, 0.84), vec3<f32>(0.42, 0.56, 0.92), isNight) * scene.fogAndEnergy.y;
+  let skyAmbient = select(vec3<f32>(0.36, 0.46, 0.62), vec3<f32>(0.09, 0.13, 0.24), isNight);
+  let groundBounce = select(vec3<f32>(0.24, 0.19, 0.15), vec3<f32>(0.04, 0.05, 0.08), isNight);
+  let hemiAmbient = mix(groundBounce, skyAmbient, clamp(N.y * 0.5 + 0.5, 0.0, 1.0)) * scene.fogAndEnergy.z;
 
-  // Rim lighting (hero & material rim from DREAM spec FR-006)
-  let NdotV = max(0.0, dot(N, V));
-  let rim = pow(1.0 - NdotV, 3.2) * obj.flags.z;
-  let rimColor = select(vec3<f32>(1.0, 0.86, 0.64), vec3<f32>(0.55, 0.80, 1.0), scene.isNight > 0.5) * rim;
+  // Vertical & normal cavity AO so armor plates, greaves, and obelisks have strong 3D relief
+  let cavityAO = clamp(0.42 + 0.58 * (N.y * 0.45 + 0.55), 0.30, 1.0);
+  let diffuseColor = albedo * (1.0 - effMetallic * 0.55);
+  let specColor = mix(vec3<f32>(0.96, 0.94, 0.90), albedo * 1.25 + vec3<f32>(0.12), effMetallic);
 
-  // Emissive
-  let emissive = obj.emissive * obj.emissiveIntensity;
+  // Environment reflection for metallic armor
+  let reflDir = reflect(-viewDir, N);
+  let envReflect = mix(groundBounce, skyAmbient * 1.35, clamp(reflDir.y * 0.5 + 0.5, 0.0, 1.0));
+  let metalEnvContribution = envReflect * specColor * effMetallic * (1.0 - effRoughness * 0.55) * 0.55;
 
-  var color = ambient + diffuse + specColor + rimColor + emissive;
+  let rim = pow(1.0 - max(dot(N, viewDir), 0.0), 3.0) * obj.flags.z;
+  let rimColor = select(vec3<f32>(1.0, 0.84, 0.58), vec3<f32>(0.38, 0.72, 1.0), isNight);
 
-  // Fog
-  let dist = length(scene.cameraPos - in.worldPos);
-  let fogFactor = clamp(1.0 - exp(-pow(dist * scene.fogDensity, 1.25)), 0.0, 1.0);
-  color = mix(color, scene.fogColor, fogFactor);
+  // Clamp raw emissive intensity so stone obelisks never blow out, while thresholded bloom boosts true VFX
+  let rawEmissive = obj.emissive.rgb * min(obj.emissive.w, 2.6) + groundRuneEmissive;
 
-  color *= scene.exposure;
+  var color = (hemiAmbient * diffuseColor * cavityAO) +
+              (keyColor * (diffuseColor * diff + specColor * spec)) +
+              (metalEnvContribution * cavityAO) +
+              (rimColor * rim * 0.38) +
+              rawEmissive;
+
+  // Thresholded Bloom Knee (only luminance > 0.85 blooms softly)
+  let luma = dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
+  let bloomExcess = max(0.0, luma - 0.85);
+  color += color * (bloomExcess / (1.0 + bloomExcess)) * 0.28;
+
+  // Atmospheric Distance Fog
+  let dist = length(in.worldPos - scene.cameraPos.xyz);
+  let fogDensity = select(0.0042, 0.0068, isNight) * scene.fogAndEnergy.x;
+  let fogFactor = clamp(1.0 - exp(-dist * fogDensity), 0.0, 0.78);
+  let fogColor = select(vec3<f32>(0.74, 0.68, 0.60), vec3<f32>(0.06, 0.09, 0.16), isNight);
+
+  color = mix(color, fogColor, fogFactor);
+
+  // ACES Filmic Tonemapping + Gamma
+  color = acesFilm(color * scene.sunDirAndExposure.w);
+  color = pow(color, vec3<f32>(1.0 / 2.2));
+
   return vec4<f32>(color, obj.baseColor.a);
 }
 `;
 
-interface CachedGPUMesh {
-  vertexBuffer: GPUBuffer;
-  indexBuffer: GPUBuffer;
-  indexCount: number;
-  indexFormat: GPUIndexFormat;
-}
-
 export class WebGPURenderer implements IRenderer {
-  readonly backend = 'WebGPU' as const;
+  readonly backend: 'WebGPU' = 'WebGPU';
+  worldMode: WorldMode = 'day';
+
+  exposureMultiplier = 1.0;
+  fogDensityMultiplier = 1.0;
+  keyEnergyMultiplier = 1.0;
+  ambientEnergyMultiplier = 1.0;
+
   private canvas: HTMLCanvasElement;
-  private device: GPUDevice | null = null;
-  private context: GPUCanvasContext | null = null;
-  private pipeline: GPURenderPipeline | null = null;
-  private depthTexture: GPUTexture | null = null;
-  private depthWidth = 0;
-  private depthHeight = 0;
-  private presentationFormat: GPUTextureFormat = 'bgra8unorm';
+  private device!: GPUDevice;
+  private context!: GPUCanvasContext;
+  private format!: GPUTextureFormat;
+  private pipeline!: GPURenderPipeline;
+  private depthTexture!: GPUTexture;
 
-  // Uniform resources
-  private sceneUniformBuffer: GPUBuffer | null = null;
-  private sceneBindGroup: GPUBindGroup | null = null;
-  private sceneBindGroupLayout: GPUBindGroupLayout | null = null;
+  private sceneUniformBuffer!: GPUBuffer;
+  private sceneBindGroup!: GPUBindGroup;
+  private objectBindGroupLayout!: GPUBindGroupLayout;
 
-  private objectBindGroupLayout: GPUBindGroupLayout | null = null;
-  private objectBuffers: GPUBuffer[] = [];
-  private objectBindGroups: GPUBindGroup[] = [];
+  private objectPool: { buffer: GPUBuffer; bindGroup: GPUBindGroup }[] = [];
+  private meshCache = new WeakMap<MeshGeometry, GpuMeshCache>();
 
-  // Geometry cache
-  private meshCache = new WeakMap<MeshGeometry, CachedGPUMesh>();
-
-  // Pixel readback buffer for luma measurement
-  private readbackBuffer: GPUBuffer | null = null;
-  private lastLuma = 0.45;
+  private viewProjMat = new Mat4();
+  private startTime = performance.now();
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
   }
 
-  async init(): Promise<boolean> {
-    if (!('gpu' in navigator)) {
+  static async isSupported(): Promise<boolean> {
+    if (typeof navigator === 'undefined' || !('gpu' in navigator)) {
       return false;
     }
-
     try {
-      const adapter = await (navigator as unknown as { gpu: GPU }).gpu.requestAdapter({
-        powerPreference: 'high-performance',
-      });
-      if (!adapter) {
-        console.warn('[DREAM] WebGPU: No adapter found.');
-        return false;
-      }
-
-      this.device = await adapter.requestDevice();
-      if (!this.device) {
-        console.warn('[DREAM] WebGPU: Failed to acquire GPUDevice.');
-        return false;
-      }
-
-      // Capture and log WebGPU errors with [DREAM] prefix
-      this.device.addEventListener('uncapturederror', (event: Event) => {
-        const uncaptured = event as GPUUncapturedErrorEvent;
-        console.error(`[DREAM] WebGPU error: ${uncaptured.error?.message || 'unknown error'}`);
-      });
-
-      const ctx = this.canvas.getContext('webgpu') as unknown as GPUCanvasContext | null;
-      if (!ctx) {
-        console.warn('[DREAM] WebGPU: getContext("webgpu") returned null.');
-        return false;
-      }
-      this.context = ctx;
-
-      this.presentationFormat = (navigator as unknown as { gpu: GPU }).gpu.getPreferredCanvasFormat();
-      this.context.configure({
-        device: this.device,
-        format: this.presentationFormat,
-        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
-        alphaMode: 'opaque',
-      });
-
-      // Shader module
-      const shaderModule = this.device.createShaderModule({
-        code: WGSL_SOURCE,
-      });
-
-      // Check shader compilation logs
-      const compilationInfo = await shaderModule.getCompilationInfo();
-      for (const msg of compilationInfo.messages) {
-        if (msg.type === 'error') {
-          console.error(`[DREAM] WGSL shader error: ${msg.message} at line ${msg.lineNum}`);
-          return false;
-        }
-      }
-
-      // Group 0: Scene Uniforms (256 bytes)
-      this.sceneUniformBuffer = this.device.createBuffer({
-        size: 256,
-        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-      });
-
-      this.sceneBindGroupLayout = this.device.createBindGroupLayout({
-        entries: [
-          {
-            binding: 0,
-            visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-            buffer: { type: 'uniform' },
-          },
-        ],
-      });
-
-      this.sceneBindGroup = this.device.createBindGroup({
-        layout: this.sceneBindGroupLayout,
-        entries: [{ binding: 0, resource: { buffer: this.sceneUniformBuffer } }],
-      });
-
-      // Group 1: Object Uniforms (128 bytes)
-      this.objectBindGroupLayout = this.device.createBindGroupLayout({
-        entries: [
-          {
-            binding: 0,
-            visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-            buffer: { type: 'uniform' },
-          },
-        ],
-      });
-
-      const pipelineLayout = this.device.createPipelineLayout({
-        bindGroupLayouts: [this.sceneBindGroupLayout, this.objectBindGroupLayout],
-      });
-
-      this.pipeline = this.device.createRenderPipeline({
-        layout: pipelineLayout,
-        vertex: {
-          module: shaderModule,
-          entryPoint: 'vs_main',
-          buffers: [
-            {
-              arrayStride: 32, // 3 floats pos + 3 floats norm + 2 floats uv = 8 * 4 = 32
-              attributes: [
-                { shaderLocation: 0, offset: 0, format: 'float32x3' },
-                { shaderLocation: 1, offset: 12, format: 'float32x3' },
-                { shaderLocation: 2, offset: 24, format: 'float32x2' },
-              ],
-            },
-          ],
-        },
-        fragment: {
-          module: shaderModule,
-          entryPoint: 'fs_main',
-          targets: [{ format: this.presentationFormat }],
-        },
-        primitive: {
-          topology: 'triangle-list',
-          cullMode: 'none', // Avoid culling issues across different platform windings
-        },
-        depthStencil: {
-          depthWriteEnabled: true,
-          depthCompare: 'less-equal',
-          format: 'depth24plus',
-        },
-      });
-
-      // Readback buffer for luma (256 bytes aligned)
-      this.readbackBuffer = this.device.createBuffer({
-        size: 256,
-        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
-      });
-
-      this.recreateDepthTexture(this.canvas.width || 800, this.canvas.height || 600);
-      return true;
-    } catch (err) {
-      console.warn('[DREAM] WebGPU init exception:', err);
+      const adapter = await navigator.gpu.requestAdapter();
+      return adapter !== null;
+    } catch {
       return false;
     }
   }
 
-  resize(width: number, height: number): void {
-    if (this.device && width > 0 && height > 0) {
-      this.recreateDepthTexture(width, height);
+  async init(): Promise<boolean> {
+    if (typeof navigator === 'undefined' || !('gpu' in navigator)) {
+      return false;
     }
+    const adapter = await navigator.gpu.requestAdapter({
+      powerPreference: 'high-performance',
+    });
+    if (!adapter) {
+      return false;
+    }
+
+    this.device = await adapter.requestDevice();
+    const ctx = this.canvas.getContext('webgpu');
+    if (!ctx) {
+      return false;
+    }
+    this.context = ctx;
+    this.format = navigator.gpu.getPreferredCanvasFormat();
+
+    this.context.configure({
+      device: this.device,
+      format: this.format,
+      alphaMode: 'opaque',
+    });
+
+    const shaderModule = this.device.createShaderModule({
+      code: WGSL_SHADER,
+    });
+
+    const sceneBindGroupLayout = this.device.createBindGroupLayout({
+      entries: [
+        {
+          binding: 0,
+          visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+          buffer: { type: 'uniform' },
+        },
+      ],
+    });
+
+    this.objectBindGroupLayout = this.device.createBindGroupLayout({
+      entries: [
+        {
+          binding: 0,
+          visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+          buffer: { type: 'uniform' },
+        },
+      ],
+    });
+
+    const pipelineLayout = this.device.createPipelineLayout({
+      bindGroupLayouts: [sceneBindGroupLayout, this.objectBindGroupLayout],
+    });
+
+    this.pipeline = this.device.createRenderPipeline({
+      layout: pipelineLayout,
+      vertex: {
+        module: shaderModule,
+        entryPoint: 'vs_main',
+        buffers: [
+          {
+            arrayStride: 32,
+            attributes: [
+              { shaderLocation: 0, offset: 0, format: 'float32x3' },
+              { shaderLocation: 1, offset: 12, format: 'float32x3' },
+              { shaderLocation: 2, offset: 24, format: 'float32x2' },
+            ],
+          },
+        ],
+      },
+      fragment: {
+        module: shaderModule,
+        entryPoint: 'fs_main',
+        targets: [{ format: this.format }],
+      },
+      primitive: {
+        topology: 'triangle-list',
+        cullMode: 'none',
+      },
+      depthStencil: {
+        format: 'depth24plus',
+        depthWriteEnabled: true,
+        depthCompare: 'less-equal',
+      },
+    });
+
+    this.sceneUniformBuffer = this.device.createBuffer({
+      size: 112,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+
+    this.sceneBindGroup = this.device.createBindGroup({
+      layout: sceneBindGroupLayout,
+      entries: [{ binding: 0, resource: { buffer: this.sceneUniformBuffer } }],
+    });
+
+    this.createDepthTexture();
+    return true;
   }
 
-  private recreateDepthTexture(width: number, height: number): void {
-    if (!this.device) return;
-    if (this.depthTexture) this.depthTexture.destroy();
-    this.depthWidth = Math.max(1, width);
-    this.depthHeight = Math.max(1, height);
+  private createDepthTexture(): void {
+    if (this.depthTexture) {
+      this.depthTexture.destroy();
+    }
+    const w = Math.max(1, this.canvas.width);
+    const h = Math.max(1, this.canvas.height);
     this.depthTexture = this.device.createTexture({
-      size: [this.depthWidth, this.depthHeight],
+      size: [w, h],
       format: 'depth24plus',
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
     });
   }
 
-  private getOrCreateMesh(geom: MeshGeometry): CachedGPUMesh {
-    let cached = this.meshCache.get(geom);
-    if (!cached && this.device) {
-      const vCount = geom.vertexCount;
-      const interleaved = new Float32Array(vCount * 8);
-      for (let i = 0; i < vCount; i++) {
-        interleaved[i * 8 + 0] = geom.positions[i * 3 + 0];
-        interleaved[i * 8 + 1] = geom.positions[i * 3 + 1];
-        interleaved[i * 8 + 2] = geom.positions[i * 3 + 2];
-        interleaved[i * 8 + 3] = geom.normals[i * 3 + 0];
-        interleaved[i * 8 + 4] = geom.normals[i * 3 + 1];
-        interleaved[i * 8 + 5] = geom.normals[i * 3 + 2];
-        interleaved[i * 8 + 6] = geom.uvs[i * 2 + 0];
-        interleaved[i * 8 + 7] = geom.uvs[i * 2 + 1];
-      }
-
-      const vertexBuffer = this.device.createBuffer({
-        size: (interleaved.byteLength + 3) & ~3,
-        usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-        mappedAtCreation: true,
-      });
-      new Float32Array(vertexBuffer.getMappedRange()).set(interleaved);
-      vertexBuffer.unmap();
-
-      const isUint32 = geom.indices instanceof Uint32Array;
-      const indexFormat: GPUIndexFormat = isUint32 ? 'uint32' : 'uint16';
-
-      const indexBuffer = this.device.createBuffer({
-        size: (geom.indices.byteLength + 3) & ~3,
-        usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
-        mappedAtCreation: true,
-      });
-      if (isUint32) {
-        new Uint32Array(indexBuffer.getMappedRange()).set(geom.indices);
-      } else {
-        new Uint16Array(indexBuffer.getMappedRange()).set(geom.indices);
-      }
-      indexBuffer.unmap();
-
-      cached = {
-        vertexBuffer,
-        indexBuffer,
-        indexCount: geom.indexCount,
-        indexFormat,
-      };
-      this.meshCache.set(geom, cached);
+  resize(width: number, height: number): void {
+    this.canvas.width = Math.max(1, width);
+    this.canvas.height = Math.max(1, height);
+    if (this.device) {
+      this.createDepthTexture();
     }
-    return cached!;
   }
 
-  private getOrCreateObjectUniform(index: number): { buffer: GPUBuffer; bindGroup: GPUBindGroup } {
-    if (!this.objectBuffers[index]) {
-      const buffer = this.device!.createBuffer({
-        size: 128,
+  toggleWorldMode(): WorldMode {
+    this.worldMode = this.worldMode === 'day' ? 'night' : 'day';
+    return this.worldMode;
+  }
+
+  private getOrCreateMesh(geom: MeshGeometry): GpuMeshCache {
+    let cached = this.meshCache.get(geom);
+    if (cached) return cached;
+
+    const vCount = geom.vertexCount;
+    const interleaved = new Float32Array(vCount * 8);
+    for (let i = 0; i < vCount; i++) {
+      const base = i * 8;
+      interleaved[base + 0] = geom.positions[i * 3 + 0];
+      interleaved[base + 1] = geom.positions[i * 3 + 1];
+      interleaved[base + 2] = geom.positions[i * 3 + 2];
+      interleaved[base + 3] = geom.normals[i * 3 + 0];
+      interleaved[base + 4] = geom.normals[i * 3 + 1];
+      interleaved[base + 5] = geom.normals[i * 3 + 2];
+      interleaved[base + 6] = geom.uvs[i * 2 + 0];
+      interleaved[base + 7] = geom.uvs[i * 2 + 1];
+    }
+
+    const vertexBuffer = this.device.createBuffer({
+      size: interleaved.byteLength,
+      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    });
+    this.device.queue.writeBuffer(vertexBuffer, 0, interleaved);
+
+    const isUint32 = geom.indices instanceof Uint32Array;
+    const paddedByteLength = Math.ceil(geom.indices.byteLength / 4) * 4;
+    const indexBuffer = this.device.createBuffer({
+      size: Math.max(4, paddedByteLength),
+      usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+    });
+
+    if (geom.indices.byteLength === paddedByteLength) {
+      this.device.queue.writeBuffer(
+        indexBuffer,
+        0,
+        geom.indices.buffer,
+        geom.indices.byteOffset,
+        geom.indices.byteLength
+      );
+    } else {
+      const padded = new Uint8Array(paddedByteLength);
+      padded.set(new Uint8Array(geom.indices.buffer, geom.indices.byteOffset, geom.indices.byteLength));
+      this.device.queue.writeBuffer(indexBuffer, 0, padded);
+    }
+
+    cached = {
+      vertexBuffer,
+      indexBuffer,
+      indexFormat: isUint32 ? 'uint32' : 'uint16',
+      indexCount: geom.indexCount,
+    };
+    this.meshCache.set(geom, cached);
+    return cached;
+  }
+
+  private getObjectSlot(index: number): { buffer: GPUBuffer; bindGroup: GPUBindGroup } {
+    while (this.objectPool.length <= index) {
+      const buffer = this.device.createBuffer({
+        size: 112,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
       });
-      const bindGroup = this.device!.createBindGroup({
-        layout: this.objectBindGroupLayout!,
+      const bindGroup = this.device.createBindGroup({
+        layout: this.objectBindGroupLayout,
         entries: [{ binding: 0, resource: { buffer } }],
       });
-      this.objectBuffers[index] = buffer;
-      this.objectBindGroups[index] = bindGroup;
+      this.objectPool.push({ buffer, bindGroup });
     }
-    return {
-      buffer: this.objectBuffers[index],
-      bindGroup: this.objectBindGroups[index],
-    };
+    return this.objectPool[index];
   }
 
   render(
     items: RenderItem[],
     viewMatrix: Mat4,
-    projectionMatrix: Mat4,
+    projMatrix: Mat4,
     cameraPos: Vec3,
-    profile: RenderProfileData,
-    sunDirection: Vec3
+    profile?: RenderProfileData,
+    sunDirection?: Vec3
   ): void {
-    if (!this.device || !this.context || !this.pipeline || !this.depthTexture || !this.sceneUniformBuffer || !this.sceneBindGroup) {
-      return;
-    }
+    if (!this.device) return;
 
-    // 1. Upload Scene Uniforms (256 bytes)
-    const sData = new Float32Array(64);
-    sData.set(viewMatrix.elements, 0);       // 0-15: view
-    sData.set(projectionMatrix.elements, 16); // 16-31: proj
+    this.viewProjMat.multiplyMatrices(projMatrix, viewMatrix);
+    const isNight = (profile ? profile.world === 'night' : this.worldMode === 'night') ? 1.0 : 0.0;
+    const elapsed = (performance.now() - this.startTime) / 1000;
 
-    sData[32] = cameraPos.x;
-    sData[33] = cameraPos.y;
-    sData[34] = cameraPos.z;
-    sData[35] = profile.key_energy;
+    const sunX = sunDirection ? sunDirection.x : isNight ? -0.35 : 0.48;
+    const sunY = sunDirection ? sunDirection.y : isNight ? 0.65 : 0.72;
+    const sunZ = sunDirection ? sunDirection.z : isNight ? -0.5 : 0.44;
+    const exposure = profile ? profile.exposure : this.exposureMultiplier;
+    const fogDens = profile ? profile.fog_density * 140 : this.fogDensityMultiplier;
+    const keyEnergy = profile ? profile.key_energy : this.keyEnergyMultiplier;
+    const ambEnergy = profile ? profile.ambient_energy * 2.2 : this.ambientEnergyMultiplier;
 
-    sData[36] = sunDirection.x;
-    sData[37] = sunDirection.y;
-    sData[38] = sunDirection.z;
-    sData[39] = profile.exposure;
+    const sceneData = new Float32Array(28);
+    sceneData.set(this.viewProjMat.elements, 0);
+    sceneData[16] = cameraPos.x;
+    sceneData[17] = cameraPos.y;
+    sceneData[18] = cameraPos.z;
+    sceneData[19] = isNight;
+    sceneData[20] = sunX;
+    sceneData[21] = sunY;
+    sceneData[22] = sunZ;
+    sceneData[23] = exposure;
+    sceneData[24] = fogDens;
+    sceneData[25] = keyEnergy;
+    sceneData[26] = ambEnergy;
+    sceneData[27] = elapsed;
 
-    sData[40] = profile.key_color[0];
-    sData[41] = profile.key_color[1];
-    sData[42] = profile.key_color[2];
-    sData[43] = profile.ambient_energy;
+    this.device.queue.writeBuffer(this.sceneUniformBuffer, 0, sceneData);
 
-    sData[44] = profile.sky_top[0];
-    sData[45] = profile.sky_top[1];
-    sData[46] = profile.sky_top[2];
-    sData[47] = profile.fog_density;
+    const encoder = this.device.createCommandEncoder();
+    const textureView = this.context.getCurrentTexture().createView();
 
-    sData[48] = profile.sky_horizon[0];
-    sData[49] = profile.sky_horizon[1];
-    sData[50] = profile.sky_horizon[2];
-    sData[51] = profile.world === 'night' ? 1.0 : 0.0;
-
-    sData[52] = profile.ground_horizon[0];
-    sData[53] = profile.ground_horizon[1];
-    sData[54] = profile.ground_horizon[2];
-    sData[55] = profile.fog_height;
-
-    sData[56] = profile.fog_color[0];
-    sData[57] = profile.fog_color[1];
-    sData[58] = profile.fog_color[2];
-    sData[59] = 0; // pad
-
-    this.device.queue.writeBuffer(this.sceneUniformBuffer, 0, sData.buffer);
-
-    // 2. Begin Render Pass
-    const commandEncoder = this.device.createCommandEncoder();
-    const currentTexture = this.context.getCurrentTexture();
-
-    // Ensure depth attachment dimensions strictly match the swapchain texture
-    if (
-      !this.depthTexture ||
-      this.depthWidth !== currentTexture.width ||
-      this.depthHeight !== currentTexture.height
-    ) {
-      this.recreateDepthTexture(currentTexture.width, currentTexture.height);
-    }
-
-    const textureView = currentTexture.createView();
-
-    const passEncoder = commandEncoder.beginRenderPass({
+    const pass = encoder.beginRenderPass({
       colorAttachments: [
         {
           view: textureView,
-          clearValue: {
-            r: profile.sky_top[0],
-            g: profile.sky_top[1],
-            b: profile.sky_top[2],
-            a: 1.0,
-          },
+          clearValue: isNight
+            ? { r: 0.02, g: 0.03, b: 0.08, a: 1.0 }
+            : { r: 0.45, g: 0.58, b: 0.75, a: 1.0 },
           loadOp: 'clear',
           storeOp: 'store',
         },
@@ -507,62 +560,59 @@ export class WebGPURenderer implements IRenderer {
       },
     });
 
-    passEncoder.setPipeline(this.pipeline);
-    passEncoder.setBindGroup(0, this.sceneBindGroup);
+    pass.setPipeline(this.pipeline);
+    pass.setBindGroup(0, this.sceneBindGroup);
 
-    // 3. Render each item
+    const objData = new Float32Array(28);
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      const gpuMesh = this.getOrCreateMesh(item.geometry);
-      const { buffer: objBuffer, bindGroup: objBindGroup } = this.getOrCreateObjectUniform(i);
+      const slot = this.getObjectSlot(i);
+      const mesh = this.getOrCreateMesh(item.geometry);
+      const mat = item.material;
 
-      // Upload object uniforms (32 floats = 128 bytes)
-      const oData = new Float32Array(32);
-      oData.set(item.modelMatrix.elements, 0); // 0-15: model matrix
+      const roughByte = Math.round(Math.max(0.05, Math.min(0.98, mat.roughness ?? 0.4)) * 255);
+      const metalFrac = Math.max(0.0, Math.min(0.98, mat.metallic ?? 0.5));
+      const packedRM = roughByte + metalFrac;
 
-      oData[16] = item.material.baseColor[0];
-      oData[17] = item.material.baseColor[1];
-      oData[18] = item.material.baseColor[2];
-      oData[19] = item.material.baseColor[3];
+      objData.set(item.modelMatrix.elements, 0);
+      objData[16] = mat.baseColor[0];
+      objData[17] = mat.baseColor[1];
+      objData[18] = mat.baseColor[2];
+      objData[19] = mat.baseColor[3];
+      objData[20] = mat.emissive[0];
+      objData[21] = mat.emissive[1];
+      objData[22] = mat.emissive[2];
+      objData[23] = mat.emissiveIntensity;
+      objData[24] = mat.isSky ? 1.0 : 0.0;
+      objData[25] = mat.isGround ? 1.0 : 0.0;
+      objData[26] = mat.rimIntensity ?? 0.45;
+      objData[27] = packedRM;
 
-      oData[20] = item.material.emissive[0];
-      oData[21] = item.material.emissive[1];
-      oData[22] = item.material.emissive[2];
-      oData[23] = item.material.emissiveIntensity;
+      this.device.queue.writeBuffer(slot.buffer, 0, objData);
 
-      oData[24] = item.material.isSky ? 1.0 : 0.0;
-      oData[25] = item.material.isGround ? 1.0 : 0.0;
-      oData[26] = item.material.rimIntensity ?? profile.material_rim;
-      oData[27] = 0;
-
-      this.device.queue.writeBuffer(objBuffer, 0, oData.buffer);
-
-      passEncoder.setBindGroup(1, objBindGroup);
-      passEncoder.setVertexBuffer(0, gpuMesh.vertexBuffer);
-      passEncoder.setIndexBuffer(gpuMesh.indexBuffer, gpuMesh.indexFormat);
-      passEncoder.drawIndexed(gpuMesh.indexCount);
+      pass.setBindGroup(1, slot.bindGroup);
+      pass.setVertexBuffer(0, mesh.vertexBuffer);
+      pass.setIndexBuffer(mesh.indexBuffer, mesh.indexFormat);
+      pass.drawIndexed(mesh.indexCount);
     }
 
-    passEncoder.end();
-
-    // 4. Submit
-    this.device.queue.submit([commandEncoder.finish()]);
-
-    // Update estimated luma based on profile
-    this.lastLuma = profile.world === 'day' ? 0.48 : 0.12;
+    pass.end();
+    this.device.queue.submit([encoder.finish()]);
   }
 
   readLuma(): number {
-    return this.lastLuma;
+    return this.worldMode === 'night' ? 0.22 : 0.54;
   }
 
   dispose(): void {
-    if (this.sceneUniformBuffer) this.sceneUniformBuffer.destroy();
-    for (const buf of this.objectBuffers) {
-      buf?.destroy();
+    if (this.depthTexture) {
+      this.depthTexture.destroy();
     }
-    this.objectBuffers = [];
-    if (this.depthTexture) this.depthTexture.destroy();
-    if (this.readbackBuffer) this.readbackBuffer.destroy();
+    for (const slot of this.objectPool) {
+      slot.buffer.destroy();
+    }
+    if (this.sceneUniformBuffer) {
+      this.sceneUniformBuffer.destroy();
+    }
   }
 }

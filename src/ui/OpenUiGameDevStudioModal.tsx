@@ -1,6 +1,6 @@
 /**
  * DREAM Engine — OpenUI Lang 1.0 + REA Procedural City + Remake Swap Board +
- * BDO/Rohan Sculpted Character & Skill Forge + CLI-Anything AI Team & Red/Tag/Triple-Team Shield
+ * Sculpted Character & Skill Forge + CLI-Anything AI Team & Red/Tag/Triple-Team Shield
  *
  * 100% In-House AI-Built (`Built with Google Gemini` + Co-GM Council).
  * Zero Unreal Engine, Zero Godot, Zero Paperclip, Zero Box Primitives.
@@ -102,12 +102,12 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
   const [swapBoard] = useState(() => new RemakeSwapBoard());
   const [, setSwapTick] = useState(0);
 
-  // 4. BDO / Rohan Character & Skill Forge + Dreamforge state
+  // 4. Sculpted Character & Skill Forge + Dreamforge state
   const [selectedClassId, setSelectedClassId] = useState<ActionMmoClassId>(
-    engine?.skillVfx.activeClassId || 'crimson-dekan'
+    engine?.skillVfx.activeClassId || 'crimson-vanguard'
   );
   const [selectedVfxTheme, setSelectedVfxTheme] = useState<SkillVfxThemeId>(
-    engine?.skillVfx.activeThemeId || 'rohan-blood-crimson'
+    engine?.skillVfx.activeThemeId || 'ember-wyrm-crimson'
   );
   const [selectedDreamforgeMode, setSelectedDreamforgeMode] = useState<string>('ip-jump');
   const [selectedDreamforgeStyle, setSelectedDreamforgeStyle] = useState<string>(
@@ -303,8 +303,8 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
     // Apply mutation to live 3D engine if present
     if (engine && res.mutation) {
       if (res.mutation.type === 'set-character-class') {
-        const cId = (res.mutation.payload.classId as ActionMmoClassId) || 'crimson-dekan';
-        const vId = (res.mutation.payload.vfxThemeId as SkillVfxThemeId) || 'rohan-blood-crimson';
+        const cId = (res.mutation.payload.classId as ActionMmoClassId) || 'crimson-vanguard';
+        const vId = (res.mutation.payload.vfxThemeId as SkillVfxThemeId) || 'ember-wyrm-crimson';
         const st = String(res.mutation.payload.dreamforgeStyle || 'stylized-semi-real-3d-game');
         setSelectedClassId(cId);
         setSelectedVfxTheme(vId);
@@ -507,7 +507,7 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-base sm:text-lg font-bold tracking-tight text-white">
-                  DREAM ENGINE STUDIO · BDO/ROHAN SKILL FORGE + DREAMFORGE + CLI-ANYTHING
+                  DREAM ENGINE STUDIO · SCULPTED SKILL FORGE + DREAMFORGE + CLI-ANYTHING
                 </h2>
                 <span className="px-2 py-0.5 rounded bg-rose-500/20 border border-rose-400/40 text-rose-300 font-mono text-xs font-semibold">
                   Zero Box Primitives · 3D Skill VFX
@@ -517,7 +517,7 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
                 </span>
               </div>
               <p className="text-xs text-slate-300 font-mono mt-0.5">
-                Sculpted Action-MMO Heroes · BDO/Rohan 3D Slash/Shockwave/Pillar VFX · Dreamforge 43 Styles · Triple-Team Kids Shield
+                Sculpted Action-MMO Heroes · 3D Slash/Shockwave/Pillar VFX · Dreamforge 43 Styles · Triple-Team Kids Shield
               </p>
             </div>
           </div>
@@ -564,7 +564,7 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
               }`}
             >
               <Swords className="w-3.5 h-3.5" />
-              <span>1. BDO/Rohan Character &amp; Skill VFX Forge</span>
+              <span>1. Sculpted Character &amp; Skill VFX Forge</span>
             </button>
 
             <button
@@ -627,7 +627,7 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
         {/* Main Tab Content Area */}
         <div className="flex-1 min-h-0 overflow-y-auto p-6">
           {/* =================================================================
-              TAB 1: BDO / ROHAN SCULPTED CHARACTER & SKILL VFX FORGE + DREAMFORGE
+              TAB 1: SCULPTED CHARACTER & SKILL VFX FORGE + DREAMFORGE
              ================================================================= */}
           {activeTab === 'char-skill-forge' && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -668,7 +668,7 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
                   </div>
                 </div>
 
-                {/* 4 BDO / Rohan Skill Visual Themes */}
+                {/* 4 Skill Visual Themes */}
                 <div>
                   <h3 className="text-sm font-bold uppercase tracking-wider text-[#FFD21E] mb-2.5">
                     Select 3D Combat Skill Visual Theme (Crescent Slash Ribbons · Shockwaves · Awakening Pillars)
@@ -889,12 +889,12 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
                       ['--help', 'dream-cli --help'],
                       ['Inspect All (--json)', 'dream-cli inspect --target all --json'],
                       [
-                        'Equip Crimson Dekan',
-                        'dream-cli char set --class crimson-dekan --vfx rohan-blood-crimson',
+                        'Equip Crimson Vanguard',
+                        'dream-cli char set --class crimson-vanguard --vfx ember-wyrm-crimson',
                       ],
                       [
-                        'Equip BDO Dark-Knight',
-                        'dream-cli char set --class abyssal-awakening --vfx bdo-black-spirit',
+                        'Equip Nightveil Reaper',
+                        'dream-cli char set --class nightveil-reaper --vfx nightveil-abyss',
                       ],
                       ['Fire Awakening Combo', 'dream-cli skill cast --move combo-all'],
                       [
@@ -1023,24 +1023,31 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
                     </div>
                   </div>
 
-                  {/* 6 Hardened Security Vectors */}
+                  {/* 6 Security Vectors (4 Runtime Tests + 2 Architectural Design Notes) */}
                   <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                     {securityReport.vectors.map((vec) => (
                       <div
                         key={vec.vectorId}
                         className="p-2.5 rounded bg-[#0B0D11] border border-slate-800 font-mono text-xs"
                       >
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-2">
                           <span className="text-white font-bold">{vec.title}</span>
-                          <span className="text-emerald-400 font-bold">
-                            {vec.status} ({vec.latencyMs}ms)
+                          <span
+                            className={`font-bold ${
+                              vec.kind === 'executable_runtime_test'
+                                ? 'text-emerald-400'
+                                : 'text-amber-300'
+                            }`}
+                          >
+                            {vec.status}
+                            {vec.latencyMs !== null ? ` (${vec.latencyMs}ms)` : ' (design_note_not_test)'}
                           </span>
                         </div>
                         <div className="text-rose-300 text-[11px] mt-0.5">
-                          Red: {vec.redTeamAttackPayload}
+                          Probe: {vec.redTeamAttackPayload}
                         </div>
                         <div className="text-cyan-300 text-[11px]">
-                          Blue/Triple: {vec.blueTeamInterceptAction}
+                          Result: {vec.blueTeamInterceptAction}
                         </div>
                       </div>
                     ))}

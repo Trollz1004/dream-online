@@ -1031,11 +1031,11 @@ export const INITIAL_STUDIO_ENTITIES: StudioEntity[] = [
     id: 'entity-pylon-gemini',
     name: 'Gemini Ultra SDK Spire',
     type: 'pylon',
-    position: [6, 0, -4],
+    position: [7.5, 0, -6.5],
     scale: [0.75, 2.8, 0.75],
     rotationYDeg: 45,
-    color: [0.13, 0.83, 0.93],
-    emissiveIntensity: 2.2,
+    color: [0.30, 0.34, 0.40],
+    emissiveIntensity: 0.14,
     sourceNote: 'Built with Google Gemini Beacon',
   },
   {
@@ -1045,8 +1045,8 @@ export const INITIAL_STUDIO_ENTITIES: StudioEntity[] = [
     position: [-5, 0, -4],
     scale: [0.65, 2.1, 0.65],
     rotationYDeg: 0,
-    color: [1.0, 0.82, 0.12],
-    emissiveIntensity: 2.5,
+    color: [0.34, 0.31, 0.27],
+    emissiveIntensity: 0.12,
     sourceNote: 'Live NPC Lab Anchor (.15 Worker)',
   },
 ];
@@ -1117,7 +1117,7 @@ export class StudioConfigManager {
   memoryEntries: AgentMemoryEntry[] = [...INITIAL_MEMORY_ENTRIES.map((m) => ({ ...m, tags: [...m.tags], wikilinks: [...m.wikilinks], syncedTiers: [...m.syncedTiers] }))];
   totalSecretsRedacted = 0;
   lastRedactedPatterns: string[] = [];
-  selectedEntityId: string | null = 'entity-pylon-gemini';
+  selectedEntityId: string | null = null;
 
   private listeners = new Set<() => void>();
 

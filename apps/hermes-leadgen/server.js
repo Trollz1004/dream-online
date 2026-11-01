@@ -1488,11 +1488,11 @@ const server = http.createServer(async (req, res) => {
           },
           {
             id: 'dreamforge_art_styles',
-            name: 'Dreamforge 43 Art Styles & BDO/Rohan Skill VFX Mapper',
+            name: 'Dreamforge 43 Art Styles & Sculpted Skill VFX Mapper',
             stylesCount: 43,
-            classes: ['crimson-dekan', 'abyssal-awakening', 'aether-valkyrie', 'blood-moon-dhan'],
-            vfxThemes: ['bdo-black-spirit', 'rohan-blood-crimson', 'celestial-aether-gold', 'venom-shadow-jade'],
-            description: 'Maps Dreamforge art styles onto sculpted 3D Dragon-Knight armor and BDO/Rohan combat skill visuals.'
+            classes: ['crimson-vanguard', 'nightveil-reaper', 'solaris-warden', 'jade-stalker'],
+            vfxThemes: ['ember-wyrm-crimson', 'nightveil-abyss', 'celestial-aether-gold', 'venom-shadow-jade'],
+            description: 'Maps Dreamforge art styles onto sculpted 3D Vanguard armor and high-impact combat skill visuals.'
           },
           {
             id: 'dreamforge_roleplay',
@@ -1514,10 +1514,10 @@ const server = http.createServer(async (req, res) => {
       const body = await readJsonBody(req);
       const toolId = String(body.toolId || 'dreamforge_world_seed');
       const mode = String(body.mode || 'world');
-      const style = String(body.style || 'style-01 (BDO Crimson Awakening)');
-      const classId = String(body.classId || 'crimson-dekan');
-      const vfxTheme = String(body.vfxTheme || 'bdo-black-spirit');
-      const prompt = String(body.prompt || 'Crimson Dragon-Knight unleashing Nightveil Awakening in First Gate').trim();
+      const style = String(body.style || 'style-01 (Crimson Vanguard Awakening)');
+      const classId = String(body.classId || 'crimson-vanguard');
+      const vfxTheme = String(body.vfxTheme || 'ember-wyrm-crimson');
+      const prompt = String(body.prompt || 'Crimson Vanguard unleashing Nightveil Awakening in First Gate').trim();
 
       const seed = `DF-${mode.toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
       const shortScript = `[<= 58.5s Short | Voice: Aoede Natural Female TTS] In DREAM Online's ${mode} mode, watch the sculpted ${classId} unleash ${vfxTheme} 3D crescent slashes and lightning pillars in ${style}. 100% free live AI NPCs, zero pay-to-win, Built with Google Gemini!`;

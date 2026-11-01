@@ -770,14 +770,14 @@ app.get('/api/dreamforge/modes', (_req, res) => {
 app.post('/api/dreamforge/generate', (req, res) => {
   const modeId = String(req.body?.mode || 'world-seed');
   const styleId = String(req.body?.style || 'stylized-semi-real-3d-game');
-  const classId = (String(req.body?.classId || 'crimson-dekan') as ActionMmoClassId);
-  const vfxThemeId = (String(req.body?.vfxThemeId || 'bdo-black-spirit') as SkillVfxThemeId);
-  const prompt = String(req.body?.prompt || 'Crimson Dragon-Knight awakening in First Gate Sanctuary').trim();
+  const classId = (String(req.body?.classId || 'crimson-vanguard') as ActionMmoClassId);
+  const vfxThemeId = (String(req.body?.vfxThemeId || 'ember-wyrm-crimson') as SkillVfxThemeId);
+  const prompt = String(req.body?.prompt || 'Crimson Vanguard awakening in First Gate Sanctuary').trim();
 
   const mode = DREAMFORGE_MODES.find((m) => m.id === modeId) || DREAMFORGE_MODES[0];
   const style = DREAMFORGE_STYLES.find((s: string) => s === styleId) || DREAMFORGE_STYLES[0];
-  const mmoClass = ACTION_MMO_CLASSES[classId] || ACTION_MMO_CLASSES['crimson-dekan'];
-  const vfxTheme = SKILL_VFX_THEMES[vfxThemeId] || SKILL_VFX_THEMES['bdo-black-spirit'];
+  const mmoClass = ACTION_MMO_CLASSES[classId] || ACTION_MMO_CLASSES['crimson-vanguard'];
+  const vfxTheme = SKILL_VFX_THEMES[vfxThemeId] || SKILL_VFX_THEMES['ember-wyrm-crimson'];
 
   appendAudit(
     'DREAMFORGE',

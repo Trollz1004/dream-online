@@ -85,9 +85,9 @@
   },
   {
     "id": "dreamforge_art_styles",
-    "name": "Dreamforge: 43 Art Styles & BDO/Rohan Character/Skill VFX Mapper",
-    "description": "Custom YouTube Automation & Game-Dev function: maps Dreamforge's 43 art styles onto sculpted BDO/Rohan 3D armor rigs, crescent slash arcs, shockwave rings, and <=59.0s Shorts thumbnails.",
-    "cli": "npx tsx ops/cli-anything/dream-cli.ts vfx cast --skill R --class crimson-dekan --theme bdo-black-spirit --json",
+    "name": "Dreamforge: 43 Art Styles & Sculpted Character/Skill VFX Mapper",
+    "description": "Custom YouTube Automation & Game-Dev function: maps Dreamforge's 43 art styles onto sculpted 3D armor rigs, crescent slash arcs, shockwave rings, and <=59.0s Shorts thumbnails.",
+    "cli": "npx tsx ops/cli-anything/dream-cli.ts vfx cast --skill R --class crimson-vanguard --theme ember-wyrm-crimson --json",
     "mandatory": true
   },
   {
