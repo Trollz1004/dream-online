@@ -76,7 +76,7 @@
         "user": "joshl",
         "cleanProfileRule": "Orphaned C:\\Users\\NSFW_BOTS profile and Win32_UserProfile SID S-1-5-21-3307730112-1160020418-884448263-1001 are 100% purged.",
         "hardware": "Desktop Aurora R12, 11th-Gen Intel i7-11700F, 40 GB RAM, 1.39 TB NVMe SSD, NVIDIA GeForce RTX 3070 (8 GB CUDA), 2.5 Gb Ethernet",
-        "autoBootTask": "DREAM-Alienware-BootAll (ops/node/boot-alienware-services.ps1 — runs at Logon + every 15 min; launches Free Claude Code :8082/admin via signed Python 3.14.10 interpreter)",
+        "autoBootTask": "DREAM-Alienware-BootAll (wscript.exe //B //Nologo ops/node/boot-alienware-services.vbs — Hidden: True, zero console window flash, runs at Logon + every 15 min; launches Free Claude Code :8082/admin via signed Python 3.14.10 interpreter)",
         "ports": {
           "8082": "Free Claude Code Server & Admin Dashboard (http://127.0.0.1:8082/admin)",
           "8390": "OPSis Cut & Reach Studio (http://127.0.0.1:8390/)",
@@ -131,9 +131,17 @@
       "openviking",
       "supabase",
       "agent-workflow",
+      "remake",
+      "reverse-engineer-anything",
+      "cli-anything",
+      "cli-anything-blender",
       "rooflo-opsis-cut-and-reach",
       "house-boot"
     ],
+    "cleanRoomAndOwnershipGates": {
+      "remake100PercentYoursGate": "Every website, HUD, 3D scene, and asset slot must pass the Remake 100% Yours swap-board validation (100% world-native DREAM / platform tokens, zero competitor/source-site brand residue, >= 98% frame-freeze pixel parity).",
+      "reaCleanRoomProtocol": "Use reverse-engineer-anything (rea) to study external binaries/protocols/implementations as evidence, then write a 100% clean-room in-house implementation in DREAM Engine (src/engine/)."
+    },
     "synchronizedPaths": [
       ".agents/skills/<skill>/SKILL.md (+ agents/openai.yaml, agents/gemini.toml, skill.json)",
       ".claude/skills/<skill>/SKILL.md",

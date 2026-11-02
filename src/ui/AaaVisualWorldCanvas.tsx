@@ -5,6 +5,10 @@ import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import {
+  UnifiedAntigravityWorkspaceShell,
+  type WorkspaceCenterView,
+} from './UnifiedAntigravityWorkspaceShell.tsx';
 
 interface RealHitNumber {
   id: number;
@@ -50,6 +54,9 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
 
   const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
   const isCaptureMode = params.get('capture') === '1';
+  const initialWorkspaceMode = params.get('workspace') === '1';
+  const initialWorkspaceView = (params.get('view') as WorkspaceCenterView) || 'repos-models';
+  const [isUnifiedWorkspaceOpen, setIsUnifiedWorkspaceOpen] = useState<boolean>(initialWorkspaceMode);
   const pinnedTimeParam = params.get('t') ? parseFloat(params.get('t')!) : null;
   const initialYawParam = params.get('yaw') ? parseFloat(params.get('yaw')!) : null;
   const initialPitchParam = params.get('pitch') ? parseFloat(params.get('pitch')!) : null;
@@ -1833,14 +1840,32 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
             </div>
           </div>
 
-          {onOpenStudioDrawer && (
+          <div className="flex items-center gap-2 pointer-events-auto">
             <button
-              onClick={onOpenStudioDrawer}
-              className="pointer-events-auto px-3 py-1.5 rounded-xl bg-neutral-950/85 border border-white/15 text-neutral-300 hover:text-white text-xs font-bold cursor-pointer"
+              onClick={() => setIsUnifiedWorkspaceOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-sky-950/90 hover:bg-sky-900 border border-sky-400/60 text-sky-100 text-xs font-bold cursor-pointer shadow-lg"
             >
-              Studio Tools ▾
+              ⊞ Unified 3-Pane Dashboard &amp; 5h Model Switcher
             </button>
-          )}
+            {onOpenStudioDrawer && (
+              <button
+                onClick={onOpenStudioDrawer}
+                className="px-3 py-1.5 rounded-xl bg-neutral-950/85 border border-white/15 text-neutral-300 hover:text-white text-xs font-bold cursor-pointer"
+              >
+                Studio Tools ▾
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {isUnifiedWorkspaceOpen && (
+        <div className="fixed inset-0 z-50">
+          <UnifiedAntigravityWorkspaceShell
+            initialView={initialWorkspaceView}
+            initialModelPickerOpen={params.get('picker') !== '0'}
+            onReturnToFull3dViewport={() => setIsUnifiedWorkspaceOpen(false)}
+          />
         </div>
       )}
 

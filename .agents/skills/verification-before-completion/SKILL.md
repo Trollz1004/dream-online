@@ -1,13 +1,14 @@
 ---
 name: verification-before-completion
-description: "Rule One enforcement: done means the real human user would accept it. Requires live HTTP/process verification, full test pass, and real screenshots for any UI."
-version: 2.0.0
+description: "Rule One + Remake 100% Yours enforcement: done means the real human user would accept it and 100% Yours clean-room ownership passes. Requires live HTTP/process verification, full test pass, and real screenshots for any UI."
+version: 2.1.0
 platforms: [windows, linux, macos]
 ---
 
-# Verification Before Completion — Rule One (2026-10-28)
+# Verification Before Completion — Rule One & Remake 100% Yours Gate (2026-11-01)
 
 ## Before Calling Anything Done, Working, Fixed, or Verified:
-1. State who the human viewer is (e.g., Founder Joshua Coleman reading on his screen with tired eyes; a player in DREAM Online; a customer on `onlinerecycle.net` or `youandinotai.com`).
-2. Run the real test suites (`npm test`, `npm run lint`, `node --test`) AND probe the live HTTP endpoint (using real TCP/HTTP checks, never trusting a single process list).
-3. For any front-facing HTML/UI, capture and inspect the real screenshot, fix anything cut off or low-contrast, and commit to `main`.
+1. **State the Human Viewer**: Say who the person is (e.g., Founder Joshua Coleman reading on his screen with tired eyes; a player in DREAM Online; a customer on `onlinerecycle.net` or `youandinotai.com`).
+2. **Run Real Test Suites & Live Probes**: Run `npm run lint` and `npm test` AND probe the live HTTP endpoint.
+3. **Pass the Remake `100% Yours` & REA Clean-Room Gate**: Verify 100% of slots, copy, fonts, colours, and 3D assets are clean-room owned with zero competitor or source-site residue.
+4. **Capture & Critique Real Screenshots**: For any front-facing HTML/UI, capture the real screenshot, list any flaws from the human viewer's perspective, fix them, and commit to `main`.

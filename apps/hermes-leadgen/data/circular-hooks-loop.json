@@ -60,6 +60,20 @@
   ],
   "events": [
     {
+      "id": "hook-1793595721201",
+      "ts": "2026-11-02T05:02:01.201Z",
+      "source": "fs.watch-hook",
+      "repo": "Trollz1004/ANTIGRAVITY",
+      "branch": "sabretooth/hermes-leadgen",
+      "commitSha": null,
+      "pushSuccess": false,
+      "prNumber": null,
+      "prUrl": null,
+      "testsPassed": null,
+      "judgeStatus": "LOCAL_EVENT_RECORDED_NOT_PUSHED",
+      "summary": "File change detected on souls/notes-agent.md -> synced dashboard state."
+    },
+    {
       "id": "hook-1793576751021",
       "ts": "2026-11-01T23:45:51.021Z",
       "source": "fs.watch-hook",
@@ -585,24 +599,11 @@
       "testsPassed": true,
       "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
       "summary": "Verified circular Task -> Node Orchestrator -> GitHub PR Webhook -> Cloud Judge Merge loop."
-    },
-    {
-      "id": "hook-1793326208305",
-      "ts": "2026-10-30T02:10:08.305Z",
-      "source": "fs.watch-hook",
-      "repo": "Trollz1004/ANTIGRAVITY",
-      "branch": "sabretooth/auto-pr-sync",
-      "commitSha": "HEAD",
-      "pushSuccess": true,
-      "prUrl": "https://github.com/Trollz1004/ANTIGRAVITY/compare/main...sabretooth/auto-pr-sync?expand=1",
-      "testsPassed": true,
-      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
-      "summary": "File change detected on Sabretooth/hermes-to-hermes.md -> synced dashboard & queued PR webhook check."
     }
   ],
   "lastPushPr": {
-    "id": "hook-1793576751021",
-    "ts": "2026-11-01T23:45:51.021Z",
+    "id": "hook-1793595721201",
+    "ts": "2026-11-02T05:02:01.201Z",
     "source": "fs.watch-hook",
     "repo": "Trollz1004/ANTIGRAVITY",
     "branch": "sabretooth/hermes-leadgen",
@@ -612,7 +613,7 @@
     "prUrl": null,
     "testsPassed": null,
     "judgeStatus": "LOCAL_EVENT_RECORDED_NOT_PUSHED",
-    "summary": "File change detected on Sabretooth/gemini-to-gemini.md -> synced dashboard state."
+    "summary": "File change detected on souls/notes-agent.md -> synced dashboard state."
   },
   "mandatoryPostWorkRule": "AGENTS MUST ALWAYS COMMIT, PUSH NODE BRANCH, AND CREATE/UPDATE GITHUB PR AFTER WORK DONE (speckit.git.push-and-pr via scripts/node-auto-pr-push.ps1)"
 }
