@@ -60,6 +60,20 @@
   ],
   "events": [
     {
+      "id": "hook-1793576751021",
+      "ts": "2026-11-01T23:45:51.021Z",
+      "source": "fs.watch-hook",
+      "repo": "Trollz1004/ANTIGRAVITY",
+      "branch": "sabretooth/hermes-leadgen",
+      "commitSha": null,
+      "pushSuccess": false,
+      "prNumber": null,
+      "prUrl": null,
+      "testsPassed": null,
+      "judgeStatus": "LOCAL_EVENT_RECORDED_NOT_PUSHED",
+      "summary": "File change detected on Sabretooth/gemini-to-gemini.md -> synced dashboard state."
+    },
+    {
       "id": "hook-1793572325697",
       "ts": "2026-11-01T22:32:05.697Z",
       "source": "fs.watch-hook",
@@ -584,24 +598,11 @@
       "testsPassed": true,
       "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
       "summary": "File change detected on Sabretooth/hermes-to-hermes.md -> synced dashboard & queued PR webhook check."
-    },
-    {
-      "id": "hook-1793326207504",
-      "ts": "2026-10-30T02:10:07.504Z",
-      "source": "gui-hook-trigger",
-      "repo": "Trollz1004/ANTIGRAVITY",
-      "branch": "sabretooth/auto-pr-sync",
-      "commitSha": "HEAD",
-      "pushSuccess": true,
-      "prUrl": "https://github.com/Trollz1004/ANTIGRAVITY/compare/main...sabretooth/auto-pr-sync?expand=1",
-      "testsPassed": true,
-      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
-      "summary": "TDD verify mandatory auto-push & PR creation endpoint"
     }
   ],
   "lastPushPr": {
-    "id": "hook-1793572325697",
-    "ts": "2026-11-01T22:32:05.697Z",
+    "id": "hook-1793576751021",
+    "ts": "2026-11-01T23:45:51.021Z",
     "source": "fs.watch-hook",
     "repo": "Trollz1004/ANTIGRAVITY",
     "branch": "sabretooth/hermes-leadgen",
@@ -611,7 +612,7 @@
     "prUrl": null,
     "testsPassed": null,
     "judgeStatus": "LOCAL_EVENT_RECORDED_NOT_PUSHED",
-    "summary": "File change detected on souls/youtube-agent.md -> synced dashboard state."
+    "summary": "File change detected on Sabretooth/gemini-to-gemini.md -> synced dashboard state."
   },
   "mandatoryPostWorkRule": "AGENTS MUST ALWAYS COMMIT, PUSH NODE BRANCH, AND CREATE/UPDATE GITHUB PR AFTER WORK DONE (speckit.git.push-and-pr via scripts/node-auto-pr-push.ps1)"
 }

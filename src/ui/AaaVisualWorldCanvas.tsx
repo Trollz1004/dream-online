@@ -520,21 +520,140 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
 
     const bossRoot = new THREE.Group();
     bossRoot.position.set(0, 0.26, -3.6);
+    bossRoot.rotation.y = Math.PI; // Rig natively faces -Z; Math.PI faces +Z directly toward Hero!
     scene.add(bossRoot);
 
-    // A) Load Animated Hero (`Male_Ranger.gltf` with 1K UV-mapped PBR textures +
-    //    Blender-verified post-multiplied rest quaternions so arms are DOWN holding the sword,
-    //    never T-posing, and animate smoothly through Run & Sword Slash cycles!)
+    // A) Load Animated Human Shadowblade Assassin Hero (1H Main-Hand Blade + Off-Hand Dagger
+    //    with Non-Gambling MYTHOS Forge Growing Blue Flame & 4 Orbiting Orbs, tracked at 1.0 root scale
+    //    to UniversalBaseCharacter.glb bones so weapons never float or glitch!)
     const heroBones: Record<string, { bone: THREE.Bone; restQuat: THREE.Quaternion }> = {};
     const heroSwordHolder = new THREE.Group();
     heroRoot.add(heroSwordHolder);
+    const heroDaggerHolder = new THREE.Group();
+    heroRoot.add(heroDaggerHolder);
     let heroWeaponTipObj: THREE.Object3D = heroSwordHolder;
 
+    let heroTrackRefs: {
+      headBone?: THREE.Object3D;
+      chestBone?: THREE.Object3D;
+      handRBone?: THREE.Object3D;
+      handLBone?: THREE.Object3D;
+      hoodMesh?: THREE.Object3D;
+      cuirassMesh?: THREE.Object3D;
+    } = {};
+    let heroActions: {
+      run?: THREE.AnimationAction;
+      attack?: THREE.AnimationAction;
+      idle?: THREE.AnimationAction;
+    } = {};
+
+    // Soft Blue Flame Texture for Non-Gambling Legend/Mythos Weapon Forge Visuals
+    const blueFlameTex = createSoftParticleTexture(
+      'rgba(224, 242, 254, 1.0)',
+      'rgba(56, 189, 248, 0.85)',
+      'rgba(14, 116, 144, 0.0)'
+    );
+    const blueFlameSprites: THREE.Sprite[] = [];
+    const mythosOrbitOrbs: THREE.Mesh[] = [];
+
+    // Off-Hand Assassin Dagger (Human 1H + Off-Hand Dagger Rule)
+    const daggerBladeGeo = new THREE.ConeGeometry(0.055, 0.62, 4);
+    daggerBladeGeo.rotateX(Math.PI / 2);
+    daggerBladeGeo.translate(0, 0, 0.32);
+    const daggerBladeMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(0x0f172a),
+      emissive: new THREE.Color(0x0284c7),
+      emissiveIntensity: 0.9,
+      roughness: 0.18,
+      metalness: 0.94,
+    });
+    const daggerMesh = new THREE.Mesh(daggerBladeGeo, daggerBladeMat);
+    daggerMesh.castShadow = true;
+    heroDaggerHolder.add(daggerMesh);
+
+    const daggerFlameSprite = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: blueFlameTex,
+        blending: THREE.AdditiveBlending,
+        transparent: true,
+        opacity: 0.88,
+        depthWrite: false,
+      })
+    );
+    daggerFlameSprite.position.set(0, 0.04, 0.36);
+    daggerFlameSprite.scale.set(0.42, 0.58, 1.0);
+    heroDaggerHolder.add(daggerFlameSprite);
+    blueFlameSprites.push(daggerFlameSprite);
+
+    // Load 1H Shadowblade + Growing Blue Flame + 4 Orbiting Mythos Forge Orbs into Right Hand Holder
+    gltfLoader.load('/assets/models/sovereign-greatsword.glb', (swordGltf) => {
+      const blade = swordGltf.scene.clone(true);
+      blade.scale.set(0.72, 0.72, 0.72); // Sleek 1-handed Assassin Shadowblade proportion
+      blade.traverse((sc) => {
+        if ((sc as THREE.Mesh).isMesh) {
+          sc.castShadow = true;
+          const mat = (sc as THREE.Mesh).material as THREE.MeshStandardMaterial;
+          if (mat) {
+            mat.color = new THREE.Color(0x1e293b);
+            mat.emissive = new THREE.Color(0x0ea5e9);
+            mat.emissiveIntensity = 0.95;
+          }
+        }
+      });
+      heroSwordHolder.add(blade);
+
+      // Growing Blue Flame sprites surging along the 1H Shadowblade (Non-Gambling Forge Visual)
+      for (let i = 0; i < 4; i++) {
+        const bf = new THREE.Sprite(
+          new THREE.SpriteMaterial({
+            map: blueFlameTex,
+            blending: THREE.AdditiveBlending,
+            transparent: true,
+            opacity: 0.86,
+            depthWrite: false,
+          })
+        );
+        bf.position.set(0, 0.05, 0.28 + i * 0.24);
+        bf.scale.set(0.45 + i * 0.06, 0.62 + i * 0.08, 1.0);
+        heroSwordHolder.add(bf);
+        blueFlameSprites.push(bf);
+      }
+
+      // 4 Orbiting Mythos Forge Orbs circling the weapon
+      const orbGeo = new THREE.SphereGeometry(0.055, 12, 12);
+      const orbMat = new THREE.MeshBasicMaterial({
+        color: 0x38bdf8,
+      });
+      for (let i = 0; i < 4; i++) {
+        const orb = new THREE.Mesh(orbGeo, orbMat);
+        const orbGlow = new THREE.Sprite(
+          new THREE.SpriteMaterial({
+            map: blueFlameTex,
+            blending: THREE.AdditiveBlending,
+            transparent: true,
+            opacity: 0.9,
+            depthWrite: false,
+          })
+        );
+        orbGlow.scale.set(0.32, 0.32, 1.0);
+        orb.add(orbGlow);
+        heroSwordHolder.add(orb);
+        mythosOrbitOrbs.push(orb);
+      }
+
+      const tip = new THREE.Object3D();
+      tip.position.set(0, 0, 1.08);
+      blade.add(tip);
+      heroWeaponTipObj = tip;
+    });
+
+    // Keep flanking Ranged Scout (`Male_Ranger.gltf` with Bow_Shoot posture on the Bastion West Ledge)
     gltfLoader.load('/assets/third_party/quaternius_outfits/Male_Ranger.gltf', (gltf) => {
-      const ranger = gltf.scene;
-      ranger.scale.set(1.26, 1.26, 1.26);
-      ranger.rotation.y = Math.PI;
-      ranger.traverse((c) => {
+      const rangerScout = gltf.scene;
+      rangerScout.scale.set(1.12, 1.12, 1.12);
+      rangerScout.position.set(-5.8, 0.26, 1.8);
+      rangerScout.rotation.y = -0.45;
+      rangerScout.traverse((c) => {
         if ((c as THREE.Bone).isBone) {
           heroBones[c.name] = {
             bone: c as THREE.Bone,
@@ -546,27 +665,44 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
           c.receiveShadow = true;
         }
       });
-      heroRoot.add(ranger);
-
-      gltfLoader.load('/assets/models/sovereign-greatsword.glb', (swordGltf) => {
-        const blade = swordGltf.scene.clone(true);
-        blade.scale.set(0.95, 0.95, 0.95);
-        blade.traverse((sc) => {
-          if ((sc as THREE.Mesh).isMesh) {
-            sc.castShadow = true;
-            const mat = (sc as THREE.Mesh).material as THREE.MeshStandardMaterial;
-            if (mat && mat.emissiveIntensity !== undefined) {
-              mat.emissiveIntensity = Math.min(mat.emissiveIntensity, 1.15);
-            }
-          }
-        });
-        heroSwordHolder.add(blade);
-        const tip = new THREE.Object3D();
-        tip.position.set(0, 0, 1.38);
-        blade.add(tip);
-        heroWeaponTipObj = tip;
-      });
+      scene.add(rangerScout);
     });
+
+    // 3D Marketplace Random-Stat Loot Drops & Non-Gambling Forge Catalysts on Arena Floor
+    const lootDrops = [
+      { x: -2.1, z: 0.4, color: 0x38bdf8, label: 'MYTHOS FORGE CATALYST' },
+      { x: 2.3, z: 0.2, color: 0xf59e0b, label: 'LEGEND DEFENDER PLATE (+28% HP)' },
+      { x: -1.4, z: -2.1, color: 0xa855f7, label: 'AWAKENED 1H SANCTUM MACE (INT)' },
+    ];
+    for (const ld of lootDrops) {
+      const lootGroup = new THREE.Group();
+      lootGroup.position.set(ld.x, 0.34, ld.z);
+      const crystal = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.18, 0),
+        new THREE.MeshStandardMaterial({
+          color: ld.color,
+          emissive: ld.color,
+          emissiveIntensity: 1.1,
+          roughness: 0.15,
+          metalness: 0.9,
+        })
+      );
+      lootGroup.add(crystal);
+      const beamSp = new THREE.Sprite(
+        new THREE.SpriteMaterial({
+          map: blueFlameTex,
+          color: ld.color,
+          blending: THREE.AdditiveBlending,
+          transparent: true,
+          opacity: 0.55,
+          depthWrite: false,
+        })
+      );
+      beamSp.position.set(0, 0.65, 0);
+      beamSp.scale.set(0.45, 1.55, 1.0);
+      lootGroup.add(beamSp);
+      scene.add(lootGroup);
+    }
 
     // B) Load Animated Boss ("Veynar, the Hollow Sovereign") + 4 Distinct Animated Minions
     //    Note: UniversalBaseCharacter.glb has an internal 100x FBX scale on its bones,
@@ -604,9 +740,75 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
       const findClip = (namePart: string) =>
         gltf.animations.find((a) => a.name.toLowerCase().includes(namePart.toLowerCase()));
 
+      const runClip = findClip('Run') || findClip('Sprint') || gltf.animations[0];
       const idleClip = findClip('Sword_Idle') || findClip('Idle_Loop') || gltf.animations[0];
       const attack1Clip = findClip('Sword_Attack') || idleClip;
       const hitClip = findClip('Hit_Chest') || idleClip;
+
+      // ---- B0) HERO: HUMAN SHADOWBLADE ASSASSIN (1H Sword + Off-Hand Dagger + Mythos Blue Flame & Orbs) ----
+      const assassinModel = SkeletonUtils.clone(gltf.scene);
+      assassinModel.scale.set(1.24, 1.24, 1.24);
+      assassinModel.rotation.y = 0; // Rig natively faces -Z (toward Myth@s!)
+
+      const assassinBodyMat = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(0x111827),
+        roughness: 0.32,
+        metalness: 0.78,
+      });
+      const assassinTrimMat = new THREE.MeshStandardMaterial({
+        map: armorMetalDiff,
+        normalMap: armorMetalNor,
+        color: new THREE.Color(0x0ea5e9),
+        emissive: new THREE.Color(0x0369a1),
+        emissiveIntensity: 0.42,
+        roughness: 0.22,
+        metalness: 0.9,
+      });
+
+      assassinModel.traverse((c) => {
+        const n = c.name.toLowerCase();
+        if (n.includes('def-spine003') || n.includes('def-spine.003') || n.includes('spine_03')) {
+          heroTrackRefs.chestBone = c;
+        } else if (n === 'def-head' || n.endsWith('head')) {
+          heroTrackRefs.headBone = c;
+        } else if (n.includes('def-handr') || n.includes('def-hand.r')) {
+          heroTrackRefs.handRBone = c;
+        } else if (n.includes('def-handl') || n.includes('def-hand.l')) {
+          heroTrackRefs.handLBone = c;
+        }
+        if ((c as THREE.Mesh).isMesh) {
+          (c as THREE.Mesh).material = assassinBodyMat;
+          c.castShadow = true;
+          c.receiveShadow = true;
+        }
+      });
+      heroRoot.add(assassinModel);
+
+      // Assassin Night-Cowl & Chest Cuirass placed at 1.0 scale in heroRoot
+      const hoodMesh = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.34, 6), assassinTrimMat);
+      hoodMesh.castShadow = true;
+      heroRoot.add(hoodMesh);
+      heroTrackRefs.hoodMesh = hoodMesh;
+
+      const assassinCuirass = new THREE.Mesh(
+        new THREE.BoxGeometry(0.38, 0.42, 0.26),
+        assassinTrimMat
+      );
+      assassinCuirass.castShadow = true;
+      heroRoot.add(assassinCuirass);
+      heroTrackRefs.cuirassMesh = assassinCuirass;
+
+      const heroMixer = new THREE.AnimationMixer(assassinModel);
+      mixers.push(heroMixer);
+      heroActions = {
+        run: runClip ? heroMixer.clipAction(runClip) : undefined,
+        attack: attack1Clip ? heroMixer.clipAction(attack1Clip) : undefined,
+        idle: idleClip ? heroMixer.clipAction(idleClip) : undefined,
+      };
+      if (heroActions.attack) {
+        heroActions.attack.timeScale = 1.05;
+        heroActions.attack.play();
+      }
 
       // ---- B1) BOSS: MYTH@S (Spiked Black & Crimson Plate + Glowing Red Polearm-Axe per memory-graph) ----
       const bossModel = SkeletonUtils.clone(gltf.scene);
@@ -1195,26 +1397,25 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
         if (cycleT < 1.8) {
           const alpha = Math.min(1, cycleT / 1.8);
           heroRoot.position.set(0, 0.26, 4.2 - alpha * 5.2);
-          heroRoot.rotation.y = 0;
           isMoving = true;
-          setActiveMoveLabel('VANGUARD SPRINT');
+          setActiveMoveLabel('SHADOWBLADE SPRINT');
         } else if (cycleT < 4.2) {
           heroRoot.position.set(Math.sin((cycleT - 1.8) * 1.6) * 0.55, 0.26, -1.25);
-          heroRoot.rotation.y = 0;
           const strikeWindowKey = `combo_${Math.floor(cycleT * 1.4)}`;
           if (strikeWindowKey !== lastAutoStrikeKey) {
             lastAutoStrikeKey = strikeWindowKey;
-            startHeroAttack('SUNBREAKER CLEAVE', 340, true);
+            startHeroAttack('TWIN VIPER CUT (1H + DAGGER)', 365, true);
           }
         } else {
           heroRoot.position.set(0, 0.26, -1.15);
-          heroRoot.rotation.y = 0;
           const ultKey = `ult_${Math.floor(cycleT)}`;
           if (ultKey !== lastAutoStrikeKey) {
             lastAutoStrikeKey = ultKey;
-            startHeroAttack('SOVEREIGN RECKONING', 580, true);
+            startHeroAttack('MYTHOS BLUE-FLAME RECKONING', 610, true);
           }
         }
+        const dirHeroToBoss = bossRoot.position.clone().sub(heroRoot.position);
+        heroRoot.rotation.y = Math.atan2(-dirHeroToBoss.x, -dirHeroToBoss.z);
       } else {
         let moveX = 0;
         let moveZ = 0;
@@ -1238,12 +1439,14 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
             heroRoot.position.addScaledVector(dirToBoss, 3.2 * dt);
             heroRoot.rotation.y = Math.atan2(-dirToBoss.x, -dirToBoss.z);
           } else {
+            const dirToBoss = bossRoot.position.clone().sub(heroRoot.position);
+            heroRoot.rotation.y = Math.atan2(-dirToBoss.x, -dirToBoss.z);
             const autoSlot = `live_${Math.floor(simTime * 1.0)}`;
             if (autoSlot !== lastAutoStrikeKey) {
               lastAutoStrikeKey = autoSlot;
               startHeroAttack(
-                Math.floor(simTime) % 2 === 0 ? 'RIFT SLASH' : 'SUNBREAKER CLEAVE',
-                Math.floor(simTime) % 2 === 0 ? 245 : 390,
+                Math.floor(simTime) % 2 === 0 ? 'SHADOW FANG (1H + DAGGER)' : 'MYTHOS BLUE-FLAME CLEAVE',
+                Math.floor(simTime) % 2 === 0 ? 265 : 410,
                 Math.floor(simTime) % 2 !== 0
               );
             }
@@ -1251,56 +1454,88 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
         }
       }
 
-      // Animate Hero Skeleton (`Male_Ranger.gltf`) using Blender-verified rest-pose deltas
-      // (Both arms lowered from T-pose & animated in Run / Slash / Idle cadence!)
-      const cyclePhase = simTime * (isMoving ? 9.5 : 4.2);
+      // Fix Boss Facing Direction: Myth@s ALWAYS faces the Assassin Hero face-to-face (never hit in the back!)
+      const dirBossToHero = heroRoot.position.clone().sub(bossRoot.position);
+      bossRoot.rotation.y = Math.atan2(-dirBossToHero.x, -dirBossToHero.z);
+
+      // Drive Assassin Hero mocap skeletal animations (Run while moving, Sword_Attack while fighting)
+      if (heroActions.run && heroActions.attack) {
+        if (isMoving) {
+          if (!heroActions.run.isRunning()) {
+            heroActions.attack.stop();
+            heroActions.run.play();
+          }
+        } else {
+          if (!heroActions.attack.isRunning()) {
+            heroActions.run.stop();
+            heroActions.attack.play();
+          }
+        }
+      }
+
+      // Animate flanking Ranger Scout (`Male_Ranger.gltf`) in Bow_Shoot stance on West Ledge
+      const cyclePhase = simTime * 4.2;
       const swingProgress = activeStrike ? activeStrike.elapsed / activeStrike.duration : 0;
       const swingArcDeg = activeStrike ? Math.sin(swingProgress * Math.PI) * 68 : 0;
+      applyBoneDelta('upperarm_l', 55, 18, -42);
+      applyBoneDelta('lowerarm_l', 25, 0, -10);
+      applyBoneDelta('upperarm_r', 52 + Math.sin(cyclePhase) * 8, -14, 48);
+      applyBoneDelta('lowerarm_r', 68, 0, 20);
 
-      // Left arm lowered (Z = -58 deg) & bent forward
-      applyBoneDelta(
-        'upperarm_l',
-        26 + (isMoving ? Math.sin(cyclePhase) * 22 : Math.sin(cyclePhase) * 6),
-        12,
-        -58
-      );
-      applyBoneDelta('lowerarm_l', 46 + Math.cos(cyclePhase) * 10, 0, -18);
+      // Advance all skeletal animation mixers first so world bone positions are current
+      mixers.forEach((m) => m.update(dt));
 
-      // Right sword arm lowered (Z = +54 deg) & sweeping across in active slash
-      applyBoneDelta(
-        'upperarm_r',
-        36 + swingArcDeg + (isMoving ? -Math.sin(cyclePhase) * 22 : Math.cos(cyclePhase) * 8),
-        -16 + swingArcDeg * 0.4,
-        54 - swingArcDeg * 0.35
-      );
-      applyBoneDelta('lowerarm_r', 52 + swingArcDeg * 0.3, 0, 22);
-
-      // Torso twist & forward combat lean
-      applyBoneDelta('spine_01', isMoving ? 14 : 9, swingArcDeg * 0.35, 0);
-      applyBoneDelta('spine_02', isMoving ? 10 : 6, swingArcDeg * 0.45, 0);
-
-      // Leg stride animation during sprint/combat
-      const legStride = isMoving ? 32 : 8;
-      applyBoneDelta('thigh_l', Math.sin(cyclePhase) * legStride, 0, 0);
-      applyBoneDelta('calf_l', -Math.max(0, Math.sin(cyclePhase)) * (legStride * 1.1), 0, 0);
-      applyBoneDelta('thigh_r', -Math.sin(cyclePhase) * legStride, 0, 0);
-      applyBoneDelta('calf_r', -Math.max(0, -Math.sin(cyclePhase)) * (legStride * 1.1), 0, 0);
-
-      // Sync Greatsword position & rotation to the animated right hand
-      if (heroBones['hand_r']) {
-        heroRoot.updateMatrixWorld(true);
-        const handWorldPos = new THREE.Vector3();
-        heroBones['hand_r'].bone.getWorldPosition(handWorldPos);
-        heroRoot.worldToLocal(handWorldPos);
-        heroSwordHolder.position.copy(handWorldPos);
+      // Sync Human Shadowblade Assassin 1H Blade (Right Hand), Off-Hand Dagger (Left Hand),
+      // Night-Cowl & Cuirass to animated UniversalBaseCharacter bones at 1.0 root scale (zero floating glitch!)
+      heroRoot.updateMatrixWorld(true);
+      const syncToHeroBone = (
+        bone: THREE.Object3D | undefined,
+        mesh: THREE.Object3D | undefined,
+        offsetY = 0,
+        offsetZ = 0
+      ) => {
+        if (!bone || !mesh) return;
+        const wp = new THREE.Vector3();
+        bone.getWorldPosition(wp);
+        heroRoot.worldToLocal(wp);
+        wp.y += offsetY;
+        wp.z += offsetZ;
+        mesh.position.copy(wp);
+      };
+      syncToHeroBone(heroTrackRefs.headBone, heroTrackRefs.hoodMesh, 0.22, 0.02);
+      syncToHeroBone(heroTrackRefs.chestBone, heroTrackRefs.cuirassMesh, 0.06, 0.02);
+      if (heroTrackRefs.handRBone) {
+        syncToHeroBone(heroTrackRefs.handRBone, heroSwordHolder, 0.04, -0.08);
       } else {
         heroSwordHolder.position.set(0.32, 1.12, -0.38);
       }
+      if (heroTrackRefs.handLBone) {
+        syncToHeroBone(heroTrackRefs.handLBone, heroDaggerHolder, 0.04, -0.06);
+      } else {
+        heroDaggerHolder.position.set(-0.32, 1.08, -0.34);
+      }
+
       heroSwordHolder.rotation.set(
-        Math.PI * 0.36 + (swingArcDeg * Math.PI) / 180 * 0.5,
-        -0.25 + (swingArcDeg * Math.PI) / 180 * 0.85,
-        -0.35
+        Math.PI * 0.82 - (swingArcDeg * Math.PI) / 180 * 0.45,
+        Math.PI + (swingArcDeg * Math.PI) / 180 * 0.75,
+        0.25
       );
+      heroDaggerHolder.rotation.set(
+        Math.PI * 0.85 + (swingArcDeg * Math.PI) / 180 * 0.35,
+        Math.PI - (swingArcDeg * Math.PI) / 180 * 0.55,
+        -0.28
+      );
+
+      // Animate Non-Gambling MYTHOS Forge Growing Blue Flame & 4 Orbiting Orbs on Weapon
+      blueFlameSprites.forEach((bf, idx) => {
+        const pulse = 0.52 + Math.sin(simTime * 14 + idx * 1.9) * 0.11;
+        bf.scale.set(pulse * 0.78, pulse * 1.15, 1.0);
+      });
+      mythosOrbitOrbs.forEach((orb, idx) => {
+        const ang = simTime * 4.6 + (idx * Math.PI) / 2;
+        const zTravel = 0.32 + idx * 0.22 + Math.sin(simTime * 3.2 + idx) * 0.08;
+        orb.position.set(Math.cos(ang) * 0.22, Math.sin(ang) * 0.22, zTravel);
+      });
 
       // Resolve Real Hit Detection on Active Swing Frame
       if (activeStrike) {
@@ -1409,8 +1644,6 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
         const flicker = 1.2 + Math.sin(simTime * 11 + idx * 2.3) * 0.14;
         sp.scale.set(flicker, flicker * 1.32, 1);
       });
-
-      mixers.forEach((m) => m.update(dt));
 
       // Sync Myth@s's polygonal armor & crimson polearm-axe to his animated bones (at 1.0 root scale!)
       bossRoot.updateMatrixWorld(true);
@@ -1651,12 +1884,12 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
 
         <div className="bg-neutral-950/92 border border-amber-600/65 rounded-2xl px-3.5 py-2 shadow-2xl flex items-center gap-2">
           {[
-            { key: 'LMB', name: 'Rift Slash', dmg: 220, heavy: false, color: 'from-amber-600 to-orange-700' },
-            { key: 'RMB', name: 'Sunbreaker', dmg: 380, heavy: true, color: 'from-orange-600 to-red-800' },
-            { key: 'Q', name: 'Aegis Ward', dmg: 180, heavy: false, color: 'from-sky-600 to-blue-800' },
-            { key: 'E', name: 'Dream Lunge', dmg: 310, heavy: false, color: 'from-amber-500 to-amber-700' },
-            { key: 'R', name: 'Reckoning', dmg: 560, heavy: true, color: 'from-purple-600 to-indigo-900' },
-            { key: 'F', name: 'Oathcall', dmg: 420, heavy: true, color: 'from-cyan-500 to-sky-800' },
+            { key: 'LMB', name: 'Shadow Fang', dmg: 245, heavy: false, color: 'from-sky-600 to-blue-800' },
+            { key: 'RMB', name: 'Twin Viper', dmg: 395, heavy: true, color: 'from-cyan-500 to-indigo-800' },
+            { key: 'Q', name: 'Whirlwind', dmg: 310, heavy: false, color: 'from-emerald-600 to-teal-800' },
+            { key: 'E', name: 'Dream Lunge', dmg: 340, heavy: false, color: 'from-amber-500 to-amber-700' },
+            { key: 'R', name: 'Mythos Flame', dmg: 610, heavy: true, color: 'from-blue-500 to-purple-900' },
+            { key: 'F', name: 'Oathcall', dmg: 440, heavy: true, color: 'from-rose-600 to-red-900' },
           ].map((s) => (
             <button
               key={s.key}
