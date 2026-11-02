@@ -207,3 +207,39 @@ DREAM is **action combat**: aimed attacks, dodges and positioning, never tab-tar
 - **Rotating protection.** Obli's long cooldown means a party with more than one caster takes turns, so one window starts as the last one ends ("your obli now" was the call in the footage). Tuning should reward that planning.
 - **Fast cooldown calls.** Players need a one-button party ping for key cooldowns ("Obli ready", "cast yours now", "Empower up") shown on the party interface, so coordination does not depend on typing in chat mid-fight.
 - The design goal: a small, well-built, well-played party can beat larger numbers; raw headcount alone should not decide a group fight.
+
+## Master Class & Weapon Matrix, Hidden Awakened Gems & 7-Factor PvP Hierarchy (Founder Ruling, 2026-11-01)
+
+### 1. Strict Weapon & Dual-Wield Rules by Class
+- **Universal Dagger Rule:** Every class can equip a **Dagger / Knife** in their off-hand or as a specialized primary weapon (which remains niche unless paired with a specific endgame Awakened skill-tree build).
+- **Awakened 3rd Class-Specific Weapon:** Every class unlocks a third, class-exclusive Awakened weapon through their Awakened skill tree. It is never shared across classes, is farmed strictly in-game, and upgrades along the same deterministic in-game currency (`Sols`) forge path—never purchased with real money.
+- **Human Melee Classes (Warrior, Knight, Defender, Assassin):**
+  - Permitted weapons: `1H Sword`, `2H Sword`, `1H Mace`, `1H Club`, `1H Axe`, `2H Spear`, `Dagger`, `Shield`.
+  - **Dual-Wield & Off-Hand Rule:** Only Humans (and Monks with Dual Swords) can dual-wield. A Human wielding a 1-handed main-hand weapon (never a Crossbow) may equip **only a Dagger or a Shield** in their off-hand.
+  - **Human Defender (`Vitality` / `+HP%` Scaling):** Defenders absorb damage meant for party members via group protection auras and scale their solo-farming and PvP damage off **Vitality** and random-rolled **`+HP%`** marketplace gear.
+- **Ranger (Elf Archer):**
+  - **Exclusive Bows & Crossbows:** Only Rangers can equip a **2H Bow**, **1H Crossbow**, or **Dual Crossbows**. Dual Crossbows fire with faster attack animations while a 2H Bow fires slower, heavier ranged skill shots—tuned so both achieve equal sustained DPS.
+  - **Never Swords:** Rangers can **never** wield a sword or dual-wield swords.
+  - **Cross-Archetype Wind/Caster Option:** Depending on weapon choice and skill point investment, Rangers can unlock and cast elemental skills such as **Tornado / Whirlwind** with weapon-specific damage modifiers.
+  - **Hidden Endgame Easter Egg (`STR + Dagger` Awakening):** At low levels, equipping a Dagger or stacking `STR` on a Ranger is weak. However, at **Endgame Level 45+ with the Awakened Skill Tree maxed**, a hidden weapon-specific node converts **`STR` + `Dagger`** into armor-piercing lethality that out-damages a standard `DEX` Bow/Crossbow build.
+- **Mages, Wizards, Warlocks & Healers / Priests:**
+  - **2H Caster Staff Exclusivity:** Only Mage, Wizard, Warlock, and Healer/Priest classes can wield a **2-Handed Caster Staff**.
+  - **Hidden Endgame Easter Egg (`INT + 1H Mace + Shield` Priest):** Standard Priests heal and buff their party using **`PSY`** (mana-based skills) with a `2H Staff` or `1H Club`. However, if an endgame Priest invests in **`INT`** (Warlock-style stat allocation instead of `PSY`), levels their **Awakened Skill Tree**, and equips a **One-Handed `Mace`** (specifically a `1H Mace`—never a `1H Club` and never a `2H Staff`) paired with a **`Shield`**, they become a melee damage dealer. When stacked with full group party buffs, this hidden build achieves the **highest achievable melee damage in the entire game**.
+- **Monk (`Sprint / Dash Energy` Class):**
+  - Cannot equip a caster `2H Staff`; wields a **2-Handed Martial Long-Staff**, **Dual Swords**, or **Dagger**.
+  - **Shared Sprint/Dash Energy Pool:** Monks do not use Mana or PSY. Every Monk combat skill and aura draws from **`Energy`**—the **exact same Energy pool used for Sprint and Dash**—making mobility versus burst output a signature skill ceiling.
+- **Dragon Class (`Dekan / FingFangFoom` — Exclusive `Zhen` Weapon):**
+  - **Exclusive Weapon (`Zhen`):** Only the Dragon class can wield the **`Zhen`** (either as a **2-Handed Zhen** or **Split Dual-Wield Zhen**).
+  - **Dragon Evolution & Full-HP Healing:** Evolves visually and mechanically into a **literal Dragon (`FingFangFoom`)** across skill and Awakening tiers, with long-cooldown self and party heals that scale off **Full HP**.
+  - **Standard vs. Hidden Endgame Build:** Most players build Dragon as an **`INT` Sage** (scaling off `INT`, not `PSY`) or **`STR` Split Dual-Wield Zhen**. The **Hidden Endgame Easter Egg** triggers when a player builds **full `Vitality` / `Max HP`** with the endgame Awakened Zhen skill tree, unlocking massive AoE and single-target damage scaled directly off Max HP that can out-scale even a Human Defender.
+
+### 2. The 7-Factor PvP Damage & Outcome Hierarchy
+In group and open-world PvP, **Coordinated Team Play & Same-Target Focus** (calling and striking the same target together as a coordinated party with active mana/psy/energy-draining group auras) is the ultimate real-world deciding factor. Mathematically, combat damage modifiers follow this strict priority order:
+1. **Character Level (`Level > All`)** — Level advantage is the #1 mathematical multiplier.
+2. **Party-Up & Group Auras (`Party > Solo Always`)** — Castable party buffs and sustained auras make grouped players substantially stronger than solo players, encouraging players to team up and help each other level.
+3. **Skill Paths & Awakened Skill-Tree Synergies** — Including level-based, weapon-specific hidden gems.
+4. **Weapon Base & Random-Rolled Loot Affixes** — Dropped marketplace stats (`+Damage%`, `+HP%`, `+Magic Attack`, `+Melee Attack`, `+Ranged Attack`).
+5. **Deterministic Forge Enhancement Tier** — `Common` → `Uncommon` → `Rare` → `Legend` → `Mythos`.
+6. **In-Game PvP Skill Rating + Armor/Gear + Active Free Pet Summoned** — Every player can earn and summon a free pet (`+10%` class-branded boost); forgetting to have your pet out when your opponent has theirs summoned forfeits that edge.
+7. **Crafted Elixirs, Feasts & Food Buffs (Solo & Party)** — Produced through Fishing, Gathering, Forging, and Alchemy.
+
