@@ -108,3 +108,9 @@ All adapters share the platform ladder: OpenAI (gpt-5.5-pro, gpt-5.5, gpt-5, gpt
 - Never commit secrets, `.env` values, provider tokens, private keys, classified OneDrive material or local session exports. Always redact secrets as `XXXX`.
 - Paid systems stay convenience/style/access focused. Do not sell direct combat power.
 - Do not deploy externally, install heavyweight interactive software, make purchases or perform destructive operations without explicit approval.
+
+## Unified 3-Pane Workspace, 5-Hour Cap Model Switcher, Remake 100% Yours & Rule One Comparison Gate (2026-11-01)
+
+- **Rule One Reference vs. New Screenshot Comparison Gate**: Every agent must capture and compare the reference/before screenshot against the new feature screenshot (`200 OK is not OK`).
+- **Mandatory Unified 3-Pane Workspace (`src/ui/UnifiedAntigravityWorkspaceShell.tsx`)**: Identical Left Sidebar (Chats/Sessions/Repos/15 Skills), Center Viewable Pane + 1-Click 5-Hour Rate-Limit Cap Model Switcher (`swapModelOnFiveHourCap`), and Permanent Right Inspector Dock (`Review`, `Open File`, `Terminal`, `Browser`, `Artifacts`, `Subagents`) across both repositories (`Trollz1004/dream-online` and `Trollz1004/ANTIGRAVITY`) with `[REDACTED:XXXX]` secret masking.
+- **Remake (`remake`) `100% Yours` Validation & REA (`reverse-engineer-anything`) Clean-Room Gate**: Every remade/benchmarked UI or 3D feature must pass `validateRemake100PercentYoursAndReaCleanRoom` (`docs/standards/AGENT-STANDARD.md`, `docs/standards/ALIENWARE-SOUL.md`, `docs/standards/SABRETOOTH-SOUL.md`).

@@ -256,3 +256,73 @@ test('Zero-Gambling Deterministic Forge, 7-Factor PvP Hierarchy, and Dual-Era Oc
   assert.equal(nightYacht.propulsionType, 'twin_plasma_hydro_turbines');
   assert.ok(nightYacht.topSpeedKnots > dayShip.topSpeedKnots);
 });
+
+
+import {
+  GOOGLE_FLOW_VISION_ZONES,
+  validateRemake100PercentYoursAndReaCleanRoom,
+  UNIFIED_WORKSPACE_SHELL_SPEC,
+  FIVE_HOUR_CAP_MODELS,
+  swapModelOnFiveHourCap,
+  redactWorkspaceSecrets,
+} from '../src/engine/combat/mold-breaker-classes-forge-pvp.ts';
+
+test('Remake 100% Yours Gate, REA Clean-Room, Google Flow Vision Zones, Unified 3-Pane Shell & 5-Hour Cap Model Switcher', () => {
+  // 1. Google Flow Vision 4 Zones (extracted from epicsceneofdream.mp4)
+  assert.equal(GOOGLE_FLOW_VISION_ZONES.length, 4);
+  const zoneIds = GOOGLE_FLOW_VISION_ZONES.map((z) => z.zoneId);
+  assert.deepEqual(zoneIds, [
+    'storm_dunes_awakening',
+    'day_dream_harbor_port',
+    'neon_metropolis_raid_plaza',
+    'nightfall_gothic_neon_street',
+  ]);
+
+  // 2. Remake 100% Yours + REA Clean-Room + Rule One Reference Screenshot Comparison Gate
+  const passingGate = validateRemake100PercentYoursAndReaCleanRoom({
+    reaCleanRoomStudied: true,
+    thirdPartyGameEngineUsed: false,
+    remakeSwapBoardPercent: 100,
+    remakePixelParityPercent: 98.8,
+    sourceBrandResidueCount: 0,
+    beforeReferenceScreenshotCaptured: true,
+    afterFeatureScreenshotCaptured: true,
+    visualComparisonMatchesReference: true,
+  });
+  assert.equal(passingGate.passed, true);
+
+  const failingScreenshotGate = validateRemake100PercentYoursAndReaCleanRoom({
+    reaCleanRoomStudied: true,
+    thirdPartyGameEngineUsed: false,
+    remakeSwapBoardPercent: 100,
+    remakePixelParityPercent: 98.8,
+    sourceBrandResidueCount: 0,
+    beforeReferenceScreenshotCaptured: true,
+    afterFeatureScreenshotCaptured: true,
+    visualComparisonMatchesReference: false,
+  });
+  assert.equal(failingScreenshotGate.passed, false);
+
+  // 3. Unified 3-Pane Workspace Shell & 5-Hour Cap Model Switcher
+  assert.deepEqual(UNIFIED_WORKSPACE_SHELL_SPEC.permanentRightInspectorTools, [
+    'Review',
+    'Open File',
+    'Terminal',
+    'Browser',
+    'Artifacts',
+    'Subagents',
+  ]);
+  assert.ok(FIVE_HOUR_CAP_MODELS.length >= 8);
+
+  const swapped = swapModelOnFiveHourCap('claude-sonnet-5-5', 'gemini-4-argon-high');
+  assert.equal(swapped.sessionPreserved, true);
+  assert.equal(swapped.activeModel.id, 'gemini-4-argon-high');
+  assert.ok(swapped.auditLogLine.includes('Model changed from Claude Sonnet 5.5 to Gemini 4 Argon High'));
+
+  // 4. Automatic XXXX secret redaction across Open File / Terminal / Review / Browser
+  const dirty = 'GEMINI_API_KEY=AIzaSyDummyKey12345678901234567890 and ghp_1234567890abcdefghijklmnopqrstuv';
+  const redacted = redactWorkspaceSecrets(dirty);
+  assert.ok(!redacted.includes('AIzaSy'));
+  assert.ok(!redacted.includes('ghp_123'));
+  assert.ok(redacted.includes('[REDACTED:XXXX]'));
+});
