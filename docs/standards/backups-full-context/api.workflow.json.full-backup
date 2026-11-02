@@ -1,0 +1,204 @@
+{
+  "name": "DREAM & ANTIGRAVITY Unified Multi-Harness Agent Workflow & Graphy",
+  "version": "2.2.0",
+  "lastUpdated": "2026-11-01",
+  "usedBy": [
+    "Claude Code (Opus 5.5 / Fable)",
+    "Google Gemini (Gemini 4 Argon High Reasoning / Spark / Ultra / Antigravity agy)",
+    "OpenAI (Codex)",
+    "Gordon (Duplicate-File, Security & Repo Hygiene Auditor)",
+    "Free Claude Code (:8082/admin fcc-claude / fcc-opencode / fcc-hermes / fcc-agy / fcc-grok / fcc-codex)",
+    "Hermes (OPSis)",
+    "OpenCode",
+    "Meta AI (Muse / Musa)"
+  ],
+  "authority": {
+    "updated": "2026-11-01 (Joshua Coleman)",
+    "human": "Joshua Coleman is the sole human authority over every node, repo, and agent",
+    "trustLevelMaxJudges": [
+      "opus-5.5-fable",
+      "gemini-4-high-reasoning"
+    ],
+    "trustLevelMaxRule": "Opus 5.5 / Fable and Google Gemini 4 High Reasoning hold Trust Level Max (100% permission, trusted across nearly 2 years) to judge what is used or not used, approve the work of all other AI platforms, and dispatch zero-cost partner outreach/emails directly on Joshua's behalf. Nothing costs money until Joshua says finalize.",
+    "peerJudgeAndExecutor": "OpenAI (Codex), Gordon (Duplicate & Repo Hygiene Auditor), and Hermes (OPSis)",
+    "entryFilesMustAgree": "README.md, AGENTS.md, AGENT.md, CLAUDE.md, GEMINI.md, GEMINI_SPARK_INSTRUCTIONS.md, api.workflow.json, workflow_api.json, and memory/obsidian-vault/Agent Universal/agent-workflow-graphy.json are 100% synchronized across all 3 nodes."
+  },
+  "graphyCodebaseSyncAndSearch": {
+    "purpose": "Graphy provides AI codebase sync, AST symbol/dependency search, and repo-specific node routing so agents never create duplicate files or write to the wrong repository.",
+    "codebaseGraphy": {
+      "alienwareEndpoint": "http://127.0.0.1:20128/api/graphy/codebase",
+      "sabretoothGraph": "C:\\Ai-Dream-Team\\Antigravity\\HermesLeadGen\\graphify-out\\graph.json",
+      "rule": "Every agent queries Codebase Graphy before creating or moving files so Gordon's duplicate-file audits stay 100% clean."
+    },
+    "workflowGraphy": {
+      "files": [
+        "api.workflow.json",
+        "workflow_api.json",
+        "memory/obsidian-vault/Agent Universal/agent-workflow-graphy.json"
+      ],
+      "rule": "Routes every task to its repo-specific node: Unified Game Monorepo (Trollz1004/dream-online) on Alienware (.40), Platform & Operations Monorepo (Trollz1004/ANTIGRAVITY) on T5500 (.15) and Sabretooth (.8), and standalone Misses Trollz kept separate."
+    }
+  },
+  "fleetTopology": {
+    "updated": "2026-11-01",
+    "monorepoConsolidationRule": "Besides standalone Misses Trollz, all platform code is consolidated into 2 canonical monorepos mapped to repo-specific nodes.",
+    "repositories": {
+      "dreamOnline": {
+        "type": "Unified Game Monorepo",
+        "repo": "Trollz1004/dream-online",
+        "branch": "main",
+        "primaryNode": "Alienware (192.168.0.40)",
+        "alienwarePaths": [
+          "C:\\Users\\joshl\\antigravity\\DREAM-Engine",
+          "C:\\DREAM\\dream-online"
+        ],
+        "syncMechanism": ".git/hooks/post-commit auto-syncs C:\\Users\\joshl\\antigravity\\DREAM-Engine and C:\\DREAM\\dream-online"
+      },
+      "antigravity": {
+        "type": "Operations, Domains & AI Offload Monorepo",
+        "repo": "Trollz1004/ANTIGRAVITY",
+        "branch": "main",
+        "primaryNodes": [
+          "T5500 (192.168.0.15)",
+          "Sabretooth (192.168.0.8)"
+        ],
+        "t5500Path": "C:\\ANTIGRAVITY",
+        "sabretoothPath": "C:\\Ai-Dream-Team\\Antigravity"
+      },
+      "missesTrollz": {
+        "type": "Standalone Pediatric Hospital App (Kept Separate from Monorepos)",
+        "note": "Dedicated standalone app for sick children; never merged into the game or marketing monorepos."
+      }
+    },
+    "nodes": {
+      "Alienware": {
+        "ip": "192.168.0.40",
+        "user": "joshl",
+        "cleanProfileRule": "Orphaned C:\\Users\\NSFW_BOTS profile and Win32_UserProfile SID S-1-5-21-3307730112-1160020418-884448263-1001 are 100% purged.",
+        "hardware": "Desktop Aurora R12, 11th-Gen Intel i7-11700F, 40 GB RAM, 1.39 TB NVMe SSD, NVIDIA GeForce RTX 3070 (8 GB CUDA), 2.5 Gb Ethernet",
+        "autoBootTask": "DREAM-Alienware-BootAll (wscript.exe //B //Nologo ops/node/boot-alienware-services.vbs — Hidden: True, zero console window flash, runs at Logon + every 15 min; launches Free Claude Code :8082/admin via signed Python 3.14.10 interpreter)",
+        "ports": {
+          "8082": "Free Claude Code Server & Admin Dashboard (http://127.0.0.1:8082/admin)",
+          "8390": "OPSis Cut & Reach Studio (http://127.0.0.1:8390/)",
+          "8392": "Hermes Leadgen Command Studio (http://127.0.0.1:8392/)",
+          "20128": "DREAM Engine, 3D Studio Viewport & Codebase Graphy Bridge (http://127.0.0.1:20128/)",
+          "9127": "Live NPC Lab (http://127.0.0.1:9127/health)",
+          "9133": "DreamOps Bridge (http://127.0.0.1:9133/health)",
+          "27123": "Obsidian Local REST API & Single $5/mo Synced Vault (http://127.0.0.1:27123)"
+        }
+      },
+      "T5500": {
+        "ip": "192.168.0.15",
+        "user": "joshi",
+        "hardware": "Dell Precision Workstation, Dual Xeons, 72 GB Registered ECC RAM, GTX 1050 Ti 4 GB, 512 GB SATA SSD",
+        "autoBootTask": "ANTIGRAVITY Mission Control (C:\\ANTIGRAVITY\\mission-os\\server.mjs)",
+        "ports": {
+          "3130": "Mission Control (http://192.168.0.15:3130/live — never :9150, never called JARVIS)",
+          "20128": "OmniRoute Gateway (http://192.168.0.15:20128/v1)",
+          "49374": "Shared ai-memory v3.2.5 MCP Server (http://192.168.0.15:49374)",
+          "3200": "Date App local dev frontend (production runs on Google Cloud Run behind api.youandinotai.com)",
+          "27123": "Obsidian Local REST API & Single $5/mo Synced Vault"
+        }
+      },
+      "Sabretooth": {
+        "ip": "192.168.0.8",
+        "user": "joshl",
+        "hardware": "16 GB AMD Radeon RX 6800 GPU (DirectML/Vulkan, never CUDA), 64 GB RAM, 1 TB SATA SSD",
+        "autoBootTask": "DREAM-Sabretooth-BootAll (C:\\Ai-Dream-Team\\Antigravity\\youtube-shorts-podcast-engine\\boot-sabretooth-services.cmd — runs at Logon + every 15 min)",
+        "ports": {
+          "11434": "Local Ollama (http://192.168.0.8:11434)",
+          "8391": "Sabretooth OPSis Shorts (<= 59.0s), Female Voice Podcast & 4h Social Strike Worker (http://192.168.0.8:8391/health)",
+          "8392": "HermesLeadGen Sabretooth GUI Dashboard (http://192.168.0.8:8392/)",
+          "9119": "Hermes Default Orchestrator Session & Gateway (http://127.0.0.1:9119)",
+          "8082": "Free Claude Code Server & Admin Chat (http://127.0.0.1:8082/admin)",
+          "27123": "Obsidian Local REST API & Single $5/mo Synced Vault"
+        }
+      }
+    }
+  },
+  "mandatorySessionSkills": {
+    "loadOnEverySession": [
+      "caveman",
+      "i-have-adhd",
+      "find-skills",
+      "create-skills",
+      "brainstorming",
+      "superpowers",
+      "tdd",
+      "test-driven-development",
+      "verification-before-completion",
+      "obsidian-save",
+      "openviking",
+      "supabase",
+      "agent-workflow",
+      "remake",
+      "reverse-engineer-anything",
+      "cli-anything",
+      "cli-anything-blender",
+      "rooflo-opsis-cut-and-reach",
+      "house-boot"
+    ],
+    "cleanRoomAndOwnershipGates": {
+      "remake100PercentYoursGate": "Every website, HUD, 3D scene, and asset slot must pass the Remake 100% Yours swap-board validation (100% world-native DREAM / platform tokens, zero competitor/source-site brand residue, >= 98% frame-freeze pixel parity).",
+      "reaCleanRoomProtocol": "Use reverse-engineer-anything (rea) to study external binaries/protocols/implementations as evidence, then write a 100% clean-room in-house implementation in DREAM Engine (src/engine/)."
+    },
+    "synchronizedPaths": [
+      ".agents/skills/<skill>/SKILL.md (+ agents/openai.yaml, agents/gemini.toml, skill.json)",
+      ".claude/skills/<skill>/SKILL.md",
+      "agent/skills/<skill>/SKILL.md",
+      "ops/node/skills/<skill>/SKILL.md",
+      "C:\\Users\\joshl\\.claude\\skills\\<skill>\\SKILL.md",
+      "C:\\Users\\joshl\\.gemini\\skills\\<skill>\\SKILL.md"
+    ]
+  },
+  "memoryAndSessionProtocol": {
+    "rule": "Joshua pays $5/mo for 1 and only 1 Obsidian Sync remote vault (1 GB cap). All 3 nodes connect their local vault folders to that same 1 and only 1 synced remote vault, and each agent writes to its own separated <Node>/<agent>-to-<agent>.md location so zero sync collisions or duplicate files occur.",
+    "authoritativePrimary": {
+      "type": "One-and-Only-One $5/mo Synced Obsidian Remote Vault (Antigravity, 1 GB Cap) + Git Mirror",
+      "singleRemoteVaultRule": "Strictly 1 paid Obsidian Sync remote vault ($5/mo). Never create a second remote vault and never store .zip files inside the vault.",
+      "localNodeMounts": {
+        "Alienware": "C:\\DREAM\\Antigravity (mirrored to memory/obsidian-vault/ in Trollz1004/dream-online)",
+        "T5500": "C:\\ANTIGRAVITY\\Antigravity",
+        "Sabretooth": "C:\\Ai-Dream-Team\\Antigravity"
+      },
+      "separatedPerNodeAndAgentFiles": [
+        "Alienware/claude-to-claude.md",
+        "Alienware/gemini-to-gemini.md",
+        "Alienware/codex-to-codex.md",
+        "Alienware/gordon-to-gordon.md",
+        "Alienware/hermes-to-hermes.md",
+        "T5500/gemini-to-gemini.md",
+        "T5500/claude-to-claude.md",
+        "T5500/hermes-to-hermes.md",
+        "Sabretooth/gemini-to-gemini.md",
+        "Sabretooth/hermes-to-hermes.md",
+        "Sabretooth/claude-to-claude.md",
+        "Sabretooth/codex-to-codex.md",
+        "memory-graph/npc-mireth-bastion.md",
+        "Agent Universal/agent-workflow-graphy.json"
+      ],
+      "sessionEndScript": "scripts/obsidian/session-note.ps1"
+    },
+    "crossNodeMemoryMcp": {
+      "serverName": "ai-memory",
+      "url": "http://192.168.0.15:49374",
+      "note": "Always pass scope='global' on memory_query / memory_recent so pages written on Alienware (.40), T5500 (.15), and Sabretooth (.8) are visible across all nodes regardless of local folder path."
+    },
+    "backups": {
+      "graphy": "http://127.0.0.1:20128/api/graphy/codebase & memory/obsidian-vault/Agent Universal/agent-workflow-graphy.json",
+      "openviking": "viking://dream/... via POST http://127.0.0.1:20128/api/memory/store",
+      "supabase": "supabase-pgvector tier via POST http://127.0.0.1:20128/api/memory/store",
+      "supermemory": "supermemory-cloud tier (recall-only backup; git and Obsidian always win on conflict)"
+    }
+  },
+  "omnirouteWorkflow": {
+    "base_url": "http://192.168.0.15:20128/v1",
+    "models": {
+      "default": "auto/best-fast",
+      "reasoning": "auto/best-reasoning",
+      "coding": "auto/best-coding",
+      "ollamaCloud": "muse-spark-open",
+      "localAdult18Plus": "joshlcoleman/Fable"
+    }
+  }
+}
