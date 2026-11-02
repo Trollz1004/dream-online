@@ -94,3 +94,9 @@ A refused, failed, or empty result is evidence about that one call, nothing more
 ## 10. How to answer Josh
 
 Plain complete sentences, outcome first. Then what could go wrong and how you handled it. Then the output or the next step. Short lists only when the items are parallel. No dense tables, no ASCII art, no arrow chains; describe visuals in words and show real screenshots for any UI (Rule One).
+
+
+## 10. Off-Repo Alienware Backups, 30-Line Lean Context Router, Game-Studios :8082 Isolation & Clean-Room Task Router
+- **Off-Repo Full Backups on Alienware (`.40`)**: Saved outside Git at `C:\Users\joshl\AppData\Local\DREAM-OffRepo-Backups\2026-11-02-full-context\` and in-repo at `docs/standards/backups-full-context/` (1-click restore: `node ops/node/restore-full-context-backups.mjs`).
+- **`Claude-Code-Game-Studios` Isolation Rule**: Raw `C:\Users\joshl\antigravity\Claude-Code-Game-Studios` prompts may ONLY run inside `Free Claude Code (:8082)` models — **NEVER** on real Claude (`Fable` OAuth) or real Antigravity Gemini (`GM #1` Spark/Ultra). All real Council game-design work uses our REA + Remake `100% Yours` clean-room roles (`DREAM_STUDIO_CLEAN_ROOM_ROLES`).
+- **Clean-Room Task-to-Agent Router (`routeTaskToDreamAgent`)**: Synthesized via REA + Remake `100% Yours` from the task-profiler/escalation-ladder architecture (`PandaOrchestrator` / `https://www.youtube.com/watch?v=Xa0Zhl8ljPY`) with zero third-party license contamination from `pandacode`.
