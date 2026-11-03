@@ -98,6 +98,12 @@ if (-not (Test-TcpPort "127.0.0.1" 9133) -and (Test-Path "$repoRoot\game\server\
     Start-DetachedService "`"$nodeExe`" `"$repoRoot\game\server\dreamops-bridge\src\server.js`"" "$repoRoot\game\server\dreamops-bridge" 0
 }
 
+# 7b. Fable Windows Host Bridge Daemon (watches mounted folders for Fable Linux VM -> Windows agy/gh/git)
+$fableRunning = Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match "fable-host-daemon" }
+if (-not $fableRunning -and (Test-Path "$repoRoot\ops\node\fable-host-daemon.mjs")) {
+    Start-DetachedService "`"$nodeExe`" `"$repoRoot\ops\node\fable-host-daemon.mjs`"" $repoRoot 0
+}
+
 # 8. Ensure Multi-Harness Skills and Workflow JSONs are synchronized
 if (Test-Path "$repoRoot\ops\node\sync-multi-harness-skills.mjs") {
     & $nodeExe "$repoRoot\ops\node\sync-multi-harness-skills.mjs" | Out-Null
