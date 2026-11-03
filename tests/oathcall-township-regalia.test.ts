@@ -264,7 +264,7 @@ test('Part 2 & Part 3: Townships (scheduled battles, 33% in-game gold tax cap, m
   });
   server.registerPlayer({
     id: 'champ_2',
-    name: 'FingFang',
+    name: 'Velmara',
     level: 95,
     gearScore: 520,
     zoneId: 'zone_sunspire_stronghold',

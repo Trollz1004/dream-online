@@ -153,7 +153,7 @@ const serverState = {
       id: 'audit-init-2',
       t: new Date().toLocaleTimeString('en-US', { hour12: false }),
       kind: 'TOPOLOGY',
-      msg: 'Hardware nodes locked: Alienware 192.168.0.40:20128 · T5500 192.168.0.15:9127 · Mission Control :3130 (Zero Omniroute/Paperclip)',
+      msg: 'Hardware nodes locked: Alienware 192.168.0.40:9180 · T5500 192.168.0.15:9127 · Mission Control :3130 (Zero Omniroute/Paperclip)',
       ok: true,
     },
   ],
@@ -185,7 +185,7 @@ app.get('/api/gm/health', (_req, res) => {
   res.json({
     status: 'ok',
     node: 'mission-control-3130',
-    alienwareNode: '192.168.0.40:20128',
+    alienwareNode: '192.168.0.40:9180',
     t5500Worker: '192.168.0.15:9127',
     mission: '#UntilNoKidInNeed',
   });
@@ -800,7 +800,7 @@ app.post('/api/dreamforge/generate', (req, res) => {
 });
 
 async function startServer() {
-  const PORT = Number(process.env.PORT) || 20128;
+  const PORT = Number(process.env.PORT) || 9180;
   const isProd = process.env.NODE_ENV === 'production';
 
   if (!isProd) {

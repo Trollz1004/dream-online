@@ -133,7 +133,7 @@ There is NO external database client, Viking daemon, Supabase client (`@supabase
 
 There are EXACTLY 4 external model call sites in the entire repository. All 4 are inside `/server.ts`, all 4 use the `@google/genai` SDK (`ai.models.generateContent`) instantiated by `getGenAiClient()` (`/server.ts`, lines 41–52), and ZERO of them go through OmniRoute.
 
-(Note: Although `/src/engine/studioConfig.ts` lines 21–66 define URLs for `http://192.168.0.40:20128/api/v1`, `http://127.0.0.1:3130`, `http://192.168.0.15:9127`, and `http://192.168.0.15:11434`, those objects are static display metadata in `CANONICAL_NODE_TOPOLOGY`—there is no `fetch()` or HTTP client anywhere in the project that actually connects to those local IP addresses or to an OmniRoute router.)
+(Note: Although `/src/engine/studioConfig.ts` lines 21–66 define URLs for `http://192.168.0.40:9180/api/v1`, `http://127.0.0.1:3130`, `http://192.168.0.15:9127`, and `http://192.168.0.15:11434`, those objects are static display metadata in `CANONICAL_NODE_TOPOLOGY`—there is no `fetch()` or HTTP client anywhere in the project that actually connects to those local IP addresses or to an OmniRoute router.)
 
 #### Shared Client Initialization (`/server.ts`, lines 41–52)
   function getGenAiClient(): GoogleGenAI | null {
@@ -307,7 +307,7 @@ There are EXACTLY 4 external model call sites in the entire repository. All 4 ar
 
 1. **OmniRoute's Actual Code, Local Port, and Call Frequency**:
    OmniRoute is NOT implemented or called anywhere in this project. It is only mentioned in comments, UI strings, and markdown notes as a banned/decommissioned component (`/GEMINI_SOUL.md` line 18; `/server.ts` line 333). If OmniRoute is still running on `192.168.0.40` or `192.168.0.15` in a separate repository or daemon on the Founder's LAN, its source code and call sites are outside this AI Studio project.
-2. **Real Network Traffic to Alienware `.40` (`192.168.0.40:20128`), T5500 `.15` (`192.168.0.15:9127` / `:11434`), and Mission Control (`127.0.0.1:3130`)**:
+2. **Real Network Traffic to Alienware `.40` (`192.168.0.40:9180`), T5500 `.15` (`192.168.0.15:9127` / `:11434`), and Mission Control (`127.0.0.1:3130`)**:
    Those endpoints exist in this project only as static strings in `/src/engine/studioConfig.ts` (lines 21–66) and `/server.ts` (lines 156–158). The actual daemons running on `.40`, `.15`, and `:3130` are not in this repository.
 3. **Real External Storage Clients for Viking (`viking://`), Supabase (`pgvector`), and Supermemory**:
    While entries in `/src/engine/studioConfig.ts` and `/server.ts` carry `vikingUri` strings and `syncedTiers: ['obsidian-vault', 'viking-context', 'supabase-pgvector', 'supermemory-cloud']`, there is no code in this project that connects to a Viking service, a Supabase instance, or Supermemory's API, nor does `/server.ts` write new memory notes to disk under `/memory/obsidian-vault/`.

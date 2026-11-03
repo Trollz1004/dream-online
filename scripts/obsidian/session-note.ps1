@@ -106,7 +106,7 @@ if (Test-Path $restConfigPath) {
     }
 }
 
-# 4. Mirror to Local 4-Tier Memory & Graphy Bridge (:20128/api/memory/store)
+# 4. Mirror to Local 4-Tier Memory & Graphy Bridge (:9180/api/memory/store)
 try {
     $bodyJson = (@{
         title = "$NodeName $AgentName Session ($dateStr)"
@@ -114,7 +114,7 @@ try {
         tags = @("session-end", "obsidian", $NodeName.ToLower(), $AgentName.ToLower())
         authorGm = "$AgentName ($NodeName)"
     } | ConvertTo-Json -Compress)
-    Invoke-RestMethod -Uri "http://127.0.0.1:20128/api/memory/store" -Method Post -ContentType "application/json" -Body $bodyJson -TimeoutSec 2 | Out-Null
+    Invoke-RestMethod -Uri "http://127.0.0.1:9180/api/memory/store" -Method Post -ContentType "application/json" -Body $bodyJson -TimeoutSec 2 | Out-Null
 } catch {}
 
 exit 0

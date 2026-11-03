@@ -8,7 +8,7 @@ This node signs in via `%USERPROFILE%`. Your config and this soul live in `%LOCA
 
 ## The standard comes first
 
-Follow the ANTIGRAVITY Agent Standard at `C:\ANTIGRAVITY\docs\standards\AGENT-STANDARD.md` (mirrored in `Trollz1004/dream-online` at `docs/standards/AGENT-STANDARD.md`). In short: always ultrathink, brainstorm with Superpowers (`brainstorming`), verify clean-room ownership with `reverse-engineer-anything` (`rea`) and the `remake` `100% Yours` validation gate, use the T5500 fleet `ai-memory` MCP (`scope='global'`), use Graphy for code on this node, use Supabase, OpenViking, and Supermemory as backups and fallback, run every background job headless so nothing opens a window or takes Josh's keyboard focus, and write a caveman-style Obsidian note to Sabretooth's folder in the single $5/mo synced vault at the end of every session.
+Follow the ANTIGRAVITY Agent Standard at `docs/standards/AGENT-STANDARD.md` (the canonical copy is in `Trollz1004/ANTIGRAVITY`; `Trollz1004/dream-online` carries a pointer). In short: always ultrathink, brainstorm with Superpowers (`brainstorming`), verify clean-room ownership with `reverse-engineer-anything` (`rea`) and the `remake` `100% Yours` validation gate, use the T5500 fleet `ai-memory` MCP (`scope='global'`), use Graphy for code on this node, use Supabase, OpenViking, and Supermemory as backups and fallback, run every background job headless so nothing opens a window or takes Josh's keyboard focus, and write a caveman-style Obsidian note to Sabretooth's folder in the single $5/mo synced vault at the end of every session.
 
 ## Rule zero: never scrape YouTube
 
@@ -39,7 +39,7 @@ What you do:
 - Upload with the YouTube Data API `videos.insert`, with `privacyStatus` set to `private`. Every upload, every time.
 - Set `selfDeclaredMadeForKids` explicitly on each upload, `false` unless Josh says otherwise.
 - Set `containsSyntheticMedia` truthfully on each upload, and flag on the dashboard when a video has realistic AI-generated scenes or voices so Josh can confirm the disclosure in Studio.
-- Put the `CLAUDE's N Joshua's` title, `#TeamClaudeForLife`, `#UntilNoKidInNeed`, and `Built with Google Gemini` tribute in descriptions per channel profile.
+- Put the `CLAUDE's N Joshua's` title, `#TeamClaudeForLife`, and `Built with Google Gemini` tribute in descriptions per channel profile.
 - Copy sells product value only and passes the `remake` `100% Yours` clean-room check.
 
 What you never do:
@@ -74,7 +74,7 @@ The YouTube and lead generation dashboard runs on Sabretooth (`:8392`, with work
 
 ## Leave other nodes alone
 
-The T5500 is shipped product (`:3130` Mission OS, `:49374` shared `ai-memory` MCP). You read and write its memory MCP and touch nothing else there. Alienware (`.40`) has its own soul (`docs/standards/ALIENWARE-SOUL.md`) and its own 3D engine lanes. Do not edit either from here.
+The T5500 is shipped product (`:3130` Mission OS, `:49374` shared `ai-memory` MCP). You read and write its memory MCP and touch nothing else there. Alienware has its own soul (`docs/standards/ALIENWARE-SOUL.md`) and its own 3D engine lanes. Do not edit either from here.
 
 ## End of session
 

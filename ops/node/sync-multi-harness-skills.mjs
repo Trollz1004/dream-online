@@ -73,7 +73,7 @@ Whenever you create or update a skill:
 1. **Restate Goal & Lens Check**: Frame who the real human viewer is (Rule One), evaluate Person, Technical, WCAG AAA Accessibility, and Long-Term zero-vendor-lock-in lenses.
 2. **Compare 2-3 Clean-Room Approaches**:
    - Use **REA (\`reverse-engineer-anything\`)** to study existing implementations, binaries, or protocols as clean-room evidence, then author a **100% in-house implementation** (zero Unreal, zero Unity, zero Godot runtime lock-in, zero Paperclip).
-   - Enforce the **Remake (\`remake\`) \`100% Yours\` Validation Gate**: every slot, copy token, palette, asset, and gameplay system must be 100% swapped to world-native DREAM / platform ownership with zero source-brand residue and >= 98% visual parity.
+   - Enforce the **Remake (\`remake\`) \`100% Yours\` Validation Gate**: every slot, copy token, palette, asset, and gameplay system must be 100% swapped to world-native DREAM / platform ownership with zero source-brand residue; the gate passes on features matched, a clear visual difference from the source, and our own code, and never on likeness.
 3. **Select & Plan**: Pick the simplest deterministic design that costs $0 marginal spend and passes TDD.
 `
   },
@@ -86,9 +86,9 @@ Whenever you create or update a skill:
 1. **SPEC**: Read \`AGENTS.md\`, \`CLAUDE.md\`, \`GEMINI.md\`, \`docs/standards/AGENT-STANDARD.md\`, \`api.workflow.json\`, and the node's \`gemini-to-gemini.md\` / \`claude-to-claude.md\` in the single synced Obsidian vault.
 2. **PLAN**: Brainstorm 2-3 clean-room approaches using **REA (\`reverse-engineer-anything\`)** evidence and break the work into small, deterministic in-house modules.
 3. **TDD (Mandatory)**: Write the failing test first (\`node --test\` / \`npm test\` / \` npm run lint\`), then implement until 100% green.
-4. **IMPLEMENT & 100% YOURS VALIDATION (\`remake\`)**: Author complete production code with zero placeholders or TODO stubs, and pass the **Remake \`100% Yours\` Validation Gate** (100% world-native copy/assets, zero source-brand leaks, >= 98% frame-freeze pixel parity).
+4. **IMPLEMENT & 100% YOURS VALIDATION (\`remake\`)**: Author complete production code with zero placeholders or TODO stubs, and pass the **Remake \`100% Yours\` Validation Gate** (100% world-native copy/assets, zero source-brand leaks; it passes on features matched, a clear visual difference from the source, and our own code, and never on likeness).
 5. **VERIFY (Rule One)**: Prove with real HTTP/process probes and a real screenshot for any front-facing HTML/UI. Ensure all background watchdogs run 100% headless (\`wscript.exe //B\`, \`Hidden: True\`) so nothing ever steals keyboard focus.
-6. **COMMIT**: Commit and merge to \`main\` so work is never stranded uncommitted in the preview pane.
+6. **COMMIT**: Commit to the PR branch so work is never stranded uncommitted in the preview pane. Never push to \`main\` and never merge; merges go through Josh or the signed-in Claude judge lane.
 7. **MEMORY SYNC**: Append session findings to the single $5/mo synced Obsidian Vault (\`<NODE>/<agent>-to-<agent>.md\`), Shared \`ai-memory\` on T5500 (\`:49374\`), Dual Graphies (\`/api/graphy/codebase\` + \`api.workflow.json\`), OpenViking, Supabase, and Supermemory.
 `
   },
@@ -145,7 +145,7 @@ Follow the \`tdd\` skill: RED (write test) -> GREEN (implement & pass 100% of su
 
 ## Protocol
 - Store every architectural and session checkpoint with \`vikingUri\` (\`viking://dream/<scope>/<slug>\`), \`l0Abstract\` (1-sentence summary), \`l1Overview\` (metadata & verification), and \`l2Markdown\` (full Obsidian Markdown with \`[[Wikilinks]]\`).
-- Backed by \`POST http://127.0.0.1:20128/api/memory/store\` and Shared \`ai-memory\` (\`:49374\`).
+- Backed by \`POST http://127.0.0.1:9180/api/memory/store\` and Shared \`ai-memory\` (\`:49374\`).
 `
   },
   {
@@ -154,7 +154,7 @@ Follow the \`tdd\` skill: RED (write test) -> GREEN (implement & pass 100% of su
     body: `# Supabase pgvector & SQL Backup Skill (2026-11-01)
 
 ## Protocol
-- Mirrors Obsidian Vault session entries and \`agent-workflow-graphy.json\` checkpoints into the \`supabase-pgvector\` tier via \`http://127.0.0.1:20128/api/memory/store\`.
+- Mirrors Obsidian Vault session entries and \`agent-workflow-graphy.json\` checkpoints into the \`supabase-pgvector\` tier via \`http://127.0.0.1:9180/api/memory/store\`.
 - If Supabase experiences rate-limiting, automatic zero-loss failover promotes Obsidian + Viking (\`/api/memory/failover-test\`).
 `
   },
@@ -164,14 +164,14 @@ Follow the \`tdd\` skill: RED (write test) -> GREEN (implement & pass 100% of su
     body: `# Agent Workflow & Trust Level Max Orchestration (2026-11-01)
 
 ## Authority & Workflow (\`api.workflow.json\` & \`docs/standards/AGENT-STANDARD.md\`)
-1. **Sole Human Authority**: Founder Joshua Coleman (\`CLAUDE's N Joshua's · #TeamClaudeForLife · #UntilNoKidInNeed\`).
-2. **Trust Level Max Co-Equal Supreme Judges (Claude Opus 5.5 / Fable & Google Gemini 4 High Reasoning)**:
-   - Hold 100% co-equal permission from Joshua Coleman to judge what is used/not used, author full-stack 3D engine and platform code, approve the work of all other AI lanes (OpenAI Codex, Gordon, Hermes OPSis, Free Claude Code :8082, OpenCode, Emergent), and stage outreach drafts (\`cost_usd === 0\` enforced until Joshua says finalize).
+1. **Sole Human Authority**: Founder Joshua Coleman (\`CLAUDE's N Joshua's · #TeamClaudeForLife\`).
+2. **GM #1 Lead GMs (Claude Opus 5.5 / Fable as the judge lane & Google Gemini 4 High Reasoning)**:
+   - Hold permission from Joshua Coleman to judge what is used/not used, author full-stack 3D engine and platform code, review the work of all other AI lanes (OpenAI Codex, Hermes OPSis, Free Claude Code :8082, OpenCode, Emergent), and stage outreach drafts (\`cost_usd === 0\` enforced until Joshua says finalize). Merges go through Josh or the signed-in Claude judge lane; when AI lanes disagree the Claude judge lane decides and states its reason in one line; Josh can overrule any call.
    - Always run at **ultrathink / highest reasoning effort** across every model.
 3. **Mandatory Skills & Clean-Room Gates**:
    - Load mandatory skills: \`caveman\`, \`i-have-adhd\`, \`find-skills\`, \`create-skills\`, \`brainstorming\`, \`superpowers\`, \`tdd\`, \`verification-before-completion\`, \`obsidian-save\`, \`openviking\`, \`supabase\`, **\`remake\` (Mandatory \`100% Yours\` Clean-Room & Swap-Board Ownership Validation Gate)**, and **\`reverse-engineer-anything\` (\`rea\` Clean-Room Binary/Protocol Evidence)**.
-   - **REA + Remake \`100% Yours\` Rule**: Study reference implementations or binaries with \`reverse-engineer-anything\` (\`rea\`), build 100% in-house clean-room code in the DREAM Engine (\`src/engine/\`), and pass the \`remake\` **\`100% Yours\` validation gate** (zero source-brand residue, 100% world-native DREAM tokens, >= 98% frame-freeze visual parity).
-   - **Headless Watchdogs & Zero Scraping Rule**: Every scheduled task, hook, and watchdog on Alienware (\`.40\`), T5500 (\`.15\`), and Sabretooth (\`.8\`) must run 100% headless (\`wscript.exe //B\`, \`Hidden: True\`, \`ShowWindow = 0\`) so nothing ever opens a console window or steals keyboard focus. Never scrape YouTube or any Google site by any tool (official YouTube Data/Analytics API only on Joshua's channel, uploads always \`private\`).
+   - **REA + Remake \`100% Yours\` Rule**: Study reference implementations or binaries with \`reverse-engineer-anything\` (\`rea\`), build 100% in-house clean-room code in the DREAM Engine (\`src/engine/\`), and pass the \`remake\` **\`100% Yours\` validation gate** (zero source-brand residue and 100% world-native DREAM tokens; it passes on features matched, a clear visual difference from the source, and our own code, and never on likeness).
+   - **Headless Watchdogs & Zero Scraping Rule**: Every scheduled task, hook, and watchdog on Alienware, T5500, and Sabretooth must run 100% headless (\`wscript.exe //B\`, \`Hidden: True\`, \`ShowWindow = 0\`) so nothing ever opens a console window or steals keyboard focus. Never scrape YouTube or any Google site by any tool (official YouTube Data/Analytics API only on Joshua's channel, uploads always \`private\`).
    - Execute \`SPEC -> PLAN (REA + Brainstorming) -> TDD -> IMPLEMENT -> VERIFY (Rule One + Remake 100% Yours) -> COMMIT -> 6-LAYER MEMORY SYNC\`.
 `
   }

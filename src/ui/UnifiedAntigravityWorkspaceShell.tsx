@@ -59,7 +59,7 @@ export function UnifiedAntigravityWorkspaceShell({
 - Always Ultrathink: Maximum reasoning depth across every model.
 - Clean-Room Method: REA (reverse-engineer-anything) + Remake 100% Yours Validation Gate (>= 98% parity).
 - Rule One Screenshot Comparison: Compare reference/before screenshot against new feature screenshot (200 OK is not OK).
-- Unified 3-Pane Shell: Identical Left Sidebar, Center Canvas + 5-Hour Cap Model Switcher, and Right Dock (Review / Open File / Terminal / Browser / Artifacts / Subagents) across Alienware :20128, Sabretooth :8392, and T5500 :3130.
+- Unified 3-Pane Shell: Identical Left Sidebar, Center Canvas + 5-Hour Cap Model Switcher, and Right Dock (Review / Open File / Terminal / Browser / Artifacts / Subagents) across Alienware :9180, Sabretooth :8392, and T5500 :3130.
 - Secrets Redacted: GEMINI_API_KEY=[REDACTED:XXXX] · GITHUB_TOKEN=[REDACTED:XXXX]`,
     'docs/standards/ALIENWARE-SOUL.md': `# OPSis · Alienware (.40) · 100% In-House DREAM Engine Workshop
 - Hardware: Alienware Aurora R12 · RTX 3070 8GB CUDA · 40GB RAM · %USERPROFILE%\\antigravity\\DREAM-Engine
@@ -188,7 +188,7 @@ Mandatory Skills: caveman, i-have-adhd, find-skills, create-skills, brainstormin
               Node Dashboards (Same Shell)
             </div>
             {[
-              { id: 'game-dev-3d', badge: '.40', label: 'Game Dev Studio (:20128)' },
+              { id: 'game-dev-3d', badge: '.40', label: 'Game Dev Studio (:9180)' },
               { id: 'sabretooth-8392', badge: '.8', label: 'Sabretooth Studio (:8392)' },
               { id: 't5500-3130', badge: '.15', label: 'T5500 Mission Control (:3130)' },
             ].map((nd) => {
@@ -389,7 +389,7 @@ Mandatory Skills: caveman, i-have-adhd, find-skills, create-skills, brainstormin
               { id: 'repos-models', label: '⑂ Repositories' },
               { id: 'my-work', label: '⊞ My Work' },
               { id: 'automations', label: '◷ Automations' },
-              { id: 'game-dev-3d', label: '🎮 Game Dev :20128' },
+              { id: 'game-dev-3d', label: '🎮 Game Dev :9180' },
               { id: 'sabretooth-8392', label: '🎬 Sabretooth :8392' },
               { id: 't5500-3130', label: '🛰️ T5500 :3130' },
             ].map((tab) => (
@@ -455,7 +455,7 @@ Mandatory Skills: caveman, i-have-adhd, find-skills, create-skills, brainstormin
                     <span>🟠</span>
                     <span>Trollz1004/dream-online</span>
                     <span style={{ fontSize: '11px', color: '#8b949e' }}>
-                      (Unified Game Monorepo · Alienware .40 · DREAM-Engine :20128)
+                      (Unified Game Monorepo · Alienware .40 · DREAM-Engine :9180)
                     </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}>
@@ -691,8 +691,8 @@ Mandatory Skills: caveman, i-have-adhd, find-skills, create-skills, brainstormin
                 {[
                   { title: 'Issue & PR triage', badge: 'Daily', desc: 'Review latest GitHub PRs across dream-online and ANTIGRAVITY with Rule One screenshot checks.' },
                   { title: 'YouTube <=59s Shorts Queue', badge: '4h Cadence', desc: 'Sabretooth (.8) AMF render with Natural Female Voices (Aoede/Kore) uploaded as Private only.' },
-                  { title: 'Repo duplicate & REA audit', badge: 'Manual', desc: 'Gordon & Codex AST Graphy scan ensuring zero duplicate files and 100% Yours Remake compliance.' },
-                  { title: 'Headless Watchdog Self-Heal', badge: '15m Hidden', desc: 'wscript.exe //B boot-alienware-services.vbs checks :20128, :8082, :8390, :8392, :9127, :27123.' },
+                  { title: 'Repo duplicate & REA audit', badge: 'Manual', desc: 'Codex AST Graphy scan ensuring zero duplicate files and 100% Yours Remake compliance.' },
+                  { title: 'Headless Watchdog Self-Heal', badge: '15m Hidden', desc: 'wscript.exe //B boot-alienware-services.vbs checks :9180, :8082, :8390, :8392, :9127, :27123.' },
                   { title: 'Performance & VRAM guard', badge: 'Weekly', desc: 'Keep 100% of RTX 3070 8GB VRAM dedicated to 3D WebGPU rendering on Alienware (.40).' },
                   { title: 'WCAG AAA Accessibility audit', badge: 'Daily', desc: 'Verify high contrast, large readable typography, outcome-first prose, and screen-reader support.' },
                 ].map((a) => (
@@ -727,7 +727,7 @@ Mandatory Skills: caveman, i-have-adhd, find-skills, create-skills, brainstormin
             </div>
           )}
 
-          {/* VIEW 4: GAME DEV 3D VIEWPORT (:20128 ALIENWARE .40) */}
+          {/* VIEW 4: GAME DEV 3D VIEWPORT (:9180 ALIENWARE .40) */}
           {centerView === 'game-dev-3d' && (
             <div>
               <div
@@ -740,7 +740,7 @@ Mandatory Skills: caveman, i-have-adhd, find-skills, create-skills, brainstormin
               >
                 <div>
                   <div style={{ fontSize: '15px', fontWeight: 800, color: '#f0f6fc' }}>
-                    Node 1: Alienware (.40) — DREAM Engine 3D Combat & World Viewport (:20128)
+                    Node 1: Alienware (.40) — DREAM Engine 3D Combat & World Viewport (:9180)
                   </div>
                   <div style={{ fontSize: '12px', color: '#8b949e' }}>
                     Shadowblade Assassin (1H Sword + Off-Hand Dagger) · Myth@s Face-to-Face · Non-Gambling Mythos Blue Flame + 4 Orbs
@@ -1344,7 +1344,7 @@ Mandatory Skills: caveman, i-have-adhd, find-skills, create-skills, brainstormin
           {activeRightTool === 'Browser' && (
             <div>
               <div style={{ fontWeight: 700, color: '#79c0ff', marginBottom: '4px' }}>
-                Live Preview: :20128 · :8392 · :3130
+                Live Preview: :9180 · :8392 · :3130
               </div>
               <img
                 src="/captures/set_t3_0s_sunbreaker_cleave_hit.png"

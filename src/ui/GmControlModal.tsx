@@ -1,7 +1,7 @@
 /**
  * DREAM ONLINE · GM CONTROL — Sovereign Multi-Node & Co-GM Council Console
  * Hardware Topology:
- * - Alienware .40 (http://192.168.0.40:20128/api/v1) · Primary Game Node API
+ * - Alienware .40 (http://192.168.0.40:9180/api/v1) · Primary Game Node API
  * - T5500 .15 (http://192.168.0.15:9127 & :11434) · Dedicated Worker, NPC Lab & Local Inference
  * - Mission Control :3130 (http://127.0.0.1:3130) · Sovereign Bridge & Full-Stack Server Proxy
  *

@@ -9,4 +9,4 @@ platforms: [windows, linux, macos]
 
 ## Protocol
 - Store every architectural and session checkpoint with `vikingUri` (`viking://dream/<scope>/<slug>`), `l0Abstract` (1-sentence summary), `l1Overview` (metadata & verification), and `l2Markdown` (full Obsidian Markdown with `[[Wikilinks]]`).
-- Backed by `POST http://127.0.0.1:20128/api/memory/store` and Shared `ai-memory` (`:49374`).
+- Backed by `POST http://127.0.0.1:9180/api/memory/store` and Shared `ai-memory` (`:49374`).

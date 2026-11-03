@@ -27,10 +27,10 @@ npx tsx ops/cli-anything/dream-cli.ts skill cast --move combo-all
 npx tsx ops/cli-anything/dream-cli.ts security run --mode triple-team --tier sovereign-triple-architect --json
 ```
 
-### HTTP API (`:20128`)
-- `GET http://127.0.0.1:20128/api/cli-anything/help`
-- `POST http://127.0.0.1:20128/api/cli-anything/execute` with `{"command": "dream-cli security run --mode triple-team --json"}`
-- `POST http://127.0.0.1:20128/api/cli-anything/red-team` with `{"mode": "triple-team", "tier": "sovereign-triple-architect"}`
+### HTTP API (`:9180`)
+- `GET http://127.0.0.1:9180/api/cli-anything/help`
+- `POST http://127.0.0.1:9180/api/cli-anything/execute` with `{"command": "dream-cli security run --mode triple-team --json"}`
+- `POST http://127.0.0.1:9180/api/cli-anything/red-team` with `{"mode": "triple-team", "tier": "sovereign-triple-architect"}`
 
 ## 2. Red-Team / Tag-Team / Triple-Team Kids Playground Doctrine
 - **100% Free & Safe for Every Kid (`#ForTheKids #UntilNoKidInNeed`)**: Most kids have `$0`; their playground is protected by 6 continuous adversarial/defensive gates (`KID_PLAYGROUND_CHAT_GROOMING_SHIELD`, `NPC_SOUL_PROMPT_INJECTION_FORTRESS`, `NEEDS_LEDGER_EXPLOIT_FUZZER`, `ZERO_P2W_FL496_COMPLIANCE_GUARD`, `COMBAT_ENVELOPE_ANTI_CHEAT`, `AUTO_XXXX_SECRET_LEAK_WALL`).

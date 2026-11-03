@@ -12,7 +12,7 @@
  *      Highest Achievable Melee Damage in the entire game.
  *    - Human Defender: Vitality/HP tank that absorbs party damage and scales solo/PvP damage off
  *      dropped +HP% gear + full Vitality skill points.
- *    - Dragon (Dekan / FingFangFoom): Exclusive `Zhen` weapon (2H or Split Dual-Wield). Standard INT
+ *    - Dragon (Dekan / Velmaravex): Exclusive `Zhen` weapon (2H or Split Dual-Wield). Standard INT
  *      Sage or STR Split-Zhen. Can heal self/party on long CD off Full HP. Hidden Endgame Gem:
  *      Full Vitality / Max HP + Awakened Zhen Skill Tree unlocks massive AoE & single-target HP-scaled
  *      damage that counters even Human Defenders.
@@ -40,7 +40,7 @@ export type DreamClassId =
   | 'mage_warlock'
   | 'healer_priest'
   | 'monk'
-  | 'dragon_fingfangfoom';
+  | 'dragon_velmaravex';
 
 export type ResourcePoolType = 'mana' | 'psy' | 'sprint_dash_energy';
 
@@ -197,12 +197,12 @@ export function validateClassWeaponLoadout(
     };
   }
 
-  // Rule 6: Only Dragon (Dekan / FingFangFoom) can wield the Zhen (2H Zhen or Split Dual-Wield Zhen)
+  // Rule 6: Only Dragon (Dekan / Velmaravex) can wield the Zhen (2H Zhen or Split Dual-Wield Zhen)
   if (mainHand === '2h_zhen' || mainHand === 'split_dual_zhen') {
-    if (classId !== 'dragon_fingfangfoom') {
+    if (classId !== 'dragon_velmaravex') {
       return {
         allowed: false,
-        reason: 'Only the Dragon (Dekan / FingFangFoom) class can wield the Zhen.',
+        reason: 'Only the Dragon (Dekan / Velmaravex) class can wield the Zhen.',
       };
     }
     return {
@@ -284,7 +284,7 @@ export function validateClassWeaponLoadout(
  * 1. Ranger: DEX Bow/Crossbow (equal sustained DPS) vs. Endgame Level 45+ Awakened Tree Lv10 STR + Dagger.
  * 2. Priest: PSY 2H Staff Healer vs. Endgame Level 45+ Awakened Tree Lv10 INT + 1H Mace (NOT Club, NOT Staff) + Shield + Full Party Buffs = Highest Melee DPS in game.
  * 3. Human Defender: Vitality + HP% gear damage scaling + party damage absorption.
- * 4. Dragon (FingFangFoom): INT Sage / STR Split-Zhen + Full-HP Long-CD Heal + Hidden Endgame Full-Vitality Max-HP AoE/Single-Target Nuke.
+ * 4. Dragon (Velmaravex): INT Sage / STR Split-Zhen + Full-HP Long-CD Heal + Hidden Endgame Full-Vitality Max-HP AoE/Single-Target Nuke.
  * 5. Monk: Uses Sprint/Dash Energy pool instead of Mana/PSY.
  */
 export function evaluateMoldBreakerBuild(build: CharacterSkillBuild): BuildEvaluationResult {
@@ -390,8 +390,8 @@ export function evaluateMoldBreakerBuild(build: CharacterSkillBuild): BuildEvalu
     effectiveMeleeDps = Math.round((340 + maxHpPool * 0.085) * partyMultiplier);
   }
 
-  // --- 4. DRAGON (DEKAN / FINGFANGFOOM) ---
-  else if (build.classId === 'dragon_fingfangfoom') {
+  // --- 4. DRAGON (DEKAN / VELMARAVEX) ---
+  else if (build.classId === 'dragon_velmaravex') {
     const maxHpPool = Math.round(
       (2800 + build.stats.vitality * 52) * (1 + build.equippedHpPercentBonus / 100)
     );
@@ -406,7 +406,7 @@ export function evaluateMoldBreakerBuild(build: CharacterSkillBuild): BuildEvalu
     ) {
       // HIDDEN EASTER EGG #3: Endgame Full-Vitality / Max-HP Dragon with Zhen
       isHiddenEndgameGemActive = true;
-      hiddenGemName = 'FingFangFoom Sovereign Dragon (Full-HP Vitality Zhen Awakening)';
+      hiddenGemName = 'Velmaravex Sovereign Dragon (Full-HP Vitality Zhen Awakening)';
       effectiveMeleeDps = Math.round(
         (560 + maxHpPool * 0.135 * (build.awakenedSkillTreeLevel / 10)) * partyMultiplier
       );
@@ -696,9 +696,9 @@ export const GOOGLE_FLOW_VISION_ZONES: readonly GoogleFlowVisionZone[] = [
     signatureVisuals: [
       'Giant floating cyan neon DREAM ONLINE hologram between high-rise towers',
       '30+ coordinated party players firing red/cyan/gold skill beams in central city plaza',
-      'Colossal horned Dragon / Raid Boss (FingFangFoom) in the plaza center',
+      'Colossal horned Dragon / Raid Boss (Velmaravex) in the plaza center',
     ],
-    gameplayFeatures: ['Coordinated Same-Target Party Raid', 'Dragon (Dekan / FingFangFoom) Boss & Class Evolution'],
+    gameplayFeatures: ['Coordinated Same-Target Party Raid', 'Dragon (Dekan / Velmaravex) Boss & Class Evolution'],
   },
   {
     zoneId: 'nightfall_gothic_neon_street',
@@ -717,15 +717,28 @@ export const GOOGLE_FLOW_VISION_ZONES: readonly GoogleFlowVisionZone[] = [
 // 6. REMAKE 100% YOURS + REA CLEAN-ROOM + RULE ONE SCREENSHOT COMPARISON GATE
 // ============================================================================
 
+/**
+ * The `remake` "100% Yours" gate (Josh's ruling). It passes on three things:
+ *   1. features matched: at least 98 percent of what the source does,
+ *   2. a clear visual difference from the source,
+ *   3. our own code.
+ * It NEVER passes on likeness. There is deliberately no pixel-parity or visual-similarity
+ * input here, and scrubbing brand or analytics strings out of copied code is not clean-room work.
+ * Clean-room order: the lane that studies the source writes a feature spec only, a different lane
+ * that never saw the source builds from that spec, and an independent judge runs this gate.
+ */
 export interface CleanRoomAndVisualGateCheck {
-  reaCleanRoomStudied: boolean;
+  reaCleanRoomStudied: boolean; // source studied through REA, output is a feature spec only
+  builtByLaneThatNeverSawSource: boolean; // the builder worked from the spec, never the source
   thirdPartyGameEngineUsed: boolean;
   remakeSwapBoardPercent: number; // Must be 100%
-  remakePixelParityPercent: number; // Must be >= 98%
   sourceBrandResidueCount: number; // Must be 0
+  featureMatchPercent: number; // Must be >= 98 (share of the source's features the build covers)
+  clearVisualDifferenceFromSource: boolean; // judged side by side; true means clearly different
+  ownCode: boolean; // false if any source code was copied, even with brand strings scrubbed
   beforeReferenceScreenshotCaptured: boolean;
   afterFeatureScreenshotCaptured: boolean;
-  visualComparisonMatchesReference: boolean;
+  independentJudgeSignedOff: boolean;
 }
 
 export function validateRemake100PercentYoursAndReaCleanRoom(
@@ -733,7 +746,10 @@ export function validateRemake100PercentYoursAndReaCleanRoom(
 ): { passed: boolean; reasons: string[] } {
   const reasons: string[] = [];
   if (!check.reaCleanRoomStudied) {
-    reasons.push('Must study reference mechanics via REA (reverse-engineer-anything) clean-room evidence.');
+    reasons.push('Must study the source via REA (reverse-engineer-anything) and hand over a feature spec only.');
+  }
+  if (!check.builtByLaneThatNeverSawSource) {
+    reasons.push('The build must come from a different lane that never saw the source, working from the feature spec.');
   }
   if (check.thirdPartyGameEngineUsed) {
     reasons.push('Third-party game engines (Unreal/Unity/Godot runtime) are forbidden; must use 100% in-house DREAM Engine.');
@@ -741,17 +757,25 @@ export function validateRemake100PercentYoursAndReaCleanRoom(
   if (check.remakeSwapBoardPercent < 100 || check.sourceBrandResidueCount > 0) {
     reasons.push('Must pass Remake 100% Yours validation gate (100% swapped slots, 0 source-brand residue).');
   }
-  if (check.remakePixelParityPercent < 98) {
-    reasons.push('Remake frame-freeze pixel parity must be >= 98.0%.');
+  if (!(check.featureMatchPercent >= 98)) {
+    reasons.push('Features matched must be at least 98% of what the source does.');
+  }
+  if (!check.clearVisualDifferenceFromSource) {
+    reasons.push('Must show a clear visual difference from the source. A close visual likeness never passes.');
+  }
+  if (!check.ownCode) {
+    reasons.push('Must be our own code. Scrubbing brand or analytics strings out of copied code is not clean-room work.');
   }
   if (
     !check.beforeReferenceScreenshotCaptured ||
-    !check.afterFeatureScreenshotCaptured ||
-    !check.visualComparisonMatchesReference
+    !check.afterFeatureScreenshotCaptured
   ) {
     reasons.push(
-      'Rule One Screenshot Comparison Gate failed: must capture reference/before screenshot and new feature screenshot and verify visual parity (200 OK is not OK).'
+      'Rule One Screenshot Comparison Gate failed: must capture the reference/before screenshot and the new feature screenshot (200 OK is not OK).'
     );
+  }
+  if (!check.independentJudgeSignedOff) {
+    reasons.push('An independent judge must run the gate and sign off.');
   }
   return {
     passed: reasons.length === 0,
@@ -861,7 +885,7 @@ export const UNIFIED_WORKSPACE_SHELL_SPEC = {
   mandatoryNodeDashboards: [
     {
       node: 'Alienware (.40)',
-      port: 20128,
+      port: 9180,
       name: 'DREAM Engine Game Developer Dashboard',
       repo: 'Trollz1004/dream-online',
     },

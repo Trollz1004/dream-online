@@ -228,9 +228,9 @@ DREAM is **action combat**: aimed attacks, dodges and positioning, never tab-tar
 - **Monk (`Sprint / Dash Energy` Class):**
   - Cannot equip a caster `2H Staff`; wields a **2-Handed Martial Long-Staff**, **Dual Swords**, or **Dagger**.
   - **Shared Sprint/Dash Energy Pool:** Monks do not use Mana or PSY. Every Monk combat skill and aura draws from **`Energy`**—the **exact same Energy pool used for Sprint and Dash**—making mobility versus burst output a signature skill ceiling.
-- **Dragon Class (`Dekan / FingFangFoom` — Exclusive `Zhen` Weapon):**
+- **Dragon Class (`Dekan / Velmaravex` — Exclusive `Zhen` Weapon):**
   - **Exclusive Weapon (`Zhen`):** Only the Dragon class can wield the **`Zhen`** (either as a **2-Handed Zhen** or **Split Dual-Wield Zhen**).
-  - **Dragon Evolution & Full-HP Healing:** Evolves visually and mechanically into a **literal Dragon (`FingFangFoom`)** across skill and Awakening tiers, with long-cooldown self and party heals that scale off **Full HP**.
+  - **Dragon Evolution & Full-HP Healing:** Evolves visually and mechanically into a **literal Dragon (`Velmaravex`)** across skill and Awakening tiers, with long-cooldown self and party heals that scale off **Full HP**.
   - **Standard vs. Hidden Endgame Build:** Most players build Dragon as an **`INT` Sage** (scaling off `INT`, not `PSY`) or **`STR` Split Dual-Wield Zhen**. The **Hidden Endgame Easter Egg** triggers when a player builds **full `Vitality` / `Max HP`** with the endgame Awakened Zhen skill tree, unlocking massive AoE and single-target damage scaled directly off Max HP that can out-scale even a Human Defender.
 
 ### 2. The 7-Factor PvP Damage & Outcome Hierarchy

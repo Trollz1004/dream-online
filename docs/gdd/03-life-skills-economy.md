@@ -110,7 +110,7 @@ Initial product framing:
 
 ### 1. Random-Stat Loot Drops for the Player Marketplace
 To give the player-driven Marketplace real economic purpose and in-game currency (`Sols`) tax velocity, monster and boss drops roll randomized stat affixes across five rarity tiers (**`Common` → `Uncommon` → `Rare` → `Legend` → `Mythos`**):
-- **`+HP%` / Flat Vitality** (prized by Vitality Defenders and Full-HP `FingFangFoom` Dragons)
+- **`+HP%` / Flat Vitality** (prized by Vitality Defenders and Full-HP `Velmaravex` Dragons)
 - **`+Melee Attack`**
 - **`+Magic Attack`**
 - **`+Ranged Attack`**

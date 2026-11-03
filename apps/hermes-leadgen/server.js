@@ -1478,7 +1478,7 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/dreamforge/tools' && req.method === 'GET') {
       return sendJson(res, 200, {
         ok: true,
-        dreamforgeUrl: 'http://192.168.0.40:20128/dreamforge/index.html',
+        dreamforgeUrl: 'http://192.168.0.40:9180/dreamforge/index.html',
         customTools: [
           {
             id: 'dreamforge_world_seed',
