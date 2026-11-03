@@ -25,7 +25,7 @@ When invoked in Free Claude Code (`http://127.0.0.1:8082`), `fcc-claude`, `fcc-o
 ## 2. Canonical Fleet, Repos, & Post-Tax-Law Revenue Rules
 1. **Two Repos Only**:
    - `Trollz1004/dream-online` on **Alienware (`192.168.0.40`, user `joshl`, RTX 3070 8 GB VRAM)**: Unified 100% In-House `DREAM Engine` (WebGPU/WebGL2 + TypeScript) and `DREAM Online` MMORPG (`C:\Users\joshl\antigravity\DREAM-Engine` & `C:\DREAM\dream-online`). Zero Unreal Engine, zero Godot, zero Paperclip.
-   - `Trollz1004/ANTIGRAVITY` across **T5500 (`192.168.0.15`, user `joshi`)** and **Sabretooth (`192.168.0.8`, user `joshl`, 16 GB AMD Radeon RX 6800 GPU)**: Domains, Shared `ai-memory` (`:49374`), OmniRoute (`:20128`), Live NPC Lab (`:9127`), Multi-Channel YouTube Shorts (`<= 59.0s`), Female-Voice Podcast, Local Ollama (`:11434`), and ComfyUI MCP.
+   - `Trollz1004/ANTIGRAVITY` across **T5500 (address `T5500_HOST`)** and **Sabretooth (address `SABRETOOTH_HOST`, 16 GB AMD Radeon RX 6800 GPU)**: Domains, Shared `ai-memory` (`:49374`), OmniRoute (`:20128`, on the T5500 only, address `T5500_HOST` from the node env file), Live NPC Lab (`:9127`), Multi-Channel YouTube Shorts (`<= 59.0s`), Female-Voice Podcast, Local Ollama (`:11434`), and ComfyUI MCP.
 2. **Post-Tax-Law Revenue Rule (`90%` Taxable / `10%` Corporate Deduction Ceiling)**:
    - `REVENUE_MODEL=FOR_PROFIT_LLC` (`TRASH OR TREASURE ONLINE RECYCLER LLC`, `EIN=33-4655313`).
    - `FOUNDER_PERCENTAGE=90`, `TAXABLE_REVENUE_PERCENTAGE=90`, `CHARITY_TAX_DEDUCTION_CEILING_PERCENTAGE=10`.

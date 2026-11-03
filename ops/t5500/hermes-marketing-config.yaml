@@ -30,12 +30,13 @@ model:
   provider: nous
   default: anthropic/claude-sonnet-4.6
 
-# OmniRoute (Sabretooth, 192.168.0.8:20128/v1) is registered as an
+# OmniRoute (on this T5500, port 20128; the address is T5500_HOST from the node env file,
+# filled in by Bootstrap-T5500.ps1 when it copies this template) is registered as an
 # OpenAI-compatible provider so this profile's sub-agents can route through
 # it. It is never the main model — only `model.provider` above is.
 providers:
   omniroute:
-    base_url: http://192.168.0.8:20128/v1
+    base_url: http://${T5500_HOST}:20128/v1
     discover_models: true
     models:
       auto/best-chat: {}

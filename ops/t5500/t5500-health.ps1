@@ -8,9 +8,9 @@
       - the Hermes "marketing" gateway at http://127.0.0.1:8377/health,
         confirmed by the identity its own /health route returns
         ("platform":"hermes-agent"), not just a 200;
-      - OmniRoute on Sabretooth at http://192.168.0.8:20128/v1/models,
-        confirmed by the response containing "data":[ — remote, reported,
-        never healed from here;
+      - OmniRoute on this T5500 at http://$T5500_HOST:20128/v1/models (the
+        address is T5500_HOST from the node env file), confirmed by the
+        response containing "data":[ — reported, never healed from here;
       - gh auth status, confirmed by its exit code;
       - free disk space on the system drive, above 10 GB.
 
@@ -46,7 +46,12 @@ $script:HealthLogPath  = Join-Path $script:OpsStateRoot 'health.log'
 
 $script:MarketingGatewayUrl = 'http://127.0.0.1:8377/health'
 $script:MarketingGatewayIdentity = '"platform":"hermes-agent"'
-$script:OmniRouteUrl = 'http://192.168.0.8:20128/v1/models'
+# OmniRoute lives on the T5500. Its address is T5500_HOST from the node env file; with no value
+# set there is no URL, and nothing falls back to loopback or to Sabretooth.
+function Get-OmniRouteUrl {
+    if ([string]::IsNullOrWhiteSpace($env:T5500_HOST)) { return '' }
+    return "http://$($env:T5500_HOST):20128/v1/models"
+}
 $script:OmniRouteIdentity = '"data":['
 $script:MinimumFreeDiskGB = 10
 $script:SystemDriveLetter = 'C'
@@ -69,7 +74,10 @@ function Test-MarketingGateway {
 }
 
 function Test-OmniRoute {
-    param([string]$Url = $script:OmniRouteUrl, [string]$Identity = $script:OmniRouteIdentity)
+    param([string]$Url = (Get-OmniRouteUrl), [string]$Identity = $script:OmniRouteIdentity)
+    if ([string]::IsNullOrWhiteSpace($Url)) {
+        return @{ Healthy = $false; Detail = 'T5500_HOST is not set in the node env file' }
+    }
     try {
         $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 5
         if ($response.Content -match [regex]::Escape($Identity)) {
@@ -126,7 +134,7 @@ function Get-T5500HealthStatus {
         RED  — the local marketing gateway is still down after a heal
                attempt, or free disk is below the floor. Either one is a
                this-machine problem that needs a human.
-        YELLOW — OmniRoute is unreachable (a Sabretooth dependency, never
+        YELLOW — OmniRoute is unreachable (this T5500's own service, never
                healed from here) or gh is not signed in, but the gateway
                and disk are fine.
         GREEN — every check passes.
@@ -163,7 +171,7 @@ function Write-T5500HealthJson {
         healed = $Healed
         checks = @{
             marketing_gateway = @{ healthy = $Checks.MarketingGateway.Healthy; detail = $Checks.MarketingGateway.Detail }
-            omniroute          = @{ healthy = $Checks.OmniRoute.Healthy; detail = $Checks.OmniRoute.Detail; note = 'remote, reported, never healed from this machine' }
+            omniroute          = @{ healthy = $Checks.OmniRoute.Healthy; detail = $Checks.OmniRoute.Detail; note = 'reported, never healed by this script' }
             gh_auth            = @{ healthy = $Checks.GhAuth.Healthy; detail = $Checks.GhAuth.Detail }
             free_disk          = @{ healthy = $Checks.FreeDisk.Healthy; detail = $Checks.FreeDisk.Detail }
         }
@@ -188,7 +196,7 @@ function Show-T5500HealthTable {
     param([Parameter(Mandatory)][hashtable]$Checks, [Parameter(Mandatory)][string]$Status)
     Write-Host ("Overall status: {0}" -f $Status)
     Write-Host ("  Marketing gateway (127.0.0.1:8377): {0} - {1}" -f (Get-HealthWord $Checks.MarketingGateway.Healthy), $Checks.MarketingGateway.Detail)
-    Write-Host ("  OmniRoute (192.168.0.8:20128, remote, never healed): {0} - {1}" -f (Get-HealthWord $Checks.OmniRoute.Healthy), $Checks.OmniRoute.Detail)
+    Write-Host ("  OmniRoute (T5500_HOST:20128, reported, never healed): {0} - {1}" -f (Get-HealthWord $Checks.OmniRoute.Healthy), $Checks.OmniRoute.Detail)
     Write-Host ("  GitHub CLI sign-in: {0} - {1}" -f (Get-HealthWord $Checks.GhAuth.Healthy), $Checks.GhAuth.Detail)
     Write-Host ("  Free disk space: {0} - {1}" -f (Get-HealthWord $Checks.FreeDisk.Healthy), $Checks.FreeDisk.Detail)
 }

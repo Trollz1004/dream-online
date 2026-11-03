@@ -37,17 +37,33 @@ Describe 'Get-Targets' {
     ($required -contains 'live_npc_lab_9127') | Should Be $true
     ($required -contains 'dreamops_bridge_9133') | Should Be $true
   }
-  It 'reaches the NPC OmniRoute only on this node, on loopback, as optional' {
-    $omni = @($targets | Where-Object { $_.name -like 'omniroute*' })
-    $omni.Count | Should Be 1
-    $omni[0].group | Should Be 'optional'
-    $omni[0].url.StartsWith('http://127.0.0.1:20128/v1') | Should Be $true
-  }
   It 'probes nothing on Sabretooth, which holds the date app and domains only' {
     @($targets | Where-Object { $_.url -like '*192.168.0.8*' }).Count | Should Be 0
   }
   It 'never puts a Sabretooth service in the required group' {
     @($targets | Where-Object { $_.group -eq 'required' -and $_.url -notlike 'http://127.0.0.1:*' }).Count | Should Be 0
+  }
+}
+
+Describe 'Get-Targets OmniRoute' {
+  $savedHost = $env:T5500_HOST
+  $env:T5500_HOST = 't5500.test.invalid'
+  $withHost = @(Get-Targets | Where-Object { $_.name -like 'omniroute*' })
+  $allWithHost = @(Get-Targets)
+  Remove-Item Env:\T5500_HOST -ErrorAction SilentlyContinue
+  $withoutHost = @(Get-Targets | Where-Object { $_.name -like 'omniroute*' })
+  $allWithoutHost = @(Get-Targets)
+  if ($savedHost) { $env:T5500_HOST = $savedHost }
+  It 'probes OmniRoute on the T5500 at the T5500_HOST address, as remote' {
+    $withHost.Count | Should Be 1
+    $withHost[0].group | Should Be 'remote'
+    $withHost[0].url | Should Be 'http://t5500.test.invalid:20128/v1/models'
+  }
+  It 'has no OmniRoute target when T5500_HOST is not set' {
+    $withoutHost.Count | Should Be 0
+  }
+  It 'never probes port 20128 on loopback or on Sabretooth, set or not' {
+    @($allWithHost + $allWithoutHost | Where-Object { $_.url -like '*127.0.0.1:20128*' -or $_.url -like '*localhost:20128*' -or $_.url -like '*192.168.0.8*' }).Count | Should Be 0
   }
 }
 

@@ -531,7 +531,11 @@ function Get-BootstrapSteps {
                     New-Item -ItemType Directory -Path $script:MarketingProfileDir -Force | Out-Null
                 }
                 $templatePath = Join-Path $script:ScriptRoot 'hermes-marketing-config.yaml'
-                Copy-Item -LiteralPath $templatePath -Destination (Join-Path $script:MarketingProfileDir 'config.yaml') -Force
+                # The template names the OmniRoute address as ${T5500_HOST} (the node env file value).
+                # Fill it in here; with no value set, OmniRoute is on this very machine, so use loopback.
+                $omniHost = if ($env:T5500_HOST) { $env:T5500_HOST } else { '127.0.0.1' }
+                $templateText = [System.IO.File]::ReadAllText($templatePath).Replace('${T5500_HOST}', $omniHost)
+                [System.IO.File]::WriteAllText((Join-Path $script:MarketingProfileDir 'config.yaml'), $templateText, (New-Object System.Text.UTF8Encoding($false)))
                 $key = New-ApiKey -Length 48
                 $envPath = Join-Path $script:MarketingProfileDir '.env'
                 Add-Content -LiteralPath $envPath -Value "API_SERVER_KEY=$key" -Encoding UTF8

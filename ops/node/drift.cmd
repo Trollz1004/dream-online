@@ -37,7 +37,7 @@ rem  The stack is C:\DREAM\hermes\scripts\dream-stack.ps1, run by the logon
 rem  scheduled task "DREAM Stack". It supervises, by identity string:
 rem    JARVIS HUD 9150, Hermes dashboard 9119, Ollama 11434, Live NPC Lab
 rem    9127, DreamOps Bridge 9133, Crosslisting OS 3000, and it probes
-rem    OmniRoute on Sabretooth (http://192.168.0.8:20128/v1, the only URL).
+rem    OmniRoute on the T5500 (port 20128, address T5500_HOST from the node env file, the only URL).
 rem  One supervisor only: drift starts the task when it is not running and
 rem  never starts a second copy. Claude is the judge lane and never routes
 rem  through OmniRoute.

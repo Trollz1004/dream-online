@@ -87,17 +87,17 @@ Once the `HealthScheduledTask` step runs, `t5500-health.ps1` runs every 30
 minutes and writes `C:\DREAM\ops-state\t5500\health.json`. It probes four
 things by identity, not just an open port: the marketing gateway at
 `http://127.0.0.1:8377/health` (checked for the `"platform":"hermes-agent"`
-identity its own health route returns), OmniRoute on Sabretooth at
-`http://192.168.0.8:20128/v1/models` (checked for a `"data":[` models
-array — remote, only ever reported, never healed from this machine), `gh
+identity its own health route returns), OmniRoute on this T5500 at
+`http://$T5500_HOST:20128/v1/models` (address from the node env file; checked for a `"data":[` models
+array — only ever reported, never healed by this script), `gh
 auth status`, and free disk space on `C:` staying above 10 GB.
 
 `health.json`'s top-level `status` is one of:
 
 - **GREEN** — every check passed.
 - **YELLOW** — OmniRoute is unreachable or `gh` is not signed in, but the
-  local gateway and disk are fine. Nothing here needs this machine fixed;
-  OmniRoute is Sabretooth's problem and `gh` just needs a sign-in.
+  local gateway and disk are fine. The script reports it and never restarts
+  OmniRoute; start that service by hand, and `gh` just needs a sign-in.
 - **RED** — the marketing gateway is down even after this script tried
   `hermes -p marketing gateway start` once and re-probed, or free disk
   dropped below 10 GB. Either one needs a human on this machine.

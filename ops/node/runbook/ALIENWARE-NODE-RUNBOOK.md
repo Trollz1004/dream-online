@@ -28,7 +28,7 @@ Services, each judged by an identity string and never by a port answering:
 - JARVIS HUD on port 9150. `/health` contains `airi-dashboard`. Optional. This is the older copy from the hermes repository (see section 9).
 - Crosslisting OS on port 3000. `/` contains `<div id="root">`. Optional, and not game work.
 
-Two Sabretooth services are probed from here and never healed from here: OmniRoute at `http://192.168.0.8:20128/v1/models` (contains `"data":[`) and JARVIS at `http://192.168.0.8:9150/health` (contains `jarvis-dashboard`). Nothing on this node listens on port 20128, and nothing should.
+Two remote services are probed from here and never healed from here: OmniRoute on the T5500 at `http://$T5500_HOST:20128/v1/models` (`T5500_HOST` comes from the node env file) (contains `"data":[`) and, on Sabretooth, JARVIS at `http://$SABRETOOTH_HOST:9150/health` (contains `jarvis-dashboard`). Nothing on this node listens on port 20128, and nothing should.
 
 Report states as UP, DOWN, WRONG SERVICE, AUTH MISSING, AUTH REJECTED or NOT CONFIGURED.
 
@@ -68,7 +68,7 @@ Tests: `Invoke-Pester -Path ops/node/alienware-health.Tests.ps1`. The box has Pe
 
 ## 5. Model access and secrets
 
-- Every model call from a harness or the game goes through OmniRoute at `http://192.168.0.8:20128/v1`. That is the only URL. No provider key lives in code, config or a client build.
+- Every model call from a harness or the game goes through OmniRoute on the T5500 at `http://$T5500_HOST:20128/v1` (`T5500_HOST` comes from the node env file). That is the only URL. No provider key lives in code, config or a client build.
 - Claude is auth login only. There is no Anthropic API key anywhere, and Claude never routes through OmniRoute.
 - Secrets live in the OneDrive vault and local env files only. The drop box holds `.env` files and a private payments folder; Claude never opens them.
 - The repository is public. Nothing that looks like a key goes into a commit.

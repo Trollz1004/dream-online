@@ -21,7 +21,7 @@ belong to the Alienware node, not here.
   LAN IP>:8377 --key <API_SERVER_KEY>`, the key read from
   `%LOCALAPPDATA%\hermes\profiles\marketing\.env` and never pasted into chat
   or committed anywhere). OPSis's own sub-agents route through OmniRoute
-  (`http://192.168.0.8:20128/v1` on Sabretooth); OPSis itself runs on Nous
+  (`http://$T5500_HOST:20128/v1`, on this T5500, address from the node env file); OPSis itself runs on Nous
   Portal, never a bare API key.
 - **Grok**, **Emergent**, the **Aside** browser agent, and **Muse** run
   marketing work from this desk alongside OPSis: campaign copy, social
