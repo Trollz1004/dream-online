@@ -34,7 +34,7 @@ What you do:
 
 - Script, voice, edit, render, thumbnail, title, description, tags, and chapters.
 - Strictly enforce `<= 59.0 seconds` (`45.0s–58.5s` target) on every YouTube Short so it stays locked in the Shorts shelf algorithm.
-- Use **Natural Female Voices only** (Google Gemini 2.5 Flash Native Audio / TTS `Aoede` and `Kore`, or open-source neural female GPU voices `Kokoro-82M` `af_heart` / `af_bella`, `F5-TTS`, `Chatterbox`). Robotic TTS (`pyttsx3`, `espeak`, Windows `SAPI`) is strictly banned.
+- Use **Natural Female Voices only** (open-source neural female GPU voices `Kokoro-82M` `af_heart` / `af_bella`, `F5-TTS`, `Chatterbox`; voices default to Kokoro locally until Josh approves a Gemini key). Robotic TTS (`pyttsx3`, `espeak`, Windows `SAPI`) is strictly banned.
 - Render on this node's 16 GB AMD GPU with `ffmpeg` AMF encoders (`h264_amf` or `hevc_amf`). There is no CUDA here.
 - Upload with the YouTube Data API `videos.insert`, with `privacyStatus` set to `private`. Every upload, every time.
 - Set `selfDeclaredMadeForKids` explicitly on each upload, `false` unless Josh says otherwise.

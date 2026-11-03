@@ -8,6 +8,6 @@
    - Full Gemini Spec Backup: `docs/standards/backups-full-context/GEMINI.md.full-backup` & `GEMINI_SPARK_INSTRUCTIONS.md.full-backup`.
 3. **Repositories & Nodes**:
    - `Trollz1004/dream-online` (`https://github.com/Trollz1004/dream-online`) -> Alienware (`%USERPROFILE%\antigravity\DREAM-Engine`, 3D Engine `:9180`, 0 local LLM weights).
-   - `Trollz1004/ANTIGRAVITY` (`https://github.com/Trollz1004/ANTIGRAVITY`) -> Sabretooth (`C:\Ai-Dream-Team\Antigravity\`: `HermesLeadGen\` `:8392`, `/gtm-studio/`, `youtube-shorts-podcast-engine\` `:8391` `<=59.0s` + female voices `Aoede` & `Kore`, `repos\Maestro\`, `repos\harvey`) & T5500 (`C:\ANTIGRAVITY`: `:3130`, `:49374`).
+   - `Trollz1004/ANTIGRAVITY` (`https://github.com/Trollz1004/ANTIGRAVITY`) -> Sabretooth (`C:\Ai-Dream-Team\Antigravity\`: `HermesLeadGen\` `:8392`, `/gtm-studio/`, `youtube-shorts-podcast-engine\` `:8391` `<=59.0s` + female voices (Kokoro locally until Josh approves a key), `repos\Maestro\`, `repos\harvey`) & T5500 (`C:\ANTIGRAVITY`: `:3130`, `:49374`).
 4. **Mandatory UI, Tools & Memory**:
    - Unified 3-Pane Shell + 1-Click 5h Model Switcher (`src/ui/UnifiedAntigravityWorkspaceShell.tsx`), Rule One Before-vs-After Screenshot Comparison, Remake `100% Yours` + REA Clean-Room, 15 Skills (`.agents/skills/`), and Single `$5/mo` Synced Obsidian Vault (`<Node>/gemini-to-gemini.md` + shared `ai-memory`, address in the node env file). Redact all secrets as `XXXX`.

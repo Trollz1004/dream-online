@@ -794,7 +794,8 @@ app.post('/api/dreamforge/generate', (req, res) => {
       vfxTheme,
       prompt,
       worldSeed: `DF-${mode.id.toUpperCase()}-${style.toUpperCase()}-${Date.now().toString(36).toUpperCase()}`,
-      shortsHook59s: `[<= 58.5s Female TTS Aoede/Kore] Watch the ${mmoClass.name} unleash ${vfxTheme.name} in ${style} — 100% Built by AI (#UntilNoKidInNeed)!`,
+      // Voices default to Kokoro locally until Josh approves a key.
+      shortsHook59s: `[<= 58.5s local Kokoro female voice] Watch the ${mmoClass.name} unleash ${vfxTheme.name} in ${style} — 100% Built by AI (#UntilNoKidInNeed)!`,
     },
   });
 });

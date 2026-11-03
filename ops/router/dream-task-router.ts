@@ -66,7 +66,7 @@ export const DREAM_STUDIO_CLEAN_ROOM_ROLES: readonly CleanRoomStudioRoleSpec[] =
   {
     roleId: 'dream-opsis-marketing-director',
     title: 'DREAM & Sabretooth OPSis Podcast/Shorts & Harvey Lead-Gen Director',
-    microLoop30s: 'Gemini SDK @google/genai 2-host female voice (Aoede & Kore) dialogue turn.',
+    microLoop30s: 'Local Kokoro 2-host female voice (af_heart & af_bella) dialogue turn.',
     mesoLoop10m: 'ffprobe <= 59.0s YouTube Short render + Remake 100% Yours /gtm-studio/ swap check.',
     macroLoopSession: '3-channel YouTube Data API v3 private upload + Harvey 3-Type Lead Gen (cost_usd === 0 gate).',
     rawClaudeCodeGameStudiosAllowedHarnesses: ['free-claude-code-8082'],
