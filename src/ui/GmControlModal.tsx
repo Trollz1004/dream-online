@@ -240,6 +240,10 @@ export const GmControlModal: React.FC<GmControlModalProps> = ({
         }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        setNpcReply(data?.error || 'Gemini lane is off until Josh finalizes a key');
+        return;
+      }
       setNpcReply(
         `[${data.npcName || selectedNpcId} · ${data.modelUsed || 'Google Ultra SDK'}]\n${data.reply}\n\nMemory Synced: ${data.memoryUri || 'viking://dream/npc/live'}`
       );

@@ -185,7 +185,9 @@ export const DreamStudioPanel: React.FC<DreamStudioPanelProps> = ({
         body: JSON.stringify({ prompt: aiRigPrompt }),
       });
       const data = await res.json();
-      if (data?.generated) {
+      if (!res.ok) {
+        setAiRigNote(data?.error || 'Gemini lane is off until Josh finalizes a key');
+      } else if (data?.generated) {
         studio.updateCharacter({
           armorColorDay: data.generated.armorColorDay,
           visorColorDay: data.generated.visorColorDay,
@@ -216,7 +218,11 @@ export const DreamStudioPanel: React.FC<DreamStudioPanelProps> = ({
         }),
       });
       const data = await res.json();
-      setSdkOutput(data?.output || 'Task completed via Google Ultra Custom Agent SDK.');
+      if (!res.ok) {
+        setSdkOutput(data?.error || 'Gemini lane is off until Josh finalizes a key');
+      } else {
+        setSdkOutput(data?.output || 'Task completed via Google Ultra Custom Agent SDK.');
+      }
     } catch {
       setSdkOutput('[Local Agent SDK] Executed with zero Omniroute contention.');
     } finally {
