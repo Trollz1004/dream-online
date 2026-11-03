@@ -36,7 +36,7 @@ belong to the Alienware node, not here.
 ## What is never done on this desk
 
 - No game development, no engine work, no gameplay code. That is the
-  Alienware node's job (`C:\DREAM\dream-online`, Godot 4.7.2).
+  Alienware node's job (`C:\DREAM\dream-online`, the in-house DREAM Engine).
 - No local models and no local inference. `local_runtime.enabled` stays
   `false` in every profile on this machine.
 - No provider API keys stored on this node outside a signed-in CLI's own

@@ -1,6 +1,6 @@
 # DREAM ONLINE Current State (2026-07-08 record, superseded)
 
-Updated: 2026-07-08. Superseded on 2026-09-26: the current state is `STATE.md` at the repo root, with `docs/DREAM-DISPATCH.md` and `ops/node/JOURNAL.md` as the live records. This file is kept as the record of the July design phase. Three things below are no longer true: the repository is public, not private; the root on the Alienware node is `C:\DREAM\dream-online`, not a `D:` drive; and the engine is Godot 4.7.2, not Unreal (`docs/tech/engine-decision-2026-09-20.md`).
+Updated: 2026-07-08. Superseded on 2026-09-26: the current state is `STATE.md` at the repo root, with `docs/DREAM-DISPATCH.md` and `ops/node/JOURNAL.md` as the live records. This file is kept as the record of the July design phase. Three things below are no longer true: the repository is public, not private; the root on the Alienware node is `C:\DREAM\dream-online`, not a `D:` drive; and the engine is built in-house, not Unreal or Godot (`docs/tech/engine-decision-2026-09-30-own-engine.md`).
 
 ## Repo
 

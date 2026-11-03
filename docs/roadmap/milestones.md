@@ -1,7 +1,7 @@
 # DREAM ONLINE Milestone Roadmap
 
 Status note (2026-09-26): this roadmap was written for the Unreal track, and the engine
-has since moved to Godot 4.7.2, where the first playable slice now exists; see STATE.md.
+has since moved to the in-house DREAM Engine (an earlier Godot slice exists as a reference prototype); see STATE.md.
 
 Status: draft
 

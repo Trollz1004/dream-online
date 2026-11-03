@@ -1,8 +1,7 @@
 # Dream ONLINE Toolchain Decision - 2026-07-08
 
-Status note (2026-09-26): superseded by the 2026-09-20 engine decision. Godot 4.7.2 is
-installed on the Alienware node and needs no compiler, so no Unreal, Visual Studio, or
-CMake install is pending. This file is kept as the July 2026 record.
+Status note (2026-09-26): superseded by the engine decision of 2026-09-30: the engine is built in-house and needs
+no third-party install, so no Unreal, Godot, Visual Studio, or CMake install is pending. This file is kept as the July 2026 record.
 
 ## Decision
 
