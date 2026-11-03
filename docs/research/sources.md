@@ -1,6 +1,6 @@
 # Research Sources
 
-**Status note (2026-09-26):** The list below is the Unreal-era reference set, kept for a possible revisit. The current engine is Godot 4.7.2.
+**Status note (2026-09-26):** The list below is the Unreal-era reference set, kept for a possible revisit. The engine is the in-house DREAM Engine.
 
 ## Official / Primary Sources
 

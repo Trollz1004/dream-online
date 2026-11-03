@@ -3,7 +3,7 @@
  * Left Screen: Graphy Codebase AST & Trusted AI Team Workflow Dashboard
  * Right Screen: Obsidian Session-End (ri) Memory Graph, Auto-XXXX Secret Redaction Shield & Immutable GEMINI_SOUL.MD
  *
- * Built with Google Gemini — #ForTheKids #UntilNoKidInNeed
+ * Built with Google Gemini
  */
 
 import React, { useEffect, useMemo, useState } from 'react';

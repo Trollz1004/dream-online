@@ -16,14 +16,14 @@ project wants to do with it. Read the licence line, not the price.
 
 Some content on Fab is marked **"UE-Only Content — Licensed for Use Only with
 Unreal Engine-based Products"**. That licence permits use only in a product built
-on Unreal Engine. It does not permit use in a Godot game.
+on Unreal Engine. It does not permit use in our in-house engine.
 
-DREAM's engine is Godot (`engine-decision-2026-09-20.md`). So UE-only content
+DREAM's engine is built in-house (`engine-decision-2026-09-30-own-engine.md`). So UE-only content
 cannot ship in the game, however free it was and however much of it is already on
 this machine.
 
 Verified on 2026-09-21: **City Sample carries that UE-only label.** All 112 GB of
-it that sits in the launcher's vault cache is therefore out of bounds for the Godot
+it that sits in the launcher's vault cache is therefore out of bounds for the in-house
 client. It stays on disk because it is still legitimate for Unreal work, and the
 engine decision record allows Unreal for cinematics, marketing visuals and
 reference exploration at any time.

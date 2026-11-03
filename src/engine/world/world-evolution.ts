@@ -12,7 +12,7 @@
  *   Never claims personal out-of-pocket human donations as AI revenue. Only unlocks
  *   the 24/7 AI Mission Funding stream indicator when AI verifiably generates intake
  *   (e.g., `onlinerecycle.net` AI-driven e-waste intake, automated in-game convenience
- *   microtransactions, or public DAO / crypto wallet proof for Shriners / #UntilNoKidInNeed).
+ *   microtransactions, or public DAO / crypto wallet proof for Shriners).
  */
 
 export type EvolutionPhase = 'day_dream_3d' | 'nightmare_3d' | 'circle_16bit';

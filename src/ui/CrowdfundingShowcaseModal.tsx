@@ -2,7 +2,7 @@
  * DREAM Engine Studio — Crowdfunding Pitch & 100% AI-Built Provenance Showcase
  * Celebrates the mission of a zero-code-experience Electrician uniting
  * Google Gemini, Claude, Perplexity, Grok, OpenAI (Codex), and Hermes as Co-GMs
- * to build an open, full-stack Unreal Engine alternative for #UntilNoKidInNeed.
+ * to build an open, full-stack Unreal Engine alternative.
  */
 
 import React from 'react';

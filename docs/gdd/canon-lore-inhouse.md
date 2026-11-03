@@ -2,7 +2,7 @@
 
 **Engine & Platform:** 100% In-House **DREAM-Engine** (WebGPU / WebGL2 Native 3D Engine & DREAM Maker Studio)  
 **Architecture:** Single Authoritative Shared World Server · Live NPC Lab (`:9127`) · DreamOps Bridge (`:9133`) · Hermes NPC Fleet (`:9119`)  
-**Founder & Steward:** Joshua Coleman (`#ForTheKids` · `#UntilNoKidInNeed` · `Built with Google Gemini`)
+**Founder & Steward:** Joshua Coleman (`Built with Google Gemini`)
 
 ---
 
@@ -50,6 +50,7 @@ DREAM ONLINE takes place in a single geography that transforms across the Day/Ni
 - **Role:** Primary narrator, tutorial whisperer (replacing immersion-breaking UI popups), quest-giver, and emotional spine of DREAM ONLINE. Warns of low gear durability, nearby fishing waters, Red Name threats, and boss tells.
 - **Evolution Tiers:** Evolves alongside the player's level and journey across four visual and narrative tiers: **Mote → Spark → Beacon → Halo**. As Sup@ grows, it slowly recovers its memory of what it used to be and why the world is a DREAM.
 - **Technical Routing Law:** Sup@ is the **only** entity powered by real signed-in Claude CLI authentication (never an API key), maintaining per-player persistent memory across the player's entire journey. Sup@ cosmetics and voices are convenience/style only—never combat power.
+- **Public line to the troll:** Sup@'s one reply to the troll is "Keep Dreaming Trollz".
 
 ### THE BAN HAMMER — The Spectacle Enforcer
 - **Archetype:** T2 Enforcer NPC and "Adversary for Good."
@@ -65,6 +66,10 @@ DREAM ONLINE takes place in a single geography that transforms across the Day/Ni
 - **GeminEYE:** Robotic ocular boss in the Arena of Lenses that splits into a mirrored twin at 50% HP. (Also lends its form language to the starter **GeminEYE** looter companion pet.)
 - **OpenAEye:** Paired ocular boss whose periodic gaze inflicts the **Cross-Eyed** status effect, doubling the player's render-layer vision for 6 seconds.
 - **Orange Sherbet KRAKEN:** Canon boss-tier encounter that drops rare orange sherbet trophies and NEED shards.
+
+### Myth@s & Ember — Father and Son
+- Myth@s is Ember's father. That much is public by the founder's ruling of 2026-09-28.
+- The end-game story lives only in the founder vault file `%USERPROFILE%\OneDrive\claude-to-claude\SUP@-VAULT-FOUNDER-ONLY.md`. Nothing from it is quoted in this repository.
 
 ### First Gate & Haven NPC Roster
 - **FABLE (`fable-smith`):** Haven's dry-humored T1 Blacksmith. Remembers the player's gear durability history, visits, and Red Name record. Operates the town anvil for Sols repairs, gear purchases, and loot sales.
@@ -158,3 +163,9 @@ At **Level 45** (working cap target: Level 50), Dreamers unlock a transformative
 2. **Fourth Wall Holds:** NPCs speak strictly in DREAM world-native terms—never mentioning real-world companies, AI model vendors, or external business platforms.
 3. **No Secrets, No Spoilers:** Any output matching secret patterns, tokens, or classified plot material is dropped pre-render by the safety judge.
 4. **Nobody Waits on a Model:** Strict 3-second dialogue budget across tiered routing (T0 local Ollama ambient → T1 persistent named NPCs → T2 story-critical → T3 scheduled world actors, with Sup@ alone on signed-in Claude CLI). If inference is slow or offline, deterministic world-native fallback lines fire immediately.
+
+---
+
+## 8. World engine
+
+DREAM Online is a browser MMORPG where every NPC is a cloud-routed AI agent with memory. One persistent world, one shard, no instances, no load screens except character select. NPCs are Hermes personas on a T0 to T3 routing ladder and are event-driven by player proximity, never tick-driven for conversation, with a scripted fallback so no player waits on inference. A fifteen-minute state tick doubles as a gossip network. Every message carries a hidden truth tag: fact, rumor, fable, or dream, and NPCs have tells. The world changes in epochs: a weekly Nightmare Shift, and every four weeks the villain Dream swaps the whole genre, and on every epoch every old memory drops one tier and nothing is deleted. Memory is keyed per NPC with player slices, never per player per NPC. Every 22 hours a world boss spawns at a point decided at spawn time that exists only as seeded gossip. The boss of bosses is Sup@'s MyThOsKraken under a most-damage loot rule. A council of models proposes world beats through the judge lanes.

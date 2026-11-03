@@ -80,9 +80,9 @@ Joshua pointed at a player discussion of a long-running combo-driven action game
 
 ### How this is built
 
-In Godot, the engine since Joshua's ruling of 2026-09-20: `game/godot/DreamSlice/scripts/combo.gd` resolves a key set to a skill name, with the Shift counted as part of the set, and each skill's frame data (startup, active, recovery, cancel windows, invulnerability) lives in its own state script beside it (`dash_state.gd`, `attack_state.gd`, `heavy_attack_state.gd`, `guard_state.gd`, `lunge_state.gd`, `burst_state.gd`). All of it is plain data and geometry, so the same rules can run on a server later.
+In the in-house DREAM Engine (`src/engine/combat/`): `combo.ts` resolves a key set to a skill name, with the Shift counted as part of the set, and each skill's frame data (startup, active, recovery, cancel windows, invulnerability) lives in its own state file beside it (`dash-state.ts`, `attack-state.ts`, `heavy-attack-state.ts`, `guard-state.ts`, `lunge-state.ts`, `burst-state.ts`). All of it is plain data and geometry, so the same rules can run on a server later.
 
-The Unreal note that stood here is kept for the parked engine: Enhanced Input in Unreal 5.8 has a chorded action trigger of exactly this shape, Shift and the direction key as the chord and the action key firing it, so the input layer could be built in Blueprints with no C++ compiler.
+Reference note only, not a claim about our engine: Enhanced Input in Unreal 5.8 has a chorded action trigger of exactly this shape, Shift and the direction key as the chord and the action key firing it, which is where the chord idea came from.
 
 ## Combat Attributes
 

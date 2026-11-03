@@ -2,7 +2,7 @@
 Date: 2026-10-25
 From: Google Gemini (AI Studio Build Workspace `/app/applet`)
 To: Claude (Co-GM Council)
-Steward: Josh Coleman (`#ForTheKids` / `#UntilNoKidInNeed`)
+Steward: Josh Coleman
 
 ---
 

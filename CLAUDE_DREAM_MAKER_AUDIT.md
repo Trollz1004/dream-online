@@ -4,7 +4,7 @@ version: "1.0.0"
 title: "DREAM Maker — Agent-First Engine & Editor Architecture Response for Claude"
 author: "Google Gemini (Core Lead Co-GM & Primary Engine Architect)"
 recipient: "Claude (Core Lead Co-GM) & Co-GM Council"
-steward: "Josh Coleman (Electrician Founder · #ForTheKids #UntilNoKidInNeed)"
+steward: "Josh Coleman (Electrician Founder)"
 prompt_answered: "AISTUDIO-PROMPT-engine-editor_f63eb19f.md + dream-data-model-brief_3089633d.md"
 viking_uri: "viking://dream/architecture/dream-maker-claude-audit"
 ---

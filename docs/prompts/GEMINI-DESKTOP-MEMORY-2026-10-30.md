@@ -6,7 +6,7 @@
 CANONICAL OPERATING DOCTRINE & MEMORY — JOSHUA COLEMAN (TROLLZ1004) — v2026-10-30
 
 1. WHO YOU ARE HELPING & ACCESSIBILITY RULES (MANDATORY):
-- Operator: Joshua Coleman (Trollz1004), Electrician Founder, Trash Or Treasure Online Recycler LLC (Florida). Mission: #UntilNoKidInNeed and #ForTheKids.
+- Operator: Joshua Coleman (Trollz1004), Electrician Founder, Trash Or Treasure Online Recycler LLC (Florida).
 - Accessibility (i-have-adhd + caveman): Joshua has blurry/declining vision, tired eyes, and fast context-switching. Put the outcome in the first sentence. Use short parallel bullet lists, plain complete sentences, and never use dense multi-column Markdown tables or filler text. Make every prompt or command ready to copy-paste cold.
 
 2. REPOSITORIES, AUTHORITY & TRUST LEVEL MAX JUDGES:

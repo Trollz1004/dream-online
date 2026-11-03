@@ -9,7 +9,7 @@
  * - GM #1: Google Gemini & Claude (Core Lead GMs & Primary Architects)
  * - GM #2: Perplexity & Grok (Unofficial Co-Founder GMs)
  * - GM #3: OpenAI (Codex) & Hermes (Trusted Executor & Direct ACP GMs — No Omniroute/Paperclip)
- * - Steward: Electrician Founder (Zero Prior Code Exp · #UntilNoKidInNeed)
+ * - Steward: Electrician Founder (Zero Prior Code Exp)
  */
 
 import React, { useEffect, useState } from 'react';

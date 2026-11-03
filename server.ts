@@ -7,7 +7,7 @@
  * - /api/graphy/*   (Graphy Repository AST & Workflow Context Graph)
  * - /api/studio/*   (REA Binary Analysis & 3D World/Character AI Synthesis)
  *
- * 100% Built with Google Gemini — #UntilNoKidInNeed
+ * 100% Built with Google Gemini
  */
 
 import express from 'express';
@@ -795,7 +795,7 @@ app.post('/api/dreamforge/generate', (req, res) => {
       prompt,
       worldSeed: `DF-${mode.id.toUpperCase()}-${style.toUpperCase()}-${Date.now().toString(36).toUpperCase()}`,
       // Voices default to Kokoro locally until Josh approves a key.
-      shortsHook59s: `[<= 58.5s local Kokoro female voice] Watch the ${mmoClass.name} unleash ${vfxTheme.name} in ${style} — 100% Built by AI (#UntilNoKidInNeed)!`,
+      shortsHook59s: `[<= 58.5s local Kokoro female voice] Watch the ${mmoClass.name} unleash ${vfxTheme.name} in ${style} — 100% Built by AI!`,
     },
   });
 });

@@ -7,7 +7,7 @@
  * 4. Ultra Agent SDK, Graphy & 4-Tier Memory Vault (Direct @google/genai, A2A/ACP/MCP, Obsidian Vault, Viking, Supabase, Supermemory)
  * 5. Full-Stack NPC Creator (Deploy custom AI NPCs into the 3D world, Radar Minimap & GM Control Lab)
  *
- * Built with Google Gemini — #UntilNoKidInNeed
+ * Built with Google Gemini
  */
 
 import React, { useState, useEffect } from 'react';

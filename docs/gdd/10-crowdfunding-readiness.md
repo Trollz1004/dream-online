@@ -13,7 +13,9 @@ Two things were checked at the source rather than assumed, on 2026-09-22:
 
 Be plain about this with anyone deciding whether to show the slice. As of 2026-09-26 (the 2026-09-22 state this section first recorded is in git history; every line below was checked against the journal and the code):
 
-- One Godot 4.7.2 vertical slice, `game/godot/DreamSlice`, runs in a window and in a browser; the test floor is 789 checks, last run 789 of 789 on `main` (2026-09-25).
+> Engine note, 2026-11-03: the engine and editor are built in-house. The bullets below describe the earlier Godot reference slice as it stood on 2026-09-26.
+
+- One earlier reference slice (Godot, history only, `game/godot/DreamSlice`) runs in a window and in a browser; its test floor is 789 checks, last run 789 of 789 on `main` (2026-09-25).
 - A real character: a rigged CC0 rig with animations, wearing the hooded ranger outfit Joshua chose on 2026-09-25 over the knight look. The knight and the other class looks are still design (`specs/003-production-look/spec.md`, `docs/gdd/02-action-combat.md`).
 - Combat: the dash with invulnerability frames, a three-step light attack chain, a heavy attack on right mouse, a guard stance on Q, the Dream Lunge and the Nightveil Burst (spec 002). That is six working moves out of the roughly eighty the grammar makes room for; every other key combination still falls through to a stub that prints its name. The hotbar is now a movable keyboard panel with a keycap readout, red and blue potions and food on 1 to 3; its icons are plain coloured dots.
 - One enemy: the Sentinel training dummy that telegraphs a beam and can be perfect-dodged or fought down. One friendly NPC, Mireth, who reacts to the player's perfect dodges and, at Nightfall, recalls them from world memory written to the Live NPC Lab (with a local fallback when the lab is down). There is still no dialogue tree or quest beyond that.

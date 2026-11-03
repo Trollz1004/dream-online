@@ -9,10 +9,12 @@ Purpose: compact handoff for the current state of the repository. This file must
 - Repo root on the Alienware node: `C:\DREAM\dream-online`. `DREAM_ROOT` resolves there. Older documents name a `D:` drive root; that clone was folded in and removed on 2026-09-19 (`docs/CONSOLIDATION-2026-09-19.md`).
 - GitHub: `Trollz1004/dream-online`, public, `main` is the only intended long-lived branch; judge and `claude/` branches live one pull request and are deleted on merge (two merged leftovers still await Joshua's delete click as of 2026-09-29). The account's GitHub Actions usage cap lifted on 2026-09-26 (a usage cap, never a violation; corrected 2026-09-29 on Joshua's word) and Actions runs again, so the gates are the local suites and the Actions checks.
 - Rules: `CLAUDE.md` loads `AGENTS.md`. Node operations and the rulings in force: `ops/node/skills/alienware-node/SKILL.md`, section 0.
-- Engine decision: `docs/tech/engine-decision-2026-09-20.md` (Godot 4.7.2 now; Unreal parked on defined revisit terms).
+- Engine decision: `docs/tech/engine-decision-2026-09-30-own-engine.md`. The engine and editor are built in-house (`src/engine/`); no Godot or Unreal claim stands. The 2026-09-20 record is kept as history.
 - Design index: `docs/DESIGN-INDEX.md`. Port contract: `docs/tech/local-prototype-ports.md`. Local commands: `docs/tech/local-command-reference.md`. AI failure behavior: `docs/tech/ai-failure-behavior.md`.
 
-## The playable slice (Godot 4.7.2)
+## The earlier Godot reference slice (history, not the engine)
+
+The engine is the in-house DREAM Engine (`src/engine/`). The slice below was an earlier reference prototype; its facts are kept as history.
 
 `game/godot/DreamSlice`, written entirely as text (GDScript and scene data), no compiler needed. Read its `README.md` first.
 
@@ -29,7 +31,7 @@ Purpose: compact handoff for the current state of the repository. This file must
 - Both bind to `127.0.0.1`. Other services on the same box own their ports and no Dream service takes them: Hermes dashboard 9119, Ollama 11434, the older JARVIS HUD 9150, Crosslisting 3000, Obsidian's REST API 27123. The full list, with reserved Dream ports, is in `docs/tech/local-prototype-ports.md`.
 - Verified on 2026-09-26 in the cloud checkout: Live NPC Lab `npm test` and `npm run test:contracts` pass; `ops/node/brain` tests 10 of 10. The Godot suite was not run there (no Godot in the container).
 
-## Unreal (parked)
+## Unreal (reference only, never the engine)
 
 Unreal Engine 5.8.2 stays at `C:\DREAM\UE_5.8`, with City Sample on disk, for cinematics and reference only. `game/unreal/` holds the earlier Blueprint test-zone scripts; nothing there is on the path to the game. The revisit terms are in the engine decision record.
 

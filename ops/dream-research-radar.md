@@ -1,6 +1,6 @@
 # Dream ONLINE Research Radar
 
-Status note (2026-09-26): the engine moved to Godot 4.7.2 on 2026-09-20; the lenses below
+Status note (2026-09-26): the engine is built in-house (decision record of 2026-09-30, which superseded the Godot record of 2026-09-20); the lenses below
 still name Unreal in places and should be read with that in mind.
 
 Status: active recurring Codex app automation
