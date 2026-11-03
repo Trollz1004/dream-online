@@ -151,7 +151,11 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
     [cityArchitect, selectedArchetype, citySeed, cityPhase]
   );
 
-  const frameFreezeReport = useMemo(() => swapBoard.computeFrameFreezeScore(), [swapBoard]);
+  const gateReport = useMemo(() => swapBoard.computeGateReport(), [swapBoard]);
+  const gateTone = (ok: boolean | null) =>
+    ok === null ? 'text-slate-300' : ok ? 'text-[#00E5A3]' : 'text-rose-400';
+  const gateWord = (ok: boolean | null, yes: string, no: string) =>
+    ok === null ? 'NOT MEASURED' : ok ? yes : no;
 
   if (!isOpen) return null;
 
@@ -204,7 +208,7 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
       swapBoard.applySlotsToStudio(engine.studio);
       setSwapTick((t) => t + 1);
       setActionStatusBanner(
-        `Remake Swap Board applied theme "${theme}" -> 98.8% Frame-Freeze Verified!`
+        `Remake Swap Board applied theme "${theme}". Gate: features matched, clear visual difference, own code (the judge lane runs it).`
       );
       return;
     }
@@ -1297,31 +1301,31 @@ export const OpenUiGameDevStudioModal: React.FC<OpenUiGameDevStudioModalProps> =
           )}
 
           {/* =================================================================
-              TAB 5: REMAKE SWAP BOARD & 98.8% PIXEL-FREEZE BENCHMARK
+              TAB 5: REMAKE SWAP BOARD & GATE (FEATURES MATCHED, CLEAR VISUAL DIFFERENCE, OWN CODE)
              ================================================================= */}
           {activeTab === 'remake-swap-board' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div className="p-4 rounded-md bg-[#161920] border border-emerald-500/40">
-                  <div className="text-xs font-mono text-slate-400">DESKTOP 1440×900 SCORE</div>
-                  <div className="text-2xl font-bold font-mono text-[#00E5A3] mt-1">
-                    {frameFreezeReport.desktopScore}% (PASS)
+                  <div className="text-xs font-mono text-slate-400">FEATURES MATCHED</div>
+                  <div className={`text-xl font-bold font-mono mt-1 ${gateTone(gateReport.featuresMatchedOk)}`}>
+                    {gateReport.featuresMatchedPercent === null ? 'NOT MEASURED' : `${gateReport.featuresMatchedPercent}%`}
                   </div>
-                  <div className="text-xs text-slate-300 mt-1">Gate: &gt;= 98.0% Pixel Lock</div>
+                  <div className="text-xs text-slate-300 mt-1">Gate: at least {gateReport.featuresMatchedRequiredPercent}% of what the source does</div>
                 </div>
                 <div className="p-4 rounded-md bg-[#161920] border border-emerald-500/40">
-                  <div className="text-xs font-mono text-slate-400">MOBILE 390×844 SCORE</div>
-                  <div className="text-2xl font-bold font-mono text-[#00E5A3] mt-1">
-                    {frameFreezeReport.mobileScore}% (PASS)
+                  <div className="text-xs font-mono text-slate-400">CLEAR VISUAL DIFFERENCE</div>
+                  <div className={`text-xl font-bold font-mono mt-1 ${gateTone(gateReport.clearVisualDifferenceFromSource)}`}>
+                    {gateWord(gateReport.clearVisualDifferenceFromSource, 'CLEARLY DIFFERENT', 'TOO CLOSE')}
                   </div>
-                  <div className="text-xs text-slate-300 mt-1">Responsive HUD Verified</div>
+                  <div className="text-xs text-slate-300 mt-1">Judged side by side. A close likeness never passes</div>
                 </div>
                 <div className="p-4 rounded-md bg-[#161920] border border-cyan-500/40">
-                  <div className="text-xs font-mono text-slate-400">DETERMINISTIC CLOCK</div>
-                  <div className="text-xl font-bold font-mono text-cyan-300 mt-1">
-                    FROZEN (120Hz)
+                  <div className="text-xs font-mono text-slate-400">OWN CODE</div>
+                  <div className={`text-xl font-bold font-mono mt-1 ${gateTone(gateReport.ownCode)}`}>
+                    {gateWord(gateReport.ownCode, 'OWN CODE', 'COPIED CODE')}
                   </div>
-                  <div className="text-xs text-slate-300 mt-1">Zero Animation Drift</div>
+                  <div className="text-xs text-slate-300 mt-1">No copied source code. Scrubbing brand strings is not clean-room work</div>
                 </div>
                 <div className="p-4 rounded-md bg-[#161920] border border-[#FFD21E]/40">
                   <div className="text-xs font-mono text-slate-400">FL §496.405 COPY GATE</div>

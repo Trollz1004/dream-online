@@ -680,7 +680,7 @@ app.get('/api/openui/presets', (_req, res) => {
     reaArchetypes: REA_CITY_ARCHETYPES,
     reaEvidenceLedger: REA_RECONSTRUCTION_EVIDENCE_LEDGER,
     remakeBenchmarkProfiles: IDE_BENCHMARK_PROFILES,
-    remakeReport: serverRemakeBoard.computeFrameFreezeScore(),
+    remakeReport: serverRemakeBoard.computeGateReport(),
   });
 });
 
@@ -709,7 +709,7 @@ app.get('/api/remake/swap-board', (_req, res) => {
   res.json({
     status: 'ok',
     slots: serverRemakeBoard.getSlots(),
-    report: serverRemakeBoard.computeFrameFreezeScore(),
+    report: serverRemakeBoard.computeGateReport(),
     benchmarks: IDE_BENCHMARK_PROFILES,
   });
 });

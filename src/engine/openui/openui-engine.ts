@@ -79,9 +79,9 @@ $sunElevation = 48
 $fogDensity = 1.0
 $exposure = 1.04
 $cityArchetype = "SFA"
-kpiRow = StatGrid([kpiRenderer, kpiFrameLock, kpiGeometry])
+kpiRow = StatGrid([kpiRenderer, kpiRemakeGate, kpiGeometry])
 kpiRenderer = StatBlock("GPU Pipeline", "WebGPU + WebGL2", "RTX 3070 .40")
-kpiFrameLock = StatBlock("Remake Pixel Lock", @Round(98.8, 1), "% deterministic")
+kpiRemakeGate = StatBlock("Remake Gate", "Features matched · clear visual difference · own code", "run by the judge lane")
 kpiGeometry = StatBlock("Active Reality", $worldPhase, "120Hz Fixed-Step")
 phaseSelector = SelectControl("World Reality Morph", $worldPhase, ["day_dream_3d", "nightmare_3d", "circle_16bit"])
 sunSlider = SliderControl("Sun Elevation (deg)", $sunElevation, 5, 85, 1)
@@ -116,9 +116,9 @@ spawnCityBtn = ActionCard("Generate & Spawn 3D Urban Block", "Extrudes podium, c
   },
   {
     id: 'remake-swap-and-score-studio',
-    title: '03 · Remake Swap Board & 98.8% Pixel Lock',
+    title: '03 · Remake Swap Board & Gate (features matched, clear visual difference, own code)',
     badge: 'rubenhassid1/remake',
-    summary: 'One-click theme, skybox & hero slot swapping with deterministic frame-freeze scoring and FL §496.405 guard',
+    summary: 'One-click theme, skybox & hero slot swapping with the Remake gate (features matched, clear visual difference, own code) and FL §496.405 guard',
     defaultState: {
       studioTheme: 'obsidian-gold-aaa',
       worldPhase: 'day_dream_3d',
@@ -127,12 +127,13 @@ spawnCityBtn = ActionCard("Generate & Spawn 3D Urban Block", "Extrudes podium, c
       cityArchetype: 'SFB',
     },
     openUiSource: `root = EngineWorkspace([header, kpiRow, themePicker, applySwapBtn])
-header = Header("Remake Swap Board & Frame-Freeze Benchmark", "/_remake/swap/ · Deterministic Clock Lock · FL §496.405 Clean")
+header = Header("Remake Swap Board & Gate", "/_remake/swap/ · Features matched · Clear visual difference · Own code · FL §496.405 Clean")
 $studioTheme = "obsidian-gold-aaa"
 $worldPhase = "day_dream_3d"
-kpiRow = StatGrid([kpiDesktop, kpiMobile, kpiCompliance])
-kpiDesktop = StatBlock("Desktop 1440x900", "98.8%", ">= 98.0% Gate PASS")
-kpiMobile = StatBlock("Mobile 390x844", "98.4%", ">= 98.0% Gate PASS")
+kpiRow = StatGrid([kpiFeatures, kpiDifference, kpiOwnCode, kpiCompliance])
+kpiFeatures = StatBlock("Features matched", "NOT MEASURED", ">= 98% of what the source does")
+kpiDifference = StatBlock("Clear visual difference", "NOT MEASURED", "likeness never passes")
+kpiOwnCode = StatBlock("Own code", "NOT MEASURED", "no copied source code")
 kpiCompliance = StatBlock("FL §496.405 Copy Gate", "100% CLEAN", "0 Violations")
 themePicker = SelectControl("Studio & Viewport Theme Slot", $studioTheme, ["obsidian-gold-aaa", "cyber-emerald-webgpu", "crimson-nightfall-abyss", "retro-16bit-circle-craft"])
 applySwapBtn = ActionCard("Swap Theme & Sync Studio Slots", "Updates live PBR shaders, armor materials & content.json", "applyRemakeSwapTheme")`,

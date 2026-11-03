@@ -423,7 +423,7 @@ export default function App() {
                 Built with Google Gemini
               </span>
               <span className="text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                OpenUI + REA + Remake 98.8%
+                OpenUI + REA + Remake Gate
               </span>
             </div>
             <p className="text-[10px] tracking-wide text-neutral-300">

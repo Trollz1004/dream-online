@@ -1293,7 +1293,7 @@ Mandatory Skills: caveman, i-have-adhd, find-skills, create-skills, brainstormin
               <div style={{ fontWeight: 700, color: '#3fb950', marginBottom: '4px' }}>
                 ✓ Rule One Reference vs. Live Screenshot Verified
               </div>
-              <div>• Remake 100% Yours Gate: 100% Swapped (98.8% Parity)</div>
+              <div>• Remake 100% Yours Gate: 100% Swapped · features matched, clear visual difference, own code</div>
               <div>• REA Clean-Room: 100% In-House DREAM Engine</div>
               <div>• Git Working Tree: 0 uncommitted files</div>
             </div>
