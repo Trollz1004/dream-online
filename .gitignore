@@ -138,6 +138,10 @@ game/godot/*/demo/
 *env-inventory*.json
 public/assets/aistudio/
 
+# Eyes gate reports: screenshots and verdicts stay local (and on OneDrive); only the format README is tracked
+ops/eyes/reports/*
+!ops/eyes/reports/README.md
+
 # Local session exports and worktrees
 /Artifacts/
 /DREAM-Engine/
