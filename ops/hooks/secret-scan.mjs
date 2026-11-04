@@ -32,6 +32,9 @@ export const RULES = Object.freeze([
   { id: 'paypal-access-token', label: 'PayPal access token shape', re: /(?<![A-Za-z0-9_-])A21AA[A-Za-z0-9_-]{40,}/ },
   { id: 'paypal-braintree-token', label: 'PayPal/Braintree access token shape', re: /access_token\$(?:production|sandbox)\$[a-z0-9]{16}\$[a-f0-9]{32}/ },
   { id: 'paypal-secret-assignment', label: 'PayPal secret/token assigned a long value', re: /PAYPAL[A-Z0-9_]*(?:SECRET|TOKEN)\s*[=:]\s*["']?[A-Za-z0-9_-]{40,}/i },
+  { id: 'generic-sk-key', label: 'Generic sk- API key shape', re: /(?<![A-Za-z0-9])sk-(?!ant-)[A-Za-z0-9_-]{20,}/ },
+  { id: 'windows-user-path', label: 'Windows user folder path', re: /(?<![A-Za-z0-9])[cC]:[\\/]+[uU]sers[\\/]+[a-zA-Z0-9_.-]+/ },
+  { id: 'private-ipv4', label: 'Private IPv4 address shape', re: /\b(?:192\.168|10\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}\b/ },
 ]);
 
 /**

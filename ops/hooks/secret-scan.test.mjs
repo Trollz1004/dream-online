@@ -25,6 +25,11 @@ const FAKES = Object.freeze({
   'paypal-access-token': ['A21', 'AA', FAKE].join(''),
   'paypal-braintree-token': ['access_token', '$', 'production', '$', 'fakefakefakefake', '$', 'fa'.repeat(16)].join(''),
   'paypal-secret-assignment': ['PAYPAL_CLIENT', '_SECRET=', FAKE].join(''),
+  'generic-sk-key': ['sk', '-', 'proj', '-', FAKE].join(''),
+  'windows-user-path': ['C', ':', '\\', 'Users', '\\', 'dummyuser'].join(''),
+  'private-ipv4': ['192', '.', '168', '.', '1', '.', '100'].join(''),
+  'private-ipv4 (10.)': ['10', '.', '0', '.', '0', '.', '1'].join(''),
+  'private-ipv4 (172.16-31)': ['172', '.', '16', '.', '0', '.', '1'].join(''),
 });
 
 const CLEAN_TEXT = [
@@ -144,4 +149,41 @@ test('--pre-push scans only the commits being pushed (existing remote branch and
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('rule generic-sk-key: blocks generic sk- key shape of 20 or more characters and allows short keys', () => {
+  const fakeKey = ['sk', '-', 'proj', '-', FAKE].join('');
+  const fake20Chars = ['sk', '-', '12345678901234567890'].join('');
+  const shortKey = ['sk', '-', 'short'].join('');
+  const antKey = ['sk', '-', 'ant', '-', 'api03-', FAKE].join('');
+
+  assert.ok(scanText(fakeKey).some((f) => f.rule === 'generic-sk-key'));
+  assert.ok(scanText(fake20Chars).some((f) => f.rule === 'generic-sk-key'));
+  assert.deepEqual(scanText(shortKey), []);
+  assert.ok(scanText(antKey).some((f) => f.rule === 'anthropic-key'));
+  assert.ok(!scanText(antKey).some((f) => f.rule === 'generic-sk-key'));
+});
+
+test('rule windows-user-path: blocks Windows user folder path without literal real name', () => {
+  const fakePathWin = ['C', ':', '\\', 'Users', '\\', 'dummyuser', '\\', 'project'].join('');
+  const fakePathFwd = ['c', ':', '/', 'users', '/', 'dummyuser'].join('');
+  const safeProfile = '%USERPROFILE%\\antigravity';
+  assert.ok(scanText(fakePathWin).some((f) => f.rule === 'windows-user-path'));
+  assert.ok(scanText(fakePathFwd).some((f) => f.rule === 'windows-user-path'));
+  assert.deepEqual(scanText(safeProfile), []);
+});
+
+test('rule private-ipv4: blocks 192.168, 10 and 172.16-31 ranges and permits public/docs IPs', () => {
+  const fake192 = ['http://', '192', '.', '168', '.', '1', '.', '42', ':8080'].join('');
+  const fake10 = ['10', '.', '200', '.', '0', '.', '1'].join('');
+  const fake172 = ['172', '.', '20', '.', '5', '.', '6'].join('');
+  const docIp = '192.0.2.1';
+  const public172 = '172.15.0.1';
+  const localhost = '127.0.0.1';
+  assert.ok(scanText(fake192).some((f) => f.rule === 'private-ipv4'));
+  assert.ok(scanText(fake10).some((f) => f.rule === 'private-ipv4'));
+  assert.ok(scanText(fake172).some((f) => f.rule === 'private-ipv4'));
+  assert.deepEqual(scanText(docIp), []);
+  assert.deepEqual(scanText(public172), []);
+  assert.deepEqual(scanText(localhost), []);
 });
