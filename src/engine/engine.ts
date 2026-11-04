@@ -39,6 +39,7 @@ import { AmbientSynth } from './audio/ambient-synth.ts';
 import { CombatManager } from './combat/combat-manager.ts';
 import { SkillVfxDirector, ActionMmoClassId, SkillVfxThemeId } from './combat/skill-vfx.ts';
 import { StudioConfigManager } from './studioConfig.ts';
+import { computeCreatorBody3dParams } from '../ui/characterCreatorConfig.ts';
 import { WorldEvolutionDirector, quantizeColor16Bit, EvolutionPhase } from './world/world-evolution.ts';
 import { OathcallTownshipServer, OathcallDemoState } from './combat/oathcall-system.ts';
 import { PvpTacticalCoordinator } from './combat/pvp-tactical-ping.ts';
@@ -1078,7 +1079,26 @@ export class DreamEngine {
     this.playerNode.position.copy(this.controller.position);
     this.controller.getRotationQuaternion(this.playerNode.rotation);
     const avScale = this.studio.character.avatarScale;
-    this.playerNode.scale.set(avScale, avScale, avScale);
+    const creator3d = computeCreatorBody3dParams(this.studio.creatorBody);
+    this.playerNode.scale.set(
+      avScale * creator3d.shoulderSpanX,
+      avScale * creator3d.rootScaleY,
+      avScale * creator3d.torsoScaleZ
+    );
+    if (this.studio.isCreatorPreviewOpen) {
+      this.playerNode.rotation.setFromEuler(0, Math.PI + creator3d.yawRad, 0);
+      this.camera.position.set(
+        this.controller.position.x - 0.55,
+        this.controller.position.y + 1.32,
+        this.controller.position.z + 2.85
+      );
+      this.camera.target.set(
+        this.controller.position.x - 0.35,
+        this.controller.position.y + 1.18,
+        this.controller.position.z
+      );
+      this.camera.viewMatrix.makeLookAt(this.camera.position, this.camera.target, this.camera.up);
+    }
 
     // Sync Hollow Sentinel Colossus transform (with hit-reaction stagger tilt, knockback recoil, and knockdown collapse)
     const sent = this.combat.sentinel;
@@ -1282,23 +1302,89 @@ export class DreamEngine {
       const capeWaveYaw = Math.sin(this.animClock * 5.2) * 0.12;
       const capeWm = makeLimbMatrix(capePitch, capeWaveYaw, Math.cos(this.animClock * 4.1) * 0.06, breathBob);
 
+      const makeScaledPartMatrix = (sx: number, sy: number, sz: number, dy = 0) => {
+        const n = new SceneNode('CreatorBodyPart');
+        n.position.set(0, dy, 0);
+        n.scale.set(sx, sy, sz);
+        n.updateWorldMatrix(wm);
+        return n.worldMatrix;
+      };
+      const creatorHeadWm = makeScaledPartMatrix(
+        creator3d.jawWidthScale,
+        creator3d.headScale,
+        creator3d.headScale,
+        breathBob
+      );
+      const creatorHairWm = makeScaledPartMatrix(
+        creator3d.hairScaleX,
+        creator3d.hairScaleY,
+        creator3d.hairScaleX,
+        breathBob
+      );
+      const creatorTorsoWm = makeScaledPartMatrix(
+        creator3d.torsoScaleX,
+        1.0,
+        creator3d.torsoScaleZ,
+        breathBob
+      );
+      const creatorSkinMat: MaterialProperties = {
+        baseColor: [creator3d.skinRgb[0], creator3d.skinRgb[1], creator3d.skinRgb[2], 1.0],
+        roughness: 0.58,
+        metallic: 0.04,
+        emissive: [0, 0, 0],
+        emissiveIntensity: 0,
+        rimIntensity: 0.35,
+      };
+      const creatorHairMat: MaterialProperties = {
+        baseColor: [creator3d.hairRgb[0], creator3d.hairRgb[1], creator3d.hairRgb[2], 1.0],
+        roughness: 0.46,
+        metallic: 0.12,
+        emissive: [0, 0, 0],
+        emissiveIntensity: 0,
+        rimIntensity: 0.4,
+      };
+      const creatorIrisMat: MaterialProperties = {
+        baseColor: [creator3d.irisRgb[0], creator3d.irisRgb[1], creator3d.irisRgb[2], 1.0],
+        roughness: 0.18,
+        metallic: 0.3,
+        emissive: [creator3d.irisRgb[0] * 0.25, creator3d.irisRgb[1] * 0.25, creator3d.irisRgb[2] * 0.25],
+        emissiveIntensity: 0.35,
+        rimIntensity: 0.5,
+      };
+      const basicsTopMat: MaterialProperties = {
+        baseColor: [creator3d.basicsTopRgb[0], creator3d.basicsTopRgb[1], creator3d.basicsTopRgb[2], 1.0],
+        roughness: 0.76,
+        metallic: 0.04,
+        emissive: [0, 0, 0],
+        emissiveIntensity: 0,
+        rimIntensity: 0.3,
+      };
+      const basicsBottomMat: MaterialProperties = {
+        baseColor: [creator3d.basicsBottomRgb[0], creator3d.basicsBottomRgb[1], creator3d.basicsBottomRgb[2], 1.0],
+        roughness: 0.78,
+        metallic: 0.04,
+        emissive: [0, 0, 0],
+        emissiveIntensity: 0,
+        rimIntensity: 0.28,
+      };
+
       items.push(
-        { geometry: ck.torso, modelMatrix: torsoWm, material: steelPlateMat },
-        { geometry: ck.head, modelMatrix: torsoWm, material: steelPlateMat },
-        { geometry: ck.pauldronL, modelMatrix: torsoWm, material: gildedBronzeMat },
-        { geometry: ck.pauldronR, modelMatrix: torsoWm, material: gildedBronzeMat },
-        { geometry: ck.hip, modelMatrix: wm, material: gildedBronzeMat },
-        { geometry: ck.armL, modelMatrix: armLWm, material: silverLimbMat },
-        { geometry: ck.armR, modelMatrix: armRWm, material: silverLimbMat },
-        { geometry: ck.legL, modelMatrix: legLWm, material: silverLimbMat },
-        { geometry: ck.legR, modelMatrix: legRWm, material: silverLimbMat },
-        { geometry: ck.spine, modelMatrix: capeWm, material: crimsonCapeMat },
-        { geometry: ck.visor, modelMatrix: torsoWm, material: opticMat },
-        { geometry: ck.core, modelMatrix: torsoWm, material: opticMat },
-        { geometry: ck.blade, modelMatrix: armRWm, material: bladeMat }
+        { geometry: ck.torso, modelMatrix: this.studio.isCreatorPreviewOpen ? creatorTorsoWm : torsoWm, material: this.studio.isCreatorPreviewOpen ? basicsTopMat : steelPlateMat },
+        { geometry: ck.head, modelMatrix: this.studio.isCreatorPreviewOpen ? creatorHeadWm : torsoWm, material: this.studio.isCreatorPreviewOpen ? creatorSkinMat : steelPlateMat },
+        { geometry: ck.pauldronL, modelMatrix: this.studio.isCreatorPreviewOpen ? creatorTorsoWm : torsoWm, material: this.studio.isCreatorPreviewOpen ? basicsTopMat : gildedBronzeMat },
+        { geometry: ck.pauldronR, modelMatrix: this.studio.isCreatorPreviewOpen ? creatorTorsoWm : torsoWm, material: this.studio.isCreatorPreviewOpen ? basicsTopMat : gildedBronzeMat },
+        { geometry: ck.hip, modelMatrix: wm, material: this.studio.isCreatorPreviewOpen ? basicsBottomMat : gildedBronzeMat },
+        { geometry: ck.armL, modelMatrix: armLWm, material: this.studio.isCreatorPreviewOpen ? creatorSkinMat : silverLimbMat },
+        { geometry: ck.armR, modelMatrix: armRWm, material: this.studio.isCreatorPreviewOpen ? creatorSkinMat : silverLimbMat },
+        { geometry: ck.legL, modelMatrix: legLWm, material: this.studio.isCreatorPreviewOpen ? basicsBottomMat : silverLimbMat },
+        { geometry: ck.legR, modelMatrix: legRWm, material: this.studio.isCreatorPreviewOpen ? basicsBottomMat : silverLimbMat },
+        { geometry: ck.spine, modelMatrix: capeWm, material: this.studio.isCreatorPreviewOpen ? basicsTopMat : crimsonCapeMat },
+        { geometry: ck.visor, modelMatrix: this.studio.isCreatorPreviewOpen ? creatorHeadWm : torsoWm, material: this.studio.isCreatorPreviewOpen ? creatorIrisMat : opticMat },
+        { geometry: ck.core, modelMatrix: torsoWm, material: this.studio.isCreatorPreviewOpen ? basicsTopMat : opticMat },
+        { geometry: ck.blade, modelMatrix: armRWm, material: this.studio.isCreatorPreviewOpen ? basicsBottomMat : bladeMat }
       );
       if (!isCircle16) {
-        items.push({ geometry: this.cyberKnightGeoms.horns, modelMatrix: torsoWm, material: gildedBronzeMat });
+        items.push({ geometry: this.cyberKnightGeoms.horns, modelMatrix: this.studio.isCreatorPreviewOpen ? creatorHairWm : torsoWm, material: this.studio.isCreatorPreviewOpen ? creatorHairMat : gildedBronzeMat });
       }
 
       // 3b. Champion Regalia: Glowing, slowly turning Blue-Flame Holographic Floor Sigil under the Champion
