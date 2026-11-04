@@ -37,7 +37,8 @@ param(
 $ErrorActionPreference = 'Continue'
 
 $script:NodeName = 'alienware'
-$script:NodeLan = '192.168.0.40'
+# This node's own LAN address is ALIENWARE_HOST from the node env file; never a literal here.
+$script:NodeLan = if ($env:ALIENWARE_HOST) { $env:ALIENWARE_HOST } else { 'address in node env file' }
 $script:ProbeTimeoutSec = 6
 $script:StackScript = 'C:\DREAM\hermes\scripts\dream-stack.ps1'
 

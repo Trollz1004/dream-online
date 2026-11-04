@@ -1,4 +1,4 @@
-# Power-Loss & Reboot Auto-Heal Boot Script — Node 2: T5500 (.15)
+# Power-Loss & Reboot Auto-Heal Boot Script — Node 2: T5500
 # Ensures Obsidian Vault (518a720fa231c3cc -> C:\ANTIGRAVITY\Antigravity, Port :27123),
 # Shared ai-memory (:49374), Domains Server (:9160), Date App (:3200/:8000), and OPSis (:8377) stay online.
 
@@ -7,7 +7,7 @@ $vaultRoot = "C:\ANTIGRAVITY\Antigravity"
 $t5500VaultId = "518a720fa231c3cc"
 $obsidianExe = "C:\Program Files\Obsidian\Obsidian.exe"
 if (-not (Test-Path $obsidianExe)) {
-    $obsidianExe = "C:\Users\joshi\AppData\Local\Programs\Obsidian\Obsidian.exe"
+    $obsidianExe = "$env:LOCALAPPDATA\Programs\Obsidian\Obsidian.exe"
 }
 
 function Test-TcpPort([string]$HostIp, [int]$Port) {

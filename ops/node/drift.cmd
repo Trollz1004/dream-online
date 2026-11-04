@@ -145,7 +145,11 @@ start "" "%UE%"
 exit /b 0
 
 :jarvis
-start "" http://192.168.0.8:9150/
+if not defined SABRETOOTH_HOST (
+  echo [drift] SABRETOOTH_HOST is not set. Its address is in the node env file. Nothing opened.
+  exit /b 1
+)
+start "" http://%SABRETOOTH_HOST%:9150/
 exit /b 0
 
 rem JARVIS by voice on this node (spec 006, T205). Hermes carries its own voice

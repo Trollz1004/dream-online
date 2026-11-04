@@ -2,13 +2,13 @@
 
 Written by Claude Fable 5.1, the Claude judge lane on this node, on 2026-09-19, from the brief Joshua handed over from the Sabretooth lane. This is the only runbook for this box. If a doc, a skill or a dashboard disagrees with it, this wins and that gets fixed. The launch skill for Claude is `~/.claude/skills/alienware-node/SKILL.md`, with its tracked copy at `ops/node/skills/alienware-node/SKILL.md`. Every fact here was checked on the box on 2026-09-19 unless it says otherwise.
 
-> **Node map, Joshua 2026-10-05: this wins over every Sabretooth line below.** The T5500 (`192.168.0.15`) is the production node for the live domains and the date app. This Alienware node (`192.168.0.40`) is the dev node and hosts Mission Control (JARVIS/OPSIS :9150). Sabretooth (`192.168.0.8`) is retired and OFF by ruling: no probes, no SSH, no OmniRoute or JARVIS calls to it. The full map is in `AGENTS.md`.
+> **Node map, Joshua 2026-10-05: this wins over every Sabretooth line below.** The T5500 (address `T5500_HOST` in the node env file) is the production node for the live domains and the date app. This Alienware node (address `ALIENWARE_HOST` in the node env file) is the dev node and hosts Mission Control (JARVIS/OPSIS :9150). Sabretooth (address `SABRETOOTH_HOST` in the node env file) is retired and OFF by ruling: no probes, no SSH, no OmniRoute or JARVIS calls to it. The full map is in `AGENTS.md`.
 
 ## 1. What this node is for
 
 This node builds and runs DREAM Online. Sabretooth designs, dispatches and reviews; the game never runs there.
 
-- Name and address: hostname ALIENWARE-11THG, LAN address `192.168.0.40`. Sabretooth is `192.168.0.8`.
+- Name and address: hostname ALIENWARE-11THG, LAN address in the node env file as `ALIENWARE_HOST`. Sabretooth is `SABRETOOTH_HOST` in the same file.
 - System: Windows 11 Home, build 26200. Intel i7-11700F, 40 GB of memory, AMD Radeon RX 6800 with 16 GB. There is no CUDA. Local inference uses Vulkan, ROCm or DirectML. Unreal uses DX12.
 - Drives: C has about 312 GB free, D about 839 GB free, A about 51 GB free.
 - The game repository is `C:\DREAM\dream-online` (`Trollz1004/dream-online`, branch `main`). The Obsidian game vault sits inside it at `C:\DREAM\dream-online\DREAM-ONLINE` (vault id `2289237e7c63ff36`) and is gitignored.
@@ -116,7 +116,7 @@ Sign-in task and status line, recorded on 2026-09-19 at about 23:20 EDT:
 
 ## 9. Open work, in order
 
-1. Joshua ruled on 2026-09-19 that this node is just the game. That drops the older brief's plan to run a `mission-control/` instance here, and with it the need for an ANTIGRAVITY clone on this box; `C:\ANTIGRAVITY` is a stale pre-rewrite clone and stays untouched. None of the Sabretooth MCP servers get wired here. What remains is a question for Joshua: the old JARVIS HUD on port 9150 and the Crosslisting OS on port 3000 are not game services, yet the stack script still starts and restarts them. Taking them out of `dream-stack.ps1` on this node stops running services, so it waits for his yes. The dead `sentry` probe of `192.168.0.8:9140` in the same script can go at the same time.
+1. Joshua ruled on 2026-09-19 that this node is just the game. That drops the older brief's plan to run a `mission-control/` instance here, and with it the need for an ANTIGRAVITY clone on this box; `C:\ANTIGRAVITY` is a stale pre-rewrite clone and stays untouched. None of the Sabretooth MCP servers get wired here. What remains is a question for Joshua: the old JARVIS HUD on port 9150 and the Crosslisting OS on port 3000 are not game services, yet the stack script still starts and restarts them. Taking them out of `dream-stack.ps1` on this node stops running services, so it waits for his yes. The dead `sentry` probe of `$SABRETOOTH_HOST:9140` in the same script can go at the same time.
 2. Install the obsidian-second-brain plugin against the game vault, disable the older claude-obsidian plugin (version 2.2.0 is still enabled), and register the token-free session-note hook beside the Orca hooks already in `~/.claude/settings.json`. The plugin commands prompt, so this needs Joshua's terminal.
 3. Tell the Sabretooth lane the health routes and identity strings in section 2 so God's Eye can identify Hermes, the NPC lab and the bridge. The drop-box status note carries them.
 4. Directive section 49 reconnaissance, then spec 001: the world bus and the CrossEyed slice.
@@ -125,11 +125,11 @@ Sign-in task and status line, recorded on 2026-09-19 at about 23:20 EDT:
 
 ## 10. Remote access
 
-Sabretooth's judge lane has key-only SSH into this box as Joshua's Windows user at `192.168.0.40`, with PowerShell as the remote shell. It reads; it does not do this node's protected work. Mission Control lives on Sabretooth only. On the LAN it is `http://192.168.0.8:9150/` (`drift jarvis` opens it). From anywhere it is `https://dashboard.aidoesitall.website/`, proxied from Sabretooth's port and gated by Cloudflare Access with a one-time code mailed to Joshua; checked on 2026-09-19, the hostname redirects to the Access sign-in page as it should. Joshua has said Claude may sign in there when the work needs it.
+Sabretooth's judge lane has key-only SSH into this box as Joshua's Windows user at `ALIENWARE_HOST`, with PowerShell as the remote shell. It reads; it does not do this node's protected work. Mission Control lives on Sabretooth only. On the LAN it is `http://$SABRETOOTH_HOST:9150/` (`drift jarvis` opens it). From anywhere it is `https://dashboard.aidoesitall.website/`, proxied from Sabretooth's port and gated by Cloudflare Access with a one-time code mailed to Joshua; checked on 2026-09-19, the hostname redirects to the Access sign-in page as it should. Joshua has said Claude may sign in there when the work needs it.
 
 In the other direction, SSH from this node to Sabretooth works as of 2026-09-19 18:10 EDT. Joshua set it up with Codex: the key `%USERPROFILE%\.ssh\id_ed25519_sabretooth`, a dedicated config `config_sabretooth` with the alias `dream-sabretooth`, and Sabretooth's host key pinned in `known_hosts_sabretooth`. The command is `ssh -F "$env:USERPROFILE\.ssh\config_sabretooth" dream-sabretooth <command>`. Sabretooth's remote shell is `cmd`. An earlier attempt the same afternoon was refused only because the key had not been authorized yet. Verified through it, read-only: JARVIS answers `jarvis-dashboard`, and `C:\ANTIGRAVITY` was at `f0d67a93` with tracked files clean.
 
-Sabretooth also offers a read-only MCP endpoint at `http://192.168.0.8:9150/mcp` behind a bearer token that Joshua holds; it is not connected here yet.
+Sabretooth also offers a read-only MCP endpoint at `http://$SABRETOOTH_HOST:9150/mcp` behind a bearer token that Joshua holds; it is not connected here yet.
 
 ## 11. Backups and data tools
 

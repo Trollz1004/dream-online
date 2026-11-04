@@ -1,4 +1,4 @@
-# Power-Loss & Reboot Auto-Heal Boot Script — Node 1: Alienware (.40)
+# Power-Loss & Reboot Auto-Heal Boot Script — Node 1: Alienware
 # Starts and self-heals all Alienware ports:
 # - :27123 Obsidian Vault (9f7e513d0604b00d -> C:\DREAM\Antigravity, $5 Obsidian Sync + Local REST API)
 # - :9180 DREAM Dev Engine & OpenUI / REA / Remake Cloud Studio (server.ts)
@@ -11,14 +11,14 @@
 
 $ErrorActionPreference = "SilentlyContinue"
 $nodeExe = "C:\Program Files\nodejs\node.exe"
-$fccPythonExe = "C:\Users\joshl\AppData\Roaming\uv\python\cpython-3.14.10-windows-x86_64-none\python.exe"
-$fccSitePackages = "C:\Users\joshl\AppData\Roaming\uv\tools\free-claude-code\Lib\site-packages"
+$fccPythonExe = "$env:USERPROFILE\AppData\Roaming\uv\python\cpython-3.14.10-windows-x86_64-none\python.exe"
+$fccSitePackages = "$env:USERPROFILE\AppData\Roaming\uv\tools\free-claude-code\Lib\site-packages"
 $obsidianExe = "C:\Program Files\Obsidian\Obsidian.exe"
 if (-not (Test-Path $obsidianExe)) {
-    $obsidianExe = "C:\Users\joshl\AppData\Local\Programs\Obsidian\Obsidian.exe"
+    $obsidianExe = "$env:LOCALAPPDATA\Programs\Obsidian\Obsidian.exe"
 }
-$hermesGatewayVbs = "C:\Users\joshl\AppData\Local\hermes\gateway-service\Hermes_Gateway.vbs"
-$repoRoot = "C:\Users\joshl\antigravity\DREAM-Engine"
+$hermesGatewayVbs = "$env:LOCALAPPDATA\hermes\gateway-service\Hermes_Gateway.vbs"
+$repoRoot = "$env:USERPROFILE\antigravity\DREAM-Engine"
 $vaultRoot = "C:\DREAM\Antigravity"
 $alienwareVaultId = "9f7e513d0604b00d"
 

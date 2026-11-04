@@ -23,6 +23,8 @@ Describe 'Get-ProbeState' {
 }
 
 Describe 'Get-Targets' {
+  # Sabretooth's address is SABRETOOTH_HOST from the node env file; a reserved placeholder stands in when unset.
+  $sabretoothHost = if ($env:SABRETOOTH_HOST) { $env:SABRETOOTH_HOST } else { 'sabretooth.test.invalid' }
   $targets = Get-Targets
   It 'gives every target a name, a group, a url and an identity string' {
     foreach ($t in $targets) {
@@ -38,7 +40,7 @@ Describe 'Get-Targets' {
     ($required -contains 'dreamops_bridge_9133') | Should Be $true
   }
   It 'probes nothing on Sabretooth, which holds the date app and domains only' {
-    @($targets | Where-Object { $_.url -like '*192.168.0.8*' }).Count | Should Be 0
+    @($targets | Where-Object { $_.url -like "*$sabretoothHost*" }).Count | Should Be 0
   }
   It 'never puts a Sabretooth service in the required group' {
     @($targets | Where-Object { $_.group -eq 'required' -and $_.url -notlike 'http://127.0.0.1:*' }).Count | Should Be 0
@@ -47,6 +49,7 @@ Describe 'Get-Targets' {
 
 Describe 'Get-Targets OmniRoute' {
   $savedHost = $env:T5500_HOST
+  $sabretoothHost = if ($env:SABRETOOTH_HOST) { $env:SABRETOOTH_HOST } else { 'sabretooth.test.invalid' }
   $env:T5500_HOST = 't5500.test.invalid'
   $withHost = @(Get-Targets | Where-Object { $_.name -like 'omniroute*' })
   $allWithHost = @(Get-Targets)
@@ -63,7 +66,7 @@ Describe 'Get-Targets OmniRoute' {
     $withoutHost.Count | Should Be 0
   }
   It 'never probes port 20128 on loopback or on Sabretooth, set or not' {
-    @($allWithHost + $allWithoutHost | Where-Object { $_.url -like '*127.0.0.1:20128*' -or $_.url -like '*localhost:20128*' -or $_.url -like '*192.168.0.8*' }).Count | Should Be 0
+    @($allWithHost + $allWithoutHost | Where-Object { $_.url -like '*127.0.0.1:20128*' -or $_.url -like '*localhost:20128*' -or $_.url -like "*$sabretoothHost*" }).Count | Should Be 0
   }
 }
 
@@ -101,5 +104,25 @@ Describe 'New-TriggerLine' {
     $obj.kind | Should Be 'stage_failed'
     $obj.node | Should Be 'alienware'
     @($obj.stages)[0] | Should Be 'live_npc_lab_9127'
+  }
+}
+
+Describe 'Node files carry no user folder path and no private LAN address' {
+  $nodeDir = $here
+  $files = @(
+    'alienware-health.ps1', 'boot-alienware-services.cmd', 'boot-alienware-services.ps1',
+    'boot-sabretooth-services.ps1', 'boot-t5500-services.ps1', 'drift.cmd',
+    'purge-glitched-profile.ps1', 'runbook\ALIENWARE-NODE-RUNBOOK.md', 'runbook\PROTECTED-CHANGELOG.md'
+  ) | ForEach-Object { Join-Path $nodeDir $_ }
+  It 'has every file present' {
+    foreach ($f in $files) { (Test-Path -LiteralPath $f) | Should Be $true }
+  }
+  It 'names no Windows user folder (use %USERPROFILE% or %LOCALAPPDATA%)' {
+    $hits = @($files | ForEach-Object { Select-String -LiteralPath $_ -Pattern '(?i)[A-Z]:[\\/]+Users[\\/]+[^%\\/\s"]' })
+    $hits.Count | Should Be 0
+  }
+  It 'names no private LAN address (use a host variable from the node env file)' {
+    $hits = @($files | ForEach-Object { Select-String -LiteralPath $_ -Pattern '\b(192\.168|10\.\d{1,3}|172\.(1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}\b' })
+    $hits.Count | Should Be 0
   }
 }
