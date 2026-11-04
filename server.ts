@@ -85,12 +85,15 @@ export function validateDreamEngineBindConfig(env: NodeJS.ProcessEnv = process.e
   return { host, token };
 }
 
+export const STATE_CHANGING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
 export function requireDreamEngineAuth(
   req: express.Request,
   res: express.Response,
   next: express.NextFunction
 ) {
-  if (req.method !== 'POST') {
+  const method = String(req.method || 'GET').toUpperCase();
+  if (!STATE_CHANGING_METHODS.has(method)) {
     return next();
   }
   if (resolveDreamEngineBindHost(process.env) !== '0.0.0.0') {
@@ -123,7 +126,7 @@ export function requireDreamEngineAuth(
 export const app = express();
 app.use(express.json({ limit: '10mb' }));
 app.use('/dreamforge', express.static(path.join(__dirname, 'dreamforge')));
-app.use(['/api/gm', '/api/memory'], requireDreamEngineAuth);
+app.use('/api', requireDreamEngineAuth);
 
 // House rule: no provider key outside the AI Studio app's own voices. The Gemini lane stays off
 // (null client, callers answer 503) unless GEMINI_API_KEY is set AND GEMINI_KEY_APPROVED=finalize.

@@ -475,6 +475,12 @@ test('8c. Security Audit Run 1 (4.1, 4.4, 4.5): a POST without the bearer is 401
     const noBearerPost = await httpPostJson(`${baseUrl}/api/leads/approve`, { id: 'non-existent-lead-id' });
     assert.equal(noBearerPost.status, 401);
 
+    const noBearerDelete = await httpRequestJson(`${baseUrl}/api/leads/approve`, 'DELETE');
+    assert.equal(noBearerDelete.status, 401, 'LAN-bound DELETE without bearer must be 401');
+
+    const noBearerPut = await httpRequestJson(`${baseUrl}/api/leads/approve`, 'PUT', { id: 'non-existent-lead-id' });
+    assert.equal(noBearerPut.status, 401, 'LAN-bound PUT without bearer must be 401');
+
     const wrongBearerPost = await httpPostJson(
       `${baseUrl}/api/leads/approve`,
       { id: 'non-existent-lead-id' },
@@ -575,6 +581,42 @@ test('8d. Security Audit Run 1 (4.1, 4.4, 4.5): a bad agent value is 400', async
     const badAgentSoul = await httpGetJson(`${baseUrl}/api/souls/bad%3Bagent`);
     assert.equal(badAgentSoul.status, 400);
   } finally {
+    if (startedHere && server.listening) {
+      await new Promise((resolve) => server.close(() => resolve()));
+    }
+  }
+});
+
+
+test('8e. Security Audit Run 1: LAN-bound DELETE or PUT to any /api path without a bearer is 401', async () => {
+  const { server } = require('../server');
+  const startedHere = !server.listening;
+  if (startedHere) {
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
+  }
+  const { port } = server.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  const savedBind = process.env.HERMES_LEADGEN_BIND;
+  const savedToken = process.env.HERMES_LEADGEN_TOKEN;
+  const testToken = 'sec-run1-lan-bearer-token';
+
+  try {
+    process.env.HERMES_LEADGEN_BIND = '0.0.0.0';
+    process.env.HERMES_LEADGEN_TOKEN = testToken;
+
+    for (const route of ['/api/leads', '/api/leads/approve', '/api/orchestrate', '/api/any-path']) {
+      const deleteRes = await httpRequestJson(`${baseUrl}${route}`, 'DELETE');
+      assert.equal(deleteRes.status, 401, `LAN-bound DELETE to ${route} without bearer must return 401`);
+
+      const putRes = await httpRequestJson(`${baseUrl}${route}`, 'PUT', { sample: true });
+      assert.equal(putRes.status, 401, `LAN-bound PUT to ${route} without bearer must return 401`);
+    }
+  } finally {
+    if (savedBind === undefined) delete process.env.HERMES_LEADGEN_BIND;
+    else process.env.HERMES_LEADGEN_BIND = savedBind;
+    if (savedToken === undefined) delete process.env.HERMES_LEADGEN_TOKEN;
+    else process.env.HERMES_LEADGEN_TOKEN = savedToken;
     if (startedHere && server.listening) {
       await new Promise((resolve) => server.close(() => resolve()));
     }

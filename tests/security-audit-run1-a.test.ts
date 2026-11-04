@@ -236,6 +236,7 @@ test('Finding 4.3a & 4.3b (server.ts): default bind is 127.0.0.1, LAN bind witho
           ['/api/gm/world/nightfall', { state: 'day' }],
           ['/api/gm/hotfix/propose', { proposal: 'safe patch' }],
           ['/api/memory/store', { title: 'Note', content: 'Safe note' }],
+          ['/api/cli-anything/execute', { command: 'status' }],
         ] as const) {
           const unauthedRes = await fetch(base + route, {
             method: 'POST',
@@ -369,5 +370,58 @@ test('Requirement 4 (.env.example): documents DREAM_ENGINE_BIND, DREAM_ENGINE_TO
   ]) {
     const re = new RegExp(`^# .+\\r?\\n${key}=$`, 'm');
     assert.match(envExample, re, `Expected one-line comment followed by empty ${key}= in .env.example`);
+  }
+});
+
+
+test('server.ts: LAN-bound POST to /api/cli-anything/execute without a bearer is 401, GET is unauthenticated, loopback is unauthenticated', async () => {
+  const server: Server = await new Promise((resolve) => {
+    const s = app.listen(0, '127.0.0.1', () => resolve(s));
+  });
+  const { port } = server.address() as AddressInfo;
+  const base = `http://127.0.0.1:${port}`;
+
+  try {
+    // 1. LAN-bound (0.0.0.0): POST to /api/cli-anything/execute without bearer is 401
+    await withEnv(
+      { DREAM_ENGINE_BIND: '0.0.0.0', DREAM_ENGINE_TOKEN: 'engine-bearer-secret' },
+      async () => {
+        const unauthedPost = await fetch(`${base}/api/cli-anything/execute`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command: 'status' }),
+        });
+        assert.equal(unauthedPost.status, 401, 'POST /api/cli-anything/execute without bearer must return 401');
+
+        const authedPost = await fetch(`${base}/api/cli-anything/execute`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer engine-bearer-secret',
+          },
+          body: JSON.stringify({ command: 'status' }),
+        });
+        assert.equal(authedPost.status, 200, 'POST /api/cli-anything/execute with bearer must return 200');
+
+        // GET remains unauthenticated
+        const getRes = await fetch(`${base}/api/cli-anything/help`);
+        assert.equal(getRes.status, 200, 'GET /api/cli-anything/help must remain unauthenticated');
+      }
+    );
+
+    // 2. Loopback (127.0.0.1): POST is unauthenticated
+    await withEnv(
+      { DREAM_ENGINE_BIND: '127.0.0.1' },
+      async () => {
+        const loopbackPost = await fetch(`${base}/api/cli-anything/execute`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command: 'status' }),
+        });
+        assert.equal(loopbackPost.status, 200, 'Loopback POST to /api/cli-anything/execute must remain unauthenticated');
+      }
+    );
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 });

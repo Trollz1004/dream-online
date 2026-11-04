@@ -996,7 +996,7 @@ const server = http.createServer(async (req, res) => {
     const pathname = parsedUrl.pathname;
 
     if (
-      method === 'POST' ||
+      STATE_CHANGING_METHODS.has(method) ||
       pathname === '/proxy' ||
       pathname.startsWith('/proxy/') ||
       pathname === '/api/memory' ||
@@ -1721,5 +1721,6 @@ module.exports = {
   isValidAgentOrProfile,
   getSabretoothNodeStatus,
   loadDualGraphy,
-  loadLeads
+  loadLeads,
+  STATE_CHANGING_METHODS
 };
