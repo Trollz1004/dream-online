@@ -13,6 +13,9 @@ import {
   loadLaneTable,
   validateLaneTable,
   loadNewestWeeklyRanking,
+  validateWeeklyRankingFile,
+  validateWeeklyRankingFileOnDisk,
+  DEFAULT_RANK_MODELS_PROMPT_PATH,
   parseQuotaCooldownHours,
   JevRouter,
   routeJevTask,
@@ -20,6 +23,16 @@ import {
   DEFAULT_DECISIONS_LOG_PATH,
   readDecisionLog,
   type WeeklyRankingFile,
+  AgyDispatchAdapter,
+  FreeClaudeCodeDispatchAdapter,
+  FREE_CLAUDE_CODE_NO_HTTP_NOTE,
+  HermesDispatchAdapter,
+  ConsoleCreditAdapter,
+  type CommandExecRequest,
+  type DispatchAdapter,
+  type DispatchHandle,
+  type DispatchJobInput,
+  parsePrUrlFromOutput,
 } from './dream-task-router.ts';
 
 function assertSingleSentence(reason: string): void {
@@ -429,4 +442,454 @@ test('Quota and 429 cold-lane fallback with shared agy Claude quota and secret-f
   } finally {
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
+});
+
+
+test('Recipe 7 Item 1: Dispatch adapters for agy (.fable-kitchen + single quotes + --print=), Free Claude Code (outbox paste-only), and Hermes on Sabretooth (scp + ssh hermes -z, never scraping)', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-router-adapters-'));
+  try {
+    // 1. agy adapter test
+    const kitchenDir = path.join(tmpRoot, '.fable-kitchen');
+    const agyCalls: CommandExecRequest[] = [];
+    const agyAdapter = new AgyDispatchAdapter({
+      kitchenDir,
+      runner: async (req) => {
+        agyCalls.push(req);
+        return {
+          exitCode: 0,
+          stdout: 'Opened pull request https://github.com/Trollz1004/dream-online/pull/71 successfully.',
+          stderr: '',
+        };
+      },
+    });
+
+    const agyHandle = await agyAdapter.dispatch({
+      jobId: 'test-agy-01',
+      prompt: 'Fix "double quoted" title in src/api/items.ts and open a PR',
+      jobClass: 'code-bulk',
+      lane: 'claude-sonnet-5-5',
+      harness: 'agy',
+    });
+
+    assert.equal(agyHandle.adapter, 'agy');
+    assert.ok(agyHandle.promptPath.startsWith(kitchenDir));
+    assert.ok(agyHandle.logPath?.startsWith(kitchenDir));
+    // Verify double quotes replaced by single quotes before the call
+    assert.ok(!agyHandle.sanitizedPrompt.includes('"'));
+    assert.ok(agyHandle.sanitizedPrompt.includes("'double quoted'"));
+    assert.equal(fs.readFileSync(agyHandle.promptPath, 'utf8'), agyHandle.sanitizedPrompt);
+    // Verify agy.exe invocation flags
+    assert.equal(agyCalls.length, 1);
+    assert.equal(agyCalls[0].command, 'agy.exe');
+    assert.ok(agyCalls[0].args.includes('--model'));
+    assert.ok(agyCalls[0].args.includes('claude-sonnet-5-5'));
+    assert.ok(agyCalls[0].args.includes('--dangerously-skip-permissions'));
+    assert.ok(agyCalls[0].args.some((a) => a === `--print=${agyHandle.sanitizedPrompt}`));
+
+    const agyPoll = await agyHandle.poll();
+    assert.equal(agyPoll.done, true);
+    assert.equal(agyPoll.prUrl, 'https://github.com/Trollz1004/dream-online/pull/71');
+    assert.ok(fs.existsSync(agyHandle.logPath!));
+
+    // 2. Free Claude Code adapter test (outbox paste-ready file + handle says no HTTP way to start a session)
+    const outboxDir = path.join(tmpRoot, 'outbox');
+    const fccAdapter = new FreeClaudeCodeDispatchAdapter({ outboxDir });
+    const fccHandle = await fccAdapter.dispatch({
+      jobId: 'test-fcc-01',
+      prompt: 'Scaffold clean-room game studio role tests',
+      jobClass: 'code-bulk',
+      lane: 'claude-sonnet-5-5',
+      harness: 'free-claude-code',
+    });
+
+    assert.equal(fccHandle.adapter, 'free-claude-code');
+    assert.equal(fccHandle.mode, 'outbox-paste-only');
+    assert.equal(fccHandle.httpSessionSupported, false);
+    assert.ok(fccHandle.note.includes('no HTTP way to start a code session'));
+    assert.equal(fccHandle.note, FREE_CLAUDE_CODE_NO_HTTP_NOTE);
+    assert.ok(fs.existsSync(fccHandle.promptPath));
+    const fccFileText = fs.readFileSync(fccHandle.promptPath, 'utf8');
+    assert.ok(fccFileText.includes('no HTTP way to start a code session'));
+    assert.ok(fccFileText.includes('Scaffold clean-room game studio role tests'));
+
+    // 3. Hermes on Sabretooth adapter test (scp first, then ssh sabretooth hermes -z, never scraping)
+    const hermesStagingDir = path.join(tmpRoot, 'hermes-staging');
+    const hermesCalls: CommandExecRequest[] = [];
+    const hermesAdapter = new HermesDispatchAdapter({
+      stagingDir: hermesStagingDir,
+      runner: async (req) => {
+        hermesCalls.push(req);
+        if (req.command === 'scp') {
+          return { exitCode: 0, stdout: '', stderr: '' };
+        }
+        return {
+          exitCode: 0,
+          stdout: 'Drafted thread and opened https://github.com/Trollz1004/ANTIGRAVITY/pull/340',
+          stderr: '',
+        };
+      },
+    });
+
+    const hermesHandle = await hermesAdapter.dispatch({
+      jobId: 'test-hermes-01',
+      prompt: 'Draft launch announcement "v1" for X',
+      jobClass: 'post-x',
+      lane: 'grok',
+      harness: 'hermes',
+    });
+
+    assert.equal(hermesCalls.length, 2);
+    assert.equal(hermesCalls[0].command, 'scp');
+    assert.ok(hermesCalls[0].args[1].startsWith('sabretooth:'));
+    assert.equal(hermesCalls[1].command, 'ssh');
+    assert.equal(hermesCalls[1].args[0], 'sabretooth');
+    assert.ok(hermesCalls[1].args[1].includes('hermes -z --query-file'));
+
+    const hermesPoll = await hermesHandle.poll();
+    assert.equal(hermesPoll.done, true);
+    assert.equal(hermesPoll.prUrl, 'https://github.com/Trollz1004/ANTIGRAVITY/pull/340');
+
+    // Verify Hermes adapter refuses any scraping command
+    await assert.rejects(
+      () =>
+        hermesAdapter.dispatch({
+          prompt: 'Run yt-dlp to scrape-youtube channel videos',
+          jobClass: 'post-x',
+          lane: 'grok',
+          harness: 'hermes',
+        }),
+      /never scrapes/i
+    );
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('Recipe 7 Item 2 & 5a: A job routed, dispatched, returned without a PR, re-queued once, then failed', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-router-requeue-noprl-'));
+  try {
+    const router = new JevRouter({
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+    });
+
+    const receivedPrompts: string[] = [];
+    const mockAdapter: DispatchAdapter = {
+      name: 'agy',
+      async dispatch(input: DispatchJobInput): Promise<DispatchHandle> {
+        receivedPrompts.push(input.prompt);
+        return {
+          jobId: `mock-nopr-${receivedPrompts.length}`,
+          adapter: 'agy',
+          lane: input.lane,
+          harness: input.harness,
+          promptPath: path.join(tmpRoot, `prompt-${receivedPrompts.length}.txt`),
+          sanitizedPrompt: input.prompt,
+          mode: 'headless-cli',
+          httpSessionSupported: false,
+          note: 'mock dispatch without PR URL',
+          poll: async () => ({
+            done: true,
+            prUrl: null,
+            output: `Finished coding attempt #${receivedPrompts.length} but forgot to open a pull request.`,
+            exitCode: 0,
+          }),
+        };
+      },
+    };
+
+    const outcome = await router.dispatchAndJudge(
+      'Implement CRUD endpoints across src/services/inventory.ts',
+      {
+        now: new Date('2026-11-03T20:00:00Z'),
+        adapter: mockAdapter,
+      }
+    );
+
+    assert.equal(outcome.ok, false);
+    assert.equal(outcome.status, 'failed');
+    assert.equal(outcome.prUrl, null);
+    assert.equal(outcome.requeued, true);
+    assert.equal(outcome.requeueCount, 1);
+    assert.equal(outcome.attempts.length, 2);
+    assert.equal(receivedPrompts.length, 2);
+    // Second prompt must carry the appended failure reason from the first attempt
+    assert.ok(receivedPrompts[1].includes('missing PR URL in lane output'));
+    assert.ok(outcome.failureReason?.includes('missing PR URL in lane output'));
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('Recipe 7 Item 2 & 5b: A design-visual job returned with a FAIL Eyes gate report is marked failed and re-queued once', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-router-design-fail-'));
+  try {
+    const router = new JevRouter({
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+    });
+
+    const promptsSeen: string[] = [];
+    const mockDesignAdapter: DispatchAdapter = {
+      name: 'agy',
+      async dispatch(input: DispatchJobInput): Promise<DispatchHandle> {
+        promptsSeen.push(input.prompt);
+        const output = [
+          'FAIL · Eyes gate v1 · average 2.85 of 5 · lowest 2 (Contrast and legibility) · hero-hud',
+          'Opened PR https://github.com/Trollz1004/dream-online/pull/88',
+        ].join('\n');
+        return {
+          jobId: `mock-design-${promptsSeen.length}`,
+          adapter: 'agy',
+          lane: input.lane,
+          harness: input.harness,
+          promptPath: path.join(tmpRoot, `design-${promptsSeen.length}.txt`),
+          sanitizedPrompt: input.prompt,
+          mode: 'headless-cli',
+          httpSessionSupported: false,
+          note: 'mock design dispatch with FAIL Eyes report',
+          poll: async () => ({
+            done: true,
+            prUrl: parsePrUrlFromOutput(output),
+            output,
+            exitCode: 0,
+            eyesReportFirstLine:
+              'FAIL · Eyes gate v1 · average 2.85 of 5 · lowest 2 (Contrast and legibility) · hero-hud',
+          }),
+        };
+      },
+    };
+
+    const outcome = await router.dispatchAndJudge(
+      'Redesign hero section layout in src/styles/hud.css with side-by-side screenshot for Eyes gate',
+      {
+        now: new Date('2026-11-03T20:15:00Z'),
+        screenshotRequired: true,
+        adapter: mockDesignAdapter,
+      }
+    );
+
+    assert.equal(outcome.finalDecision.job_class, 'design-visual');
+    assert.equal(outcome.ok, false);
+    assert.equal(outcome.status, 'failed');
+    assert.equal(outcome.requeued, true);
+    assert.equal(outcome.requeueCount, 1);
+    assert.equal(outcome.attempts.length, 2);
+    assert.ok(promptsSeen[1].includes('Eyes gate report did not pass'));
+    assert.ok(outcome.failureReason?.includes('FAIL · Eyes gate v1'));
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('Recipe 7 Item 2 & 5c: A lane returning 429 marks the lane cold through reportQuotaError and routes the retry to the fallback lane', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-router-429-retry-'));
+  try {
+    const now = new Date('2026-11-03T20:30:00Z');
+    const router = new JevRouter({
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+    });
+
+    const dispatchedLanes: string[] = [];
+    const mock429ThenFallbackAdapter: DispatchAdapter = {
+      name: 'agy',
+      async dispatch(input: DispatchJobInput): Promise<DispatchHandle> {
+        dispatchedLanes.push(input.lane);
+        const isFirstCallOnClaude = input.lane === 'claude-opus-5-5';
+        const output = isFirstCallOnClaude
+          ? 'Error: HTTP 429 Too Many Requests: quota exceeded for 5 hours on claude-opus-5-5'
+          : 'Completed on fallback lane and opened https://github.com/Trollz1004/dream-online/pull/92';
+
+        return {
+          jobId: `mock-429-${dispatchedLanes.length}`,
+          adapter: 'agy',
+          lane: input.lane,
+          harness: input.harness,
+          promptPath: path.join(tmpRoot, `job-${dispatchedLanes.length}.txt`),
+          sanitizedPrompt: input.prompt,
+          mode: 'headless-cli',
+          httpSessionSupported: false,
+          note: 'mock 429 then fallback',
+          poll: async () => ({
+            done: true,
+            prUrl: parsePrUrlFromOutput(output),
+            output,
+            exitCode: isFirstCallOnClaude ? 1 : 0,
+          }),
+        };
+      },
+    };
+
+    const outcome = await router.dispatchAndJudge(
+      'Fix concurrency deadlock and race condition in distributed state machine',
+      {
+        now,
+        adapter: mock429ThenFallbackAdapter,
+      }
+    );
+
+    assert.equal(outcome.ok, true);
+    assert.equal(outcome.status, 'passed');
+    assert.equal(outcome.quotaFallbackTriggered, true);
+    assert.deepEqual(dispatchedLanes, ['claude-opus-5-5', 'gemini-4-argon']);
+    assert.equal(outcome.finalDecision.lane, 'gemini-4-argon');
+    assert.equal(outcome.finalDecision.quota_fallback, true);
+    assert.equal(outcome.prUrl, 'https://github.com/Trollz1004/dream-online/pull/92');
+    // Both claude-opus-5-5 and claude-sonnet-5-5 are marked cold via shared agy-claude quota
+    assert.equal(router.isLaneCold('claude-opus-5-5', now), true);
+    assert.equal(router.isLaneCold('claude-sonnet-5-5', now), true);
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('Recipe 7 Item 3 & 5d: Console-credit adapter refuses to run when disabled (ROUTER_CONSOLE_ENABLED=false), refuses routing decisions, enforces daily cap, and logs token count when enabled', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-router-console-'));
+  try {
+    const logPath = path.join(tmpRoot, 'decisions.log');
+    let fetchCallCount = 0;
+    const fakeKey = ['sk-ant-console', 'testonly987654321'].join('-');
+
+    const mockFetch = async () => {
+      fetchCallCount += 1;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          content: [{ type: 'text', text: 'PASS: PR URL and output verified.' }],
+          usage: { input_tokens: 120, output_tokens: 30 },
+        }),
+        text: async () => 'PASS',
+      };
+    };
+
+    // 1. Refuses to run when ROUTER_CONSOLE_ENABLED=false (default)
+    const disabledAdapter = new ConsoleCreditAdapter({
+      env: {
+        ROUTER_CONSOLE_ENABLED: 'false',
+        ROUTER_CONSOLE_DAILY_CAP: '5',
+        CLAUDE_CONSOLE_KEY: fakeKey,
+      },
+      decisionsLogPath: logPath,
+      fetchImpl: mockFetch,
+    });
+    assert.equal(disabledAdapter.isEnabled(), false);
+    await assert.rejects(
+      () =>
+        disabledAdapter.runJudgeTextCheck({
+          prompt: 'Verify PR URL in output',
+          purpose: 'judge-text-check',
+        }),
+      /ROUTER_CONSOLE_ENABLED=false/
+    );
+    assert.equal(fetchCallCount, 0);
+
+    // 2. When enabled, still refuses to run for routing decisions
+    const enabledAdapter = new ConsoleCreditAdapter({
+      env: {
+        ROUTER_CONSOLE_ENABLED: 'true',
+        ROUTER_CONSOLE_DAILY_CAP: '1',
+        CLAUDE_CONSOLE_KEY: fakeKey,
+      },
+      decisionsLogPath: logPath,
+      fetchImpl: mockFetch,
+    });
+    await assert.rejects(
+      () =>
+        enabledAdapter.runJudgeTextCheck({
+          prompt: 'Pick a lane for this task',
+          purpose: 'route',
+          jobClass: 'route',
+        }),
+      /never used for routing decisions/
+    );
+    assert.equal(fetchCallCount, 0);
+
+    // 3. Runs once for judge-text-check when enabled, logs token count to decisions.log, and never leaks the key
+    const now = new Date('2026-11-03T21:00:00Z');
+    const checkResult = await enabledAdapter.runJudgeTextCheck({
+      prompt: 'Check judge output for PR #70',
+      purpose: 'judge-text-check',
+      jobClass: 'judge',
+      now,
+    });
+    assert.equal(checkResult.passed, true);
+    assert.equal(checkResult.inputTokens, 120);
+    assert.equal(checkResult.outputTokens, 30);
+    assert.equal(checkResult.totalTokens, 150);
+    assert.equal(fetchCallCount, 1);
+
+    const logged = readDecisionLog(logPath);
+    assert.equal(logged.length, 1);
+    assert.equal(logged[0].lane, 'console-credit');
+    assert.equal(logged[0].token_count, 150);
+    assert.deepEqual(logged[0].console_tokens, {
+      input_tokens: 120,
+      output_tokens: 30,
+      total_tokens: 150,
+    });
+    const rawLog = fs.readFileSync(logPath, 'utf8');
+    assert.ok(!rawLog.includes(fakeKey));
+
+    // 4. Second call on the same day exceeds ROUTER_CONSOLE_DAILY_CAP=1 and is refused
+    await assert.rejects(
+      () =>
+        enabledAdapter.runJudgeTextCheck({
+          prompt: 'Second check on same day',
+          purpose: 'judge-text-check',
+          jobClass: 'judge',
+          now,
+        }),
+      /daily call cap \(1\) reached/
+    );
+    assert.equal(fetchCallCount, 1);
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('Recipe 7 Item 4: Weekly ranking prompt file ops/router/rank-models.md and validator rejecting missing sources or bad date', () => {
+  // Verify ops/router/rank-models.md exists and instructs live Fable or Argon sessions
+  assert.ok(fs.existsSync(DEFAULT_RANK_MODELS_PROMPT_PATH));
+  const promptText = fs.readFileSync(DEFAULT_RANK_MODELS_PROMPT_PATH, 'utf8');
+  assert.ok(promptText.includes('Fable'));
+  assert.ok(promptText.includes('Argon'));
+  assert.ok(promptText.includes('ops/router/rankings/<YYYY-MM-DD>.json'));
+
+  // Verify existing ops/router/rankings/2026-11-03.json passes on-disk validation
+  const currentRankingPath = path.join(path.dirname(DEFAULT_RANK_MODELS_PROMPT_PATH), 'rankings', '2026-11-03.json');
+  const validDiskCheck = validateWeeklyRankingFileOnDisk(currentRankingPath, { requireAllClasses: true });
+  assert.equal(validDiskCheck.valid, true, validDiskCheck.errors.join('; '));
+
+  // Reject a ranking file with no sources
+  const noSourcesRanking: WeeklyRankingFile = {
+    date: '2026-11-03',
+    generated_by: 'fable',
+    classes: {
+      'code-hard': {
+        ranked: ['claude-opus-5-5', 'gemini-4-argon'],
+        lane: 'claude-opus-5-5',
+        reason: 'Missing sources test.',
+        sources: [],
+      },
+    },
+  };
+  const noSourcesResult = validateWeeklyRankingFile(noSourcesRanking);
+  assert.equal(noSourcesResult.valid, false);
+  assert.ok(noSourcesResult.errors.some((e) => e.includes('no sources')));
+
+  // Reject a ranking file with a bad date (invalid calendar date or non-ISO format)
+  const badDateRanking: WeeklyRankingFile = {
+    date: '2026-02-30',
+    generated_by: 'gemini-4-argon',
+    classes: {
+      engine: {
+        ranked: ['gemini-4-argon'],
+        lane: 'gemini-4-argon',
+        reason: 'Bad calendar date test.',
+        sources: ['ops/router/lanes.json'],
+      },
+    },
+  };
+  const badDateResult = validateWeeklyRankingFile(badDateRanking);
+  assert.equal(badDateResult.valid, false);
+  assert.ok(badDateResult.errors.some((e) => e.includes('bad or missing date')));
 });
