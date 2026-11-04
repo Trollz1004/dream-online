@@ -34,7 +34,7 @@ Players earn power. Money may buy expression, convenience, reduced maintenance a
 
 ## Security and public surface
 
-The repository is public. Never commit secrets, `.env` values, provider tokens, private keys, local session exports or classified plot material; `.env.example` holds placeholders only. Public and player-facing copy uses the project language in `AGENTS.md`: world-native terms, no competitor names, no unrelated business language. The Unreal MCP plugin stays parked: loopback only, editor only, and nothing depends on it. Nobody builds a new dashboard; an operator view for the game is a panel in the existing Mission Control on the Sabretooth node, reached through the DreamOps Bridge.
+The repository is public. Never commit secrets, `.env` values, provider tokens, private keys, local session exports or classified plot material; `.env.example` holds placeholders only. Public and player-facing copy uses the project language in `AGENTS.md`: world-native terms, no competitor names, no unrelated business language. The Unreal MCP plugin stays parked: loopback only, editor only, and nothing depends on it. Nobody builds a new dashboard; an operator view for the game is a panel in the existing Mission Control (Mission OS runs on the T5500 on port 3130, not on Sabretooth), reached through the DreamOps Bridge.
 
 ## Workflow and protected files
 
