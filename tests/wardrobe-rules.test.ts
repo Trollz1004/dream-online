@@ -155,11 +155,11 @@ test('rule 1: stored data with an end date or rental field is refused; clean dat
 
 // ---------------------------------------------------------------- 2. store release
 
-test('rule 2: default delay is 3 months and the config is tunable and validated', () => {
-  assert.equal(DEFAULT_CURRENCY_STORE_DELAY_MONTHS, 3);
-  assert.equal(DEFAULT_WARDROBE_CONFIG.currencyStoreDelayMonths, 3);
-  assert.equal(createWardrobeConfig().currencyStoreDelayMonths, 3);
-  assert.equal(createWardrobeConfig({ currencyStoreDelayMonths: 6 }).currencyStoreDelayMonths, 6);
+test('rule 2: default delay is 6 months and the config is tunable and validated', () => {
+  assert.equal(DEFAULT_CURRENCY_STORE_DELAY_MONTHS, 6);
+  assert.equal(DEFAULT_WARDROBE_CONFIG.currencyStoreDelayMonths, 6);
+  assert.equal(createWardrobeConfig().currencyStoreDelayMonths, 6);
+  assert.equal(createWardrobeConfig({ currencyStoreDelayMonths: 12 }).currencyStoreDelayMonths, 12);
   assert.equal(createWardrobeConfig({ currencyStoreDelayMonths: 0 }).currencyStoreDelayMonths, 0);
   for (const bad of [-1, 1.5, Number.NaN, Infinity, 121]) {
     assert.throws(() => createWardrobeConfig({ currencyStoreDelayMonths: bad }), WardrobeRuleError, `rejects ${bad}`);
@@ -167,20 +167,20 @@ test('rule 2: default delay is 3 months and the config is tunable and validated'
   assert.throws(() => ((DEFAULT_WARDROBE_CONFIG as { currencyStoreDelayMonths: number }).currencyStoreDelayMonths = 1), TypeError);
 });
 
-test('rule 2: a skin reaches the currency store exactly 3 months after first sale', () => {
+test('rule 2: a skin reaches the currency store exactly 6 months after first sale', () => {
   const skin = sampleSkin('moonlit-cloak', '2026-01-15');
-  assert.equal(currencyStoreReleaseDate(skin), '2026-04-15');
-  assert.equal(isInCurrencyStore(skin, new Date('2026-04-14T23:59:59Z')), false);
-  assert.equal(isInCurrencyStore(skin, new Date('2026-04-15T00:00:00Z')), true);
+  assert.equal(currencyStoreReleaseDate(skin), '2026-07-15');
+  assert.equal(isInCurrencyStore(skin, new Date('2026-07-14T23:59:59Z')), false);
+  assert.equal(isInCurrencyStore(skin, new Date('2026-07-15T00:00:00Z')), true);
   assert.equal(isInCurrencyStore(skin, day('2040-01-01')), true, 'and it stays there');
 });
 
-test('rule 2: the delay follows the config, including a founder change to 6 months', () => {
+test('rule 2: the delay follows the config, including a founder change to 12 months', () => {
   const skin = sampleSkin('moonlit-cloak', '2026-01-15');
-  const six = createWardrobeConfig({ currencyStoreDelayMonths: 6 });
-  assert.equal(currencyStoreReleaseDate(skin, six), '2026-07-15');
-  assert.equal(isInCurrencyStore(skin, day('2026-05-01'), six), false);
-  assert.equal(isInCurrencyStore(skin, day('2026-05-01')), true);
+  const twelve = createWardrobeConfig({ currencyStoreDelayMonths: 12 });
+  assert.equal(currencyStoreReleaseDate(skin, twelve), '2027-01-15');
+  assert.equal(isInCurrencyStore(skin, day('2026-08-01'), twelve), false);
+  assert.equal(isInCurrencyStore(skin, day('2026-08-01')), true);
   const zero = createWardrobeConfig({ currencyStoreDelayMonths: 0 });
   assert.equal(currencyStoreReleaseDate(skin, zero), '2026-01-15');
 });
@@ -208,17 +208,17 @@ test('rule 2: currency-store door is closed before the delay and open after', ()
   const skin = sampleSkin('moonlit-cloak', '2026-01-15');
   const w = createWardrobe('a1');
   assert.deepEqual(acquireSkin(w, skin, 'currency-store', day('2026-03-01')), { ok: false, reason: 'not-in-currency-store-yet' });
-  const owned = mustAcquire(w, skin, 'currency-store', day('2026-04-15'));
+  const owned = mustAcquire(w, skin, 'currency-store', day('2026-07-15'));
   assert.equal(owned.owned[0]!.channel, 'currency-store');
   assert.deepEqual([...ACQUIRE_CHANNELS], ['needs-shop', 'currency-store']);
-  assert.throws(() => acquireSkin(w, skin, 'cash-grab' as never, day('2026-05-01')), WardrobeRuleError);
+  assert.throws(() => acquireSkin(w, skin, 'cash-grab' as never, day('2026-08-01')), WardrobeRuleError);
 });
 
 test('rule 2: listCurrencyStore returns exactly the released skins', () => {
   const early = sampleSkin('early', '2026-01-01');
   const late = sampleSkin('late', '2026-06-01');
   const pet = sampleSkin('TrollinlootNScoot', '2026-01-01');
-  const list = listCurrencyStore([early, late, pet], day('2026-05-01'));
+  const list = listCurrencyStore([early, late, pet], day('2026-08-01'));
   assert.deepEqual(list.map((s) => s.id), ['early']);
 });
 

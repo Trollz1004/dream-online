@@ -8,9 +8,9 @@
 
 /**
  * Months between a skin's first sale and its arrival in the in-game currency store.
- * Founder-tunable. Default 3.
+ * Founder-tunable. Default 6.
  */
-export const DEFAULT_CURRENCY_STORE_DELAY_MONTHS = 3;
+export const DEFAULT_CURRENCY_STORE_DELAY_MONTHS = 6;
 
 /** Upper bound so a typo cannot push the store release to the year 3000. */
 export const MAX_CURRENCY_STORE_DELAY_MONTHS = 120;
