@@ -1,0 +1,66 @@
+{
+  "date": "2026-11-03",
+  "generated_by": "gemini-4-argon",
+  "classes": {
+    "route": {
+      "ranked": ["gemini-3.8-flash", "gemini-4-argon"],
+      "lane": "gemini-3.8-flash",
+      "reason": "Fastest low-latency lane in agy for deterministic task classification and routing.",
+      "sources": ["ops/router/lanes.json", "docs/standards/AGENT-STANDARD.md"]
+    },
+    "mechanical": {
+      "ranked": ["gemini-3.8-flash", "gemini-4-argon"],
+      "lane": "gemini-3.8-flash",
+      "reason": "Best cost-to-speed ratio in agy for mechanical edits, formatting, and renames.",
+      "sources": ["ops/router/lanes.json", "docs/standards/AGENT-STANDARD.md"]
+    },
+    "code-bulk": {
+      "ranked": ["claude-sonnet-5-5", "gemini-4-argon"],
+      "lane": "claude-sonnet-5-5",
+      "reason": "Top multi-file implementation throughput in agy with Gemini fallback on shared Claude quota.",
+      "sources": ["ops/router/lanes.json", "docs/standards/AGENT-STANDARD.md"]
+    },
+    "code-hard": {
+      "ranked": ["claude-opus-5-5", "gemini-4-argon"],
+      "lane": "claude-opus-5-5",
+      "reason": "Deepest architectural and concurrency reasoning in agy paired with Gemini 4 Argon fallback.",
+      "sources": ["ops/router/lanes.json", "docs/standards/AGENT-STANDARD.md"]
+    },
+    "engine": {
+      "ranked": ["gemini-4-argon", "gemini-3.8-flash"],
+      "lane": "gemini-4-argon",
+      "reason": "Primary 3D engine, shader, and WebGPU specialist lane on the Alienware node.",
+      "sources": ["ops/router/lanes.json", "docs/standards/AGENT-STANDARD.md"]
+    },
+    "design-visual": {
+      "ranked": ["claude-opus-5-5", "gemini-4-argon"],
+      "lane": "claude-opus-5-5",
+      "reason": "Highest visual layout quality in agy when paired with the mandatory Eyes gate.",
+      "sources": ["ops/router/lanes.json", "ops/eyes/README.md"]
+    },
+    "research": {
+      "ranked": ["claude-opus-5-5", "gemini-4-argon"],
+      "lane": "claude-opus-5-5",
+      "reason": "Highest source synthesis accuracy across official Opus and Argon lanes only.",
+      "sources": ["ops/router/lanes.json", "docs/standards/AGENT-STANDARD.md"]
+    },
+    "judge": {
+      "ranked": ["fable", "gemini-4-argon"],
+      "lane": "fable",
+      "reason": "Signed-in Claude Code Fable lane holds final AI disagreement and merge review authority.",
+      "sources": ["ops/router/lanes.json", "docs/standards/AGENT-STANDARD.md"]
+    },
+    "post-x": {
+      "ranked": ["grok", "gemini-3.8-flash"],
+      "lane": "grok",
+      "reason": "Grok through Hermes on Sabretooth handles X drafting and publishing.",
+      "sources": ["ops/router/lanes.json", "docs/standards/AGENT-STANDARD.md"]
+    },
+    "youtube-upload": {
+      "ranked": ["youtube-data-api"],
+      "lane": "youtube-data-api",
+      "reason": "Direct YouTube Data API v3 private upload pipeline without invoking any model.",
+      "sources": ["ops/router/lanes.json", "docs/standards/AGENT-STANDARD.md"]
+    }
+  }
+}
