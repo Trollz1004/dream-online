@@ -152,3 +152,6 @@ ops/router/decisions.log
 # Router outbox paste-ready job files stay local; only .gitkeep is tracked
 ops/router/outbox/*
 !ops/router/outbox/.gitkeep
+ 
+# Security audit output
+ops/security/runs/

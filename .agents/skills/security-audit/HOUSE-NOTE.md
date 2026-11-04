@@ -1,0 +1,1 @@
+Security audit runs only in agy sandbox mode, output goes to ops/security/runs/, and only REPORT.md, FINDINGS-DETAIL.md and NEEDS-VALIDATION.md of each run are copied into docs/security/audit-<date>/run-<N>/ by PR.
