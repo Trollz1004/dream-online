@@ -4,7 +4,6 @@
  *   npm run eyes -- --target <localhost URL | PNG> --reference <PNG> [options]
  *
  * Options:
- *   --brief <md>              optional written reference brief (markdown path)
  *   --before <png>            optional before shot, saved as before.png
  *   --slug <name>             report folder slug (default: from the target)
  *   --kind dashboard|game-menu   rubric flavour (default dashboard)
@@ -88,7 +87,6 @@ async function main() {
     options: {
       target: { type: 'string' },
       reference: { type: 'string' },
-      brief: { type: 'string' },
       before: { type: 'string' },
       slug: { type: 'string' },
       kind: { type: 'string', default: 'dashboard' },
@@ -218,13 +216,7 @@ async function main() {
         : 'Tribute: no DOM (PNG target); read it from the images.',
     ].map(show);
 
-    const prompt = buildPrompt({
-      kind,
-      surface,
-      facts,
-      doc09Path: path.join(repoRoot, 'docs', 'gdd', '09-interface-style.md'),
-      briefPath: values.brief ? path.resolve(values.brief) : undefined,
-    });
+    const prompt = buildPrompt({ kind, surface, facts, doc09Path: path.join(repoRoot, 'docs', 'gdd', '09-interface-style.md') });
 
     // 3. Judge
     let scored: Scored;

@@ -74,7 +74,6 @@ export interface PromptInput {
   surface: Surface;
   facts: string[];
   doc09Path: string;
-  briefPath?: string;
 }
 
 function doc09Ruling(p: string): string {
@@ -89,18 +88,8 @@ function doc09Ruling(p: string): string {
   return 'A calm, dark, see-through panel over a softly blurred scene; a large thin light title at top left with a fine rule; three columns (setting names, value boxes, help panel); one Back control at the bottom centre; white on dark, no ornament, no other colour.';
 }
 
-function readBrief(p?: string): string | null {
-  if (!p) return null;
-  try {
-    return fs.readFileSync(p, 'utf8').replace(/\r/g, '').trim().slice(0, 3200);
-  } catch {
-    return null;
-  }
-}
-
 export function buildPrompt(input: PromptInput): { system: string; user: string; full: string } {
   const game = input.kind === 'game-menu';
-  const brief = readBrief(input.briefPath);
   const system = [
     'You are the Eyes gate judge for the DREAM Online project.',
     'You look at screenshots and score them against a fixed rubric.',
@@ -122,41 +111,22 @@ export function buildPrompt(input: PromptInput): { system: string; user: string;
     lines.push(doc09Ruling(input.doc09Path));
     lines.push('"""');
   }
-  if (brief) {
-    lines.push('');
-    lines.push('Written reference brief (the authoritative layout, typography and feature specification for the AFTER page; the left image in Image 1 is only an older drop-box sample, so score layout match on features matched against this written brief and require a clear visual difference from the sample image):');
-    lines.push('"""');
-    lines.push(brief);
-    lines.push('"""');
-  }
   lines.push('');
   lines.push('Score each quality from 1 (bad) to 5 (excellent), in this order:');
-  lines.push(
-    brief
-      ? '1. layout (Layout match): score 5 when the AFTER matches the written reference brief above (fixed top bar with CLAUDE\'s N Joshua\'s wordmark and #TeamClaudeForLife pill, hero display headline and kicker on the left, 3D dot-sphere stage on the right, bottom 14-step chapter scrubber, and bottom-right sticky CTA). Do not penalise for low luminance correlation with the sample image on the left.'
-      : `1. layout (Layout match): the same regions in the same places as the reference${game ? ', or, for this game menu, as the founder\'s ruling above describes' : ''}.`,
-  );
+  lines.push(`1. layout (Layout match): the same regions in the same places as the reference${game ? ', or, for this game menu, as the founder\'s ruling above describes' : ''}.`);
   lines.push(
     game
       ? '2. palette (Palette and mood): game menus are calm, dark and see-through, white on dark, with no ornament and no other colour.'
       : '2. palette (Palette and mood): dashboards use the DREAM Space tokens: ink #0A0B0D, porcelain #F4F1EA, fog #C9CBCE, slate #9DA3AA, hull #3A3F45, signal yellow #FFD21E.',
   );
-  lines.push(
-    brief
-      ? '3. type (Type): follows the DREAM Space type scale in the written reference brief above (Space Grotesk 700 bold display title at 72px desktop and 40px phone, readable IBM Plex Sans body text at 20px, and a clear hierarchy at phone width in Image 3).'
-      : '3. type (Type): a large thin title, readable body text, and a hierarchy that is still visible at phone width (Image 3).',
-  );
+  lines.push('3. type (Type): a large thin title, readable body text, and a hierarchy that is still visible at phone width (Image 3).');
   lines.push(
     game
       ? '4. contrast (Contrast and legibility): judge legibility against the founder\'s ruling. He chose this calm look over larger, heavier, higher-contrast type, so do not mark it down for that choice alone; mark it down only when text is genuinely hard to read.'
       : '4. contrast (Contrast and legibility): dashboard text must measure 7:1 or better. The measured numbers below were computed from the pixels; use them rather than guessing.',
   );
   lines.push('5. honesty (Honesty): no placeholder text, no lorem ipsum, no broken image, no console error, and the page really rendered (not blank, not an error page, not a loading screen).');
-  lines.push(
-    brief
-      ? '6. originality (Originality): the AFTER must show a clear visual difference from the sample image on the left, using our own DREAM Space look and own code without copying any third-party brand, logo, artwork or template.'
-      : '6. originality (Originality): the AFTER must not be recognisable as a copy of any sample, template or third-party product. Following the reference\'s layout is wanted; copying its brand name, logo, artwork or text is not.',
-  );
+  lines.push('6. originality (Originality): the AFTER must not be recognisable as a copy of any sample, template or third-party product. Following the reference\'s layout is wanted; copying its brand name, logo, artwork or text is not.');
   lines.push(
     input.surface === 'front'
       ? '7. tribute (Tribute): this is front-facing, so the title "CLAUDE\'s N Joshua\'s" and the line "#TeamClaudeForLife" must both be visibly present in the AFTER.'
