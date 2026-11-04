@@ -51,6 +51,7 @@ interface DreamStudioPanelProps {
   onOpenRea: () => void;
   onOpenGmControl: () => void;
   onOpenOpenUiIde?: () => void;
+  onOpenCreator?: () => void;
 }
 
 type StudioTab = 'world' | 'character' | 'graph' | 'agent-memory' | 'npcs';
@@ -81,6 +82,7 @@ export const DreamStudioPanel: React.FC<DreamStudioPanelProps> = ({
   onOpenRea,
   onOpenGmControl,
   onOpenOpenUiIde,
+  onOpenCreator,
 }) => {
   const [activeTab, setActiveTab] = useState<StudioTab>('world');
   const [, setVersion] = useState(0);
@@ -341,6 +343,15 @@ export const DreamStudioPanel: React.FC<DreamStudioPanelProps> = ({
           </p>
         </div>
         <div className="flex items-center gap-1.5">
+          {onOpenCreator && (
+            <button
+              onClick={onOpenCreator}
+              className="px-2.5 py-1 text-[11px] font-mono bg-white/10 hover:bg-white/20 text-[#F5F5F7] border border-white/25 rounded-xs transition cursor-pointer whitespace-nowrap shrink-0"
+              title="Open DREAM Studio Character Creator (Body Only)"
+            >
+              Character Creator
+            </button>
+          )}
           {onOpenOpenUiIde && (
             <button
               onClick={onOpenOpenUiIde}
