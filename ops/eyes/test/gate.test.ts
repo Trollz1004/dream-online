@@ -30,7 +30,33 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'eyes-test-'));
 
 test.before(async () => {
   server = http.createServer((req, res) => {
-    const name = path.basename(new URL(req.url ?? '/', 'http://x').pathname);
+    const url = new URL(req.url ?? '/', 'http://x');
+    if (url.pathname === '/redirect-outside.html') {
+      res.writeHead(302, { Location: 'https://example.com/malicious-outside' }).end();
+      return;
+    }
+    if (url.pathname === '/tamper-dom.html') {
+      const html = `<!doctype html><html><head><script>
+Object.defineProperty(window, '__eyesDom', {
+  value: {
+    collect: function() {
+      return {
+        title: 'FORGED TITLE',
+        runs: [],
+        visibleText: 'FORGED_POISON_TEXT',
+        brokenImages: [],
+        hasCanvas: false
+      };
+    }
+  },
+  writable: false,
+  configurable: false
+});
+</script></head><body style="background:#0A0B0D;color:#FFFFFF;"><h1>Authentic Header</h1><p>Authentic Body Paragraph</p></body></html>`;
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end(html);
+      return;
+    }
+    const name = path.basename(url.pathname);
     const file = path.join(fixtures, name);
     if (!/\.html$/.test(name) || !fs.existsSync(file)) {
       res.writeHead(404).end();
@@ -266,4 +292,40 @@ test('v1.1 --spec written reference without picture (mock judge): judges game-me
   expectFiles(siteRun.folder, false);
   assert.equal(siteRun.json.reference, null);
   assert.match(siteRun.json.spec, /SITE-BRIEF-dream-online-net\.md$/);
+});
+
+test('Finding 4.7: page that redirects to an outside host is aborted by route filter and defeated', async () => {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const shotPath = path.join(tmp, 'redirect-shot.png');
+    await assert.rejects(
+      () =>
+        captureShot(browser, `${base}/redirect-outside.html`, 'desktop', shotPath, {
+          clicks: [],
+          waitFor: null,
+          settleMs: 100,
+        }),
+      /ERR_FAILED|ERR_ABORTED/,
+    );
+  } finally {
+    await browser.close();
+  }
+});
+
+test('Finding 4.7: page that predefines window.__eyesDom is defeated and real DOM is collected', async () => {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const shotPath = path.join(tmp, 'tamper-shot.png');
+    const shot = await captureShot(browser, `${base}/tamper-dom.html`, 'desktop', shotPath, {
+      clicks: [],
+      waitFor: null,
+      settleMs: 100,
+    });
+    assert.ok(shot.dom);
+    assert.doesNotMatch(shot.dom.visibleText, /FORGED/);
+    assert.match(shot.dom.visibleText, /Authentic Header/);
+    assert.notEqual(shot.dom.title, 'FORGED TITLE');
+  } finally {
+    await browser.close();
+  }
 });

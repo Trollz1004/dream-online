@@ -7,7 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { Browser } from 'playwright';
+import type { Browser, Route } from 'playwright';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const DOM_JS = fs.readFileSync(path.join(here, 'dom.browser.cjs'), 'utf8');
@@ -93,6 +93,25 @@ export async function captureShot(
   try {
     const page = await ctx.newPage();
     if (isLocalUrl(target)) {
+      await ctx.route('**/*', async (route: Route) => {
+        const reqUrl = route.request().url();
+        if (!isLocalUrl(reqUrl)) {
+          return route.abort();
+        }
+        try {
+          const response = await route.fetch({ maxRedirects: 0 });
+          const loc = response.headers()['location'];
+          if (loc) {
+            const resolved = new URL(loc, reqUrl).href;
+            if (!isLocalUrl(resolved)) {
+              return route.abort();
+            }
+          }
+          return route.fulfill({ response });
+        } catch {
+          return route.abort();
+        }
+      });
       page.on('console', (m) => {
         if (m.type() === 'error') out.consoleErrors.push(m.text().slice(0, 240));
       });
@@ -122,8 +141,7 @@ export async function captureShot(
         }
       }
       await page.waitForTimeout(opts.settleMs);
-      await page.evaluate(DOM_JS);
-      out.dom = (await page.evaluate('window.__eyesDom.collect(800)')) as DomFacts;
+      out.dom = (await page.evaluate(DOM_JS)) as DomFacts;
     } else {
       // A PNG target: show it letterboxed on ink at each viewport. No DOM facts.
       const file = path.resolve(target);
