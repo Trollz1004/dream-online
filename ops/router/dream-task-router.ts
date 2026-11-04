@@ -10,11 +10,28 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  AgyDispatchAdapter,
+  ConsoleCreditAdapter,
+  type ConsoleCreditAdapterOptions,
+  detectQuotaOr429Error,
+  type DispatchAdapter,
+  type DispatchHandle,
+  type DispatchJobInput,
+  type DispatchPollResult,
+  FreeClaudeCodeDispatchAdapter,
+  HermesDispatchAdapter,
+  parseEyesGateVerdictFromOutput,
+  parsePrUrlFromOutput,
+} from './adapters/index.ts';
+
+export * from './adapters/index.ts';
 
 const ROUTER_DIR = path.dirname(fileURLToPath(import.meta.url));
 export const DEFAULT_LANES_PATH = path.join(ROUTER_DIR, 'lanes.json');
 export const DEFAULT_RANKINGS_DIR = path.join(ROUTER_DIR, 'rankings');
 export const DEFAULT_DECISIONS_LOG_PATH = path.join(ROUTER_DIR, 'decisions.log');
+export const DEFAULT_RANK_MODELS_PROMPT_PATH = path.join(ROUTER_DIR, 'rank-models.md');
 
 // ============================================================================
 // 1. JEV ROUTER CORE — FIXED JOB CLASSES & TASK PROFILER
@@ -690,13 +707,143 @@ export interface RankingEvaluation {
 const RANKING_FILENAME_REGEX = /^(\d{4}-\d{2}-\d{2})\.json$/;
 
 function parseIsoDateToUtcMidnightMs(dateStr: string): number | null {
+  if (typeof dateStr !== 'string') return null;
   const m = dateStr.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!m) return null;
   const year = Number(m[1]);
   const month = Number(m[2]);
   const day = Number(m[3]);
   if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-  return Date.UTC(year, month - 1, day);
+  const utcMs = Date.UTC(year, month - 1, day);
+  const dt = new Date(utcMs);
+  if (
+    dt.getUTCFullYear() !== year ||
+    dt.getUTCMonth() !== month - 1 ||
+    dt.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return utcMs;
+}
+
+/**
+ * Validates a weekly ranking object, rejecting any ranking file with a bad date or with no sources.
+ */
+export function validateWeeklyRankingFile(
+  rankingInput: unknown,
+  options?: { expectedDateFromFilename?: string; requireAllClasses?: boolean }
+): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  if (!rankingInput || typeof rankingInput !== 'object') {
+    return { valid: false, errors: ['Ranking file must be a JSON object.'] };
+  }
+
+  const ranking = rankingInput as Partial<WeeklyRankingFile>;
+
+  if (typeof ranking.date !== 'string' || parseIsoDateToUtcMidnightMs(ranking.date) === null) {
+    errors.push(
+      `Ranking file has a bad or missing date "${String(ranking.date ?? '')}"; expected valid YYYY-MM-DD.`
+    );
+  } else if (
+    options?.expectedDateFromFilename &&
+    ranking.date.trim() !== options.expectedDateFromFilename.trim()
+  ) {
+    errors.push(
+      `Ranking file date "${ranking.date}" does not match filename date "${options.expectedDateFromFilename}".`
+    );
+  }
+
+  if (typeof ranking.generated_by !== 'string' || ranking.generated_by.trim().length === 0) {
+    errors.push('Ranking file is missing generated_by.');
+  } else if (/^(?:hermes|ollama|free-claude-code|omniroute)$/i.test(ranking.generated_by.trim())) {
+    errors.push(
+      `Ranking file generated_by "${ranking.generated_by}" is not allowed; must be run by Fable or Argon in a live session.`
+    );
+  }
+
+  if (!ranking.classes || typeof ranking.classes !== 'object') {
+    errors.push('Ranking file is missing classes object.');
+    return { valid: false, errors };
+  }
+
+  const classEntries = Object.entries(ranking.classes);
+  if (classEntries.length === 0) {
+    errors.push('Ranking file classes object cannot be empty.');
+  }
+
+  if (options?.requireAllClasses) {
+    for (const jobClass of JEV_JOB_CLASSES) {
+      if (!ranking.classes[jobClass]) {
+        errors.push(`Ranking file is missing job class "${jobClass}".`);
+      }
+    }
+  }
+
+  for (const [classKey, entry] of classEntries) {
+    if (!JEV_JOB_CLASSES.includes(classKey as JevJobClass)) {
+      errors.push(`Unknown job class "${classKey}" in ranking file.`);
+      continue;
+    }
+    if (!entry || typeof entry !== 'object') {
+      errors.push(`Class "${classKey}" entry must be an object.`);
+      continue;
+    }
+    if (typeof entry.lane !== 'string' || entry.lane.trim().length === 0) {
+      errors.push(`Class "${classKey}" is missing lane.`);
+    }
+    if (
+      !Array.isArray(entry.ranked) ||
+      entry.ranked.length === 0 ||
+      entry.ranked.some((r) => typeof r !== 'string' || r.trim().length === 0)
+    ) {
+      errors.push(`Class "${classKey}" must carry a non-empty ranked model array.`);
+    }
+    if (typeof entry.reason !== 'string' || entry.reason.trim().length === 0) {
+      errors.push(`Class "${classKey}" is missing reason.`);
+    }
+    if (
+      !Array.isArray(entry.sources) ||
+      entry.sources.length === 0 ||
+      entry.sources.some((s) => typeof s !== 'string' || s.trim().length === 0)
+    ) {
+      errors.push(`Class "${classKey}" has no sources; every ranked class must cite at least one source.`);
+    }
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Reads and validates a weekly ranking JSON file on disk, checking both filename date and content.
+ */
+export function validateWeeklyRankingFileOnDisk(
+  filePath: string,
+  options?: { requireAllClasses?: boolean }
+): { valid: boolean; errors: string[] } {
+  if (!fs.existsSync(filePath)) {
+    return { valid: false, errors: [`Ranking file does not exist: ${filePath}`] };
+  }
+  const baseName = path.basename(filePath);
+  const m = baseName.match(RANKING_FILENAME_REGEX);
+  if (!m || parseIsoDateToUtcMidnightMs(m[1]) === null) {
+    return {
+      valid: false,
+      errors: [`Ranking filename "${baseName}" does not match valid <YYYY-MM-DD>.json.`],
+    };
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch (err) {
+    return {
+      valid: false,
+      errors: [`Invalid JSON in ranking file: ${err instanceof Error ? err.message : String(err)}`],
+    };
+  }
+  return validateWeeklyRankingFile(parsed, {
+    expectedDateFromFilename: m[1],
+    requireAllClasses: options?.requireAllClasses,
+  });
 }
 
 function normalizeNowToUtcMidnightMs(now: Date): number {
@@ -748,17 +895,20 @@ export function loadNewestWeeklyRanking(
   const parsed = JSON.parse(fs.readFileSync(fullPath, 'utf8')) as WeeklyRankingFile;
   const effectiveDateStr = parsed.date || newest.dateStr;
 
+  const validation = validateWeeklyRankingFile(parsed, {
+    expectedDateFromFilename: newest.dateStr,
+  });
   const rankingUtcMs = parseIsoDateToUtcMidnightMs(effectiveDateStr);
   const nowUtcMs = normalizeNowToUtcMidnightMs(now);
 
-  if (rankingUtcMs === null) {
+  if (rankingUtcMs === null || !validation.valid) {
     return {
       filePath: fullPath,
       rankingDate: effectiveDateStr,
       ageInDays: null,
       stale: true,
       statusNote: 'stale ranking, default ladder',
-      ranking: parsed,
+      ranking: null,
     };
   }
 
@@ -808,6 +958,12 @@ export interface DecisionRecord {
   quota_fallback: boolean;
   cold_lanes: Record<string, { until: string; hours: number; quotaGroup: string; reason: string }>;
   coldLaneState: Record<string, { until: string; hours: number; quotaGroup: string; reason: string }>;
+  token_count?: number;
+  console_tokens?: {
+    input_tokens: number;
+    output_tokens: number;
+    total_tokens: number;
+  };
 }
 
 const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -1114,6 +1270,280 @@ export class JevRouter {
     appendDecisionRecord(decision, decisionsLogPath, options?.extraSecretsToRedact);
     return decision;
   }
+
+  /**
+   * Routes a task, dispatches it to the matching lane adapter, polls for done,
+   * handles quota/429 errors by marking the lane cold through reportQuotaError and retrying
+   * on the fallback lane, and runs the judge step (requiring a PR URL and, for design-visual
+   * jobs, an Eyes gate report with PASS in its first line). Missing either marks the job failed
+   * and re-queues it once with the failure appended to the prompt.
+   */
+  public async dispatchAndJudge(
+    taskDescription: string,
+    options?: DispatchAndJudgeOptions
+  ): Promise<DispatchedJobOutcome> {
+    const now = options?.now ?? new Date();
+    const maxJudgeRequeues = options?.maxRequeues ?? 1;
+    let currentPrompt = taskDescription;
+    let requeueCount = 0;
+    let quotaFallbackTriggered = false;
+    const attempts: DispatchAttemptRecord[] = [];
+    let lastFailureReason: string | null = null;
+    let lastDecision: DecisionRecord | null = null;
+
+    const resolveAdapter = (decision: DecisionRecord): DispatchAdapter => {
+      if (options?.adapter) return options.adapter;
+      if (options?.adapters?.[decision.lane]) return options.adapters[decision.lane]!;
+      if (options?.adapters?.[decision.harness]) return options.adapters[decision.harness]!;
+      if (decision.harness === 'hermes') {
+        return new HermesDispatchAdapter();
+      }
+      if (
+        decision.harness === 'free-claude-code' ||
+        decision.harness === 'free-claude-code-8082' ||
+        decision.harness === 'claude-code-signed-in'
+      ) {
+        return new FreeClaudeCodeDispatchAdapter();
+      }
+      return new AgyDispatchAdapter();
+    };
+
+    const pollHandleUntilDone = async (handle: DispatchHandle): Promise<DispatchPollResult> => {
+      const maxPolls = options?.maxPollIterations ?? 5;
+      let latest = await handle.poll();
+      let polls = 1;
+      while (!latest.done && polls < maxPolls) {
+        latest = await handle.poll();
+        polls += 1;
+      }
+      return latest;
+    };
+
+    while (requeueCount <= maxJudgeRequeues) {
+      let decision = this.route(taskDescription, {
+        now,
+        files: options?.files,
+        screenshotRequired: options?.screenshotRequired,
+        lanesPath: options?.lanesPath,
+        rankingsDir: options?.rankingsDir,
+        decisionsLogPath: options?.decisionsLogPath,
+        extraSecretsToRedact: options?.extraSecretsToRedact,
+      });
+      lastDecision = decision;
+
+      let adapter = resolveAdapter(decision);
+      let handle = await adapter.dispatch({
+        prompt: currentPrompt,
+        jobClass: decision.job_class,
+        lane: decision.lane,
+        harness: decision.harness,
+        node: decision.node,
+        cwd: options?.cwd,
+      });
+      let pollResult = await pollHandleUntilDone(handle);
+
+      // Check for quota or 429 error in lane output
+      const quotaCheck = detectQuotaOr429Error(
+        pollResult.output,
+        pollResult.error,
+        pollResult.exitCode
+      );
+      if (quotaCheck.isQuotaError) {
+        attempts.push({
+          attemptNumber: attempts.length + 1,
+          lane: decision.lane,
+          harness: decision.harness,
+          prompt: currentPrompt,
+          prUrl: null,
+          eyesReportFirstLine: null,
+          quotaError: true,
+          passedJudge: false,
+          failureReason: `Lane ${decision.lane} returned quota/429 error: ${quotaCheck.errorSummary}`,
+          output: pollResult.output,
+        });
+
+        // Mark lane cold through core's reportQuotaError and route retry to fallback lane
+        this.reportQuotaError(
+          decision.lane,
+          pollResult.output || pollResult.error || quotaCheck.errorSummary,
+          now
+        );
+        quotaFallbackTriggered = true;
+
+        decision = this.route(taskDescription, {
+          now,
+          files: options?.files,
+          screenshotRequired: options?.screenshotRequired,
+          lanesPath: options?.lanesPath,
+          rankingsDir: options?.rankingsDir,
+          decisionsLogPath: options?.decisionsLogPath,
+          extraSecretsToRedact: options?.extraSecretsToRedact,
+        });
+        lastDecision = decision;
+
+        adapter = resolveAdapter(decision);
+        handle = await adapter.dispatch({
+          prompt: currentPrompt,
+          jobClass: decision.job_class,
+          lane: decision.lane,
+          harness: decision.harness,
+          node: decision.node,
+          cwd: options?.cwd,
+        });
+        pollResult = await pollHandleUntilDone(handle);
+      }
+
+      // Judge step: check for PR URL and, for design-visual jobs, an Eyes gate report with PASS in its first line
+      const prUrl = pollResult.prUrl ?? parsePrUrlFromOutput(pollResult.output);
+      const isDesignVisual =
+        decision.job_class === 'design-visual' || decision.post_gate === 'eyes';
+      const eyesVerdict = isDesignVisual
+        ? parseEyesGateVerdictFromOutput(pollResult.output, pollResult.eyesReportFirstLine)
+        : null;
+
+      const judgeFailures: string[] = [];
+      if (!prUrl) {
+        judgeFailures.push('missing PR URL in lane output');
+      }
+      if (isDesignVisual && (!eyesVerdict || !eyesVerdict.passed)) {
+        judgeFailures.push(
+          eyesVerdict?.firstLine
+            ? `Eyes gate report did not pass (first line: "${eyesVerdict.firstLine}")`
+            : 'missing Eyes gate report with PASS in its first line'
+        );
+      }
+
+      if (options?.useConsoleJudge) {
+        const consoleAdapter =
+          options.consoleAdapter ??
+          new ConsoleCreditAdapter({
+            ...options.consoleAdapterOptions,
+            decisionsLogPath: options.decisionsLogPath ?? this.decisionsLogPath,
+          });
+        const consoleCheck = await consoleAdapter.runJudgeTextCheck({
+          prompt: `Judge check for job (${decision.job_class}): verify PR URL (${prUrl ?? 'none'}) and output:\n${pollResult.output}`,
+          purpose: 'judge-text-check',
+          jobClass: decision.job_class,
+          now,
+        });
+        if (!consoleCheck.passed) {
+          judgeFailures.push(`Console judge check failed: ${consoleCheck.verdictText}`);
+        }
+      }
+
+      if (judgeFailures.length === 0 && prUrl) {
+        attempts.push({
+          attemptNumber: attempts.length + 1,
+          lane: decision.lane,
+          harness: decision.harness,
+          prompt: currentPrompt,
+          prUrl,
+          eyesReportFirstLine: eyesVerdict?.firstLine ?? pollResult.eyesReportFirstLine ?? null,
+          quotaError: false,
+          passedJudge: true,
+          failureReason: null,
+          output: pollResult.output,
+        });
+
+        return {
+          ok: true,
+          status: 'passed',
+          prUrl,
+          eyesReportFirstLine: eyesVerdict?.firstLine ?? pollResult.eyesReportFirstLine ?? null,
+          requeued: requeueCount > 0,
+          requeueCount,
+          quotaFallbackTriggered,
+          failureReason: null,
+          finalPrompt: currentPrompt,
+          finalDecision: decision,
+          attempts,
+        };
+      }
+
+      const failureReason = `Missing required verification: ${judgeFailures.join('; ')}.`;
+      lastFailureReason = failureReason;
+
+      attempts.push({
+        attemptNumber: attempts.length + 1,
+        lane: decision.lane,
+        harness: decision.harness,
+        prompt: currentPrompt,
+        prUrl: prUrl ?? null,
+        eyesReportFirstLine: eyesVerdict?.firstLine ?? pollResult.eyesReportFirstLine ?? null,
+        quotaError: false,
+        passedJudge: false,
+        failureReason,
+        output: pollResult.output,
+      });
+
+      if (requeueCount < maxJudgeRequeues) {
+        requeueCount += 1;
+        currentPrompt = `${taskDescription}\n\n[Re-queued after failure: ${failureReason}]`;
+      } else {
+        break;
+      }
+    }
+
+    return {
+      ok: false,
+      status: 'failed',
+      prUrl: null,
+      eyesReportFirstLine:
+        attempts.length > 0 ? attempts[attempts.length - 1].eyesReportFirstLine : null,
+      requeued: requeueCount > 0,
+      requeueCount,
+      quotaFallbackTriggered,
+      failureReason: lastFailureReason ?? 'Judge step failed.',
+      finalPrompt: currentPrompt,
+      finalDecision: lastDecision!,
+      attempts,
+    };
+  }
+
+  public async dispatch(
+    taskDescription: string,
+    options?: DispatchAndJudgeOptions
+  ): Promise<DispatchedJobOutcome> {
+    return this.dispatchAndJudge(taskDescription, options);
+  }
+}
+
+export interface DispatchAttemptRecord {
+  attemptNumber: number;
+  lane: string;
+  harness: string;
+  prompt: string;
+  prUrl: string | null;
+  eyesReportFirstLine: string | null;
+  quotaError: boolean;
+  passedJudge: boolean;
+  failureReason: string | null;
+  output: string;
+}
+
+export interface DispatchAndJudgeOptions extends RouteJevTaskOptions {
+  adapter?: DispatchAdapter;
+  adapters?: Partial<Record<string, DispatchAdapter>>;
+  cwd?: string;
+  maxRequeues?: number;
+  maxPollIterations?: number;
+  useConsoleJudge?: boolean;
+  consoleAdapter?: ConsoleCreditAdapter;
+  consoleAdapterOptions?: ConsoleCreditAdapterOptions;
+}
+
+export interface DispatchedJobOutcome {
+  ok: boolean;
+  status: 'passed' | 'failed';
+  prUrl: string | null;
+  eyesReportFirstLine: string | null;
+  requeued: boolean;
+  requeueCount: number;
+  quotaFallbackTriggered: boolean;
+  failureReason: string | null;
+  finalPrompt: string;
+  finalDecision: DecisionRecord;
+  attempts: DispatchAttemptRecord[];
 }
 
 export function appendDecisionRecord(
@@ -1148,6 +1578,13 @@ export function routeJevTask(
   options?: RouteJevTaskOptions
 ): DecisionRecord {
   return defaultJevRouter.route(taskDescription, options);
+}
+
+export function dispatchJevTask(
+  taskDescription: string,
+  options?: DispatchAndJudgeOptions
+): Promise<DispatchedJobOutcome> {
+  return defaultJevRouter.dispatchAndJudge(taskDescription, options);
 }
 
 export function reportLaneQuotaError(
