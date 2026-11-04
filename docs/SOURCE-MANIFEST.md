@@ -30,6 +30,7 @@ Per directive section 47: every source gets one classification — CANON, ACTIVE
 | docs/CONSOLIDATION-2026-09-19.md | REFERENCE | Record of folding two old copies into this root |
 | docs/ALIENWARE-NODE-STATE-2026-09-19.md | REFERENCE | Signed node state record; verify its SHA-256 anchor before relying on it |
 | ops/node/ | ACTIVE_DESIGN | Alienware node operations; edited by the Claude judge lane only |
+| ops/judge-memory/ | ACTIVE_DESIGN | In-house recall for the signed-in Claude Code judge lane (v1, Volume 2 Recipe 5). Uses Node.js built-in `node:sqlite` (`DatabaseSync` with SQLite FTS5; Node.js MIT License / SQLite Public Domain) supported natively by the repo's Node v26 runtime, with zero external database dependencies. |
 | specs/, .specify/ | ACTIVE_DESIGN | Spec Kit specs and constitution |
 | src/ui/CharacterCreatorModal.tsx, src/ui/characterCreatorConfig.ts | ACTIVE_DESIGN | Character Creator v1 (Recipe 9, body only). Uses 100% in-house procedural humanoid body geometry (`src/engine/scene/mesh.ts` & `src/engine/engine.ts`) owned by DREAM Studio rather than bundling an external sample `.vrm`; supports importing user `.vrm` files whose licence metadata allows commercial use and redistribution (`commercialUsage: allow`, `redistribution: allow`), and never embeds VRoid Studio. |
 | docs/house/ | ACTIVE_DESIGN | DREAM Space design system, site inventory, and `dream-online.net` brief |
