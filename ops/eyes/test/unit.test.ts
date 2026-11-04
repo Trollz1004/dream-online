@@ -1,24 +1,39 @@
 /**
- * Eyes gate â€” fast unit tests (no browser, no network).
+ * Eyes gate — fast unit tests (no browser, no network).
  * Run: npm run test:eyes
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { QUALITIES, applyPassRule, type Scores } from '../lib/rubric.ts';
-import { parseJudgeReply } from '../lib/judge.ts';
 import {
-  honestyCap,
+  buildPrompt,
+  evaluateReferenceKind,
+  parseJudgeCritique,
+  parseJudgeReply,
+  resolveSpecPath,
+} from '../lib/judge.ts';
+import {
+  applyReferenceRule,
+  cleanCritique,
   contrastScoreFromMeasure,
-  tributeScore,
   findPlaceholders,
+  honestyCap,
   mockScores,
+  parseYesNo,
+  referenceKindQuestion,
+  resolveCritiqueForPerfectScore,
+  tributeScore,
 } from '../lib/rules.ts';
 import { renderReport, reportFolderName, redact, type GateResult } from '../lib/report.ts';
 
 const require = createRequire(import.meta.url);
 const px = require('../lib/pixels.browser.cjs');
+const here = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(here, '..', '..', '..');
 
 const all = (n: number): Scores =>
   Object.fromEntries(QUALITIES.map((q) => [q.key, n])) as Scores;
@@ -124,7 +139,7 @@ test('rules: honesty caps follow the findings', () => {
 
 test('rules: placeholder scan catches lorem and TODO, leaves real copy alone', () => {
   assert.deepEqual(findPlaceholders('Lorem ipsum dolor. TODO: write copy').sort(), ['TODO', 'ipsum', 'lorem'].sort());
-  assert.deepEqual(findPlaceholders('Window mode Â· Fullscreen Â· Back'), []);
+  assert.deepEqual(findPlaceholders('Window mode · Fullscreen · Back'), []);
 });
 
 test('rules: dashboard contrast score comes from the measured 7:1 share', () => {
@@ -182,7 +197,7 @@ const baseResult = (mode: 'real' | 'mock', n: number): GateResult => {
     QUALITIES.map((q) => [q.key, { score: n, reason: 'Reason here.', modelScore: n, override: null }]),
   ) as GateResult['qualities'];
   return {
-    version: 'eyes-v1',
+    version: 'eyes-v1.1',
     createdAt: new Date(2026, 10, 3, 6, 41).toISOString(),
     slug: 'unit',
     folder: 'ops/eyes/reports/2026-11-03-0641-unit',
@@ -215,4 +230,119 @@ test('report: scores come before reasons, and the full prompt is recorded', () =
   assert.ok(md.indexOf('## Scores') < md.indexOf('## Reasons'));
   assert.ok(md.includes('PROMPT'));
   assert.ok(md.includes('gemma4:31b'));
+});
+
+test('v1.1 reference-kind check: asks exact question, flags REFERENCE NOT COMPARABLE, caps layout at 4, and follows PASS line with one sentence', async () => {
+  assert.equal(referenceKindQuestion('game-menu'), 'Is the reference image a game-menu screen, yes or no, one word');
+  assert.equal(referenceKindQuestion('dashboard'), 'Is the reference image a dashboard screen, yes or no, one word');
+  assert.equal(referenceKindQuestion('site'), 'Is the reference image a site screen, yes or no, one word');
+  assert.equal(parseYesNo('yes'), true);
+  assert.equal(parseYesNo('No.'), false);
+
+  const asked: string[] = [];
+  const checkNo = await evaluateReferenceKind({
+    kind: 'game-menu',
+    referencePath: 'whats being downloaded.png',
+    askYesNo: async (q) => {
+      asked.push(q);
+      return 'no';
+    },
+  });
+  assert.deepEqual(asked, ['Is the reference image a game-menu screen, yes or no, one word']);
+  assert.equal(checkNo?.comparable, false);
+  assert.match(checkNo?.description ?? '', /store launcher download page/i);
+
+  const checkDoc = await evaluateReferenceKind({
+    kind: 'dashboard',
+    referencePath: 'design-system-reference.png',
+    askYesNo: async () => 'yes',
+  });
+  assert.equal(checkDoc?.comparable, false);
+  assert.equal(checkDoc?.renderedDocument, true);
+  assert.match(checkDoc?.description ?? '', /rendered design-system token sheet/i);
+
+  const r = baseResult('mock', 5);
+  r.referenceCheck = checkDoc;
+  applyReferenceRule(r.qualities, checkDoc);
+  assert.equal(r.qualities.layout.score, 4);
+  r.verdict = applyPassRule(Object.fromEntries(QUALITIES.map((q) => [q.key, r.qualities[q.key].score])) as Scores);
+  const lines = renderReport(r).split('\n');
+  assert.match(lines[0], /REFERENCE NOT COMPARABLE/);
+  assert.equal(lines[1], checkDoc?.description);
+});
+
+test('v1.1 perfect score rule: carries measured numbers on first line, lists critique, retries once, and caps honesty at 4 if still none', async () => {
+  assert.equal(cleanCritique('none'), null);
+  assert.equal(cleanCritique('Nothing to change.'), null);
+  assert.equal(cleanCritique('Increase mobile card gap from 18px to 24px'), 'Increase mobile card gap from 18px to 24px.');
+
+  const body = {
+    ...Object.fromEntries(QUALITIES.map((q) => [q.key, { score: 5, reason: 'Solid.' }])),
+    critique: 'Widen the phone card padding to 24px.',
+  };
+  assert.equal(parseJudgeCritique(JSON.stringify(body)), 'Widen the phone card padding to 24px.');
+
+  // 1) Average 5.00 with a concrete critique: measured numbers on line 1 + critique in report
+  const r1 = baseResult('mock', 5);
+  r1.measurements = {
+    contrastFromPixels: { lowestRatio: 7.74 },
+    honestyEvidence: { consoleErrors: [], placeholders: [] },
+  };
+  r1.critique = 'Widen the phone card padding to 24px.';
+  const md1 = renderReport(r1);
+  assert.match(md1.split('\n')[0], /average 5\.00 of 5 \(lowest contrast 7\.74:1, console errors 0, placeholders 0\)/);
+  assert.ok(md1.includes('## What the judge would change'));
+  assert.ok(md1.includes('- Widen the phone card padding to 24px.'));
+
+  // 2) First reply gives none, gate asks once more and receives a concrete critique
+  const r2 = baseResult('mock', 5);
+  let retryCount = 0;
+  const res2 = await resolveCritiqueForPerfectScore({
+    qualities: r2.qualities,
+    initialCritique: 'none',
+    askOnceMore: async () => {
+      retryCount++;
+      return 'Add 4px more bottom margin below the subtitle.';
+    },
+  });
+  assert.equal(retryCount, 1);
+  assert.equal(res2.askedOnceMore, true);
+  assert.equal(res2.cappedHonesty, false);
+  assert.equal(r2.qualities.honesty.score, 5);
+  assert.equal(res2.critique, 'Add 4px more bottom margin below the subtitle.');
+
+  // 3) First reply gives none, gate asks once more and still gets none -> honesty capped at 4
+  const r3 = baseResult('mock', 5);
+  const res3 = await resolveCritiqueForPerfectScore({
+    qualities: r3.qualities,
+    initialCritique: 'none',
+    askOnceMore: async () => 'nothing to change',
+  });
+  assert.equal(res3.askedOnceMore, true);
+  assert.equal(res3.cappedHonesty, true);
+  assert.equal(r3.qualities.honesty.score, 4);
+  r3.noCritiqueCapped = true;
+  r3.verdict = applyPassRule(Object.fromEntries(QUALITIES.map((q) => [q.key, r3.qualities[q.key].score])) as Scores);
+  assert.equal(r3.verdict.average, 4.86);
+  const md3 = renderReport(r3);
+  assert.match(md3, /judge gave no critique/i);
+});
+
+test('v1.1 --spec written reference: resolves docs/gdd/09 and docs/house/SITE-BRIEF-*.md without a reference picture', () => {
+  const gdd09 = resolveSpecPath('docs/gdd/09', repoRoot);
+  assert.ok(gdd09 && gdd09.endsWith('09-interface-style.md'), `resolved gdd09 was ${gdd09}`);
+  const siteBrief = resolveSpecPath('docs/house/SITE-BRIEF-dream-online-net.md', repoRoot);
+  assert.ok(siteBrief && siteBrief.endsWith('SITE-BRIEF-dream-online-net.md'), `resolved siteBrief was ${siteBrief}`);
+
+  const prompt = buildPrompt({
+    kind: 'site',
+    surface: 'front',
+    facts: ['Layout reference: written specification only.'],
+    doc09Path: gdd09!,
+    specPath: siteBrief!,
+    hasReferenceImage: false,
+  });
+  assert.ok(prompt.user.includes('You are given two images (no reference image was provided'));
+  assert.ok(prompt.user.includes('Surface kind: site.'));
+  assert.ok(prompt.user.includes('Written reference specification'));
 });

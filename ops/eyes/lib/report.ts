@@ -5,7 +5,7 @@
  */
 import os from 'node:os';
 import { QUALITIES, labelOf, type QualityKey, type Verdict } from './rubric.ts';
-import type { Kind, Surface } from './rules.ts';
+import type { Kind, ReferenceCheck, Surface } from './rules.ts';
 
 export interface QualityResult {
   score: number;
@@ -24,15 +24,20 @@ export interface JudgeAttempt {
 }
 
 export interface GateResult {
-  version: 'eyes-v1';
+  version: 'eyes-v1' | 'eyes-v1.1';
   createdAt: string;
   slug: string;
   folder: string;
   target: string;
-  reference: string;
+  reference: string | null;
+  spec?: string | null;
   before: string | null;
   kind: Kind;
   surface: Surface;
+  referenceCheck?: ReferenceCheck | null;
+  critique?: string | null;
+  critiqueRetried?: boolean;
+  noCritiqueCapped?: boolean;
   judge: {
     mode: 'real' | 'mock';
     model: string;
@@ -83,11 +88,34 @@ export function redact(text: string, secrets: string[] = []): string {
   return out;
 }
 
+function measuredSummaryForPerfect(r: GateResult): string {
+  const m = (r.measurements ?? {}) as Record<string, any>;
+  const c = m.contrastFromPixels;
+  const minVal =
+    typeof c?.lowestRatio === 'number'
+      ? c.lowestRatio
+      : typeof c?.desktop?.min === 'number' && typeof c?.phone?.min === 'number'
+        ? Math.min(c.desktop.min || Infinity, c.phone.min || Infinity)
+        : typeof c?.desktop?.min === 'number'
+          ? c.desktop.min
+          : null;
+  const contrastText = minVal !== null && Number.isFinite(minVal) ? `${minVal}:1` : 'n/a';
+  const h = m.honestyEvidence;
+  const consoleErrors = Array.isArray(h?.consoleErrors) ? h.consoleErrors.length : 0;
+  const placeholders = Array.isArray(h?.placeholders) ? h.placeholders.length : 0;
+  return `(lowest contrast ${contrastText}, console errors ${consoleErrors}, placeholders ${placeholders})`;
+}
+
 export function firstLine(r: GateResult): string {
   const v = r.verdict;
   const word = v.pass ? 'PASS' : 'FAIL';
+  const notComparable = r.referenceCheck && !r.referenceCheck.comparable ? ' · REFERENCE NOT COMPARABLE' : '';
+  const avgText =
+    v.average === 5
+      ? `average ${v.average.toFixed(2)} of 5 ${measuredSummaryForPerfect(r)}`
+      : `average ${v.average.toFixed(2)} of 5`;
   const low = `lowest ${v.lowest.score} (${labelOf(v.lowest.key)})`;
-  const core = `${word} · Eyes gate v1 · average ${v.average.toFixed(2)} of 5 · ${low} · ${r.slug}`;
+  const core = `${word}${notComparable} · Eyes gate v1.1 · ${avgText} · ${low} · ${r.slug}`;
   if (r.judge.mode === 'mock') {
     const why = r.judge.mockReason ?? 'no vision model answered';
     return `MOCK JUDGE · ${core} · ${why}, so these are rule-based stand-in scores, not a real verdict`;
@@ -98,6 +126,9 @@ export function firstLine(r: GateResult): string {
 export function renderReport(r: GateResult): string {
   const L: string[] = [];
   L.push(firstLine(r));
+  if (r.referenceCheck && !r.referenceCheck.comparable && r.referenceCheck.description) {
+    L.push(r.referenceCheck.description);
+  }
   L.push('');
   L.push('## Scores');
   L.push('');
@@ -121,6 +152,16 @@ export function renderReport(r: GateResult): string {
     }
     L.push('');
   }
+  if (r.critique || r.noCritiqueCapped || r.verdict.average === 5) {
+    L.push('## What the judge would change');
+    L.push('');
+    if (r.critique) {
+      L.push(`- ${r.critique}`);
+    } else {
+      L.push('The judge gave no critique after being asked once more, so honesty is capped at 4.');
+    }
+    L.push('');
+  }
   L.push('## Why it passed or failed');
   L.push('');
   L.push('The rule: average 4.0 or better, no quality below 3, and honesty and originality both 4 or better.');
@@ -138,7 +179,13 @@ export function renderReport(r: GateResult): string {
   L.push('');
   L.push(`- Created: ${r.createdAt}`);
   L.push(`- Target: ${r.target}`);
-  L.push(`- Reference: ${r.reference}`);
+  L.push(`- Reference: ${r.reference ?? 'none (written spec only)'}`);
+  if (r.spec) L.push(`- Spec: ${r.spec}`);
+  if (r.referenceCheck?.question) {
+    L.push(
+      `- Reference check: "${r.referenceCheck.question}" -> ${r.referenceCheck.answer ?? 'n/a'} (${r.referenceCheck.comparable ? 'comparable' : 'REFERENCE NOT COMPARABLE'})`,
+    );
+  }
   if (r.before) L.push(`- Before: ${r.before}`);
   L.push(`- Kind: ${r.kind}; surface: ${r.surface}`);
   L.push('- Viewports: desktop 1920x1080 and phone 390x844, both at device scale 2');
