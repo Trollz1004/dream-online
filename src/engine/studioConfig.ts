@@ -6,6 +6,11 @@
  * 100% Built with Google Gemini
  */
 
+import {
+  DEFAULT_CREATOR_STATE,
+  type CharacterCreatorState,
+} from '../ui/characterCreatorConfig';
+
 export interface HardwareNodeEndpoint {
   id: 'alienware-40' | 't5500-15-lab' | 't5500-15-ollama' | 'mission-control-3130';
   nodeName: string;
@@ -1111,6 +1116,8 @@ export const INITIAL_CUSTOM_NPCS: CustomNpcProfile[] = [
 
 export class StudioConfigManager {
   character: CharacterDesignConfig = { ...DEFAULT_CHARACTER_CONFIG };
+  creatorBody: CharacterCreatorState = { ...DEFAULT_CREATOR_STATE };
+  isCreatorPreviewOpen = false;
   shader: WorldShaderConfig = { ...DEFAULT_WORLD_SHADER_CONFIG };
   entities: StudioEntity[] = [...INITIAL_STUDIO_ENTITIES.map((e) => ({ ...e, position: [...e.position] as [number, number, number], scale: [...e.scale] as [number, number, number], color: [...e.color] as [number, number, number] }))];
   npcs: CustomNpcProfile[] = [...INITIAL_CUSTOM_NPCS.map((n) => ({ ...n, position: [...n.position] as [number, number, number] }))];
@@ -1134,6 +1141,16 @@ export class StudioConfigManager {
 
   updateCharacter(patch: Partial<CharacterDesignConfig>): void {
     this.character = { ...this.character, ...patch };
+    this.notify();
+  }
+
+  updateCreatorBody(next: CharacterCreatorState): void {
+    this.creatorBody = { ...next };
+    this.notify();
+  }
+
+  setCreatorPreviewOpen(open: boolean): void {
+    this.isCreatorPreviewOpen = open;
     this.notify();
   }
 

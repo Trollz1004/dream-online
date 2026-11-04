@@ -1,6 +1,6 @@
 # DREAM Space: the House design system
 
-Ruled by Joshua on 2026-10-01 and drawn by the Claude judge lane the same night as one artboard (a private Claude design artifact; this page is its public text). It is the preset for the engine's interface, Mission Control and the screen savers, and anything else the House puts in front of a person. In his words: a space feel; black, whites and greys do the work; one vibrant yellow is the colour; everything reactive; animated backgrounds; headers that belong to the page. Built as code by the OpenCode designer under `docs/design-system/` when that lands.
+Ruled by Joshua on 2026-10-01 and drawn by the Claude judge lane the same night as one artboard (a private Claude design artifact; this page is its public text). It is the preset for the engine's interface, Mission Control and the screen savers, and anything else the House puts in front of a person. In his words: a space feel; black, whites and greys do the work; one vibrant yellow is the colour; everything reactive; animated backgrounds; headers that belong to the page. The one tokens file for the in-house dashboard shell lives at [`src/shell/tokens.ts`](../../src/shell/tokens.ts) (and `docs/design-system/` when the full artboard lands).
 
 ## Palette
 
@@ -46,4 +46,4 @@ Ruled by Joshua on 2026-10-01 and drawn by the Claude judge lane the same night 
 
 ## Where it goes
 
-DREAM Engine's HUD, settings and combo registry; Mission Control's tabs, lights and the voice log; the DREAM Space screen saver for streams; the public pages of the House.
+DREAM Engine's HUD, settings and combo registry; the in-house dashboard shell (`src/shell/`, tokens in `src/shell/tokens.ts`) shared by Mission Control, the Sabretooth desk and DREAM Studio; Mission Control's tabs, lights and the voice log; the DREAM Space screen saver for streams; the public pages of the House.
