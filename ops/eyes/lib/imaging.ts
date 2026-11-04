@@ -134,15 +134,16 @@ export interface RunBox {
 export async function analyzeShots(
   browser: Browser,
   shots: Array<{ name: string; file: string; runs: RunBox[] | null }>,
-  refPng: string,
+  refPng: string | null,
 ): Promise<any> {
-  const files: Record<string, string> = { ref: refPng };
+  const files: Record<string, string> = {};
+  if (refPng) files.ref = refPng;
   for (const s of shots) files[s.name] = s.file;
   const { ctx, page } = await imagePage(browser, files);
   try {
     await page.evaluate(PIXELS_JS);
     const spec = {
-      refUrl: '/img/ref',
+      refUrl: refPng ? '/img/ref' : null,
       shots: shots.map((s) => ({ name: s.name, url: `/img/${s.name}`, runs: s.runs })),
     };
     return await page.evaluate(`window.__eyes.analyzeAll(${JSON.stringify(spec)})`);
