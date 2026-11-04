@@ -17,7 +17,7 @@ import {
 
 test('DREAM Engine Studio: Canonical Alienware .40, T5500 .15, and Mission Control :3130 topology with no Sabertooth or Paperclip', () => {
   const byId = new Map(CANONICAL_NODE_TOPOLOGY.map((n) => [n.id, n]));
-  assert.equal(byId.get('alienware-40')?.url, 'http://192.168.0.40:20128/api/v1');
+  assert.equal(byId.get('alienware-40')?.url, 'http://192.168.0.40:9180/api/v1');
   assert.equal(byId.get('t5500-15-lab')?.url, 'http://192.168.0.15:9127');
   assert.equal(byId.get('t5500-15-ollama')?.url, 'http://192.168.0.15:11434');
   assert.equal(byId.get('mission-control-3130')?.url, 'http://127.0.0.1:3130');

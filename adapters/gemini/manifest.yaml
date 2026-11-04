@@ -7,12 +7,12 @@ node_id: alienware
 cli_command: "agy"
 health_check: "agy --version"
 provider: "google-ai-ultra"
+# Voices default to Kokoro locally until Josh approves a key.
 primary_models:
   - "gemini-4-argon"
   - "gemini-3.8-flash"
   - "gemini-2.5-pro"
   - "gemini-2.5-flash"
-  - "gemini-2.5-flash-preview-tts"
 world_and_media_engines:
   genie_4_world_engine:
     model: "genie-4"
@@ -20,7 +20,7 @@ world_and_media_engines:
     capabilities:
       - "real-time interactive 3D world generation from text/image prompts"
       - "native ambient audio synthesis"
-      - "speaking NPC character hooks (Aoede & Kore female voices)"
+      - "speaking NPC character hooks (local Kokoro female voices by default)"
       - "live scene steering into 100% in-house DREAM Engine (day_dream_3d, nightmare_3d, circle_16bit)"
       - "<= 58.5s YouTube Shorts 3D world-morph B-roll generation"
   small_business_hub:
@@ -30,5 +30,5 @@ world_and_media_engines:
       - "automated financial & receipt charts for transparent Shriners / #UntilNoKidInNeed verification gate"
 auth:
   type: browser-signin
-  instructions: "Signed in via Google AI Ultra subscription (joshlcoleman@gmail.com). Zero Paperclip."
+  instructions: "Signed in via the Google AI Ultra subscription. Zero Paperclip."
 notes: "Co-equal highest authority (GM #1) alongside Founder Joshua Coleman and Claude (Fable). Directs Hermes (OPSis) on Sabretooth (.8) for multi-channel <=59s YouTube Shorts and natural female voice podcasts."

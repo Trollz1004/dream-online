@@ -1,7 +1,7 @@
-# Power-Loss & Reboot Auto-Heal Boot Script — Node 1: Alienware (.40)
+# Power-Loss & Reboot Auto-Heal Boot Script — Node 1: Alienware
 # Starts and self-heals all Alienware ports:
 # - :27123 Obsidian Vault (9f7e513d0604b00d -> C:\DREAM\Antigravity, $5 Obsidian Sync + Local REST API)
-# - :20128 DREAM Dev Engine & OpenUI / REA / Remake Cloud Studio (server.ts)
+# - :9180 DREAM Dev Engine & OpenUI / REA / Remake Cloud Studio (server.ts)
 # - :8082  Free Claude Code Server (fcc-server.exe)
 # - :8390  OPSis Cut & Reach Studio (ops/opsis-cut-and-reach-studio/server.mjs)
 # - :8392  Hermes Leadgen Command Studio (apps/hermes-leadgen/server.js)
@@ -11,14 +11,14 @@
 
 $ErrorActionPreference = "SilentlyContinue"
 $nodeExe = "C:\Program Files\nodejs\node.exe"
-$fccPythonExe = "C:\Users\joshl\AppData\Roaming\uv\python\cpython-3.14.10-windows-x86_64-none\python.exe"
-$fccSitePackages = "C:\Users\joshl\AppData\Roaming\uv\tools\free-claude-code\Lib\site-packages"
+$fccPythonExe = "$env:USERPROFILE\AppData\Roaming\uv\python\cpython-3.14.10-windows-x86_64-none\python.exe"
+$fccSitePackages = "$env:USERPROFILE\AppData\Roaming\uv\tools\free-claude-code\Lib\site-packages"
 $obsidianExe = "C:\Program Files\Obsidian\Obsidian.exe"
 if (-not (Test-Path $obsidianExe)) {
-    $obsidianExe = "C:\Users\joshl\AppData\Local\Programs\Obsidian\Obsidian.exe"
+    $obsidianExe = "$env:LOCALAPPDATA\Programs\Obsidian\Obsidian.exe"
 }
-$hermesGatewayVbs = "C:\Users\joshl\AppData\Local\hermes\gateway-service\Hermes_Gateway.vbs"
-$repoRoot = "C:\Users\joshl\antigravity\DREAM-Engine"
+$hermesGatewayVbs = "$env:LOCALAPPDATA\hermes\gateway-service\Hermes_Gateway.vbs"
+$repoRoot = "$env:USERPROFILE\antigravity\DREAM-Engine"
 $vaultRoot = "C:\DREAM\Antigravity"
 $alienwareVaultId = "9f7e513d0604b00d"
 
@@ -75,16 +75,16 @@ if (-not (Test-TcpPort "127.0.0.1" 8392) -and (Test-Path "$repoRoot\apps\hermes-
     Start-DetachedService "`"$nodeExe`" `"$repoRoot\apps\hermes-leadgen\server.js`"" "$repoRoot\apps\hermes-leadgen" 0
 }
 
-# 5. DREAM Dev Engine Server (:20128) — OpenUI Lang 1.0 + REA City + Remake 98.8% Cloud Studio
-$restart20128Flag = "C:\Users\joshl\antigravity\DREAM-Engine\ops\node\.restart-20128.flag"
-if (Test-Path $restart20128Flag) {
-    Remove-Item $restart20128Flag -Force -ErrorAction SilentlyContinue
-    Get-NetTCPConnection -LocalPort 20128 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object {
+# 5. DREAM Dev Engine Server (:9180) — OpenUI Lang 1.0 + REA City + Remake 98.8% Cloud Studio
+$restart9180Flag = "$env:USERPROFILE\antigravity\DREAM-Engine\ops\node\.restart-9180.flag"
+if (Test-Path $restart9180Flag) {
+    Remove-Item $restart9180Flag -Force -ErrorAction SilentlyContinue
+    Get-NetTCPConnection -LocalPort 9180 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object {
         if ($_ -gt 4) { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
     }
     Start-Sleep -Milliseconds 600
 }
-if (-not (Test-TcpPort "127.0.0.1" 20128)) {
+if (-not (Test-TcpPort "127.0.0.1" 9180)) {
     Start-DetachedService "`"$nodeExe`" --import tsx `"$repoRoot\server.ts`"" $repoRoot 0
 }
 
@@ -107,14 +107,14 @@ if ((Test-Path "$repoRoot\api.workflow.json") -and (Test-Path $vaultRoot)) {
     Copy-Item "$repoRoot\workflow_api.json" "$vaultRoot\workflow_api.json" -Force -ErrorAction SilentlyContinue
 }
 
-# 9. Auto-open DREAM Dev Engine Studio (http://127.0.0.1:20128) & Free Claude Code Admin (http://127.0.0.1:8082/admin) once per boot session
+# 9. Auto-open DREAM Dev Engine Studio (http://127.0.0.1:9180) & Free Claude Code Admin (http://127.0.0.1:8082/admin) once per boot session
 $bootTimestamp = (Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue).LastBootUpTime.ToString("yyyyMMddHHmmss")
 $browserFlag = "$env:TEMP\dream-engine-opened-$bootTimestamp.flag"
 if (-not (Test-Path $browserFlag)) {
     Start-Sleep -Seconds 3
-    if (Test-TcpPort "127.0.0.1" 20128) {
+    if (Test-TcpPort "127.0.0.1" 9180) {
         try {
-            Start-Process "http://127.0.0.1:20128" -ErrorAction SilentlyContinue
+            Start-Process "http://127.0.0.1:9180" -ErrorAction SilentlyContinue
             if (Test-TcpPort "127.0.0.1" 8082) {
                 Start-Process "http://127.0.0.1:8082/admin" -ErrorAction SilentlyContinue
             }

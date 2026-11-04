@@ -9,7 +9,7 @@ team spends time on larger world, economy, PvP, or live-service systems.
 
 | Risk | Current Status | Impact | Early Signal | Mitigation | Owner Lane |
 | --- | --- | --- | --- | --- | --- |
-| Engine missing | Closed | High | Godot 4.7.2 was chosen on 2026-09-20 and the playable slice exists (789 checks) | Closed; continue slice work in game/godot/DreamSlice per docs/tech/engine-decision-2026-09-20.md | Codex/Claude planning; Joshua approval for install |
+| Engine missing | Closed | High | The engine and editor are built in-house (docs/tech/engine-decision-2026-09-30-own-engine.md); no third-party engine install is needed | Closed; continue in src/engine/ | Codex/Claude planning; Joshua approval for install |
 | C++ toolchain missing | Closed | High | Not applicable on the Godot track; Godot needs no C++ compiler | Closed for the Godot track; returns only if the Unreal revisit terms in docs/tech/engine-decision-2026-09-20.md are met | Codex/Claude planning; Joshua approval for install |
 | Art assets missing | Open | Medium | First zone has no confirmed greybox kit, enemy mesh, resource node mesh, VFX, or UI pass | Use placeholder-safe asset requirements and text layouts first; require visible landmark, road, enemy, node, and event state before polish | Design and future Unreal lane |
 | AI cost unknown | Open | Medium | Live NPC Lab can run locally, but no per-player call budget or provider routing proof exists | Default to mock/local replies for first playable; require call caps, timeout, fallback, and no-key local path before provider use | Live NPC Lab lane |

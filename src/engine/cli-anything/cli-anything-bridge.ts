@@ -410,7 +410,7 @@ export function executeCliAnythingCommand(
         freeForAllKids: true,
         payToWinAllowed: false,
       },
-      liveState: liveState || { note: 'Connected to :20128 authoritative state' },
+      liveState: liveState || { note: 'Connected to :9180 authoritative state' },
     };
 
     const textLines = [

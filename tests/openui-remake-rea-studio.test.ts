@@ -119,15 +119,30 @@ test('REA Clean-Room Procedural City Architect: generates deterministic 80m x 12
   assert.equal(blockCircle.colorDepthBits, 16);
 });
 
-test('Remake Swap Board & IDE Benchmark Engine: swaps content.json slots, verifies >= 98% frame-freeze pixel score, synthesizes Unreal/Unity/PlayCanvas/Spline patterns, and enforces FL §496.405 clean copy', () => {
+test('Remake Swap Board & IDE Benchmark Engine: swaps content.json slots, reports the gate (features matched, clear visual difference, own code) with no pixel score, synthesizes Unreal/Unity/PlayCanvas/Spline patterns, and enforces FL §496.405 clean copy', () => {
   assert.equal(IDE_BENCHMARK_PROFILES.length >= 5, true);
   assert.equal(DEFAULT_REMAKE_CONTENT_SLOTS.length >= 6, true);
 
   const board = new RemakeSwapBoard();
-  const initialScore = board.computeFrameFreezeScore();
-  assert.equal(initialScore.desktopScore >= 98.0, true);
-  assert.equal(initialScore.mobileScore >= 98.0, true);
-  assert.equal(initialScore.deterministicClockFrozen, true);
+  // The board never invents a measure: with no gate run it says NOT MEASURED, and there is no pixel score.
+  const initialReport = board.computeGateReport();
+  assert.equal(initialReport.gate, 'features matched, clear visual difference, own code');
+  assert.equal(initialReport.status, 'NOT MEASURED');
+  assert.equal(initialReport.featuresMatchedPercent, null);
+  assert.equal(initialReport.featuresMatchedRequiredPercent, 98);
+  assert.equal(JSON.stringify(initialReport).includes('98.8'), false);
+  assert.equal(/pixel|frame.?freeze|desktopScore|mobileScore/i.test(JSON.stringify(initialReport)), false);
+
+  // The gate passes on features matched (>= 98), a clear visual difference, and own code. Likeness never passes.
+  const good = { featuresMatchedPercent: 98, clearVisualDifferenceFromSource: true, ownCode: true };
+  assert.equal(board.computeGateReport(good).status, 'PASS');
+  assert.equal(board.computeGateReport({ ...good, featuresMatchedPercent: 97.9 }).status, 'FAIL');
+  assert.equal(board.computeGateReport({ ...good, clearVisualDifferenceFromSource: false }).status, 'FAIL');
+  assert.equal(board.computeGateReport({ ...good, ownCode: false }).status, 'FAIL');
+
+  // No public string on the board carries the old pixel-lock wording.
+  const publicText = JSON.stringify([IDE_BENCHMARK_PROFILES, DEFAULT_REMAKE_CONTENT_SLOTS]);
+  assert.equal(/98\.8|pixel.?lock|pixel.?freeze|frame.?freeze/i.test(publicText), false);
 
   // Swap theme and hero headline slot
   board.updateSlot('studio_theme_preset', 'cyber-emerald-webgpu');

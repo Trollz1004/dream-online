@@ -1,14 +1,16 @@
-# Power-Loss & Reboot Auto-Heal Boot Script — Node 3: Sabretooth (.8)
+# Power-Loss & Reboot Auto-Heal Boot Script — Node 3: Sabretooth
 # Runs via S4U (whether user is logged on or at the Windows Lock Screen LogonUI).
 # Starts Obsidian Vault (:27123 / c5231ee3994c364e), Ollama (:11434), Sabretooth OPSis Worker (:8391),
 # and Hermes Dashboard & Gateway (:9119) with zero manual login required.
 
 $ErrorActionPreference = "SilentlyContinue"
+# An S4U logon at the lock screen may not export LOCALAPPDATA; derive it from USERPROFILE so no user folder is typed here.
+if (-not $env:LOCALAPPDATA) { $env:LOCALAPPDATA = Join-Path $env:USERPROFILE "AppData\Local" }
 $nodeExe = "C:\Program Files\nodejs\node.exe"
-$ollamaExe = "C:\Users\joshl\AppData\Local\Programs\Ollama\ollama.exe"
+$ollamaExe = "$env:LOCALAPPDATA\Programs\Ollama\ollama.exe"
 $obsidianExe = "C:\Program Files\Obsidian\Obsidian.exe"
-$hermesExe = "C:\Users\joshl\AppData\Local\hermes\bin\hermes.exe"
-$hermesGatewayVbs = "C:\Users\joshl\AppData\Local\hermes\gateway-service\Hermes_Gateway.vbs"
+$hermesExe = "$env:LOCALAPPDATA\hermes\bin\hermes.exe"
+$hermesGatewayVbs = "$env:LOCALAPPDATA\hermes\gateway-service\Hermes_Gateway.vbs"
 $vaultRoot = "C:\Ai-Dream-Team\Antigravity"
 $sabretoothVaultId = "c5231ee3994c364e"
 $engineDir = "C:\Ai-Dream-Team\Antigravity\youtube-shorts-podcast-engine"
@@ -49,7 +51,7 @@ if (-not (Test-TcpPort "127.0.0.1" 27123) -and -not (Get-Process Obsidian -Error
 
 # 2. Ollama 16 GB AMD GPU Server (:11434)
 if (-not (Test-TcpPort "127.0.0.1" 11434) -and (Test-Path $ollamaExe)) {
-    Start-DetachedService "`"$ollamaExe`" serve" "C:\Users\joshl"
+    Start-DetachedService "`"$ollamaExe`" serve" "$env:USERPROFILE"
 }
 
 # 3. Sabretooth OPSis Worker (:8391)
@@ -60,9 +62,9 @@ if (-not (Test-TcpPort "127.0.0.1" 8391) -and (Test-Path "$engineDir\sabretooth_
 # 4. Hermes Agent Dashboard (:9119) & Gateway
 if (-not (Test-TcpPort "127.0.0.1" 9119)) {
     if (Test-Path $hermesGatewayVbs) {
-        Start-DetachedService "wscript.exe //B //Nologo `"$hermesGatewayVbs`"" "C:\Users\joshl\AppData\Local\hermes\gateway-service"
+        Start-DetachedService "wscript.exe //B //Nologo `"$hermesGatewayVbs`"" "$env:LOCALAPPDATA\hermes\gateway-service"
     }
     if (Test-Path $hermesExe) {
-        Start-DetachedService "`"$hermesExe`" dashboard --skip-build --no-open" "C:\Users\joshl\AppData\Local\hermes"
+        Start-DetachedService "`"$hermesExe`" dashboard --skip-build --no-open" "$env:LOCALAPPDATA\hermes"
     }
 }

@@ -7,7 +7,7 @@
  * - /api/graphy/*   (Graphy Repository AST & Workflow Context Graph)
  * - /api/studio/*   (REA Binary Analysis & 3D World/Character AI Synthesis)
  *
- * 100% Built with Google Gemini — #UntilNoKidInNeed
+ * 100% Built with Google Gemini
  */
 
 import express from 'express';
@@ -68,10 +68,14 @@ export const app = express();
 app.use(express.json({ limit: '10mb' }));
 app.use('/dreamforge', express.static(path.join(__dirname, 'dreamforge')));
 
+// House rule: no provider key outside the AI Studio app's own voices. The Gemini lane stays off
+// (null client, callers answer 503) unless GEMINI_API_KEY is set AND GEMINI_KEY_APPROVED=finalize.
+export const GEMINI_LANE_OFF_MESSAGE = 'Gemini lane is off until Josh finalizes a key';
+
 // Initialize server-side GoogleGenAI per @google/genai guidelines
-function getGenAiClient(): GoogleGenAI | null {
+export function getGenAiClient(): GoogleGenAI | null {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey || process.env.GEMINI_KEY_APPROVED !== 'finalize') return null;
   return new GoogleGenAI({
     apiKey,
     httpOptions: {
@@ -80,6 +84,10 @@ function getGenAiClient(): GoogleGenAI | null {
       },
     },
   });
+}
+
+function geminiLaneOff(res: express.Response) {
+  return res.status(503).json({ status: 'unavailable', error: GEMINI_LANE_OFF_MESSAGE });
 }
 
 // ============================================================================
@@ -153,7 +161,7 @@ const serverState = {
       id: 'audit-init-2',
       t: new Date().toLocaleTimeString('en-US', { hour12: false }),
       kind: 'TOPOLOGY',
-      msg: 'Hardware nodes locked: Alienware 192.168.0.40:20128 · T5500 192.168.0.15:9127 · Mission Control :3130 (Zero Omniroute/Paperclip)',
+      msg: 'Hardware nodes locked: Alienware 192.168.0.40:9180 · T5500 192.168.0.15:9127 · Mission Control :3130 (Zero Omniroute/Paperclip)',
       ok: true,
     },
   ],
@@ -185,7 +193,7 @@ app.get('/api/gm/health', (_req, res) => {
   res.json({
     status: 'ok',
     node: 'mission-control-3130',
-    alienwareNode: '192.168.0.40:20128',
+    alienwareNode: '192.168.0.40:9180',
     t5500Worker: '192.168.0.15:9127',
     mission: '#UntilNoKidInNeed',
   });
@@ -297,30 +305,30 @@ app.post('/api/gm/npc/dialogue', async (req, res) => {
   const profile =
     serverState.npcProfiles.find((p) => p.id === npcId) || serverState.npcProfiles[0];
 
+  const ai = getGenAiClient();
+  if (!ai) return geminiLaneOff(res);
+
   serverState.economy.adFundedStats.inferenceCalls += 1;
   serverState.economy.adFundedStats.adImpressions += 2;
 
   let replyText = `${profile.name} [${profile.tier} · ${zone}]: "${profile.defaultGreeting}"`;
   let modelUsed = 'T0-Scripted-Fallback';
 
-  const ai = getGenAiClient();
-  if (ai) {
-    try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: `Player at zone "${zone}" says to NPC "${profile.name}" (${profile.role}): "${message}". Respond in-character in 2-3 concise sentences.`,
-        config: {
-          systemInstruction: `${profile.doctrinePrompt} Keep responses immersive, concise (under 65 words), and grounded in DREAM Engine's First Gate world, hardware nodes (.40 Alienware, .15 T5500, :3130 Mission Control), and #UntilNoKidInNeed.`,
-        },
-      });
-      if (response.text) {
-        replyText = response.text.trim();
-        modelUsed = 'gemini-3.8-flash (Google Ultra Agent SDK)';
-      }
-    } catch (err) {
-      // Fallback gracefully to T0/T1 local response
-      console.warn('[DREAM] Gemini NPC fallback engaged:', err);
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: `Player at zone "${zone}" says to NPC "${profile.name}" (${profile.role}): "${message}". Respond in-character in 2-3 concise sentences.`,
+      config: {
+        systemInstruction: `${profile.doctrinePrompt} Keep responses immersive, concise (under 65 words), and grounded in DREAM Engine's First Gate world, hardware nodes (.40 Alienware, .15 T5500, :3130 Mission Control), and #UntilNoKidInNeed.`,
+      },
+    });
+    if (response.text) {
+      replyText = response.text.trim();
+      modelUsed = 'gemini-3.8-flash (Google Ultra Agent SDK)';
     }
+  } catch (err) {
+    // Fallback gracefully to T0/T1 local response
+    console.warn('[DREAM] Gemini NPC fallback engaged:', err);
   }
 
   // Record in 4-Tier Memory Vault (Obsidian + Viking)
@@ -379,27 +387,26 @@ app.post('/api/agent-sdk/dispatch', async (req, res) => {
   let outputText = `[${protocol.toUpperCase()} · ${model}] Task executed across Alienware .40 and T5500 .15 with zero Omniroute contention. All circuit breakers healthy.`;
 
   const ai = getGenAiClient();
-  if (ai) {
-    try {
-      const targetModel =
-        model === 'gemini-4-argon' || model === 'gemini-3.1-flash-lite'
-          ? model
-          : 'gemini-3.8-flash';
-      const response = await ai.models.generateContent({
-        model: targetModel,
-        contents: taskPrompt,
-        config: {
-          systemInstruction: `${systemInstruction}\nProtocol Envelope: ${protocol}. Provide a concise, actionable engineering response.`,
-        },
-      });
-      if (response.text) {
-        outputText = response.text.trim();
-      }
-    } catch (err) {
-      outputText = `[Circuit-Breaker Fallback Engaged] Direct SDK handled request locally: ${
-        err instanceof Error ? err.message : 'Upstream rate cap bypassed via 4-Tier Memory & T5500 worker'
-      }`;
+  if (!ai) return geminiLaneOff(res);
+  try {
+    const targetModel =
+      model === 'gemini-4-argon' || model === 'gemini-3.1-flash-lite'
+        ? model
+        : 'gemini-3.8-flash';
+    const response = await ai.models.generateContent({
+      model: targetModel,
+      contents: taskPrompt,
+      config: {
+        systemInstruction: `${systemInstruction}\nProtocol Envelope: ${protocol}. Provide a concise, actionable engineering response.`,
+      },
+    });
+    if (response.text) {
+      outputText = response.text.trim();
     }
+  } catch (err) {
+    outputText = `[Circuit-Breaker Fallback Engaged] Direct SDK handled request locally: ${
+      err instanceof Error ? err.message : 'Upstream rate cap bypassed via 4-Tier Memory & T5500 worker'
+    }`;
   }
 
   appendAudit('ULTRA-SDK', `Dispatched [${protocol}] on ${model}: "${taskPrompt.slice(0, 42)}..."`, true);
@@ -549,22 +556,21 @@ app.post('/api/studio/rea-analyze', async (req, res) => {
 
   let aiDecompilationNote = analysis.suggestedEnginePreset.summary;
   const ai = getGenAiClient();
-  if (ai) {
-    try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: `Reverse-engineer this binary telemetry via morluto/rea bridge:
+  if (!ai) return geminiLaneOff(res);
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: `Reverse-engineer this binary telemetry via morluto/rea bridge:
 File: ${analysis.fileName} (${analysis.format}, ${analysis.architecture})
 Magic Hex: ${analysis.magicHex}, Entropy: ${analysis.entropy}
 Extracted Strings: ${analysis.extractedStrings.join(', ')}
 Provide a 2-sentence technical summary explaining how its extracted structures map into DREAM Engine's 3D WebGPU/WebGL2 runtime.`,
-      });
-      if (response.text) {
-        aiDecompilationNote = response.text.trim();
-      }
-    } catch {
-      // Keep deterministic summary
+    });
+    if (response.text) {
+      aiDecompilationNote = response.text.trim();
     }
+  } catch {
+    // Keep deterministic summary
   }
 
   analysis.suggestedEnginePreset.summary = aiDecompilationNote;
@@ -579,6 +585,7 @@ Provide a 2-sentence technical summary explaining how its extracted structures m
 app.post('/api/studio/generate-design', async (req, res) => {
   const prompt = String(req.body?.prompt || 'Golden Solar Paladin with cyan plasma blade');
   const ai = getGenAiClient();
+  if (!ai) return geminiLaneOff(res);
 
   let generated = {
     presetName: 'Solaris Cyber-Knight',
@@ -590,66 +597,64 @@ app.post('/api/studio/generate-design', async (req, res) => {
     loreSummary: `Synthesized by Google Gemini from prompt: "${prompt}". Built for #UntilNoKidInNeed.`,
   };
 
-  if (ai) {
-    try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: `Generate a 3D Cyber-Knight character rig & material preset for DREAM Engine based on this creator prompt: "${prompt}". Return RGB floats between 0.05 and 1.0.`,
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              presetName: { type: Type.STRING },
-              armorR: { type: Type.NUMBER },
-              armorG: { type: Type.NUMBER },
-              armorB: { type: Type.NUMBER },
-              visorR: { type: Type.NUMBER },
-              visorG: { type: Type.NUMBER },
-              visorB: { type: Type.NUMBER },
-              bladeR: { type: Type.NUMBER },
-              bladeG: { type: Type.NUMBER },
-              bladeB: { type: Type.NUMBER },
-              avatarScale: { type: Type.NUMBER },
-              visorGlowIntensity: { type: Type.NUMBER },
-              loreSummary: { type: Type.STRING },
-            },
-            required: [
-              'presetName',
-              'armorR',
-              'armorG',
-              'armorB',
-              'visorR',
-              'visorG',
-              'visorB',
-              'bladeR',
-              'bladeG',
-              'bladeB',
-              'avatarScale',
-              'visorGlowIntensity',
-              'loreSummary',
-            ],
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: `Generate a 3D Cyber-Knight character rig & material preset for DREAM Engine based on this creator prompt: "${prompt}". Return RGB floats between 0.05 and 1.0.`,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            presetName: { type: Type.STRING },
+            armorR: { type: Type.NUMBER },
+            armorG: { type: Type.NUMBER },
+            armorB: { type: Type.NUMBER },
+            visorR: { type: Type.NUMBER },
+            visorG: { type: Type.NUMBER },
+            visorB: { type: Type.NUMBER },
+            bladeR: { type: Type.NUMBER },
+            bladeG: { type: Type.NUMBER },
+            bladeB: { type: Type.NUMBER },
+            avatarScale: { type: Type.NUMBER },
+            visorGlowIntensity: { type: Type.NUMBER },
+            loreSummary: { type: Type.STRING },
           },
+          required: [
+            'presetName',
+            'armorR',
+            'armorG',
+            'armorB',
+            'visorR',
+            'visorG',
+            'visorB',
+            'bladeR',
+            'bladeG',
+            'bladeB',
+            'avatarScale',
+            'visorGlowIntensity',
+            'loreSummary',
+          ],
         },
-      });
+      },
+    });
 
-      if (response.text) {
-        const parsed = JSON.parse(response.text.trim());
-        const clamp = (n: number, min = 0.05, max = 1.0) =>
-          Number(Math.min(max, Math.max(min, Number(n) || 0.5)).toFixed(2));
-        generated = {
-          presetName: parsed.presetName || 'Gemini Custom Rig',
-          armorColorDay: [clamp(parsed.armorR), clamp(parsed.armorG), clamp(parsed.armorB)],
-          visorColorDay: [clamp(parsed.visorR), clamp(parsed.visorG), clamp(parsed.visorB)],
-          bladeColorDay: [clamp(parsed.bladeR), clamp(parsed.bladeG), clamp(parsed.bladeB)],
-          avatarScale: clamp(parsed.avatarScale, 0.75, 1.45),
-          visorGlowIntensity: clamp(parsed.visorGlowIntensity, 1.0, 5.0),
-          loreSummary: parsed.loreSummary || generated.loreSummary,
-        };
-      }
-    } catch (err) {
-      console.warn('[DREAM] Studio AI design fallback engaged:', err);
+    if (response.text) {
+      const parsed = JSON.parse(response.text.trim());
+      const clamp = (n: number, min = 0.05, max = 1.0) =>
+        Number(Math.min(max, Math.max(min, Number(n) || 0.5)).toFixed(2));
+      generated = {
+        presetName: parsed.presetName || 'Gemini Custom Rig',
+        armorColorDay: [clamp(parsed.armorR), clamp(parsed.armorG), clamp(parsed.armorB)],
+        visorColorDay: [clamp(parsed.visorR), clamp(parsed.visorG), clamp(parsed.visorB)],
+        bladeColorDay: [clamp(parsed.bladeR), clamp(parsed.bladeG), clamp(parsed.bladeB)],
+        avatarScale: clamp(parsed.avatarScale, 0.75, 1.45),
+        visorGlowIntensity: clamp(parsed.visorGlowIntensity, 1.0, 5.0),
+        loreSummary: parsed.loreSummary || generated.loreSummary,
+      };
     }
+  } catch (err) {
+    console.warn('[DREAM] Studio AI design fallback engaged:', err);
   }
 
   appendAudit('STUDIO-AI', `Generated 3D Character Rig "${generated.presetName}" via Gemini`, true);
@@ -675,7 +680,7 @@ app.get('/api/openui/presets', (_req, res) => {
     reaArchetypes: REA_CITY_ARCHETYPES,
     reaEvidenceLedger: REA_RECONSTRUCTION_EVIDENCE_LEDGER,
     remakeBenchmarkProfiles: IDE_BENCHMARK_PROFILES,
-    remakeReport: serverRemakeBoard.computeFrameFreezeScore(),
+    remakeReport: serverRemakeBoard.computeGateReport(),
   });
 });
 
@@ -704,7 +709,7 @@ app.get('/api/remake/swap-board', (_req, res) => {
   res.json({
     status: 'ok',
     slots: serverRemakeBoard.getSlots(),
-    report: serverRemakeBoard.computeFrameFreezeScore(),
+    report: serverRemakeBoard.computeGateReport(),
     benchmarks: IDE_BENCHMARK_PROFILES,
   });
 });
@@ -794,13 +799,14 @@ app.post('/api/dreamforge/generate', (req, res) => {
       vfxTheme,
       prompt,
       worldSeed: `DF-${mode.id.toUpperCase()}-${style.toUpperCase()}-${Date.now().toString(36).toUpperCase()}`,
-      shortsHook59s: `[<= 58.5s Female TTS Aoede/Kore] Watch the ${mmoClass.name} unleash ${vfxTheme.name} in ${style} — 100% Built by AI (#UntilNoKidInNeed)!`,
+      // Voices default to Kokoro locally until Josh approves a key.
+      shortsHook59s: `[<= 58.5s local Kokoro female voice] Watch the ${mmoClass.name} unleash ${vfxTheme.name} in ${style} — 100% Built by AI!`,
     },
   });
 });
 
 async function startServer() {
-  const PORT = Number(process.env.PORT) || 20128;
+  const PORT = Number(process.env.PORT) || 9180;
   const isProd = process.env.NODE_ENV === 'production';
 
   if (!isProd) {

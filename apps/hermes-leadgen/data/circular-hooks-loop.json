@@ -1,10 +1,8 @@
 {
-  "architecture": "Task -> Node Orchestrator (:8392/:9119) -> Local File/Task Watcher Hook -> Node PR Branch (sabretooth/*) -> GitHub Webhook -> Cloud Judges (Gemini / Jules / Claude / Codex in GitHub) Validate & Merge -> Obsidian + Dashboard Sync",
+  "architecture": "Task -> Node Orchestrator (:8392/:9119) -> Local File/Task Watcher Hook -> Node PR Branch (sabretooth/*) -> GitHub Webhook -> Reviewers (Gemini / Jules / Claude / Codex in GitHub) Validate -> Merge by Josh or the signed-in Claude judge lane -> Obsidian + Dashboard Sync",
   "mergeAuthority": [
-    "Gemini (GitHub Judge)",
-    "Jules (GitHub Judge)",
-    "Claude (GitHub Judge)",
-    "Codex (GitHub Judge)"
+    "Josh (Founder)",
+    "Claude (signed-in judge lane)"
   ],
   "nodeCanSelfMergeToMain": false,
   "watcherActive": true,
@@ -46,9 +44,9 @@
     {
       "step": 5,
       "id": "cloud-judges-merge",
-      "name": "5. GitHub Judges Validate & Merge (Jules / Claude / Codex / Gemini)",
+      "name": "5. Reviewers Validate (Jules / Claude / Codex / Gemini), Josh or the Claude Judge Lane Merges",
       "status": "ENFORCED",
-      "detail": "Only Cloud Judges in GitHub merge after CI passes — zero unjudged node merges"
+      "detail": "Reviewer lanes comment after CI passes; only Josh or the signed-in Claude judge lane merges — zero unjudged node merges"
     },
     {
       "step": 6,
@@ -391,7 +389,7 @@
       "pushSuccess": true,
       "prUrl": "https://github.com/Trollz1004/ANTIGRAVITY/compare/main...sabretooth/auto-pr-sync?expand=1",
       "testsPassed": true,
-      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
+      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_REVIEW (Jules / Claude / Codex / Gemini as reviewers)",
       "summary": "File change detected on souls/editor-agent.md -> synced dashboard & queued PR webhook check."
     },
     {
@@ -404,7 +402,7 @@
       "pushSuccess": true,
       "prUrl": "https://github.com/Trollz1004/ANTIGRAVITY/compare/main...sabretooth/auto-pr-sync?expand=1",
       "testsPassed": true,
-      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
+      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_REVIEW (Jules / Claude / Codex / Gemini as reviewers)",
       "summary": "File change detected on Sabretooth/hermes-to-hermes.md -> synced dashboard & queued PR webhook check."
     },
     {
@@ -417,7 +415,7 @@
       "pushSuccess": true,
       "prUrl": "https://github.com/Trollz1004/ANTIGRAVITY/compare/main...sabretooth/auto-pr-sync?expand=1",
       "testsPassed": true,
-      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
+      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_REVIEW (Jules / Claude / Codex / Gemini as reviewers)",
       "summary": "File change detected on Sabretooth/hermes-to-hermes.md -> synced dashboard & queued PR webhook check."
     },
     {
@@ -430,7 +428,7 @@
       "pushSuccess": true,
       "prUrl": "https://github.com/Trollz1004/ANTIGRAVITY/compare/main...sabretooth/auto-pr-sync?expand=1",
       "testsPassed": true,
-      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
+      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_REVIEW (Jules / Claude / Codex / Gemini as reviewers)",
       "summary": "File change detected on Sabretooth/hermes-to-hermes.md -> synced dashboard & queued PR webhook check."
     },
     {
@@ -443,7 +441,7 @@
       "pushSuccess": true,
       "prUrl": "https://github.com/Trollz1004/ANTIGRAVITY/compare/main...sabretooth/auto-pr-sync?expand=1",
       "testsPassed": true,
-      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
+      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_REVIEW (Jules / Claude / Codex / Gemini as reviewers)",
       "summary": "File change detected on Sabretooth/hermes-to-hermes.md -> synced dashboard & queued PR webhook check."
     },
     {
@@ -456,7 +454,7 @@
       "pushSuccess": true,
       "prUrl": "https://github.com/Trollz1004/ANTIGRAVITY/compare/main...sabretooth/auto-pr-sync?expand=1",
       "testsPassed": true,
-      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
+      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_REVIEW (Jules / Claude / Codex / Gemini as reviewers)",
       "summary": "File change detected on Sabretooth/codex-to-codex.md -> synced dashboard & queued PR webhook check."
     },
     {
@@ -469,7 +467,7 @@
       "pushSuccess": true,
       "prUrl": "https://github.com/Trollz1004/ANTIGRAVITY/compare/main...sabretooth/auto-pr-sync?expand=1",
       "testsPassed": true,
-      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
+      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_REVIEW (Jules / Claude / Codex / Gemini as reviewers)",
       "summary": "File change detected on souls/youtube-agent.md -> synced dashboard & queued PR webhook check."
     },
     {
@@ -482,7 +480,7 @@
       "pushSuccess": true,
       "prUrl": "https://github.com/Trollz1004/ANTIGRAVITY/compare/main...sabretooth/auto-pr-sync?expand=1",
       "testsPassed": true,
-      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
+      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_REVIEW (Jules / Claude / Codex / Gemini as reviewers)",
       "summary": "File change detected on souls/notes-agent.md -> synced dashboard & queued PR webhook check."
     },
     {
@@ -495,7 +493,7 @@
       "pushSuccess": true,
       "prUrl": "https://github.com/Trollz1004/ANTIGRAVITY/compare/main...sabretooth/auto-pr-sync?expand=1",
       "testsPassed": true,
-      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
+      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_REVIEW (Jules / Claude / Codex / Gemini as reviewers)",
       "summary": "File change detected on souls/kanban-agent.md -> synced dashboard & queued PR webhook check."
     },
     {
@@ -508,7 +506,7 @@
       "pushSuccess": true,
       "prUrl": "https://github.com/Trollz1004/ANTIGRAVITY/compare/main...sabretooth/auto-pr-sync?expand=1",
       "testsPassed": true,
-      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
+      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_REVIEW (Jules / Claude / Codex / Gemini as reviewers)",
       "summary": "File change detected on souls/harvey-agent.md -> synced dashboard & queued PR webhook check."
     },
     {
@@ -521,7 +519,7 @@
       "pushSuccess": true,
       "prUrl": "https://github.com/Trollz1004/ANTIGRAVITY/compare/main...sabretooth/auto-pr-sync?expand=1",
       "testsPassed": true,
-      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
+      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_REVIEW (Jules / Claude / Codex / Gemini as reviewers)",
       "summary": "File change detected on souls/fcc-agent.md -> synced dashboard & queued PR webhook check."
     },
     {
@@ -534,7 +532,7 @@
       "pushSuccess": true,
       "prUrl": "https://github.com/Trollz1004/ANTIGRAVITY/compare/main...sabretooth/auto-pr-sync?expand=1",
       "testsPassed": true,
-      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
+      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_REVIEW (Jules / Claude / Codex / Gemini as reviewers)",
       "summary": "File change detected on souls/editor-agent.md -> synced dashboard & queued PR webhook check."
     },
     {
@@ -547,7 +545,7 @@
       "pushSuccess": true,
       "prUrl": "https://github.com/Trollz1004/ANTIGRAVITY/compare/main...sabretooth/auto-pr-sync?expand=1",
       "testsPassed": true,
-      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
+      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_REVIEW (Jules / Claude / Codex / Gemini as reviewers)",
       "summary": "File change detected on souls/default-orchestrator-agent.md -> synced dashboard & queued PR webhook check."
     },
     {
@@ -560,7 +558,7 @@
       "pushSuccess": true,
       "prUrl": "https://github.com/Trollz1004/ANTIGRAVITY/compare/main...sabretooth/auto-pr-sync?expand=1",
       "testsPassed": true,
-      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
+      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_REVIEW (Jules / Claude / Codex / Gemini as reviewers)",
       "summary": "File change detected on souls/youtube-agent.md -> synced dashboard & queued PR webhook check."
     },
     {
@@ -573,7 +571,7 @@
       "pushSuccess": true,
       "prUrl": "https://github.com/Trollz1004/ANTIGRAVITY/compare/main...sabretooth/auto-pr-sync?expand=1",
       "testsPassed": true,
-      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
+      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_REVIEW (Jules / Claude / Codex / Gemini as reviewers)",
       "summary": "File change detected on Sabretooth/claude-to-claude.md -> synced dashboard & queued PR webhook check."
     },
     {
@@ -587,7 +585,7 @@
       "prUrl": "https://github.com/Trollz1004/ANTIGRAVITY/compare/main...=1",
       "testsPassed": true,
       "judgeStatus": "COMPARE_READY",
-      "summary": "Mandatory Post-Work Auto-Commit, Branch Push (sabretooth/auto-pr-sync) & GitHub PR Creation for Cloud Judges (Gemini / Jules / Claude / Codex). (Commit: b9cdbf0, Push: QUEUED)"
+      "summary": "Mandatory Post-Work Auto-Commit, Branch Push (sabretooth/auto-pr-sync) & GitHub PR Creation for Review (Gemini / Jules / Claude / Codex); merge by Josh or the signed-in Claude judge lane. (Commit: b9cdbf0, Push: QUEUED)"
     },
     {
       "id": "hook-1793327863426",
@@ -599,7 +597,7 @@
       "pushSuccess": true,
       "prUrl": "https://github.com/Trollz1004/ANTIGRAVITY/compare/main...sabretooth/auto-pr-sync?expand=1",
       "testsPassed": true,
-      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_JUDGES (Jules / Claude / Codex / Gemini)",
+      "judgeStatus": "PUSHED_AND_PR_QUEUED_FOR_GITHUB_REVIEW (Jules / Claude / Codex / Gemini as reviewers)",
       "summary": "File change detected on Sabretooth/hermes-to-hermes.md -> synced dashboard & queued PR webhook check."
     }
   ],

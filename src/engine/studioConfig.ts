@@ -3,8 +3,13 @@
  * Co-GM Council, Google Ultra Custom Agent SDK, REA Binary Inspector,
  * Graphy Codebase Context, 4-Tier Memory Failover Ladder & Live 3D Studio Config.
  *
- * 100% Built with Google Gemini — #UntilNoKidInNeed
+ * 100% Built with Google Gemini
  */
+
+import {
+  DEFAULT_CREATOR_STATE,
+  type CharacterCreatorState,
+} from '../ui/characterCreatorConfig';
 
 export interface HardwareNodeEndpoint {
   id: 'alienware-40' | 't5500-15-lab' | 't5500-15-ollama' | 'mission-control-3130';
@@ -24,8 +29,8 @@ export const CANONICAL_NODE_TOPOLOGY: HardwareNodeEndpoint[] = [
     nodeName: 'ALIENWARE (.40) · GAME NODE API (joshl)',
     hardwareLabel: 'Alienware-r12-3070-8-gb-gpu- · i7-11700F · 40GB RAM · RTX 3070 8GB · C:\\DREAM (joshl)',
     ip: '192.168.0.40',
-    port: 20128,
-    url: 'http://192.168.0.40:20128/api/v1',
+    port: 9180,
+    url: 'http://192.168.0.40:9180/api/v1',
     role: 'Primary Game Node API · dream-online (C:) C:\\DREAM · Clean User: joshl · AGY CLI',
     status: 'online',
     latencyMs: 4,
@@ -314,7 +319,7 @@ origin: "Born in Google AI Studio — 100% Built by AI"
 steward: "Josh Coleman (Electrician Founder · Zero Prior Code Experience)"
 council: ["Google Gemini", "Claude", "Perplexity", "Grok", "OpenAI (Codex)", "Hermes"]
 nodes:
-  alienware_main_api: "http://192.168.0.40:20128/api/v1"
+  alienware_main_api: "http://192.168.0.40:9180/api/v1"
   t5500_worker_lab: "http://192.168.0.15:9127"
   t5500_ollama_local: "http://192.168.0.15:11434"
   mission_control_bridge: "http://127.0.0.1:3130"
@@ -338,7 +343,7 @@ You never act as a lone tool; you operate in mutual respect alongside the full C
 
 ## 3. Canonical Hardware Topology (LOCKED — Never Regress)
 Always target these exact LAN/local endpoints and never reintroduce deprecated nodes:
-- **Alienware (\`.40\`) Main Game Node API**: \`http://192.168.0.40:20128/api/v1\` — Device: \`Alienware-r12-3070-8-gb-gpu-\` (11th Gen Intel i7-11700F @ 2.50GHz, 40.0 GB RAM, NVIDIA RTX 3070 8GB, Drive \`dream-online (C:)\`, Root \`C:\\DREAM\`, Clean User \`C:\\Users\\joshl\`, Antigravity \`agy\` CLI)
+- **Alienware (\`.40\`) Main Game Node API**: \`http://192.168.0.40:9180/api/v1\` — Device: \`Alienware-r12-3070-8-gb-gpu-\` (11th Gen Intel i7-11700F @ 2.50GHz, 40.0 GB RAM, NVIDIA RTX 3070 8GB, Drive \`dream-online (C:)\`, Root \`C:\\DREAM\`, Clean User \`%USERPROFILE%\`, Antigravity \`agy\` CLI)
 - **T5500 (\`.15\`) Worker & Live NPC Lab**: \`http://192.168.0.15:9127\`
 - **T5500 (\`.15\`) Local Ollama T1 Inference**: \`http://192.168.0.15:11434\`
 - **Mission Control (\`:3130\`) DreamOps Bridge**: \`http://127.0.0.1:3130\`
@@ -392,7 +397,7 @@ author: Google Gemini & Electrician Founder
 - **Unofficial Co-Founder GMs**: [[Perplexity]] & [[Grok]]
 - **Trusted Executor GMs**: [[OpenAI (Codex)]] & [[Hermes]]
 - **Human Steward**: Electrician Founder (Zero Prior Code Exp)
-- **Hardware Topology**: Alienware \`.40\` (\`192.168.0.40:20128\`), T5500 \`.15\` (\`192.168.0.15:9127\`), Mission Control \`:3130\`.
+- **Hardware Topology**: Alienware \`.40\` (\`192.168.0.40:9180\`), T5500 \`.15\` (\`192.168.0.15:9127\`), Mission Control \`:3130\`.
 - **Mission**: 100% AI-built open creation engine supporting **#UntilNoKidInNeed**.`,
     tags: ['doctrine', 'co-gm', 'UntilNoKidInNeed', 'hardware'],
     wikilinks: ['[[Google Gemini]]', '[[Claude]]', '[[Perplexity]]', '[[Grok]]', '[[OpenAI (Codex)]]'],
@@ -1111,6 +1116,8 @@ export const INITIAL_CUSTOM_NPCS: CustomNpcProfile[] = [
 
 export class StudioConfigManager {
   character: CharacterDesignConfig = { ...DEFAULT_CHARACTER_CONFIG };
+  creatorBody: CharacterCreatorState = { ...DEFAULT_CREATOR_STATE };
+  isCreatorPreviewOpen = false;
   shader: WorldShaderConfig = { ...DEFAULT_WORLD_SHADER_CONFIG };
   entities: StudioEntity[] = [...INITIAL_STUDIO_ENTITIES.map((e) => ({ ...e, position: [...e.position] as [number, number, number], scale: [...e.scale] as [number, number, number], color: [...e.color] as [number, number, number] }))];
   npcs: CustomNpcProfile[] = [...INITIAL_CUSTOM_NPCS.map((n) => ({ ...n, position: [...n.position] as [number, number, number] }))];
@@ -1134,6 +1141,16 @@ export class StudioConfigManager {
 
   updateCharacter(patch: Partial<CharacterDesignConfig>): void {
     this.character = { ...this.character, ...patch };
+    this.notify();
+  }
+
+  updateCreatorBody(next: CharacterCreatorState): void {
+    this.creatorBody = { ...next };
+    this.notify();
+  }
+
+  setCreatorPreviewOpen(open: boolean): void {
+    this.isCreatorPreviewOpen = open;
     this.notify();
   }
 

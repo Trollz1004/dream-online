@@ -5,7 +5,7 @@
  * to binary header analysis, section/string extraction, MCP tool pipelines
  * (Ghidra, Binwalk, JADX, radare2), and direct 3D world synthesis.
  *
- * Built with Google Gemini — #UntilNoKidInNeed
+ * Built with Google Gemini
  */
 
 import React, { useState } from 'react';

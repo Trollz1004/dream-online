@@ -13,10 +13,10 @@ Classified founder-only material remains outside repo in the OneDrive do-not-com
 Read the live state first, then the design:
 
 1. `CLAUDE.md` (which loads `AGENTS.md`)
-2. `docs/tech/engine-decision-2026-09-20.md` (Godot 4.7.2; Unreal parked)
+2. `docs/tech/engine-decision-2026-09-30-own-engine.md` (the engine and editor are built in-house)
 3. `docs/DREAM-DISPATCH.md` and the newest entry of `ops/node/JOURNAL.md`
 4. `STATE.md` and `TASKS.md`
-5. `game/godot/DreamSlice/README.md`
+5. `game/godot/DreamSlice/README.md` (earlier reference prototype, not the engine)
 6. `memory/glossary.md`
 7. `docs/gdd/00-vision.md`
 8. `docs/gdd/00a-first-playable-promise.md`
@@ -54,7 +54,7 @@ The slice must validate:
 
 ## Implementation Reality
 
-As of 2026-09-26: the Godot combat slice under `game/godot/DreamSlice` is real and playable (see `STATE.md` for what it contains and its test floor). The Node services under `game/server` (Live NPC Lab, DreamOps Bridge) are real local prototypes. There is still no server-authoritative game server or netcode; invulnerability is decided on the client, which `docs/gdd/02-action-combat.md` already flags as wrong for player-versus-player and files under later. `game/unreal/` is the parked Unreal test-zone tooling.
+The game runs on the in-house DREAM Engine (`src/engine/`, `server.ts`). The earlier Godot combat slice under `game/godot/DreamSlice` is a reference prototype (see `STATE.md` for what it contains). The Node services under `game/server` (Live NPC Lab, DreamOps Bridge) are real local prototypes. There is still no server-authoritative game server or netcode; invulnerability is decided on the client, which `docs/gdd/02-action-combat.md` already flags as wrong for player-versus-player and files under later. `game/unreal/` is reference-only Unreal test-zone tooling.
 
 ## Day/Night Economy And Market
 

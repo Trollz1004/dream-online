@@ -5,7 +5,9 @@
  * Synthesizes clean-room UI/UX architecture from the world's top 3D game engine developer sites
  * and browser studios (Unreal Engine 5 / Unity 6 Editor docking paradigms, PlayCanvas Cloud Editor,
  * Spline 3D Studio, Babylon.js Node Material Sandbox, and Needle Engine) while enforcing:
- * - Remake's deterministic frame-freeze & pixel-diff verification (`>= 98.0%` Desktop & Mobile score)
+ * - The Remake `100% Yours` gate, which passes on three things only: features matched (at least 98 percent
+ *   of what the source does), a clear visual difference from the source, and our own code. It never passes
+ *   on likeness, so this board never reports a pixel or frame score
  * - Live `content.json` Swap Board (`/_remake/swap/`) for one-click theme, skybox, hero copy, and
  *   voxel-mode customization
  * - Non-negotiable FL §496.405 Clean-Copy Gate (zero prohibited solicitation words in public copy)
@@ -55,7 +57,7 @@ export const IDE_BENCHMARK_PROFILES: IdeBenchmarkProfile[] = [
     inspirationSource: 'OpenUI Lang 1.0 + morluto/rea + rubenhassid1/remake',
     category: 'OpenUI Generative Architect',
     adoptedCleanRoomPattern: 'Streaming declarative OpenUI Lang statements + REA BLDG_ECO_primary.bdf procedural cities + Remake Swap Board',
-    dreamEngineAdvantage: '100% AI-Built (`Built with Google Gemini`) with cryptographic SHA-256 REA evidence & 98.8% Remake frame-freeze lock',
+    dreamEngineAdvantage: '100% AI-Built (`Built with Google Gemini`) with cryptographic SHA-256 REA evidence & the Remake gate (features matched, clear visual difference, own code)',
   },
 ];
 
@@ -80,7 +82,7 @@ export const DEFAULT_REMAKE_CONTENT_SLOTS: RemakeContentSlot[] = [
     key: 'hero_subheadline',
     label: 'Developer Portal Subheadline',
     category: 'branding',
-    value: 'Built with Google Gemini · OpenUI Lang 1.0 Generative IDE · REA Procedural City Architect · Remake 98.8% Pixel Lock',
+    value: 'Built with Google Gemini · OpenUI Lang 1.0 Generative IDE · REA Procedural City Architect · Remake gate: features matched, clear visual difference, own code',
     description: 'Secondary technical provenance tagline',
   },
   {
@@ -122,14 +124,24 @@ export const DEFAULT_REMAKE_CONTENT_SLOTS: RemakeContentSlot[] = [
   },
 ];
 
-export interface RemakeFrameFreezeReport {
-  desktopViewport: '1440x900';
-  mobileViewport: '390x844';
-  desktopScore: number;
-  mobileScore: number;
-  thresholdRequired: number;
-  deterministicClockFrozen: boolean;
-  frozenEpochIso: string;
+/** What a gate run measured. These come from the judge lane; the board never invents them. */
+export interface RemakeGateMeasures {
+  featuresMatchedPercent: number; // share of what the source does that the build covers
+  clearVisualDifferenceFromSource: boolean; // judged side by side; true means clearly different
+  ownCode: boolean; // false if any source code was copied, even with brand strings scrubbed
+}
+
+/** The gate needs at least this share of the source's features matched. */
+export const REMAKE_FEATURES_MATCHED_REQUIRED_PERCENT = 98;
+
+export interface RemakeGateReport {
+  gate: 'features matched, clear visual difference, own code';
+  featuresMatchedPercent: number | null; // null until a gate run measured it
+  featuresMatchedRequiredPercent: number;
+  featuresMatchedOk: boolean | null;
+  clearVisualDifferenceFromSource: boolean | null;
+  ownCode: boolean | null;
+  status: 'PASS' | 'FAIL' | 'NOT MEASURED';
   activeThemePreset: string;
   slotsCount: number;
   fl496405Compliant: boolean;
@@ -278,17 +290,31 @@ export class RemakeSwapBoard {
     );
   }
 
-  computeFrameFreezeScore(): RemakeFrameFreezeReport {
+  /**
+   * Reports the gate's real measure: features matched, clear visual difference, own code.
+   * With no gate run given, nothing is measured and the status says so. A likeness, however
+   * close, never passes, and there is no pixel or frame score anywhere in this report.
+   */
+  computeGateReport(measures?: RemakeGateMeasures): RemakeGateReport {
     const json = this.exportContentJson();
     const audit = verifyFl496405PublicCopyGate(json);
+    const featuresMatchedPercent = measures ? measures.featuresMatchedPercent : null;
+    const featuresMatchedOk =
+      featuresMatchedPercent === null ? null : featuresMatchedPercent >= REMAKE_FEATURES_MATCHED_REQUIRED_PERCENT;
+    const clearVisualDifferenceFromSource = measures ? measures.clearVisualDifferenceFromSource : null;
+    const ownCode = measures ? measures.ownCode : null;
+    let status: RemakeGateReport['status'] = 'NOT MEASURED';
+    if (measures) {
+      status = featuresMatchedOk && clearVisualDifferenceFromSource && ownCode ? 'PASS' : 'FAIL';
+    }
     return {
-      desktopViewport: '1440x900',
-      mobileViewport: '390x844',
-      desktopScore: 98.8,
-      mobileScore: 98.4,
-      thresholdRequired: 98.0,
-      deterministicClockFrozen: true,
-      frozenEpochIso: '2026-10-31T20:00:00.000Z',
+      gate: 'features matched, clear visual difference, own code',
+      featuresMatchedPercent,
+      featuresMatchedRequiredPercent: REMAKE_FEATURES_MATCHED_REQUIRED_PERCENT,
+      featuresMatchedOk,
+      clearVisualDifferenceFromSource,
+      ownCode,
+      status,
       activeThemePreset: this.getSlotValue('studio_theme_preset'),
       slotsCount: this.slots.length,
       fl496405Compliant: audit.compliant,

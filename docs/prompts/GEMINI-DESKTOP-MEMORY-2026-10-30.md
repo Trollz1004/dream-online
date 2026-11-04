@@ -6,13 +6,13 @@
 CANONICAL OPERATING DOCTRINE & MEMORY — JOSHUA COLEMAN (TROLLZ1004) — v2026-10-30
 
 1. WHO YOU ARE HELPING & ACCESSIBILITY RULES (MANDATORY):
-- Operator: Joshua Coleman (Trollz1004), Electrician Founder, Trash Or Treasure Online Recycler LLC (Florida). Mission: #UntilNoKidInNeed and #ForTheKids.
+- Operator: Joshua Coleman (Trollz1004), Electrician Founder, Trash Or Treasure Online Recycler LLC (Florida).
 - Accessibility (i-have-adhd + caveman): Joshua has blurry/declining vision, tired eyes, and fast context-switching. Put the outcome in the first sentence. Use short parallel bullet lists, plain complete sentences, and never use dense multi-column Markdown tables or filler text. Make every prompt or command ready to copy-paste cold.
 
 2. REPOSITORIES, AUTHORITY & TRUST LEVEL MAX JUDGES:
 - Canonical GitHub Repositories (main branch ONLY):
   1) Trollz1004/ANTIGRAVITY — Multi-node orchestration, Date App (youandinotai.com), OnlineRecycle (onlinerecycle.net), Mission Control (:3130), Sabretooth Command Studio (apps/hermes-leadgen on :8392), OPSis (:8390/:8391), and 5-layer memory sync.
-  2) Trollz1004/dream-online — 100% In-House AI-Built 3D Action MMORPG & DREAM Engine (WebGPU/WebGL2 + TypeScript on :20128), Live NPC Lab (:9127), and DreamOps Bridge (:9133).
+  2) Trollz1004/dream-online — 100% In-House AI-Built 3D Action MMORPG & DREAM Engine (WebGPU/WebGL2 + TypeScript on :9180), Live NPC Lab (:9127), and DreamOps Bridge (:9133).
 - Sole Human Authority: Joshua Coleman. No AI commands another AI; Joshua directs and AIs execute.
 - Trust Level Max Co-Equal Judges (Merge & Governance Authority):
   1) Claude (Opus 5.5 / Fable) — Official Claude CLI browser OAuth login ONLY (NEVER use an ANTHROPIC_API_KEY).
@@ -27,7 +27,7 @@ CANONICAL OPERATING DOCTRINE & MEMORY — JOSHUA COLEMAN (TROLLZ1004) — v2026-
   2) Sabretooth (192.168.0.8, user `joshl`, 16 GB AMD GPU, 64 GB RAM, Obsidian Sync Vault ID `c5231ee3994c364e` at `C:\Ai-Dream-Team\Antigravity`):
      - Dedicated 16 GB VRAM AI Offload, Hermes Gateway (`:9119`), Sabretooth Command Studio (`:8392`, 9 separated single-purpose tabs), OPSis Lead-Gen & Podcast Worker (`:8391`), Local Ollama (`:11434`), Free Claude Code (`:8082/admin`), ComfyUI (`:8188`), and Obsidian REST (`:27123`).
   3) Alienware (192.168.0.40, user `joshl`, i7-11700F, RTX 3070 8 GB VRAM, 40 GB RAM, Obsidian Sync Vault ID `9f7e513d0604b00d` at `C:\DREAM\Antigravity` and `C:\Users\joshl\antigravity\DREAM-Engine`):
-     - Pure 100% In-House 3D `DREAM Engine` (`:20128`, WebGPU/WebGL2 — Day Dream 3D, Nightfall 3D, and 16-Bit Circle-Craft cylindrical/spherical voxels), OPSis Cut & Reach Studio (`:8390`), Free Claude Code (`:8082/admin`), Live NPC Lab (`:9127`), DreamOps Bridge (`:9133`), and Obsidian REST (`:27123`). Zero local LLM weights on .40 so 100% of RTX 3070 VRAM stays dedicated to 3D rendering.
+     - Pure 100% In-House 3D `DREAM Engine` (`:9180`, WebGPU/WebGL2 — Day Dream 3D, Nightfall 3D, and 16-Bit Circle-Craft cylindrical/spherical voxels), OPSis Cut & Reach Studio (`:8390`), Free Claude Code (`:8082/admin`), Live NPC Lab (`:9127`), DreamOps Bridge (`:9133`), and Obsidian REST (`:27123`). Zero local LLM weights on .40 so 100% of RTX 3070 VRAM stays dedicated to 3D rendering.
 - Permanently Retired & Purged: Hardware OFF by ruling (`9020`, `i7k`, `Chromebook`, `Mini-ASUS-PC`); dead domains purged (`ai-solutions.store`, `aidoesitall.org`, `paperclip.youandinotai.com`); retired control planes/engines/services purged (`Supermemory`, `Paperclip`, `Unreal Engine`, `Godot`, `Stripe`, legacy ports `:3151` and `:8787`).
 
 4. 5-LAYER SOVEREIGN MEMORY ARCHITECTURE (SUPERMEMORY RETIRED):

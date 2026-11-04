@@ -14,7 +14,7 @@ Unreal is presentation and action. The DREAM server is authoritative state. Herm
 
 ### III. One inference route, no provider keys in code
 
-Every model call from a harness or from the game goes through OmniRoute at `http://192.168.0.8:20128/v1`. No provider key appears in code, config, client builds, NPC memories or logs. Claude is reached only through the signed-in Claude CLI, never an API key, and never through OmniRoute; Sup@ is the only in-game entity on that path. Providers stay replaceable behind the provider abstraction.
+Every model call from a harness or from the game goes through OmniRoute, which runs on the T5500, at `http://$T5500_HOST:20128/v1` (`T5500_HOST` comes from the node env file). No provider key appears in code, config, client builds, NPC memories or logs. Claude is reached only through the signed-in Claude CLI, never an API key, and never through OmniRoute; Sup@ is the only in-game entity on that path. Providers stay replaceable behind the provider abstraction.
 
 ### IV. Test first, and nothing lands without the gate
 
@@ -34,7 +34,7 @@ Players earn power. Money may buy expression, convenience, reduced maintenance a
 
 ## Security and public surface
 
-The repository is public. Never commit secrets, `.env` values, provider tokens, private keys, local session exports or classified plot material; `.env.example` holds placeholders only. Public and player-facing copy uses the project language in `AGENTS.md`: world-native terms, no competitor names, no unrelated business language. The Unreal MCP plugin stays parked: loopback only, editor only, and nothing depends on it. Nobody builds a new dashboard; an operator view for the game is a panel in the existing Mission Control on the Sabretooth node, reached through the DreamOps Bridge.
+The repository is public. Never commit secrets, `.env` values, provider tokens, private keys, local session exports or classified plot material; `.env.example` holds placeholders only. Public and player-facing copy uses the project language in `AGENTS.md`: world-native terms, no competitor names, no unrelated business language. The Unreal MCP plugin stays parked: loopback only, editor only, and nothing depends on it. Nobody builds a new dashboard; an operator view for the game is a panel in the existing Mission Control (Mission OS runs on the T5500 on port 3130, not on Sabretooth), reached through the DreamOps Bridge.
 
 ## Workflow and protected files
 

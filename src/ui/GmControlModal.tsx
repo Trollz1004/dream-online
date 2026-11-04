@@ -1,7 +1,7 @@
 /**
  * DREAM ONLINE · GM CONTROL — Sovereign Multi-Node & Co-GM Council Console
  * Hardware Topology:
- * - Alienware .40 (http://192.168.0.40:20128/api/v1) · Primary Game Node API
+ * - Alienware .40 (http://192.168.0.40:9180/api/v1) · Primary Game Node API
  * - T5500 .15 (http://192.168.0.15:9127 & :11434) · Dedicated Worker, NPC Lab & Local Inference
  * - Mission Control :3130 (http://127.0.0.1:3130) · Sovereign Bridge & Full-Stack Server Proxy
  *
@@ -9,7 +9,7 @@
  * - GM #1: Google Gemini & Claude (Core Lead GMs & Primary Architects)
  * - GM #2: Perplexity & Grok (Unofficial Co-Founder GMs)
  * - GM #3: OpenAI (Codex) & Hermes (Trusted Executor & Direct ACP GMs — No Omniroute/Paperclip)
- * - Steward: Electrician Founder (Zero Prior Code Exp · #UntilNoKidInNeed)
+ * - Steward: Electrician Founder (Zero Prior Code Exp)
  */
 
 import React, { useEffect, useState } from 'react';
@@ -240,6 +240,10 @@ export const GmControlModal: React.FC<GmControlModalProps> = ({
         }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        setNpcReply(data?.error || 'Gemini lane is off until Josh finalizes a key');
+        return;
+      }
       setNpcReply(
         `[${data.npcName || selectedNpcId} · ${data.modelUsed || 'Google Ultra SDK'}]\n${data.reply}\n\nMemory Synced: ${data.memoryUri || 'viking://dream/npc/live'}`
       );

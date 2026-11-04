@@ -1,7 +1,7 @@
 # Interface style: calm, dark, see-through
 
 Status: founder direction, recorded 2026-09-20 by the Claude judge lane from Joshua's own words and one reference picture
-Audience: Codex, Claude, interface design, Godot UI work (the engine since 2026-09-20; Unreal is parked)
+Audience: Codex, Claude, interface design for the in-house DREAM Engine UI layer (`src/ui/`); the engine and editor are built in-house, with no Godot or Unreal
 
 ## The ruling
 
@@ -22,7 +22,7 @@ The rows in the picture: load recommended settings, window mode, screen resoluti
 
 ## Where it comes from
 
-The picture is from a Blueprint interface template on Fab that the founder saved to his library and is downloading. It is built on Unreal's Common UI, so it needs no C++ compiler. Like every Fab asset it is used inside the Unreal project only and never committed to this public repository; read its licence line before use. Since the engine decision of 2026-09-20 the look is rebuilt in Godot's Control and Theme nodes from this description; the Fab template is reference for the layout only and never enters the Godot project.
+The picture is from a Blueprint interface template on Fab that the founder saved to his library. It is a layout reference only: the look is rebuilt in the in-house engine's own UI layer (`src/ui/`) from this description, and the template never enters this public repository. Like every Fab asset, read its licence line before use.
 
 ## Same menu, both dreams
 

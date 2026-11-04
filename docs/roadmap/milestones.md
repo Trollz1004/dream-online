@@ -1,7 +1,7 @@
 # DREAM ONLINE Milestone Roadmap
 
 Status note (2026-09-26): this roadmap was written for the Unreal track, and the engine
-has since moved to Godot 4.7.2, where the first playable slice now exists; see STATE.md.
+has since moved to the in-house DREAM Engine (an earlier Godot slice exists as a reference prototype); see STATE.md.
 
 Status: draft
 
@@ -197,5 +197,5 @@ Exit criteria:
 1. Validate local Live NPC Lab endpoints when Joshua requests a check pass.
 2. Continue the next slice work tracked in TASKS.md: icon and pet polish, then the melee
    dagger ranger's combat.
-3. No engine install is pending; Godot 4.7.2 is already in place on the Alienware node.
+3. No engine install is pending; the engine is built in-house (`src/engine/`).
 4. Done in the slice: movement, the light attack chain, heavy attack, guard, lunge and burst exist; `docs/gdd/02a-hit-confirm-requirements.md` stays the bar for feel.

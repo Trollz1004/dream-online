@@ -1,6 +1,6 @@
 # Prototype Architecture
 
-**Status note (2026-09-26):** Written before the 2026-09-20 engine decision. Track B below is now the Godot slice at `game/godot/DreamSlice`; the Unreal section at the end is parked reference (`docs/tech/engine-decision-2026-09-20.md`).
+**Status note (2026-09-26):** Written before the 2026-09-20 engine decision. Track B below is now the in-house DREAM Engine (`src/engine/`; the earlier Godot slice at `game/godot/DreamSlice` is a reference prototype); the Unreal section at the end is parked reference (`docs/tech/engine-decision-2026-09-20.md`).
 
 ## Current Reality
 
@@ -20,7 +20,7 @@ Track A: lightweight browser/server prototype.
 - Proves basic world state, fishing, inventory, and agent memory.
 - Faster iteration on this node.
 
-Track B: the engine decision is made (Godot); the vertical slice is `game/godot/DreamSlice`.
+Track B: the engine decision is made (in-house DREAM Engine); the earlier Godot slice `game/godot/DreamSlice` is a reference prototype.
 
 - Real action combat feel: built — dash with invulnerability frames, light attack chain, heavy attack, guard, lunge, burst.
 - Server-authoritative hit validation: not yet — the dash is decided on the client today.

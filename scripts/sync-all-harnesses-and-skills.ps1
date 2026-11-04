@@ -100,7 +100,7 @@ Whenever you create or update a skill:
 4. **IMPLEMENT**: Author complete production code with zero placeholders or `TODO` stubs.
 5. **VERIFY (`Rule One`)**: Prove with real HTTP/process probes and a real screenshot for any front-facing HTML/UI.
 6. **COMMIT**: Commit immediately to `main` so work is never stranded uncommitted.
-7. **MEMORY SYNC**: Append session findings to Obsidian (`C:\DREAM\Antigravity\<NODE>\<agent>-to-<agent>.md`), Shared `ai-memory` (`http://192.168.0.15:49374`), and Graphy/Viking/Supabase/Supermemory backups.
+7. **MEMORY SYNC**: Append session findings to Obsidian (`C:\DREAM\Antigravity\<NODE>\<agent>-to-<agent>.md`), Shared `ai-memory` (address in the node env file), and Graphy/Viking/Supabase/Supermemory backups.
 "@
     },
     @{
@@ -150,7 +150,7 @@ Follow the `tdd` skill: RED (write test) -> GREEN (implement & pass 100% of suit
    - Append a timestamped entry (`## YYYY-MM-DD HH:MM TZ | node: <NODE> | use case: <summary>`) to `C:\DREAM\Antigravity\<NODE>\<agent>-to-<agent>.md` and `memory/obsidian-vault/`.
    - Mirror the entry to:
      - **Shared `ai-memory` MCP**: `http://192.168.0.15:49374` (`memory_write_page`)
-     - **Graphy & Local 4-Tier Bridge**: `POST http://127.0.0.1:20128/api/memory/store` (syncs Obsidian + Viking `viking://dream/...` + Supabase `pgvector` + Supermemory recall backup)
+     - **Graphy & Local 4-Tier Bridge**: `POST http://127.0.0.1:9180/api/memory/store` (syncs Obsidian + Viking `viking://dream/...` + Supabase `pgvector` + Supermemory recall backup)
    - Never write raw secrets, API keys, or tokens (always redact as `XXXX`).
 "@
     },
@@ -162,7 +162,7 @@ Follow the `tdd` skill: RED (write test) -> GREEN (implement & pass 100% of suit
 
 ## Protocol
 - Store every architectural and session checkpoint with `vikingUri` (`viking://dream/<scope>/<slug>`), `l0Abstract` (1-sentence summary), `l1Overview` (metadata & verification), and `l2Markdown` (full Obsidian Markdown with `[[Wikilinks]]`).
-- Backed by `POST http://127.0.0.1:20128/api/memory/store` and Shared `ai-memory` (`http://192.168.0.15:49374`).
+- Backed by `POST http://127.0.0.1:9180/api/memory/store` and Shared `ai-memory` (address in the node env file).
 "@
     },
     @{
@@ -172,7 +172,7 @@ Follow the `tdd` skill: RED (write test) -> GREEN (implement & pass 100% of suit
 # Supabase pgvector & SQL Backup Skill (`2026-10-28`)
 
 ## Protocol
-- Mirrors Obsidian Vault session entries and `agent-workflow-graphy.json` checkpoints into the `supabase-pgvector` tier via `http://127.0.0.1:20128/api/memory/store`.
+- Mirrors Obsidian Vault session entries and `agent-workflow-graphy.json` checkpoints into the `supabase-pgvector` tier via `http://127.0.0.1:9180/api/memory/store`.
 - If Supabase experiences rate-limiting, automatic zero-loss failover promotes Obsidian + Viking (`/api/memory/failover-test`).
 "@
     },

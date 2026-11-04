@@ -18,7 +18,7 @@ Current priority order (from the dispatch and the 2026-09-25 journal):
 6. Character creation and the level 45 awakenings (five classes, each splitting into a Nightmare or a DREAM path).
 7. Marketplace, Storage Runner, Market Runner, pets, boosters, and item-risk systems.
 
-Engine: Godot 4.7.2 (`docs/tech/engine-decision-2026-09-20.md`). Unreal is parked; no Unreal, Visual Studio or CMake install is on the path to the game.
+Engine: built in-house (`docs/tech/engine-decision-2026-09-30-own-engine.md`). Godot and Unreal are not the engine; no Unreal, Godot, Visual Studio or CMake install is on the path to the game.
 
 Repo rules:
 

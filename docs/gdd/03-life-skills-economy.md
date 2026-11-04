@@ -110,7 +110,7 @@ Initial product framing:
 
 ### 1. Random-Stat Loot Drops for the Player Marketplace
 To give the player-driven Marketplace real economic purpose and in-game currency (`Sols`) tax velocity, monster and boss drops roll randomized stat affixes across five rarity tiers (**`Common` → `Uncommon` → `Rare` → `Legend` → `Mythos`**):
-- **`+HP%` / Flat Vitality** (prized by Vitality Defenders and Full-HP `FingFangFoom` Dragons)
+- **`+HP%` / Flat Vitality** (prized by Vitality Defenders and Full-HP `Velmaravex` Dragons)
 - **`+Melee Attack`**
 - **`+Magic Attack`**
 - **`+Ranged Attack`**
@@ -129,3 +129,7 @@ To give the player-driven Marketplace real economic purpose and in-game currency
 - **Shipbuilding & Sailing the Dream Oceans:** Players construct seafaring vessels to sail across the open ocean to distant islands to level, gather, farm, trade, and explore across both world states:
   - **Day Dream (`day_dream_3d`):** Classic wind-powered **Tall Ships and Sailboats** with canvas sails, timber hulls, and rope rigging (**zero engines**).
   - **Nightfall / Nightmare (`nightmare_3d`):** At Nightfall, vessels morph into **High-Speed Neon Speedboats and Luxury Cyber-Yachts** powered by hydro-turbines, racing across bioluminescent ocean waves between island sanctuaries.
+
+## Wardrobe
+
+The wardrobe economy (bought is owned, skins never expire, every skin reaches the in-game currency store except the founder pet) is in `docs/gdd/12-wardrobe-needs-shop.md`.

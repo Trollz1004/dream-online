@@ -198,3 +198,29 @@ Describe 'Write-T5500HealthLogLine' {
         $lines[1] | Should Match '^\[.*\] RED$'
     }
 }
+
+Describe 'OmniRoute location' {
+
+    It 'builds the URL from T5500_HOST and never from a literal address' {
+        $saved = $env:T5500_HOST
+        $env:T5500_HOST = 't5500.test.invalid'
+        try {
+            Get-OmniRouteUrl | Should Be 'http://t5500.test.invalid:20128/v1/models'
+        } finally {
+            if ($saved) { $env:T5500_HOST = $saved } else { Remove-Item Env:\T5500_HOST -ErrorAction SilentlyContinue }
+        }
+    }
+
+    It 'has no URL, and reports unhealthy with a clear detail, when T5500_HOST is not set' {
+        $saved = $env:T5500_HOST
+        Remove-Item Env:\T5500_HOST -ErrorAction SilentlyContinue
+        try {
+            Get-OmniRouteUrl | Should Be ''
+            $r = Test-OmniRoute
+            $r.Healthy | Should Be $false
+            $r.Detail | Should Match 'T5500_HOST'
+        } finally {
+            if ($saved) { $env:T5500_HOST = $saved }
+        }
+    }
+}

@@ -11,6 +11,7 @@ colliding while the first playable is still running on local tools.
 | --- | --- | --- | --- | --- |
 | DreamOps Bridge | `127.0.0.1` | `9133` | `DREAMOPS_HOST`, `DREAMOPS_PORT` | Local world operations, event inspection, rollback dry-run planning, hotfix proposals |
 | Live NPC Lab | `127.0.0.1` | `9127` | `DREAM_LIVE_NPC_HOST`, `DREAM_LIVE_NPC_PORT` | Local NPC dialogue, event logging, memory reads, schema and seed inspection |
+| DREAM Engine (3D viewport, graphy and memory bridge) | `127.0.0.1` | `9180` | `PORT` | The in-house engine served by `server.ts`; never `20128` |
 | Future game server | `127.0.0.1` | `9130` reserved | `DREAM_GAME_HOST`, `DREAM_GAME_PORT` planned | First playable game loop once implementation begins |
 | Future web client | `127.0.0.1` | `9131` reserved | `DREAM_WEB_HOST`, `DREAM_WEB_PORT` planned | Local browser-facing prototype, if one is ever needed beside the Godot browser build on `8099` |
 | Future agent bridge | `127.0.0.1` | `9132` reserved | `DREAM_AGENT_HOST`, `DREAM_AGENT_PORT` planned | Local bridge from game events to safe NPC/provider routing |
@@ -30,8 +31,8 @@ service may take their ports (identity strings are in
 | `27123` | Obsidian Local REST API (the game vault's MCP handshake) | answers `initialize` as `obsidian-local-rest-api` |
 | `8099` | The combat slice's browser build, only while `game\godot\Serve-DreamSlice-Web.cmd` runs | serves `build\web` |
 
-`20128` (OmniRoute) exists only on Sabretooth (`192.168.0.8`); nothing on this
-node serves it and nothing here should.
+`20128` (OmniRoute) lives on the T5500; nothing on this
+node serves it and nothing here should. The engine uses `9180`.
 
 ## Rules
 

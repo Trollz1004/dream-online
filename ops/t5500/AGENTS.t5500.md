@@ -21,7 +21,7 @@ belong to the Alienware node, not here.
   LAN IP>:8377 --key <API_SERVER_KEY>`, the key read from
   `%LOCALAPPDATA%\hermes\profiles\marketing\.env` and never pasted into chat
   or committed anywhere). OPSis's own sub-agents route through OmniRoute
-  (`http://192.168.0.8:20128/v1` on Sabretooth); OPSis itself runs on Nous
+  (`http://$T5500_HOST:20128/v1`, on this T5500, address from the node env file); OPSis itself runs on Nous
   Portal, never a bare API key.
 - **Grok**, **Emergent**, the **Aside** browser agent, and **Muse** run
   marketing work from this desk alongside OPSis: campaign copy, social
@@ -36,7 +36,7 @@ belong to the Alienware node, not here.
 ## What is never done on this desk
 
 - No game development, no engine work, no gameplay code. That is the
-  Alienware node's job (`C:\DREAM\dream-online`, Godot 4.7.2).
+  Alienware node's job (`C:\DREAM\dream-online`, the in-house DREAM Engine).
 - No local models and no local inference. `local_runtime.enabled` stays
   `false` in every profile on this machine.
 - No provider API keys stored on this node outside a signed-in CLI's own

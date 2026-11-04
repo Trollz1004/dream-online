@@ -1,6 +1,6 @@
 # Dream ONLINE Task Bank - 100 Pullable Tasks
 
-Status note (2026-09-26): the engine is Godot 4.7.2, so every "after Unreal install" gate
+Status note (2026-09-26): the engine is built in-house, so every "after Unreal install" gate
 below is void, and the Godot slice already covers tasks 30 and 40. Read TASKS.md and the
 newest journal entry before taking anything from this bank.
 

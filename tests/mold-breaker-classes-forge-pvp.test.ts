@@ -125,7 +125,7 @@ test('Mold-Breaker Priest Hidden Gem: Endgame INT + 1H Mace (never Club or 2H St
   assert.ok(maceShieldIntPriest.effectiveMeleeDps > 2500);
 });
 
-test('Mold-Breaker Monk (Sprint/Dash Energy), Human Defender (HP Damage & Absorption), and Dragon FingFangFoom (Zhen & Full-HP Vitality Gem)', () => {
+test('Mold-Breaker Monk (Sprint/Dash Energy), Human Defender (HP Damage & Absorption), and Dragon Velmaravex (Zhen & Full-HP Vitality Gem)', () => {
   // Monk uses Sprint/Dash Energy pool (never Mana or PSY) and can use 2H Martial Staff or Dual Swords
   const monkBuild = evaluateMoldBreakerBuild({
     classId: 'monk',
@@ -161,12 +161,12 @@ test('Mold-Breaker Monk (Sprint/Dash Energy), Human Defender (HP Damage & Absorp
   assert.ok(defenderBuild.partyDamageAbsorptionPct >= 40);
   assert.ok(defenderBuild.effectiveMeleeDps > 1500);
 
-  // Dragon (FingFangFoom) exclusive Zhen weapon, Full-HP heal, and Full-Vitality Hidden Endgame Gem
+  // Dragon (Velmaravex) exclusive Zhen weapon, Full-HP heal, and Full-Vitality Hidden Endgame Gem
   assert.equal(validateClassWeaponLoadout('human_warrior', '2h_zhen').allowed, false);
-  assert.equal(validateClassWeaponLoadout('dragon_fingfangfoom', 'split_dual_zhen').allowed, true);
+  assert.equal(validateClassWeaponLoadout('dragon_velmaravex', 'split_dual_zhen').allowed, true);
 
   const vitalityDragon = evaluateMoldBreakerBuild({
-    classId: 'dragon_fingfangfoom',
+    classId: 'dragon_velmaravex',
     level: 50,
     awakenedSkillTreeLevel: 10,
     stats: { str: 40, dex: 20, int: 40, psy: 20, vitality: 165 },
@@ -180,7 +180,7 @@ test('Mold-Breaker Monk (Sprint/Dash Energy), Human Defender (HP Damage & Absorp
   assert.ok(vitalityDragon.fullHpHealAmount > 5000, 'Dragon must heal off Full HP on long cooldown');
   assert.ok(
     vitalityDragon.effectiveMeleeDps > defenderBuild.effectiveMeleeDps,
-    'Endgame Full-Vitality FingFangFoom Dragon must out-scale Human Defender in HP-based damage'
+    'Endgame Full-Vitality Velmaravex Dragon must out-scale Human Defender in HP-based damage'
   );
 });
 
@@ -278,29 +278,58 @@ test('Remake 100% Yours Gate, REA Clean-Room, Google Flow Vision Zones, Unified 
     'nightfall_gothic_neon_street',
   ]);
 
-  // 2. Remake 100% Yours + REA Clean-Room + Rule One Reference Screenshot Comparison Gate
-  const passingGate = validateRemake100PercentYoursAndReaCleanRoom({
+  // 2. Remake 100% Yours + REA Clean-Room gate: passes on features matched, a clear visual
+  //    difference from the source, and our own code. It never passes on likeness.
+  const passingCheck = {
     reaCleanRoomStudied: true,
+    builtByLaneThatNeverSawSource: true,
     thirdPartyGameEngineUsed: false,
     remakeSwapBoardPercent: 100,
-    remakePixelParityPercent: 98.8,
     sourceBrandResidueCount: 0,
+    featureMatchPercent: 98.5,
+    clearVisualDifferenceFromSource: true,
+    ownCode: true,
     beforeReferenceScreenshotCaptured: true,
     afterFeatureScreenshotCaptured: true,
-    visualComparisonMatchesReference: true,
-  });
+    independentJudgeSignedOff: true,
+  };
+  const passingGate = validateRemake100PercentYoursAndReaCleanRoom(passingCheck);
   assert.equal(passingGate.passed, true);
+  assert.deepEqual(passingGate.reasons, []);
 
-  const failingScreenshotGate = validateRemake100PercentYoursAndReaCleanRoom({
-    reaCleanRoomStudied: true,
-    thirdPartyGameEngineUsed: false,
-    remakeSwapBoardPercent: 100,
-    remakePixelParityPercent: 98.8,
-    sourceBrandResidueCount: 0,
-    beforeReferenceScreenshotCaptured: true,
-    afterFeatureScreenshotCaptured: true,
-    visualComparisonMatchesReference: false,
+  // A pixel-for-pixel look-alike never passes, even with every feature matched.
+  const likenessGate = validateRemake100PercentYoursAndReaCleanRoom({
+    ...passingCheck,
+    featureMatchPercent: 100,
+    clearVisualDifferenceFromSource: false,
   });
+  assert.equal(likenessGate.passed, false);
+  assert.ok(likenessGate.reasons.some((r) => r.includes('clear visual difference')));
+
+  // The old pixel-parity input is gone: a legacy-shaped check carrying 98.8% parity still fails.
+  const legacyShaped = validateRemake100PercentYoursAndReaCleanRoom({
+    ...passingCheck,
+    clearVisualDifferenceFromSource: undefined,
+    remakePixelParityPercent: 98.8,
+  } as unknown as typeof passingCheck);
+  assert.equal(legacyShaped.passed, false);
+
+  // Too few features matched fails.
+  const fewFeatures = validateRemake100PercentYoursAndReaCleanRoom({ ...passingCheck, featureMatchPercent: 97.9 });
+  assert.equal(fewFeatures.passed, false);
+  assert.ok(fewFeatures.reasons.some((r) => r.includes('98%')));
+
+  // Copied code with brand and analytics strings scrubbed is still not our own code.
+  const scrubbedCopy = validateRemake100PercentYoursAndReaCleanRoom({ ...passingCheck, ownCode: false });
+  assert.equal(scrubbedCopy.passed, false);
+  assert.ok(scrubbedCopy.reasons.some((r) => r.includes('Scrubbing brand')));
+
+  // The builder must not have seen the source, and an independent judge must sign off.
+  assert.equal(validateRemake100PercentYoursAndReaCleanRoom({ ...passingCheck, builtByLaneThatNeverSawSource: false }).passed, false);
+  assert.equal(validateRemake100PercentYoursAndReaCleanRoom({ ...passingCheck, independentJudgeSignedOff: false }).passed, false);
+
+  // Rule One screenshots are still required.
+  const failingScreenshotGate = validateRemake100PercentYoursAndReaCleanRoom({ ...passingCheck, afterFeatureScreenshotCaptured: false });
   assert.equal(failingScreenshotGate.passed, false);
 
   // 3. Unified 3-Pane Workspace Shell & 5-Hour Cap Model Switcher

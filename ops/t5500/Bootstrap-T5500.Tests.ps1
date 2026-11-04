@@ -245,10 +245,12 @@ Describe 'Write-BootstrapDoneFile' {
         $statePath = Join-Path $TestDrive 'done-state.json'
         $donePath = Join-Path $TestDrive 'DONE.md'
         Write-BootstrapState -Path $statePath -State @{ steps = @{ Git = @{ status = 'completed'; time = (Get-Date).ToString('o') } } }
-        Mock Get-NetIPAddress { [PSCustomObject]@{ IPAddress = '192.168.0.99'; InterfaceAlias = 'Ethernet' } }
+        # 203.0.113.0/24 is a reserved documentation range (RFC 5737), not a LAN address of any node.
+        $testLanIp = '203.0.113.99'
+        Mock Get-NetIPAddress { [PSCustomObject]@{ IPAddress = $testLanIp; InterfaceAlias = 'Ethernet' } }
         Write-BootstrapDoneFile -StatePath $statePath -DonePath $donePath
         $content = Get-Content $donePath -Raw
-        $content | Should Match ([regex]::Escape('hermes peer add t5500 --url http://192.168.0.99:8377 --key <API_SERVER_KEY>'))
+        $content | Should Match ([regex]::Escape("hermes peer add t5500 --url http://${testLanIp}:8377 --key <API_SERVER_KEY>"))
         $content | Should Match 'Git'
         $content | Should Not Match 'API_SERVER_KEY=[A-Za-z0-9]{40,}'
     }

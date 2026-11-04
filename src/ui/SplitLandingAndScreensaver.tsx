@@ -3,7 +3,7 @@
  * Left Screen: Graphy Codebase AST & Trusted AI Team Workflow Dashboard
  * Right Screen: Obsidian Session-End (ri) Memory Graph, Auto-XXXX Secret Redaction Shield & Immutable GEMINI_SOUL.MD
  *
- * Built with Google Gemini — #ForTheKids #UntilNoKidInNeed
+ * Built with Google Gemini
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -365,14 +365,14 @@ export const SplitLandingAndScreensaver: React.FC<SplitLandingAndScreensaverProp
         </div>
       )}
 
-            {/* AAA Game Dev Engine Showcase Bar: OpenUI Lang 1.0 + REA Procedural City + Remake 98.8% Swap Board */}
+            {/* AAA Game Dev Engine Showcase Bar: OpenUI Lang 1.0 + REA Procedural City + Remake Swap Board */}
       <div className="bg-[#0B0F1A] border-b border-emerald-500/30 px-6 py-2.5 flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3 flex-wrap">
           <span className="px-2.5 py-0.5 rounded bg-[#00E5A3]/20 border border-[#00E5A3]/50 text-[#00E5A3] font-mono text-xs font-bold">
             NEW · AAA CLOUD GAME DEV ENGINE
           </span>
           <span className="text-xs sm:text-sm font-bold text-white">
-            OPENUI LANG 1.0 + REA PROCEDURAL CITY (.BDF) + REMAKE 98.8% SWAP BOARD
+            OPENUI LANG 1.0 + REA PROCEDURAL CITY (.BDF) + REMAKE SWAP BOARD
           </span>
           <span className="text-xs font-mono text-slate-300 hidden xl:inline">
             Unreal / Unity / PlayCanvas / Spline Clean-Room Architecture · Day Dream 3D · Nightfall 3D · 16-Bit Circle-Craft

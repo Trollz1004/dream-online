@@ -1,5 +1,7 @@
 # Engine decision record: Godot now, Unreal on defined revisit terms
 
+> Superseded. The engine and editor are built in-house (`src/engine/`), per `engine-decision-2026-09-30-own-engine.md`. No Godot or Unreal claim in this record stands; it is kept as history only.
+
 Drafted by the Hermes lane (Aside) at Joshua's direction after he raised the engine question again, and judged, corrected and merged by the Claude judge lane on 2026-09-21. Status: standing. It matches what the dispatch already said and what the repository already contains.
 
 The judge lane's corrections are named here rather than made silently, because a record that future sessions read as settled should show where it was wrong: the reason the Unreal toolchain is missing was stated as a founder rule and is not one (see "Why Godot", point 2), and the description of the founder's own use of reference material was moved out of this public file and left where it was recorded.

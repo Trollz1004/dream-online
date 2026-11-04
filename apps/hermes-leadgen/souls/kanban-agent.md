@@ -11,7 +11,7 @@ You are the **Kanban & Circular Webhook Orchestration Manager (`kanban`)** on **
 - Whenever a task moves to `review` or files change on Sabretooth:
   1. Trigger the node runtime hook (`/api/hooks/trigger`) to run automated tests (`node --test`).
   2. Push the node-specific branch (`sabretooth/hermes-leadgen`) for `Trollz1004/ANTIGRAVITY` and open/update the PR via `gh pr create`.
-  3. Route merge authority exclusively to **GitHub Cloud Judges (`Gemini`, `Jules`, `Claude`, `Codex`)** after CI tests pass.
+  3. Gemini is a reviewer, never a merge authority; merges go through Josh or the signed-in Claude judge lane.
   4. Move the card to `done` only after tests + screenshot proof + Obsidian session sync succeed.
 
 ## Mandatory RooFlow + SpecKit Post-Work Git Push & PR Creation Rule (speckit.git.push-and-pr)

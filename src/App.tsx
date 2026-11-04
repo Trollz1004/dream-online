@@ -43,10 +43,19 @@ import { CrowdfundingShowcaseModal } from './ui/CrowdfundingShowcaseModal.tsx';
 import { SplitLandingAndScreensaver } from './ui/SplitLandingAndScreensaver.tsx';
 import { OpenUiGameDevStudioModal } from './ui/OpenUiGameDevStudioModal.tsx';
 import { AaaVisualWorldCanvas } from './ui/AaaVisualWorldCanvas.tsx';
+import { CharacterCreatorModal } from './ui/CharacterCreatorModal.tsx';
+import {
+  createInitialCreatorState,
+  type CharacterCreatorState,
+} from './ui/characterCreatorConfig.ts';
 
 export default function App() {
+  const isCreatorRequested =
+    typeof window !== 'undefined' && window.location.search.includes('creator=1');
   const isLegacyWebgpuRequested =
-    typeof window !== 'undefined' && window.location.search.includes('legacyWebgpu=1');
+    typeof window !== 'undefined' &&
+    (window.location.search.includes('legacyWebgpu=1') || isCreatorRequested);
+
   const [useAaaVisualMode, setUseAaaVisualMode] = useState(!isLegacyWebgpuRequested);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const engineRef = useRef<DreamEngine | null>(null);
@@ -90,6 +99,10 @@ export default function App() {
   const [isReaOpen, setIsReaOpen] = useState(false);
   const [isGmControlOpen, setIsGmControlOpen] = useState(false);
   const [isPitchOpen, setIsPitchOpen] = useState(false);
+  const [isCreatorOpen, setIsCreatorOpen] = useState(isCreatorRequested);
+  const [creatorState, setCreatorState] = useState<CharacterCreatorState>(() =>
+    createInitialCreatorState(),
+  );
   const [, setCombatTick] = useState(0);
 
   // Gamepad
@@ -137,6 +150,9 @@ export default function App() {
     canvas.height = window.innerHeight;
 
     const engine = new DreamEngine(canvas);
+    engine.studio.setCreatorPreviewOpen(isCreatorOpen);
+    engine.studio.updateCreatorBody(creatorState);
+    engineRef.current = engine;
     engineRef.current = engine;
 
     engine.onMetricsUpdate = (newMetrics, pos, controlActive, locked, yaw, mode) => {
@@ -277,7 +293,14 @@ export default function App() {
     isOpenUiIdeOpen ||
     isReaOpen ||
     isGmControlOpen ||
-    isPitchOpen;
+    isPitchOpen ||
+    isCreatorOpen;
+
+  useEffect(() => {
+    if (!engineRef.current) return;
+    engineRef.current.studio.setCreatorPreviewOpen(isCreatorOpen);
+    engineRef.current.studio.updateCreatorBody(creatorState);
+  }, [isCreatorOpen, creatorState]);
 
   const handleTakeControl = () => {
     lastActivityRef.current = Date.now();
@@ -348,6 +371,7 @@ export default function App() {
           }
         }}
         tabIndex={0}
+        style={isCreatorOpen ? { filter: 'blur(4px) brightness(0.78) saturate(0.22)' } : undefined}
         className="w-full h-full block cursor-crosshair outline-none"
       />
 
@@ -355,7 +379,7 @@ export default function App() {
       <VisorOverlay viewMode={viewMode} cameraYaw={cameraYaw} />
 
       {/* Action Combat HUD: Prompt band, health/stamina, sentinel target bar, Movable PvP GUI & Oathcall/Township/Regalia Overlay */}
-      {engineRef.current && (
+      {engineRef.current && !isCreatorOpen && (
         <CombatHud
           combat={engineRef.current.combat}
           skillVfx={engineRef.current.skillVfx}
@@ -378,7 +402,7 @@ export default function App() {
       )}
 
       {/* Real-time Circular Radar Minimap (Top Right — Supports Shift + Right-Click Map Ping) */}
-      {!isCaptureMode && (
+      {!isCaptureMode && !isCreatorOpen && (
         <RadarMinimap
           playerPos={playerPos}
           cameraYaw={cameraYaw}
@@ -406,11 +430,16 @@ export default function App() {
             engineRef.current?.releaseControl();
             setIsOpenUiIdeOpen(true);
           }}
+          onOpenCreator={() => {
+            engineRef.current?.releaseControl();
+            setIsStudioOpen(false);
+            setIsCreatorOpen(true);
+          }}
         />
       )}
 
       {/* Top Bar — High-Contrast AAA Game Engine HUD */}
-      {!isCaptureMode && (
+      {!isCaptureMode && !isCreatorOpen && (
       <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none z-20">
         <div className="flex items-center space-x-3 bg-neutral-900/90 backdrop-blur-md border border-neutral-700/70 px-4 py-2 rounded-sm shadow-lg pointer-events-auto">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -423,7 +452,7 @@ export default function App() {
                 Built with Google Gemini
               </span>
               <span className="text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                OpenUI + REA + Remake 98.8%
+                OpenUI + REA + Remake Gate
               </span>
             </div>
             <p className="text-[10px] tracking-wide text-neutral-300">
@@ -738,7 +767,7 @@ export default function App() {
       )}
 
       {/* Avatar Coordinate & Provenance Pills (Bottom Left) */}
-      {!isCaptureMode && (
+      {!isCaptureMode && !isCreatorOpen && (
       <div className="absolute bottom-4 left-4 flex flex-col gap-2 pointer-events-none z-10">
         <div className="bg-neutral-900/85 backdrop-blur-md border border-neutral-800 px-3 py-1.5 rounded-sm text-xs font-mono text-neutral-300 flex items-center gap-2">
           <span className="text-neutral-500 uppercase tracking-widest text-[10px]">AVATAR</span>
@@ -810,6 +839,12 @@ export default function App() {
       />
 
       {/* Settings Modal */}
+      <CharacterCreatorModal
+        isOpen={isCreatorOpen}
+        state={creatorState}
+        onChange={setCreatorState}
+        onClose={() => setIsCreatorOpen(false)}
+      />
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
@@ -832,7 +867,7 @@ export default function App() {
       />
 
       {/* Frame-Rate Pill at the Bottom Right */}
-      {!isCaptureMode && (
+      {!isCaptureMode && !isCreatorOpen && (
       <div className="absolute bottom-4 right-4 bg-neutral-900/90 backdrop-blur-md border border-neutral-700/70 px-3.5 py-2 rounded-sm shadow-xl font-mono text-xs text-neutral-200 flex flex-col gap-1 min-w-[210px] pointer-events-none z-10">
         <div className="flex items-center justify-between">
           <span className="font-bold text-emerald-400 tracking-wider">
