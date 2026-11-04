@@ -126,7 +126,7 @@ export function scanPush(stdinText) {
     if (remoteSha && !ZERO_SHA.test(remoteSha)) {
       try {
         git(['cat-file', '-e', `${remoteSha}^{commit}`]);
-        range = [`${remoteSha}..${localSha}`];
+        range = [localSha, '--not', remoteSha, '--remotes'];
       } catch {
         range = null; // remote tip not known locally (non-fast-forward): fall through
       }

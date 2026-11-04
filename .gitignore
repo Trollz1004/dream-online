@@ -148,10 +148,10 @@ ops/eyes/reports/*
 /Projects/
 /Scheduled/
 
-ops/router/decisions.log
 # Router outbox paste-ready job files stay local; only .gitkeep is tracked
 ops/router/outbox/*
 !ops/router/outbox/.gitkeep
- 
+ops/router/decisions.log
+
 # Security audit output
 ops/security/runs/
