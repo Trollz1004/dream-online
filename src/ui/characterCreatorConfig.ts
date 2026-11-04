@@ -7,9 +7,7 @@
  *    eyeStyle, voiceStyle, plus starter combatPath and lifeSkillInterest.
  *  - No outfits, no skins, no shop inside the creator.
  *  - Every character leaves the creator in the three-piece kid-safe basics set
- *    (Plain Tee, Plain Trousers, Plain Sneakers). Note: src/game/economy/wardrobe
- *    is not on this branch yet, so the identical three-piece basics set is defined
- *    locally below (`KID_SAFE_BASICS`, `KID_SAFE_BASIC_IDS`, `createDefaultBasicsSet`).
+ *    (Plain Tee, Plain Trousers, Plain Sneakers) imported from src/game/economy/wardrobe.
  *  - Every body slider has an explicit reset control (`hasReset: true`) and pure
  *    reset helpers (`resetCreatorSlider`, `resetAllCreatorSliders`).
  *  - Supports importing a standard VRM 0.x / 1.0 `.vrm` binary (checking that its
@@ -17,70 +15,32 @@
  *    VRoid Studio.
  */
 
-export const BASIC_SLOTS = ['top', 'bottom', 'shoes'] as const;
-export type BasicSlot = (typeof BASIC_SLOTS)[number];
+import {
+  BASIC_SLOTS,
+  KID_SAFE_BASICS,
+  KID_SAFE_BASIC_IDS,
+  createDefaultOutfit,
+  isKidSafeBasicsOutfit,
+  type BasicSlot,
+  type BasicItem,
+  type Outfit,
+} from '../game/economy/wardrobe/index.ts';
 
-export interface BasicGarment {
-  readonly kind: 'basic';
-  readonly id: 'basics-top' | 'basics-bottom' | 'basics-shoes';
-  readonly name: string;
-  readonly slot: BasicSlot;
-}
+export {
+  BASIC_SLOTS,
+  KID_SAFE_BASICS,
+  KID_SAFE_BASIC_IDS,
+  createDefaultOutfit,
+  isKidSafeBasicsOutfit,
+  type BasicSlot,
+  type BasicItem,
+  type Outfit,
+};
 
-export interface WornBasicsSet {
-  readonly top: 'basics-top';
-  readonly bottom: 'basics-bottom';
-  readonly shoes: 'basics-shoes';
-}
-
-/**
- * Three-piece kid-safe basics set matching src/game/economy/wardrobe/basics.ts.
- * Defined locally because src/game/economy/wardrobe is not on this branch yet.
- */
-export const KID_SAFE_BASICS: Readonly<Record<BasicSlot, BasicGarment>> = Object.freeze({
-  top: Object.freeze({
-    kind: 'basic',
-    id: 'basics-top',
-    name: 'Plain Tee',
-    slot: 'top',
-  }),
-  bottom: Object.freeze({
-    kind: 'basic',
-    id: 'basics-bottom',
-    name: 'Plain Trousers',
-    slot: 'bottom',
-  }),
-  shoes: Object.freeze({
-    kind: 'basic',
-    id: 'basics-shoes',
-    name: 'Plain Sneakers',
-    slot: 'shoes',
-  }),
-});
-
-export const KID_SAFE_BASIC_IDS: readonly string[] = Object.freeze(
-  BASIC_SLOTS.map((slot) => KID_SAFE_BASICS[slot].id),
-);
-
-export function createDefaultBasicsSet(): WornBasicsSet {
-  return Object.freeze({
-    top: 'basics-top',
-    bottom: 'basics-bottom',
-    shoes: 'basics-shoes',
-  });
-}
-
-export function isKidSafeBasicsSet(candidate: unknown): candidate is WornBasicsSet {
-  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
-    return false;
-  }
-  const record = candidate as Record<string, unknown>;
-  const keys = Object.keys(record);
-  if (keys.length !== BASIC_SLOTS.length) {
-    return false;
-  }
-  return BASIC_SLOTS.every((slot) => record[slot] === KID_SAFE_BASICS[slot].id);
-}
+export type BasicGarment = BasicItem;
+export type WornBasicsSet = Outfit;
+export const createDefaultBasicsSet = createDefaultOutfit;
+export const isKidSafeBasicsSet = isKidSafeBasicsOutfit;
 
 export type BodySilhouetteId =
   | 'balanced-traveler'
@@ -1324,19 +1284,25 @@ export function parseVrmBinary(
       ? meta.authors[0]
       : 'Unknown Author';
 
-  const commercialRaw = String(
-    meta.commercialUsage ?? meta.commercialUssageName ?? 'Allow',
-  ).toLowerCase();
-  const redistributionRaw = String(
-    meta.redistribution ?? meta.otherPermissionUrl ?? 'Allow',
-  ).toLowerCase();
+  const commercialVal = meta.commercialUsage ?? meta.commercialUssageName;
+  const redistributionVal = meta.redistribution ?? meta.allowRedistribution;
 
-  const allowsCommercial =
-    !commercialRaw.includes('disallow') && !commercialRaw.includes('prohibit');
-  const allowsRedistribution =
-    !redistributionRaw.includes('disallow') && !redistributionRaw.includes('prohibit');
+  const isExplicitlyAllowed = (val: unknown): boolean => {
+    if (val === true) return true;
+    if (typeof val === 'string') {
+      const s = val.trim().toLowerCase();
+      return s === 'allow' || s === 'allowed';
+    }
+    return false;
+  };
+
+  const allowsCommercial = isExplicitlyAllowed(commercialVal);
+  const allowsRedistribution = isExplicitlyAllowed(redistributionVal);
 
   if (!allowsCommercial || !allowsRedistribution) {
+    const missing: string[] = [];
+    if (!allowsCommercial) missing.push('commercial use');
+    if (!allowsRedistribution) missing.push('redistribution');
     return {
       ok: false,
       fileName,
@@ -1344,7 +1310,7 @@ export function parseVrmBinary(
       author,
       version: vrm1 ? '1.0' : '0.x',
       allowsCommercialAndRedistribution: false,
-      reason: 'VRM licence metadata disallows commercial use or redistribution.',
+      reason: `VRM import rejected: licence metadata does not explicitly allow ${missing.join(' and ')}.`,
     };
   }
 
@@ -1365,21 +1331,31 @@ export function parseVrmBinary(
 export function buildSampleMinimalVrmBinary(options: {
   title: string;
   author: string;
-  commercialUsage: 'allow' | 'Disallow';
-  redistribution: 'allow' | 'Disallow';
+  commercialUsage?: string | boolean;
+  redistribution?: string | boolean;
+  otherPermissionUrl?: string;
 }): Uint8Array {
+  const meta: Record<string, unknown> = {
+    name: options.title,
+    authors: [options.author],
+  };
+  if (options.commercialUsage !== undefined) {
+    meta.commercialUsage = options.commercialUsage;
+  }
+  if (options.redistribution !== undefined) {
+    meta.redistribution = options.redistribution;
+  }
+  if (options.otherPermissionUrl !== undefined) {
+    meta.otherPermissionUrl = options.otherPermissionUrl;
+  }
+
   const jsonPayload = JSON.stringify({
     asset: { version: '2.0', generator: 'DREAM-Studio-InHouse-VRM-Test' },
     extensionsUsed: ['VRMC_vrm'],
     extensions: {
       VRMC_vrm: {
         specVersion: '1.0',
-        meta: {
-          name: options.title,
-          authors: [options.author],
-          commercialUsage: options.commercialUsage,
-          redistribution: options.redistribution,
-        },
+        meta,
         humanoid: { humanBones: {} },
       },
     },

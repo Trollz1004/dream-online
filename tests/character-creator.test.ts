@@ -279,6 +279,74 @@ test('VRM import: imports valid VRM glTF binary and never embeds VRoid Studio', 
   assert.equal(restricted.ok, false);
   assert.match(restricted.reason ?? '', /commercial|redistribution/i);
 
+  // Missing value tests (fails closed)
+  const missingCommBytes = buildSampleMinimalVrmBinary({
+    title: 'Missing Commercial',
+    author: 'External',
+    redistribution: 'allow',
+  });
+  const missingComm = parseVrmBinary(missingCommBytes, 'missing-comm.vrm');
+  assert.equal(missingComm.ok, false);
+  assert.equal(missingComm.allowsCommercialAndRedistribution, false);
+  assert.match(missingComm.reason ?? '', /commercial use/i);
+
+  const missingRedistBytes = buildSampleMinimalVrmBinary({
+    title: 'Missing Redistribution',
+    author: 'External',
+    commercialUsage: 'allow',
+  });
+  const missingRedist = parseVrmBinary(missingRedistBytes, 'missing-redist.vrm');
+  assert.equal(missingRedist.ok, false);
+  assert.equal(missingRedist.allowsCommercialAndRedistribution, false);
+  assert.match(missingRedist.reason ?? '', /redistribution/i);
+
+  // never read otherPermissionUrl as a permission value
+  const otherUrlOnlyBytes = buildSampleMinimalVrmBinary({
+    title: 'Other Permission URL Only',
+    author: 'External',
+    commercialUsage: 'allow',
+    otherPermissionUrl: 'https://example.com/allow-commercial-and-redistribution',
+  });
+  const otherUrlOnly = parseVrmBinary(otherUrlOnlyBytes, 'other-url.vrm');
+  assert.equal(otherUrlOnly.ok, false);
+  assert.equal(otherUrlOnly.allowsCommercialAndRedistribution, false);
+  assert.match(otherUrlOnly.reason ?? '', /redistribution/i);
+
+  // Unknown or unusual value tests
+  const unknownBytes = buildSampleMinimalVrmBinary({
+    title: 'Unknown Licence Avatar',
+    author: 'External',
+    commercialUsage: 'unknown',
+    redistribution: 'allow',
+  });
+  const unknownParsed = parseVrmBinary(unknownBytes, 'unknown.vrm');
+  assert.equal(unknownParsed.ok, false);
+  assert.equal(unknownParsed.allowsCommercialAndRedistribution, false);
+  assert.match(unknownParsed.reason ?? '', /commercial use/i);
+
+  const unusualBytes = buildSampleMinimalVrmBinary({
+    title: 'Unusual Value Avatar',
+    author: 'External',
+    commercialUsage: 'allow',
+    redistribution: 'conditional-ask-author',
+  });
+  const unusualParsed = parseVrmBinary(unusualBytes, 'unusual.vrm');
+  assert.equal(unusualParsed.ok, false);
+  assert.equal(unusualParsed.allowsCommercialAndRedistribution, false);
+  assert.match(unusualParsed.reason ?? '', /redistribution/i);
+
+  // Explicit allow test
+  const explicitAllowBytes = buildSampleMinimalVrmBinary({
+    title: 'Explicit Allow Avatar',
+    author: 'Clean Author',
+    commercialUsage: 'allow',
+    redistribution: 'allow',
+  });
+  const explicitParsed = parseVrmBinary(explicitAllowBytes, 'explicit.vrm');
+  assert.equal(explicitParsed.ok, true);
+  assert.equal(explicitParsed.allowsCommercialAndRedistribution, true);
+  assert.equal(explicitParsed.reason, undefined);
+
   // Ensure UI source never embeds VRoid Studio iframe or external VRoid script
   const uiPath = path.resolve(__dirname, '../src/ui/CharacterCreatorModal.tsx');
   const uiCode = readFileSync(uiPath, 'utf8');
