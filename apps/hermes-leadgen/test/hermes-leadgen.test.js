@@ -195,11 +195,11 @@ test('4. Gemini Easy Button bootstrap batch file exists, self-heals, and never c
 test('5. Static & Live GitHub PR Gate Check: Verifies worktree branch on origin, real PR number when pushed, and honest non-faked hook statuses', async (t) => {
   const loopRes = await httpGetJson('http://127.0.0.1:8392/api/hooks/loop');
   assert.equal(loopRes.status, 200);
-  assert.equal(loopRes.data.nodeCanSelfMergeToMain, false, 'Nodes must never self-merge; only GitHub Cloud Judges merge');
+  assert.equal(loopRes.data.nodeCanSelfMergeToMain, false, 'Nodes must never self-merge; only Josh or the signed-in Claude judge lane merges');
   assert.ok(Array.isArray(loopRes.data.mergeAuthority));
-  assert.ok(loopRes.data.mergeAuthority.some(j => j.includes('Jules')));
+  assert.ok(loopRes.data.mergeAuthority.some(j => j.includes('Josh')));
   assert.ok(loopRes.data.mergeAuthority.some(j => j.includes('Claude')));
-  assert.ok(loopRes.data.mergeAuthority.some(j => j.includes('Codex')));
+  assert.ok(!loopRes.data.mergeAuthority.some(j => /gemini|jules|codex/i.test(j)), 'Gemini, Jules and Codex review but are never merge authority');
 
   // Verify server.js never logs fake PUSHED or QUEUED statuses for unconfirmed local events
   const serverCode = fs.readFileSync(path.join(ROOT_DIR, 'server.js'), 'utf8');
@@ -333,4 +333,31 @@ test('7. Separated Tabs, :8391/health Official API Prospecting + YouTube Data AP
     assert.ok(htmlCode.includes(`data-tab="${tab}"`), `Missing separated tab button: ${tab}`);
     assert.ok(htmlCode.includes(`id="tab-${tab}"`), `Missing separated tab panel: tab-${tab}`);
   }
+});
+
+test('5b. Merge authority wording: Josh or the signed-in Claude judge lane only; Gemini is a reviewer, never a merge authority', () => {
+  const banned = [
+    'Gemini (GitHub Judge)',
+    'Only GitHub Cloud Judges',
+    'Cloud Judges (Gemini',
+    'Cloud Judges (`Gemini`',
+    'Cloud Judges (\\`Gemini',
+    'GitHub Judges Validate & Merge',
+    'GitHub Judges Validate &amp; Merge',
+    'GitHub-side Judges (`Gemini`',
+    'AWAITING_GITHUB_JUDGES_MERGE'
+  ];
+  const files = ['server.js', 'index.html', path.join('souls', 'default-orchestrator-agent.md'), path.join('data', 'circular-hooks-loop.json')];
+  for (const f of files) {
+    const text = fs.readFileSync(path.join(ROOT_DIR, f), 'utf8');
+    for (const phrase of banned) {
+      assert.ok(!text.includes(phrase), `${f} still says: ${phrase}`);
+    }
+  }
+  const loop = JSON.parse(fs.readFileSync(path.join(ROOT_DIR, 'data', 'circular-hooks-loop.json'), 'utf8'));
+  assert.deepEqual(loop.mergeAuthority, ['Josh (Founder)', 'Claude (signed-in judge lane)']);
+  const serverCode = fs.readFileSync(path.join(ROOT_DIR, 'server.js'), 'utf8');
+  assert.ok(serverCode.includes("mergeAuthority: ['Josh (Founder)', 'Claude (signed-in judge lane)']"), 'DEFAULT_HOOK_LOOP must match the data file');
+  const soul = fs.readFileSync(path.join(ROOT_DIR, 'souls', 'default-orchestrator-agent.md'), 'utf8');
+  assert.ok(soul.includes('Gemini'), 'Gemini stays listed as a reviewer');
 });

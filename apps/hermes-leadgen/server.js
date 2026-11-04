@@ -199,8 +199,8 @@ function saveLeads(leads) {
 }
 
 const DEFAULT_HOOK_LOOP = {
-  architecture: 'Task -> Node Orchestrator (:8392/:9119) -> Local File/Task Watcher Hook -> Node PR Branch (sabretooth/*) -> GitHub Webhook -> Cloud Judges (Gemini / Jules / Claude / Codex in GitHub) Validate & Merge -> Obsidian + Dashboard Sync',
-  mergeAuthority: ['Gemini (GitHub Judge)', 'Jules (GitHub Judge)', 'Claude (GitHub Judge)', 'Codex (GitHub Judge)'],
+  architecture: 'Task -> Node Orchestrator (:8392/:9119) -> Local File/Task Watcher Hook -> Node PR Branch (sabretooth/*) -> GitHub Webhook -> Reviewers (Gemini / Jules / Claude / Codex in GitHub) Validate -> Merge by Josh or the signed-in Claude judge lane -> Obsidian + Dashboard Sync',
+  mergeAuthority: ['Josh (Founder)', 'Claude (signed-in judge lane)'],
   nodeCanSelfMergeToMain: false,
   watcherActive: true,
   watchedPaths: [
@@ -214,7 +214,7 @@ const DEFAULT_HOOK_LOOP = {
     { step: 2, id: 'node-orchestrator', name: '2. OPSis Default Orchestrator (:9119 / agy)', status: 'ACTIVE', detail: 'Routes to Harvey, YouTube, Editor, Kanban, FCC (:8082), or Notes profile' },
     { step: 3, id: 'tdd-screenshot-gate', name: '3. Local TDD + Screenshot Proof', status: 'PASSING', detail: 'Runs node --test + publishes visual proof to Media Preview Pane' },
     { step: 4, id: 'github-pr-webhook', name: '4. Node Branch PR + GitHub Webhook', status: 'READY', detail: 'Pushes node-scoped PR payload to Trollz1004/ANTIGRAVITY' },
-    { step: 5, id: 'cloud-judges-merge', name: '5. GitHub Judges Validate & Merge (Jules / Claude / Codex / Gemini)', status: 'ENFORCED', detail: 'Only Cloud Judges in GitHub merge after CI passes — zero unjudged node merges' },
+    { step: 5, id: 'cloud-judges-merge', name: '5. Reviewers Validate (Jules / Claude / Codex / Gemini), Josh or the Claude Judge Lane Merges', status: 'ENFORCED', detail: 'Reviewer lanes comment after CI passes; only Josh or the signed-in Claude judge lane merges — zero unjudged node merges' },
     { step: 6, id: 'memory-graphy-sync', name: '6. Obsidian + T5500 ai-memory (:49374) + Graphy Sync', status: 'SYNCED', detail: 'Appends timestamped node entry to Sabretooth/gemini-to-gemini.md & hermes-to-hermes.md' }
   ],
   events: [
@@ -227,8 +227,8 @@ const DEFAULT_HOOK_LOOP = {
       testsPassed: true,
       pushSuccess: false,
       prNumber: null,
-      judgeStatus: 'AWAITING_GITHUB_JUDGES_MERGE (Gemini / Jules / Claude / Codex)',
-      summary: 'Initialized circular Task -> Node OPSis Orchestrator -> GitHub PR -> Cloud Judge Merge loop on Sabretooth.'
+      judgeStatus: 'AWAITING_REVIEW_THEN_MERGE_BY_JOSH_OR_CLAUDE_JUDGE_LANE',
+      summary: 'Initialized circular Task -> Node OPSis Orchestrator -> GitHub PR -> Review -> Merge by Josh or the Claude judge lane loop on Sabretooth.'
     }
   ]
 };
@@ -702,11 +702,11 @@ function loadDualGraphy() {
         },
         {
           id: 'github-cloud-judges',
-          label: 'GitHub Cloud Judges (Gemini / Jules / Claude / Codex)',
+          label: 'GitHub Reviewers (Gemini / Jules / Claude / Codex) + Merge Gate (Josh / Claude judge lane)',
           type: 'cloud-judge-gate',
           port: 443,
-          cli: 'gh pr review & merge',
-          role: 'Validates CI/TDD tests in GitHub & executes all merges to main'
+          cli: 'gh pr review',
+          role: 'Validates CI/TDD tests in GitHub; reviewers comment, and only Josh or the signed-in Claude judge lane merges to main'
         }
       ];
 
@@ -719,7 +719,7 @@ function loadDualGraphy() {
         { from: 'default', to: 'editor', label: 'validates REA media & screenshots' },
         { from: 'default', to: 'fcc', label: 'bridges :8082 Claude wrapper' },
         { from: 'default', to: 'notes', label: 'syncs Obsidian & Dual Graphy' },
-        { from: 'kanban', to: 'github-cloud-judges', label: 'PR webhook -> Judge merge' },
+        { from: 'kanban', to: 'github-cloud-judges', label: 'PR webhook -> Review, then merge by Josh or Claude judge lane' },
         { from: 'notes', to: 't5500-memory-49374', label: 'mirrors session ledger' }
       ];
 
@@ -1037,7 +1037,7 @@ const server = http.createServer(async (req, res) => {
           `**Outcome**: OPSis Default Orchestrator (\`http://127.0.0.1:9119/chat?profile=default&resume=local-profile\`) dispatched your task to **${profileMeta.name}** using \`${cliInvoked}\`.`,
           `- **Active Skills**: ${profileMeta.mandatorySkills.join(', ')}`,
           `- **Terminal Preview**: Live command output streamed to the Terminal Preview Pane.`,
-          `- **Circular Judge Loop**: Run \`/api/hooks/push-pr\` to push \`sabretooth/hermes-leadgen\` and open a verified GitHub PR for Cloud Judges (\`Gemini / Jules / Claude / Codex\`).`,
+          `- **Circular Judge Loop**: Run \`/api/hooks/push-pr\` to push \`sabretooth/hermes-leadgen\` and open a verified GitHub PR for review (\`Gemini / Jules / Claude / Codex\`); merge goes through Josh or the signed-in Claude judge lane.`,
           `- **Memory Sync**: Logged to \`Sabretooth/gemini-to-gemini.md\` and \`Sabretooth/hermes-to-hermes.md\`.`
         ].join('\n');
       }
@@ -1402,7 +1402,7 @@ const server = http.createServer(async (req, res) => {
       return fs.createReadStream(resolved).pipe(res);
     }
 
-    // 8. Circular Node Watcher -> Mandatory Auto-Commit, Push & GitHub PR Creation -> Cloud Judge Merge Loop
+    // 8. Circular Node Watcher -> Mandatory Auto-Commit, Push & GitHub PR Creation -> Review -> Merge by Josh or the Claude judge lane
     if (pathname === '/api/hooks/loop' && req.method === 'GET') {
       const loopData = loadHookLoop();
       loopData.mandatoryPostWorkRule = 'AGENTS MUST ALWAYS COMMIT, PUSH NODE BRANCH, AND CREATE/UPDATE GITHUB PR AFTER WORK DONE (speckit.git.push-and-pr via scripts/node-auto-pr-push.ps1)';
@@ -1413,7 +1413,7 @@ const server = http.createServer(async (req, res) => {
 
     if ((pathname === '/api/hooks/trigger' || pathname === '/api/hooks/push-pr') && req.method === 'POST') {
       const body = await readJsonBody(req);
-      const summary = body.summary || body.message || 'Mandatory Post-Work Auto-Commit, Branch Push & GitHub PR Creation for Cloud Judges (Gemini / Jules / Claude / Codex).';
+      const summary = body.summary || body.message || 'Mandatory Post-Work Auto-Commit, Branch Push & GitHub PR Creation for Review (Gemini / Jules / Claude / Codex); merge by Josh or the signed-in Claude judge lane.';
       if (body.runGitPushPr) {
         const result = await executeNodeAutoPrPush({
           agent: body.agent || 'gemini',
