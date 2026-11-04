@@ -1,0 +1,4 @@
+#!/bin/sh
+# Pre-push hook: blocks credential-shaped text in the commits being pushed.
+# Wired through `core.hooksPath` (see `npm run hooks:install`). Do not bypass with --no-verify.
+exec node "$(dirname "$0")/secret-scan.mjs" --pre-push "$@"
