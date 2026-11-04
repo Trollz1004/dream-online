@@ -257,33 +257,11 @@ test('live 3D scene link: body sliders and presets change 3D model parameters im
   assert.equal(resetTurn3d.yawRad, base3d.yawRad);
 });
 
-test('VRM import: imports valid VRM glTF binary and never embeds VRoid Studio', () => {
-  const vrmBytes = buildSampleMinimalVrmBinary({
-    title: 'Dreamer Own Body',
-    author: 'DREAM Studio',
-    commercialUsage: 'allow',
-    redistribution: 'allow',
-  });
-  const parsed = parseVrmBinary(vrmBytes, 'dreamer-body.vrm');
-  assert.equal(parsed.ok, true);
-  assert.equal(parsed.title, 'Dreamer Own Body');
-  assert.equal(parsed.allowsCommercialAndRedistribution, true);
-
-  const restrictedBytes = buildSampleMinimalVrmBinary({
-    title: 'Restricted Avatar',
-    author: 'External',
-    commercialUsage: 'Disallow',
-    redistribution: 'Disallow',
-  });
-  const restricted = parseVrmBinary(restrictedBytes, 'restricted.vrm');
-  assert.equal(restricted.ok, false);
-  assert.match(restricted.reason ?? '', /commercial|redistribution/i);
-
-  // Missing value tests (fails closed)
+test('missing value rejects', () => {
   const missingCommBytes = buildSampleMinimalVrmBinary({
     title: 'Missing Commercial',
     author: 'External',
-    redistribution: 'allow',
+    allowRedistribution: true,
   });
   const missingComm = parseVrmBinary(missingCommBytes, 'missing-comm.vrm');
   assert.equal(missingComm.ok, false);
@@ -293,31 +271,41 @@ test('VRM import: imports valid VRM glTF binary and never embeds VRoid Studio', 
   const missingRedistBytes = buildSampleMinimalVrmBinary({
     title: 'Missing Redistribution',
     author: 'External',
-    commercialUsage: 'allow',
+    commercialUsage: 'corporation',
   });
   const missingRedist = parseVrmBinary(missingRedistBytes, 'missing-redist.vrm');
   assert.equal(missingRedist.ok, false);
   assert.equal(missingRedist.allowsCommercialAndRedistribution, false);
   assert.match(missingRedist.reason ?? '', /redistribution/i);
 
+  const missingBothBytes = buildSampleMinimalVrmBinary({
+    title: 'Missing Both',
+    author: 'External',
+  });
+  const missingBoth = parseVrmBinary(missingBothBytes, 'missing-both.vrm');
+  assert.equal(missingBoth.ok, false);
+  assert.equal(missingBoth.allowsCommercialAndRedistribution, false);
+  assert.match(missingBoth.reason ?? '', /commercial use and redistribution/i);
+
   // never read otherPermissionUrl as a permission value
   const otherUrlOnlyBytes = buildSampleMinimalVrmBinary({
     title: 'Other Permission URL Only',
     author: 'External',
-    commercialUsage: 'allow',
+    commercialUsage: 'corporation',
     otherPermissionUrl: 'https://example.com/allow-commercial-and-redistribution',
   });
   const otherUrlOnly = parseVrmBinary(otherUrlOnlyBytes, 'other-url.vrm');
   assert.equal(otherUrlOnly.ok, false);
   assert.equal(otherUrlOnly.allowsCommercialAndRedistribution, false);
   assert.match(otherUrlOnly.reason ?? '', /redistribution/i);
+});
 
-  // Unknown or unusual value tests
+test('unknown value rejects', () => {
   const unknownBytes = buildSampleMinimalVrmBinary({
     title: 'Unknown Licence Avatar',
     author: 'External',
     commercialUsage: 'unknown',
-    redistribution: 'allow',
+    allowRedistribution: true,
   });
   const unknownParsed = parseVrmBinary(unknownBytes, 'unknown.vrm');
   assert.equal(unknownParsed.ok, false);
@@ -327,7 +315,7 @@ test('VRM import: imports valid VRM glTF binary and never embeds VRoid Studio', 
   const unusualBytes = buildSampleMinimalVrmBinary({
     title: 'Unusual Value Avatar',
     author: 'External',
-    commercialUsage: 'allow',
+    commercialUsage: 'corporation',
     redistribution: 'conditional-ask-author',
   });
   const unusualParsed = parseVrmBinary(unusualBytes, 'unusual.vrm');
@@ -335,19 +323,80 @@ test('VRM import: imports valid VRM glTF binary and never embeds VRoid Studio', 
   assert.equal(unusualParsed.allowsCommercialAndRedistribution, false);
   assert.match(unusualParsed.reason ?? '', /redistribution/i);
 
-  // Explicit allow test
-  const explicitAllowBytes = buildSampleMinimalVrmBinary({
-    title: 'Explicit Allow Avatar',
-    author: 'Clean Author',
-    commercialUsage: 'allow',
-    redistribution: 'allow',
+  const restrictedBytes = buildSampleMinimalVrmBinary({
+    title: 'Restricted Avatar',
+    author: 'External',
+    commercialUsage: 'Disallow',
+    redistribution: 'Disallow',
   });
-  const explicitParsed = parseVrmBinary(explicitAllowBytes, 'explicit.vrm');
-  assert.equal(explicitParsed.ok, true);
-  assert.equal(explicitParsed.allowsCommercialAndRedistribution, true);
-  assert.equal(explicitParsed.reason, undefined);
+  const restricted = parseVrmBinary(restrictedBytes, 'restricted.vrm');
+  assert.equal(restricted.ok, false);
+  assert.equal(restricted.allowsCommercialAndRedistribution, false);
+  assert.match(restricted.reason ?? '', /commercial use and redistribution/i);
+});
 
-  // Ensure UI source never embeds VRoid Studio iframe or external VRoid script
+test('VRM 0.x Allow passes', () => {
+  const vrm0Bytes = buildSampleMinimalVrmBinary({
+    title: 'Dreamer 0.x Body',
+    author: 'DREAM Studio',
+    version: '0.x',
+    commercialUssageName: 'Allow',
+    redistribution: 'Allow',
+  });
+  const parsed = parseVrmBinary(vrm0Bytes, 'dreamer-0x.vrm');
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.title, 'Dreamer 0.x Body');
+  assert.equal(parsed.author, 'DREAM Studio');
+  assert.equal(parsed.version, '0.x');
+  assert.equal(parsed.allowsCommercialAndRedistribution, true);
+  assert.equal(parsed.reason, undefined);
+});
+
+test('VRM 1.0 corporation with allowRedistribution true passes', () => {
+  const vrm1Bytes = buildSampleMinimalVrmBinary({
+    title: 'Dreamer 1.0 Corp Body',
+    author: 'DREAM Studio',
+    version: '1.0',
+    commercialUsage: 'corporation',
+    allowRedistribution: true,
+  });
+  const parsed = parseVrmBinary(vrm1Bytes, 'dreamer-10-corp.vrm');
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.title, 'Dreamer 1.0 Corp Body');
+  assert.equal(parsed.author, 'DREAM Studio');
+  assert.equal(parsed.version, '1.0');
+  assert.equal(parsed.allowsCommercialAndRedistribution, true);
+  assert.equal(parsed.reason, undefined);
+
+  // personalProfit together with allowRedistribution: true also passes
+  const vrm1ProfitBytes = buildSampleMinimalVrmBinary({
+    title: 'Dreamer 1.0 Profit Body',
+    author: 'DREAM Studio',
+    version: '1.0',
+    commercialUsage: 'personalProfit',
+    allowRedistribution: true,
+  });
+  const parsedProfit = parseVrmBinary(vrm1ProfitBytes, 'dreamer-10-profit.vrm');
+  assert.equal(parsedProfit.ok, true);
+  assert.equal(parsedProfit.allowsCommercialAndRedistribution, true);
+});
+
+test('VRM 1.0 personalNonProfit rejects', () => {
+  const nonProfitBytes = buildSampleMinimalVrmBinary({
+    title: 'Non-Profit Avatar',
+    author: 'External',
+    version: '1.0',
+    commercialUsage: 'personalNonProfit',
+    allowRedistribution: true,
+  });
+  const parsed = parseVrmBinary(nonProfitBytes, 'non-profit.vrm');
+  assert.equal(parsed.ok, false);
+  assert.equal(parsed.version, '1.0');
+  assert.equal(parsed.allowsCommercialAndRedistribution, false);
+  assert.match(parsed.reason ?? '', /commercial use/i);
+});
+
+test('VRM import: never embeds VRoid Studio', () => {
   const uiPath = path.resolve(__dirname, '../src/ui/CharacterCreatorModal.tsx');
   const uiCode = readFileSync(uiPath, 'utf8');
   assert.equal(/<iframe[^>]*vroid/i.test(uiCode), false, 'must never embed VRoid');

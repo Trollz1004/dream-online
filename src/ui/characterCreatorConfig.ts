@@ -1284,20 +1284,19 @@ export function parseVrmBinary(
       ? meta.authors[0]
       : 'Unknown Author';
 
-  const commercialVal = meta.commercialUsage ?? meta.commercialUssageName;
-  const redistributionVal = meta.redistribution ?? meta.allowRedistribution;
+  let allowsCommercial = false;
+  let allowsRedistribution = false;
 
-  const isExplicitlyAllowed = (val: unknown): boolean => {
-    if (val === true) return true;
-    if (typeof val === 'string') {
-      const s = val.trim().toLowerCase();
-      return s === 'allow' || s === 'allowed';
-    }
-    return false;
-  };
-
-  const allowsCommercial = isExplicitlyAllowed(commercialVal);
-  const allowsRedistribution = isExplicitlyAllowed(redistributionVal);
+  if (vrm1) {
+    const comm = typeof meta.commercialUsage === 'string' ? meta.commercialUsage.trim() : '';
+    allowsCommercial = comm === 'corporation' || comm === 'personalProfit';
+    allowsRedistribution = meta.allowRedistribution === true;
+  } else if (vrm0) {
+    const comm = typeof meta.commercialUssageName === 'string' ? meta.commercialUssageName.trim().toLowerCase() : '';
+    allowsCommercial = comm === 'allow';
+    const redist = typeof meta.redistribution === 'string' ? meta.redistribution.trim().toLowerCase() : '';
+    allowsRedistribution = redist === 'allow';
+  }
 
   if (!allowsCommercial || !allowsRedistribution) {
     const missing: string[] = [];
@@ -1325,41 +1324,81 @@ export function parseVrmBinary(
 }
 
 /**
- * Helper used by automated tests to construct a minimal valid VRM 1.0 glTF binary
+ * Helper used by automated tests to construct a minimal valid VRM 0.x / 1.0 glTF binary
  * in memory with explicit licence metadata.
  */
 export function buildSampleMinimalVrmBinary(options: {
   title: string;
   author: string;
+  version?: '0.x' | '1.0';
   commercialUsage?: string | boolean;
+  commercialUssageName?: string;
   redistribution?: string | boolean;
+  allowRedistribution?: boolean;
   otherPermissionUrl?: string;
 }): Uint8Array {
-  const meta: Record<string, unknown> = {
-    name: options.title,
-    authors: [options.author],
-  };
-  if (options.commercialUsage !== undefined) {
-    meta.commercialUsage = options.commercialUsage;
-  }
-  if (options.redistribution !== undefined) {
-    meta.redistribution = options.redistribution;
-  }
-  if (options.otherPermissionUrl !== undefined) {
-    meta.otherPermissionUrl = options.otherPermissionUrl;
-  }
+  const isVrm0 = options.version === '0.x';
+  let jsonPayload: string;
 
-  const jsonPayload = JSON.stringify({
-    asset: { version: '2.0', generator: 'DREAM-Studio-InHouse-VRM-Test' },
-    extensionsUsed: ['VRMC_vrm'],
-    extensions: {
-      VRMC_vrm: {
-        specVersion: '1.0',
-        meta,
-        humanoid: { humanBones: {} },
+  if (isVrm0) {
+    const meta: Record<string, unknown> = {
+      title: options.title,
+      author: options.author,
+    };
+    if (options.commercialUssageName !== undefined) {
+      meta.commercialUssageName = options.commercialUssageName;
+    } else if (options.commercialUsage !== undefined) {
+      meta.commercialUssageName = options.commercialUsage;
+    }
+    if (options.redistribution !== undefined) {
+      meta.redistribution = options.redistribution;
+    }
+    if (options.otherPermissionUrl !== undefined) {
+      meta.otherPermissionUrl = options.otherPermissionUrl;
+    }
+
+    jsonPayload = JSON.stringify({
+      asset: { version: '2.0', generator: 'DREAM-Studio-InHouse-VRM-Test' },
+      extensionsUsed: ['VRM'],
+      extensions: {
+        VRM: {
+          specVersion: '0.0',
+          meta,
+          humanoid: { humanBones: [] },
+        },
       },
-    },
-  });
+    });
+  } else {
+    const meta: Record<string, unknown> = {
+      name: options.title,
+      authors: [options.author],
+    };
+    if (options.commercialUsage !== undefined) {
+      meta.commercialUsage = options.commercialUsage;
+    }
+    if (options.allowRedistribution !== undefined) {
+      meta.allowRedistribution = options.allowRedistribution;
+    } else if (typeof options.redistribution === 'boolean') {
+      meta.allowRedistribution = options.redistribution;
+    } else if (options.redistribution !== undefined) {
+      meta.redistribution = options.redistribution;
+    }
+    if (options.otherPermissionUrl !== undefined) {
+      meta.otherPermissionUrl = options.otherPermissionUrl;
+    }
+
+    jsonPayload = JSON.stringify({
+      asset: { version: '2.0', generator: 'DREAM-Studio-InHouse-VRM-Test' },
+      extensionsUsed: ['VRMC_vrm'],
+      extensions: {
+        VRMC_vrm: {
+          specVersion: '1.0',
+          meta,
+          humanoid: { humanBones: {} },
+        },
+      },
+    });
+  }
   const encoder = new TextEncoder();
   const rawJsonBytes = encoder.encode(jsonPayload);
   const padLength = (4 - (rawJsonBytes.byteLength % 4)) % 4;
