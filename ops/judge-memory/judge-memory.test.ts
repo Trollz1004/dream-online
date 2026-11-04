@@ -523,7 +523,30 @@ test('Section 8: Fleet memory MCP digest push defaults off and backup copies SQL
   }
 });
 
-test('Section 9: Register and unregister scripts only print planned changes unless run with -Apply', () => {
+function resolvePowerShell(): string | null {
+  for (const exe of ['pwsh', 'powershell.exe', 'powershell']) {
+    try {
+      const probe = spawnSync(exe, ['-NoProfile', '-Command', 'exit 0'], {
+        stdio: 'ignore',
+        windowsHide: true,
+      });
+      if (!probe.error && probe.status === 0) {
+        return exe;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return null;
+}
+
+test('Section 9: Register and unregister scripts only print planned changes unless run with -Apply', (t) => {
+  const psExe = resolvePowerShell();
+  if (!psExe) {
+    t.skip('PowerShell not available on this runner');
+    return;
+  }
+
   const ctx = makeTempTestEnv();
   try {
     const fakeSettingsPath = path.join(ctx.tmpDir, '.claude', 'settings.json');
@@ -533,7 +556,7 @@ test('Section 9: Register and unregister scripts only print planned changes unle
 
     // 1. Dry-run register (no -Apply) prints planned JSON and does not create settings.json
     const dryRegOut = execFileSync(
-      'powershell.exe',
+      psExe,
       [
         '-NoProfile',
         '-NonInteractive',
@@ -558,7 +581,7 @@ test('Section 9: Register and unregister scripts only print planned changes unle
 
     // 2. Run with -Apply on temporary settings file (never the real node settings)
     const applyRegOut = execFileSync(
-      'powershell.exe',
+      psExe,
       [
         '-NoProfile',
         '-NonInteractive',
@@ -586,7 +609,7 @@ test('Section 9: Register and unregister scripts only print planned changes unle
 
     // 3. Dry-run unregister (no -Apply) keeps settings.json intact
     const dryUnregOut = execFileSync(
-      'powershell.exe',
+      psExe,
       [
         '-NoProfile',
         '-NonInteractive',
@@ -605,7 +628,7 @@ test('Section 9: Register and unregister scripts only print planned changes unle
 
     // 4. Unregister with -Apply removes hooks and MCP entry from temporary settings file
     const applyUnregOut = execFileSync(
-      'powershell.exe',
+      psExe,
       [
         '-NoProfile',
         '-NonInteractive',

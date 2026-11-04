@@ -597,31 +597,31 @@ test('Inbox Item 3 & 4: Safety gates (refuses OneDrive inbox, refuses when gh is
   }
 });
 
-test('Inbox runner registration scripts dry-run by default without -Apply under temp HOME', (t) => {
-  const isWindows = process.platform === 'win32';
-  const psCandidate = isWindows ? 'powershell.exe' : 'pwsh';
-
-  let psAvailable = false;
-  try {
-    const probe = spawnSync(
-      psCandidate,
-      ['-NoProfile', '-Command', '$PSVersionTable.PSVersion.ToString()'],
-      {
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'pipe'],
+function resolvePowerShell(): string | null {
+  for (const exe of ['pwsh', 'powershell.exe', 'powershell']) {
+    try {
+      const probe = spawnSync(exe, ['-NoProfile', '-Command', 'exit 0'], {
+        stdio: 'ignore',
+        windowsHide: true,
+      });
+      if (!probe.error && probe.status === 0) {
+        return exe;
       }
-    );
-    if (probe.status === 0) {
-      psAvailable = true;
+    } catch {
+      // ignore
     }
-  } catch {
-    psAvailable = false;
   }
+  return null;
+}
 
-  if (!psAvailable) {
-    t.skip('powershell is unavailable in this environment');
+test('Inbox runner registration scripts dry-run by default without -Apply under temp HOME', (t) => {
+  const psCandidate = resolvePowerShell();
+  if (!psCandidate) {
+    t.skip('PowerShell not available on this runner');
     return;
   }
+
+  const isWindows = process.platform === 'win32';
 
   const regScriptPath = path.resolve(
     path.dirname(DEFAULT_INBOX_CONFIG_PATH),
