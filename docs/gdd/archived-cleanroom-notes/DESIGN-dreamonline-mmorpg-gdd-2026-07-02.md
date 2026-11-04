@@ -1,3 +1,5 @@
+> **Archive.** This file is an archive; its node and port claims are stale.
+
 # DESIGN — DREAM Online MMORPG — Game Design Doc — 2026-07-02
 
 > "It was all a DREAM." Open-world sandbox browser MMORPG. Free to play.

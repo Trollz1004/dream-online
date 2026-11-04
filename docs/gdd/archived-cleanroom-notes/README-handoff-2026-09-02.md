@@ -1,3 +1,5 @@
+> **Archive.** This file is an archive; its node and port claims are stale.
+
 # Handoff: DREAM Online — First Gate slice, GM Control, funding reel
 
 For Codex / Claude Code. Repo: Trollz1004/dream-online (branch main). Local root: D:\CLAUDE's-N-Joshua's-Dream-Online-MMORPG

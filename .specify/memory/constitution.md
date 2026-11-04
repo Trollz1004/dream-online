@@ -14,7 +14,7 @@ Unreal is presentation and action. The DREAM server is authoritative state. Herm
 
 ### III. One inference route, no provider keys in code
 
-Every model call from a harness or from the game goes through OmniRoute at `http://192.168.0.8:20128/v1`. No provider key appears in code, config, client builds, NPC memories or logs. Claude is reached only through the signed-in Claude CLI, never an API key, and never through OmniRoute; Sup@ is the only in-game entity on that path. Providers stay replaceable behind the provider abstraction.
+Every model call from a harness or from the game goes through OmniRoute, which runs on the T5500, at `http://$T5500_HOST:20128/v1` (`T5500_HOST` comes from the node env file). No provider key appears in code, config, client builds, NPC memories or logs. Claude is reached only through the signed-in Claude CLI, never an API key, and never through OmniRoute; Sup@ is the only in-game entity on that path. Providers stay replaceable behind the provider abstraction.
 
 ### IV. Test first, and nothing lands without the gate
 

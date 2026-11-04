@@ -1,6 +1,6 @@
 # Unreal Engine Architecture
 
-**Status note (2026-09-26):** This is a parked Unreal reference, kept for the revisit terms recorded in `docs/tech/engine-decision-2026-09-20.md`. The current implementation is the Godot slice at `game/godot/DreamSlice`.
+**Status note (2026-09-26):** This is a parked Unreal reference, kept for the revisit terms recorded in `docs/tech/engine-decision-2026-09-20.md`. The engine is in-house and these documents are history.
 
 ## Engine Direction
 
