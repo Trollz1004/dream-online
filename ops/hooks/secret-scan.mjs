@@ -57,6 +57,7 @@ export function scanText(text) {
 }
 
 const ZERO_SHA = /^0+$/;
+const SHA_RE = /^[0-9a-f]{40}$/i;
 
 function git(args) {
   return execFileSync('git', ['-c', 'core.quotepath=off', ...args], {
@@ -64,6 +65,14 @@ function git(args) {
     maxBuffer: 1024 * 1024 * 1024,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
+}
+
+function resolveOriginMain() {
+  try {
+    return git(['rev-parse', '--verify', 'origin/main']).trim();
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -119,19 +128,35 @@ export function addedLines(revArgs) {
 export function scanPush(stdinText) {
   const hits = [];
   const seen = new Set();
-  for (const ref of stdinText.split(/\r?\n/).filter(Boolean)) {
-    const [, localSha, , remoteSha] = ref.trim().split(/\s+/);
-    if (!localSha || ZERO_SHA.test(localSha)) continue; // deleting a ref pushes no content
+  const lines = stdinText.split(/\r?\n/).filter(Boolean);
+
+  // Validate every ref token from stdin against /^[0-9a-f]{40}$/i before any git call
+  const parsed = [];
+  for (const ref of lines) {
+    const parts = ref.trim().split(/\s+/);
+    const localSha = parts[1];
+    const remoteSha = parts[3];
+    if (!localSha || !SHA_RE.test(localSha) || !remoteSha || !SHA_RE.test(remoteSha)) {
+      throw new Error(`secret-scan: invalid SHA in pre-push input: "${ref.trim()}"`);
+    }
+    parsed.push({ localSha, remoteSha });
+  }
+
+  for (const { localSha, remoteSha } of parsed) {
+    if (ZERO_SHA.test(localSha)) continue; // deleting a ref pushes no content
     let range;
-    if (remoteSha && !ZERO_SHA.test(remoteSha)) {
+    if (!ZERO_SHA.test(remoteSha)) {
       try {
         git(['cat-file', '-e', `${remoteSha}^{commit}`]);
-        range = [localSha, '--not', remoteSha, '--remotes'];
+        range = [`${remoteSha}..${localSha}`];
       } catch {
         range = null; // remote tip not known locally (non-fast-forward): fall through
       }
     }
-    if (!range) range = [localSha, '--not', '--remotes'];
+    if (!range) {
+      const originMain = resolveOriginMain();
+      range = originMain ? [localSha, '--not', 'origin/main'] : [localSha];
+    }
     for (const a of addedLines(range)) {
       for (const f of scanText(a.text)) {
         const key = `${a.commit}|${a.file}|${a.line}|${f.rule}`;
