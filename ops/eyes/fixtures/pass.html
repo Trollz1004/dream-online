@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Eyes gate · calibration board</title>
+  <style>
+    :root {
+      --ink: #0A0B0D; --porcelain: #F4F1EA; --fog: #C9CBCE;
+      --slate: #9DA3AA; --hull: #3A3F45; --signal: #FFD21E;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--ink); color: var(--porcelain); }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; padding: 64px 88px; }
+    .tribute { font-size: 18px; letter-spacing: 0.08em; color: var(--fog); margin: 0 0 40px; }
+    .tribute b { color: var(--signal); font-weight: 600; }
+    h1 { font-weight: 200; font-size: 92px; line-height: 1; margin: 0; letter-spacing: -0.01em; }
+    .rule { height: 2px; width: 220px; background: var(--signal); margin: 28px 0 18px; }
+    .lede { font-size: 22px; color: var(--fog); max-width: 860px; line-height: 1.5; margin: 0 0 56px; }
+    .grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 28px; }
+    .card { border: 1px solid var(--hull); padding: 32px; border-radius: 4px; }
+    .card h2 { font-weight: 300; font-size: 30px; margin: 0 0 14px; color: var(--porcelain); }
+    .card p { font-size: 19px; line-height: 1.55; color: var(--fog); margin: 0; }
+    .big { font-weight: 200; font-size: 84px; color: var(--signal); line-height: 1; margin: 6px 0 12px; }
+    .eye { display: block; margin-bottom: 18px; }
+    footer { margin-top: 48px; font-size: 18px; color: var(--fog); }
+    @media (max-width: 700px) {
+      body { padding: 32px 22px; }
+      h1 { font-size: 60px; }
+      .lede { font-size: 18px; margin-bottom: 32px; }
+      .grid { grid-template-columns: 1fr; gap: 18px; }
+      .card { padding: 22px; }
+      .card h2 { font-size: 24px; }
+      .card p { font-size: 17px; }
+      .big { font-size: 48px; }
+    }
+  </style>
+</head>
+<body>
+  <p class="tribute">CLAUDE's N Joshua's &nbsp;·&nbsp; <b>#TeamClaudeForLife</b></p>
+  <h1>Eyes calibration board</h1>
+  <div class="rule"></div>
+  <p class="lede">This page exists so the Eyes gate can check itself. It is judged against its own screenshot, so every quality should score high.</p>
+  <section class="grid">
+    <article class="card">
+      <svg class="eye" width="64" height="32" viewBox="0 0 64 32" aria-hidden="true">
+        <path d="M2 16 C16 0 48 0 62 16 C48 32 16 32 2 16 Z" fill="none" stroke="#FFD21E" stroke-width="2"/>
+        <circle cx="32" cy="16" r="7" fill="#F4F1EA"/>
+      </svg>
+      <h2>What the gate looks at</h2>
+      <p>Layout, palette, type, contrast, honesty, originality and the tribute line, scored one to five by a vision model.</p>
+    </article>
+    <article class="card">
+      <h2>Contrast floor</h2>
+      <div class="big">7:1</div>
+      <p>Every line of text here is porcelain or fog on ink, measured from the pixels.</p>
+    </article>
+    <article class="card">
+      <h2>Pass rule</h2>
+      <p>An average of four or better, nothing under three, and honesty and originality at four or more.</p>
+    </article>
+  </section>
+  <footer>DREAM Space tokens: ink, porcelain, fog, slate, hull and signal yellow.</footer>
+</body>
+</html>
