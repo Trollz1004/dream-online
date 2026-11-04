@@ -25,6 +25,7 @@ const fixtures = path.join(eyesDir, 'fixtures');
 let server: http.Server;
 let base = '';
 let referencePng = '';
+let tokenSheetPng = '';
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'eyes-test-'));
 
 test.before(async () => {
@@ -45,6 +46,8 @@ test.before(async () => {
   try {
     referencePng = path.join(tmp, 'pass-reference.png');
     await captureShot(browser, `${base}/pass.html`, 'desktop', referencePng, { clicks: [], waitFor: null, settleMs: 300 });
+    tokenSheetPng = path.join(tmp, 'design-system-token-sheet.png');
+    fs.copyFileSync(referencePng, tokenSheetPng);
   } finally {
     await browser.close();
   }
@@ -61,29 +64,37 @@ interface CliRun {
   stderr: string;
   folder: string;
   firstLine: string;
+  md: string;
   json: any;
 }
 
-function runGate(args: string[]): Promise<CliRun> {
+function runGate(args: string[], extraEnv: Record<string, string> = {}): Promise<CliRun> {
   return new Promise((resolve) => {
     execFile(
       process.execPath,
       ['--import', 'tsx', path.join(eyesDir, 'eyes.ts'), ...args, '--no-share'],
-      { cwd: repoRoot, env: process.env, maxBuffer: 16 * 1024 * 1024, timeout: 15 * 60 * 1000 },
+      { cwd: repoRoot, env: { ...process.env, ...extraEnv }, maxBuffer: 16 * 1024 * 1024, timeout: 15 * 60 * 1000 },
       (err, stdout, stderr) => {
         const code = err ? Number((err as NodeJS.ErrnoException & { code?: number }).code ?? 2) : 0;
         const rel = /^REPORT: (.+)$/m.exec(stdout)?.[1]?.trim() ?? '';
         const folder = rel ? path.join(repoRoot, rel) : '';
         const md = folder && fs.existsSync(path.join(folder, 'judge.md')) ? fs.readFileSync(path.join(folder, 'judge.md'), 'utf8') : '';
         const json = folder && fs.existsSync(path.join(folder, 'judge.json')) ? JSON.parse(fs.readFileSync(path.join(folder, 'judge.json'), 'utf8')) : null;
-        resolve({ code, stdout, stderr, folder, firstLine: md.split('\n')[0] ?? '', json });
+        resolve({ code, stdout, stderr, folder, firstLine: md.split('\n')[0] ?? '', md, json });
       },
     );
   });
 }
 
-function expectFiles(folder: string) {
-  for (const f of ['after-desktop.png', 'after-phone.png', 'reference.png', 'side-by-side.png', 'judge.md', 'judge.json']) {
+function expectFiles(folder: string, withReference = true) {
+  const expected = [
+    'after-desktop.png',
+    'after-phone.png',
+    ...(withReference ? ['reference.png', 'side-by-side.png'] : []),
+    'judge.md',
+    'judge.json',
+  ];
+  for (const f of expected) {
     assert.ok(fs.existsSync(path.join(folder, f)), `missing ${f}`);
   }
 }
@@ -152,4 +163,107 @@ test('a mocked judge says MOCK JUDGE in the first line and never claims a real s
   assert.match(run.firstLine, /^MOCK JUDGE · FAIL\b/);
   assert.equal(run.json.judge.mode, 'mock');
   assert.match(run.json.qualities.originality.reason, /^Mock:/);
+});
+
+test('v1.1 reference-kind check (mock judge): token sheet flags REFERENCE NOT COMPARABLE, caps layout at 4, and follows PASS line with one sentence', async (t) => {
+  const run = await runGate([
+    '--target', `${base}/pass.html`,
+    '--reference', tokenSheetPng,
+    '--spec', 'docs/house/DESIGN-SYSTEM.md',
+    '--slug', 'test-ref-not-comparable',
+    '--kind', 'dashboard',
+    '--surface', 'front',
+    '--judge', 'mock',
+    '--settle-ms', '300',
+  ]);
+  const lines = run.md.split('\n');
+  t.diagnostic(lines[0]);
+  t.diagnostic(lines[1]);
+  assert.equal(run.code, 0, run.stderr || run.stdout);
+  assert.match(lines[0], /^MOCK JUDGE · PASS · REFERENCE NOT COMPARABLE\b/);
+  assert.match(lines[1], /^The reference image was a rendered design-system token sheet/i);
+  assert.equal(run.json.referenceCheck.comparable, false);
+  assert.equal(run.json.qualities.layout.score, 4);
+});
+
+test('v1.1 perfect score rule (mock judge): 5.00 carries measured numbers and critique, and no critique after retry caps honesty at 4', async (t) => {
+  const withCritique = await runGate(
+    [
+      '--target', `${base}/pass.html`,
+      '--reference', referencePng,
+      '--slug', 'test-perfect-with-critique',
+      '--kind', 'dashboard',
+      '--surface', 'front',
+      '--judge', 'mock',
+      '--settle-ms', '300',
+    ],
+    {
+      EYES_MOCK_PERFECT: '1',
+      EYES_MOCK_CRITIQUE: 'Mock: widen mobile card gap from 18px to 24px.',
+    },
+  );
+  t.diagnostic(withCritique.firstLine);
+  assert.equal(withCritique.code, 0, withCritique.stderr || withCritique.stdout);
+  assert.equal(withCritique.json.verdict.average, 5);
+  assert.match(
+    withCritique.firstLine,
+    /average 5\.00 of 5 \(lowest contrast [\d.]+:1, console errors 0, placeholders 0\)/,
+  );
+  assert.ok(withCritique.md.includes('## What the judge would change'));
+  assert.ok(withCritique.md.includes('widen mobile card gap from 18px to 24px'));
+
+  const noCritique = await runGate(
+    [
+      '--target', `${base}/pass.html`,
+      '--reference', referencePng,
+      '--slug', 'test-perfect-no-critique',
+      '--kind', 'dashboard',
+      '--surface', 'front',
+      '--judge', 'mock',
+      '--settle-ms', '300',
+    ],
+    {
+      EYES_MOCK_PERFECT: '1',
+      EYES_MOCK_CRITIQUE: 'none',
+    },
+  );
+  t.diagnostic(noCritique.firstLine);
+  assert.equal(noCritique.code, 0, noCritique.stderr || noCritique.stdout);
+  assert.equal(noCritique.json.critiqueRetried, true);
+  assert.equal(noCritique.json.noCritiqueCapped, true);
+  assert.equal(noCritique.json.qualities.honesty.score, 4);
+  assert.equal(noCritique.json.verdict.average, 4.86);
+  assert.match(noCritique.md, /judge gave no critique/i);
+});
+
+test('v1.1 --spec written reference without picture (mock judge): judges game-menu against docs/gdd/09 and site against docs/house/SITE-BRIEF-dream-online-net.md', async (t) => {
+  const menuRun = await runGate([
+    '--target', `${base}/pass.html`,
+    '--spec', 'docs/gdd/09',
+    '--slug', 'test-spec-game-menu',
+    '--kind', 'game-menu',
+    '--surface', 'front',
+    '--judge', 'mock',
+    '--settle-ms', '300',
+  ]);
+  t.diagnostic(menuRun.firstLine);
+  assert.equal(menuRun.code, 0, menuRun.stderr || menuRun.stdout);
+  expectFiles(menuRun.folder, false);
+  assert.equal(menuRun.json.reference, null);
+  assert.match(menuRun.json.spec, /09-interface-style\.md$/);
+
+  const siteRun = await runGate([
+    '--target', `${base}/pass.html`,
+    '--spec', 'docs/house/SITE-BRIEF-dream-online-net.md',
+    '--slug', 'test-spec-site',
+    '--kind', 'site',
+    '--surface', 'front',
+    '--judge', 'mock',
+    '--settle-ms', '300',
+  ]);
+  t.diagnostic(siteRun.firstLine);
+  assert.equal(siteRun.code, 0, siteRun.stderr || siteRun.stdout);
+  expectFiles(siteRun.folder, false);
+  assert.equal(siteRun.json.reference, null);
+  assert.match(siteRun.json.spec, /SITE-BRIEF-dream-online-net\.md$/);
 });

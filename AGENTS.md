@@ -17,7 +17,7 @@
    - Monitored by 100% headless watchdogs (`ops/node/boot-alienware-services.vbs`), Sentry, and webhooks.
    - **PRs Only**: Executor lanes (`Hermes OPSis`, `Free Claude Code :8082`, `OpenAI (Codex)`) push branches and open PRs on `Trollz1004/dream-online` or `Trollz1004/ANTIGRAVITY`.
    - **Merges**: go through Josh or the signed-in Claude judge lane. When AI lanes disagree, the Claude judge lane decides and states its reason in one line; Josh can overrule any call. (`cost_usd === 0` until Joshua approves).
-5. **15 MANDATORY SKILLS (Load on Demand from `.agents/skills/<name>/SKILL.md`)**:
-   - `agent-workflow`, `caveman`, `i-have-adhd`, `find-skills`, `create-skills`, `brainstorming`, `superpowers`, `tdd`, `test-driven-development`, `verification-before-completion`, `obsidian-save`, `openviking`, `supabase`, `remake`, `reverse-engineer-anything`.
+5. **MANDATORY SKILLS**:
+   - The mandatory skill is superpowers (brainstorming, TDD and verification live inside it); caveman is used for the session note; design jobs add ui-ux-pro-max with the 21st.dev designer, motion, impeccable, humanizer and the judges; remake and reverse-engineer-anything are run only by the trusted study models (Claude Opus or Fable, Gemini Argon), never by a wrapper or local model.
 6. **1-AND-ONLY-1 `$5/MO` SYNCED OBSIDIAN VAULT (`1 GB` Cap) & `[REDACTED:XXXX]` SECRETS**:
    - Write only to your separated node/agent file (`Alienware/<agent>-to-<agent>.md`, `Sabretooth/<agent>-to-<agent>.md`, `T5500/<agent>-to-<agent>.md`) + Shared `ai-memory` (address in the node env file). Mask all secrets/keys as `XXXX`.

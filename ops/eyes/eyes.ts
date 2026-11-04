@@ -1,13 +1,15 @@
 /**
- * Eyes gate v1 — command line.
+ * Eyes gate v1.1 — command line.
  *
- *   npm run eyes -- --target <localhost URL | PNG> --reference <PNG> [options]
+ *   npm run eyes -- --target <localhost URL | PNG> [--reference <PNG>] [--spec <path>] [options]
  *
  * Options:
- *   --brief <md>              optional written reference brief (markdown path)
+ *   --reference <png>         reference screenshot PNG (optional when --spec is given)
+ *   --spec <path>             written reference doc or brief (e.g. docs/gdd/09 or docs/house/SITE-BRIEF-*.md)
+ *   --brief <md>              alias for --spec
  *   --before <png>            optional before shot, saved as before.png
  *   --slug <name>             report folder slug (default: from the target)
- *   --kind dashboard|game-menu   rubric flavour (default dashboard)
+ *   --kind dashboard|game-menu|site   rubric flavour (default dashboard)
  *   --surface front|internal  front-facing needs the tribute line (default front)
  *   --click <selector>        click before capture (repeatable, in order)
  *   --wait-for <selector>     wait for this to be visible before capture
@@ -29,21 +31,24 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { QUALITIES, applyPassRule, labelOf, type QualityKey, type Scores } from './lib/rubric.ts';
 import {
+  applyReferenceRule,
   contrastScoreFromMeasure,
   findPlaceholders,
   honestyCap,
   mockScores,
+  resolveCritiqueForPerfectScore,
   tributeScore,
   TRIBUTE_TAG,
   TRIBUTE_TITLE,
   type HonestyFindings,
   type Kind,
+  type ReferenceCheck,
   type Scored,
   type Surface,
 } from './lib/rules.ts';
 import { captureShot, isLocalUrl, summarizeFonts, DSF, type ShotCapture } from './lib/capture.ts';
 import { analyzeShots, composeSideBySide, judgeJpeg, toPng } from './lib/imaging.ts';
-import { buildPrompt, runJudge } from './lib/judge.ts';
+import { buildPrompt, evaluateReferenceKind, resolveSpecPath, runJudge, type PromptInput } from './lib/judge.ts';
 import { loadNodeEnv, secretValues } from './lib/env.ts';
 import {
   firstLine,
@@ -83,11 +88,22 @@ function oneDriveEyesRoot(): string | null {
   return fs.existsSync(base) ? path.join(base, 'images', 'screenshots', 'eyes') : null;
 }
 
+function defaultWrittenSpecForKind(kind: Kind): string | undefined {
+  const candidate =
+    kind === 'game-menu'
+      ? path.join(repoRoot, 'docs', 'gdd', '09-interface-style.md')
+      : kind === 'site'
+        ? path.join(repoRoot, 'docs', 'house', 'SITE-BRIEF-dream-online-net.md')
+        : path.join(repoRoot, 'docs', 'house', 'DESIGN-SYSTEM.md');
+  return fs.existsSync(candidate) ? candidate : undefined;
+}
+
 async function main() {
   const { values } = parseArgs({
     options: {
       target: { type: 'string' },
       reference: { type: 'string' },
+      spec: { type: 'string' },
       brief: { type: 'string' },
       before: { type: 'string' },
       slug: { type: 'string' },
@@ -105,15 +121,26 @@ async function main() {
   });
 
   const target = values.target ?? fail('--target is required (a localhost URL or a PNG path)');
-  const reference = values.reference ?? fail('--reference is required (a PNG path)');
+  const specRaw = values.spec ?? values.brief;
+  const specPath = specRaw
+    ? resolveSpecPath(specRaw, repoRoot) ?? fail(`--spec must be an existing markdown or text file (${specRaw})`)
+    : null;
+  const reference = values.reference ? path.resolve(values.reference) : null;
+  if (!reference && !specPath) {
+    fail('--reference <png> or --spec <path> is required');
+  }
   if (!isLocalUrl(target) && !(fs.existsSync(target) && /\.(png|jpe?g)$/i.test(target))) {
     fail('--target must be an http(s) URL on localhost, 127.0.0.1 or [::1], or an existing PNG file');
   }
-  if (!fs.existsSync(reference) || !/\.(png|jpe?g|webp)$/i.test(reference)) fail('--reference must be an existing PNG');
-  if (values.before && (!fs.existsSync(values.before) || !/\.png$/i.test(values.before))) fail('--before must be an existing PNG');
+  if (reference && (!fs.existsSync(reference) || !/\.(png|jpe?g|webp)$/i.test(reference))) {
+    fail('--reference must be an existing PNG');
+  }
+  if (values.before && (!fs.existsSync(values.before) || !/\.png$/i.test(values.before))) {
+    fail('--before must be an existing PNG');
+  }
   const kind = values.kind as Kind;
   const surface = values.surface as Surface;
-  if (!['dashboard', 'game-menu'].includes(kind)) fail('--kind must be dashboard or game-menu');
+  if (!['dashboard', 'game-menu', 'site'].includes(kind)) fail('--kind must be dashboard, game-menu or site');
   if (!['front', 'internal'].includes(surface)) fail('--surface must be front or internal');
   const judgeMode = values.judge as 'auto' | 'real' | 'mock';
   if (!['auto', 'real', 'mock'].includes(judgeMode)) fail('--judge must be auto, real or mock');
@@ -135,12 +162,14 @@ async function main() {
     const opts = { clicks: values.click ?? [], waitFor: values['wait-for'] ?? null, settleMs: Number(values['settle-ms']) || 1500 };
     const desktop: ShotCapture = await captureShot(browser, target, 'desktop', f('after-desktop.png'), opts);
     const phone: ShotCapture = await captureShot(browser, target, 'phone', f('after-phone.png'), opts);
-    await toPng(browser, reference, f('reference.png'));
+    if (reference) {
+      await toPng(browser, reference, f('reference.png'));
+      await composeSideBySide(browser, f('reference.png'), f('after-desktop.png'), f('side-by-side.png'), [
+        'REFERENCE',
+        'AFTER · DESKTOP 1920×1080',
+      ]);
+    }
     if (values.before) fs.copyFileSync(values.before, f('before.png'));
-    await composeSideBySide(browser, f('reference.png'), f('after-desktop.png'), f('side-by-side.png'), [
-      'REFERENCE',
-      'AFTER · DESKTOP 1920×1080',
-    ]);
 
     // 2. Measure from pixels and the page
     const toDevice = (s: ShotCapture) =>
@@ -151,7 +180,7 @@ async function main() {
         { name: 'desktop', file: desktop.file, runs: toDevice(desktop) },
         { name: 'phone', file: phone.file, runs: toDevice(phone) },
       ],
-      f('reference.png'),
+      reference ? f('reference.png') : null,
     );
     const d = px.shots.desktop;
     const p = px.shots.phone;
@@ -177,6 +206,7 @@ async function main() {
       share7: chars ? (d.contrast.share7 * d.contrast.chars + p.contrast.share7 * p.contrast.chars) / chars : 0,
       min: Math.min(d.contrast.min || Infinity, p.contrast.min || Infinity),
     };
+    const lowestRatio = Number.isFinite(combined.min) ? combined.min : null;
     const measuredContrast =
       kind === 'dashboard' && hasDom ? contrastScoreFromMeasure(combined) : null;
     const tributeDet = tributeScore(surface, visibleText);
@@ -184,11 +214,21 @@ async function main() {
       ? { title: TRIBUTE_TITLE.test(visibleText.replace(/[\u2018\u2019]/g, "'")), tag: TRIBUTE_TAG.test(visibleText) }
       : null;
 
+    // Pre-evaluate deterministic reference check (vision model refines it when mode !== 'mock').
+    let referenceCheck: ReferenceCheck | null = await evaluateReferenceKind({
+      kind,
+      referencePath: reference,
+      similarityToReference: d.similarityToReference,
+    });
+    const effectiveSpecPath =
+      specPath ?? (referenceCheck && !referenceCheck.comparable ? defaultWrittenSpecForKind(kind) ?? null : null);
+
     const measurements = {
       contrastFromPixels: {
         desktop: d.contrast,
         phone: p.contrast,
         combinedShareAt7to1: Math.round(combined.share7 * 1000) / 1000,
+        lowestRatio,
         scoreFromPixels: measuredContrast,
       },
       palette: { desktop: d.palette, phone: p.palette },
@@ -204,8 +244,13 @@ async function main() {
       c.runs
         ? `${label} text contrast from pixels (${c.method}): ${c.runs} runs, median ${c.median}:1, lowest ${c.min}:1, ${pct(c.share7)} of characters at 7:1 or better.`
         : `${label} text contrast from pixels: no measurable text runs.`;
+    const refFact = !reference
+      ? `Layout reference: written specification only (${effectiveSpecPath ? path.relative(repoRoot, effectiveSpecPath).replace(/\\/g, '/') : 'none'}); no reference image was provided.`
+      : referenceCheck && !referenceCheck.comparable
+        ? `Reference check: REFERENCE NOT COMPARABLE (${referenceCheck.description}) — layout match is scored from the written reference only and capped at 4.`
+        : `Layout similarity of the AFTER desktop to the reference (64x36 luminance correlation, -1 to 1): ${d.similarityToReference}.`;
     const facts: string[] = [
-      `Layout similarity of the AFTER desktop to the reference (64x36 luminance correlation, -1 to 1): ${d.similarityToReference}.`,
+      refFact,
       cLine('Desktop', d.contrast),
       cLine('Phone', p.contrast),
       `Desktop palette: mean luminance ${d.palette.meanLum}; dominant colours ${d.palette.dominant.slice(0, 5).map((x: any) => `${x.hex} ${pct(x.share)}`).join(', ')}; ${pct(d.palette.tokenShare)} of pixels on a DREAM Space token; ${pct(d.palette.saturatedShare)} strongly saturated pixels.`,
@@ -218,19 +263,26 @@ async function main() {
         : 'Tribute: no DOM (PNG target); read it from the images.',
     ].map(show);
 
-    const prompt = buildPrompt({
+    const promptInput: PromptInput = {
       kind,
       surface,
       facts,
       doc09Path: path.join(repoRoot, 'docs', 'gdd', '09-interface-style.md'),
-      briefPath: values.brief ? path.resolve(values.brief) : undefined,
-    });
+      specPath: effectiveSpecPath ?? undefined,
+      hasReferenceImage: Boolean(reference),
+      referenceComparable: referenceCheck?.comparable ?? true,
+      referenceDescription: referenceCheck?.description ?? null,
+    };
+    let prompt = buildPrompt(promptInput);
 
     // 3. Judge
     let scored: Scored;
     let judgeInfo: GateResult['judge'];
     let fromModel = false;
-    const mockIn = {
+    let rawCritique: string | null = null;
+    let critiqueRetried = false;
+    const perfectStandIn = process.env.EYES_MOCK_PERFECT === '1';
+    const buildMockIn = (refComp: boolean, hasWrittenSpec: boolean) => ({
       kind,
       surface,
       similarity: d.similarityToReference,
@@ -238,18 +290,34 @@ async function main() {
       meanLum: d.palette.meanLum,
       saturatedShare: d.palette.saturatedShare,
       fonts: { desktop: fonts.desktop, phone: fonts.phone },
-      contrastScore: measuredContrast,
+      contrastScore: measuredContrast ?? (hasDom ? contrastScoreFromMeasure(combined) : null),
       honestyCap: cap,
       tribute: tributeDet,
-    };
+      referenceComparable: refComp,
+      hasSpec: hasWrittenSpec,
+      perfectStandIn,
+    });
+
     if (judgeMode === 'mock') {
-      scored = mockScores(mockIn);
-      judgeInfo = { mode: 'mock', model: 'mock-rules (no model called)', endpoint: 'none', attempts: [], prompt: prompt.full, seconds: 0, mockReason: '--judge mock was requested' };
+      scored = mockScores(buildMockIn(referenceCheck?.comparable ?? true, Boolean(effectiveSpecPath)));
+      const promptFull = referenceCheck?.question
+        ? `[reference-kind check]\nQ: ${referenceCheck.question}\nA: ${referenceCheck.answer ?? 'n/a'}${referenceCheck.description ? `\nNote: ${referenceCheck.description}` : ''}\n\n${prompt.full}`
+        : prompt.full;
+      judgeInfo = { mode: 'mock', model: 'mock-rules (no model called)', endpoint: 'none', attempts: [], prompt: promptFull, seconds: 0, mockReason: '--judge mock was requested' };
     } else {
       const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'eyes-judge-'));
       const imgs: string[] = [];
+      let refBase64: string | null = null;
       try {
-        for (const [src, maxDim] of [[f('side-by-side.png'), 1920], [f('after-desktop.png'), 1600], [f('after-phone.png'), 1600]] as const) {
+        if (reference) {
+          const refOut = path.join(tmp, 'reference.jpg');
+          await judgeJpeg(browser, f('reference.png'), refOut, 1600);
+          refBase64 = fs.readFileSync(refOut).toString('base64');
+        }
+        const sources = reference
+          ? ([[f('side-by-side.png'), 1920], [f('after-desktop.png'), 1600], [f('after-phone.png'), 1600]] as const)
+          : ([[f('after-desktop.png'), 1600], [f('after-phone.png'), 1600]] as const);
+        for (const [src, maxDim] of sources) {
           const out = path.join(tmp, `${path.basename(src, '.png')}.jpg`);
           await judgeJpeg(browser, src, out, maxDim);
           imgs.push(fs.readFileSync(out).toString('base64'));
@@ -257,16 +325,31 @@ async function main() {
       } finally {
         fs.rmSync(tmp, { recursive: true, force: true });
       }
-      const run = await runJudge({ env: env.values, secrets, prompt, imagesBase64: imgs, model: values.model ?? env.values.EYES_MODEL });
+      const run = await runJudge({
+        env: env.values,
+        secrets,
+        prompt,
+        promptInput: { ...promptInput, specPath: effectiveSpecPath ?? defaultWrittenSpecForKind(kind) },
+        imagesBase64: imgs,
+        referenceImageBase64: refBase64,
+        referencePath: reference,
+        similarityToReference: d.similarityToReference,
+        kind,
+        model: values.model ?? env.values.EYES_MODEL,
+      });
       if (run.ok && run.reply) {
         scored = run.reply;
         fromModel = true;
+        rawCritique = run.critique ?? null;
+        critiqueRetried = Boolean(run.critiqueRetried);
+        if (run.referenceCheck) referenceCheck = run.referenceCheck;
+        if (run.promptUsed) prompt = run.promptUsed;
         judgeInfo = { mode: 'real', model: run.model!, endpoint: run.endpoint!, attempts: run.attempts, prompt: prompt.full, seconds: run.seconds, mockReason: null };
       } else if (judgeMode === 'real') {
         for (const a of run.attempts) console.error(`  tried ${a.endpoint}: ${a.detail}`);
         fail('no vision model answered and --judge real was set; no report written as a real verdict');
       } else {
-        scored = mockScores(mockIn);
+        scored = mockScores(buildMockIn(referenceCheck?.comparable ?? true, Boolean(effectiveSpecPath)));
         judgeInfo = {
           mode: 'mock',
           model: 'mock-rules (no model answered)',
@@ -279,7 +362,7 @@ async function main() {
       }
     }
 
-    // 4. Measured overrides (real judge only; the mock already uses them)
+    // 4. Measured overrides & v1.1 reference and 5.00 critique rules
     const qualities = {} as Record<QualityKey, QualityResult>;
     for (const q of QUALITIES) {
       const m = scored[q.key];
@@ -312,20 +395,65 @@ async function main() {
       }
       qualities[q.key] = { score, reason: show(m.reason), modelScore: m.score, override };
     }
+
+    // Apply v1.1 reference-kind cap (layout <= 4 when reference is not comparable).
+    applyReferenceRule(qualities, referenceCheck);
+
+    // Apply v1.1 perfect-score critique rule.
+    if (!fromModel && perfectStandIn) {
+      const mockCritiqueEnv = process.env.EYES_MOCK_CRITIQUE;
+      rawCritique =
+        mockCritiqueEnv === 'none' || mockCritiqueEnv === 'retry-ok'
+          ? null
+          : mockCritiqueEnv || 'Mock: widen the phone card spacing from 18px to 24px.';
+    }
+    const critiqueCheck = await resolveCritiqueForPerfectScore({
+      qualities,
+      initialCritique: rawCritique ? show(rawCritique) : null,
+      askOnceMore: !fromModel
+        ? async () =>
+            process.env.EYES_MOCK_CRITIQUE === 'none'
+              ? 'none'
+              : process.env.EYES_MOCK_CRITIQUE === 'retry-ok'
+                ? 'Mock: widen the phone card spacing from 18px to 24px.'
+                : null
+        : undefined,
+    });
+    const finalCritique = critiqueCheck.critique ? show(critiqueCheck.critique) : null;
+    const finalCritiqueRetried = critiqueRetried || critiqueCheck.askedOnceMore;
+    const noCritiqueCapped = critiqueCheck.cappedHonesty;
+
     const finalScores = Object.fromEntries(QUALITIES.map((q) => [q.key, qualities[q.key].score])) as Scores;
     const verdict = applyPassRule(finalScores);
 
-    const files = ['after-desktop.png', 'after-phone.png', 'reference.png', 'side-by-side.png', ...(values.before ? ['before.png'] : []), 'judge.md', 'judge.json'];
+    const files = [
+      'after-desktop.png',
+      'after-phone.png',
+      ...(reference ? ['reference.png', 'side-by-side.png'] : []),
+      ...(values.before ? ['before.png'] : []),
+      'judge.md',
+      'judge.json',
+    ];
     const result: GateResult = {
-      version: 'eyes-v1',
+      version: 'eyes-v1.1',
       createdAt: now.toISOString(),
       slug,
       folder: path.relative(repoRoot, dir).replace(/\\/g, '/'),
       target: show(target),
-      reference: show(path.resolve(reference)),
+      reference: reference ? show(reference) : null,
+      spec: effectiveSpecPath ? show(effectiveSpecPath) : null,
       before: values.before ? show(path.resolve(values.before)) : null,
       kind,
       surface,
+      referenceCheck: referenceCheck
+        ? {
+            ...referenceCheck,
+            description: referenceCheck.description ? show(referenceCheck.description) : null,
+          }
+        : null,
+      critique: finalCritique,
+      critiqueRetried: finalCritiqueRetried,
+      noCritiqueCapped,
       judge: judgeInfo,
       qualities,
       verdict,
@@ -344,12 +472,19 @@ async function main() {
         const dest = path.join(root, name);
         fs.mkdirSync(dest, { recursive: true });
         fs.copyFileSync(f('judge.md'), path.join(dest, 'judge.md'));
-        fs.copyFileSync(f('side-by-side.png'), path.join(dest, 'side-by-side.png'));
+        if (fs.existsSync(f('side-by-side.png'))) {
+          fs.copyFileSync(f('side-by-side.png'), path.join(dest, 'side-by-side.png'));
+        } else {
+          fs.copyFileSync(f('after-desktop.png'), path.join(dest, 'after-desktop.png'));
+        }
         shared = show(dest);
       } else shared = 'skipped (no OneDrive claude-to-claude folder on this node)';
     }
 
     console.log(show(firstLine(result)));
+    if (result.referenceCheck && !result.referenceCheck.comparable && result.referenceCheck.description) {
+      console.log(show(result.referenceCheck.description));
+    }
     if (findings.unreachedSteps.length) {
       console.log(`WARNING: ${findings.unreachedSteps.length} capture step(s) were not reached, so the shots may not show the intended state:`);
       for (const s of findings.unreachedSteps) console.log(`  - ${s}`);

@@ -152,3 +152,6 @@ ops/eyes/reports/*
 ops/router/outbox/*
 !ops/router/outbox/.gitkeep
 ops/router/decisions.log
+
+# Security audit output
+ops/security/runs/

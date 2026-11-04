@@ -36,12 +36,14 @@ import {
   type VrmImportResult,
   type VoiceStyleId,
 } from './characterCreatorConfig';
+import { NeedsShopModal } from './NeedsShopModal';
 
 export interface CharacterCreatorModalProps {
   isOpen: boolean;
   state: CharacterCreatorState;
   onChange: (next: CharacterCreatorState) => void;
   onClose: (exitState: CharacterCreatorExitState) => void;
+  onOpenWardrobe?: () => void;
 }
 
 const FONT_STACK = '"Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif';
@@ -51,9 +53,11 @@ export const CharacterCreatorModal: React.FC<CharacterCreatorModalProps> = ({
   state,
   onChange,
   onClose,
+  onOpenWardrobe,
 }) => {
   const [selectedRow, setSelectedRow] = useState<CreatorRowId>('appearancePreset');
   const [vrmStatus, setVrmStatus] = useState<VrmImportResult | null>(null);
+  const [isWardrobeOpen, setIsWardrobeOpen] = useState<boolean>(false);
   const [isCompactViewport, setIsCompactViewport] = useState<boolean>(() =>
     typeof window !== 'undefined' ? window.innerWidth <= 768 : false,
   );
@@ -70,7 +74,7 @@ export const CharacterCreatorModal: React.FC<CharacterCreatorModalProps> = ({
   }, []);
 
   useEffect(() => {
-    if (!isOpen) return undefined;
+    if (!isOpen || isWardrobeOpen) return undefined;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -87,9 +91,23 @@ export const CharacterCreatorModal: React.FC<CharacterCreatorModalProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose, selectedRow, state]);
+  }, [isOpen, isWardrobeOpen, onClose, selectedRow, state]);
 
   if (!isOpen) return null;
+
+  if (isWardrobeOpen) {
+    return (
+      <NeedsShopModal
+        isOpen={true}
+        onClose={() => setIsWardrobeOpen(false)}
+      />
+    );
+  }
+
+  const handleOpenWardrobe = () => {
+    setIsWardrobeOpen(true);
+    onOpenWardrobe?.();
+  };
 
   const activeRowMeta =
     CREATOR_ROWS.find((row) => row.id === selectedRow) ?? CREATOR_ROWS[0];
@@ -561,7 +579,11 @@ export const CharacterCreatorModal: React.FC<CharacterCreatorModalProps> = ({
                 </span>
                 <a
                   href="#wardrobe"
-                  onClick={(e) => e.preventDefault()}
+                  data-testid="creator-wardrobe-link-compact"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleOpenWardrobe();
+                  }}
                   style={{
                     color: '#F5F5F7',
                     textDecoration: 'underline',
@@ -800,7 +822,11 @@ export const CharacterCreatorModal: React.FC<CharacterCreatorModalProps> = ({
 
                   <a
                     href="#wardrobe"
-                    onClick={(e) => e.preventDefault()}
+                    data-testid="creator-wardrobe-link"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleOpenWardrobe();
+                    }}
                     style={{
                       color: '#F5F5F7',
                       fontSize: '14px',

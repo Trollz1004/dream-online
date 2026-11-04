@@ -30,6 +30,7 @@ Per directive section 47: every source gets one classification — CANON, ACTIVE
 | docs/CONSOLIDATION-2026-09-19.md | REFERENCE | Record of folding two old copies into this root |
 | docs/ALIENWARE-NODE-STATE-2026-09-19.md | REFERENCE | Signed node state record; verify its SHA-256 anchor before relying on it |
 | ops/node/ | ACTIVE_DESIGN | Alienware node operations; edited by the Claude judge lane only |
+| ops/judge-memory/ | ACTIVE_DESIGN | In-house recall for the signed-in Claude Code judge lane (v1, Volume 2 Recipe 5). Uses Node.js built-in `node:sqlite` (`DatabaseSync` with SQLite FTS5; Node.js MIT License / SQLite Public Domain) supported natively by the repo's Node v26 runtime, with zero external database dependencies. |
 | specs/, .specify/ | ACTIVE_DESIGN | Spec Kit specs and constitution |
 | docs/house/ | ACTIVE_DESIGN | DREAM Space design system, site inventory, and `dream-online.net` brief |
 | sites/dream-online-net/ | ACTIVE_DESIGN | Clean-room `dream-online.net` React + Vite front-facing site (`react` MIT, `react-dom` MIT, `vite` MIT, `@vitejs/plugin-react` MIT, `typescript` Apache-2.0; all motions and 3D dot-sphere implemented in-house under MIT) |
@@ -38,5 +39,9 @@ Per directive section 47: every source gets one classification — CANON, ACTIVE
 | paperclip-tro/ (ignored, local) | CANON for `projects/PROJECT-2-DREAM-ONLINE.md`, DEPRECATED for the rest | Full canon document; the other files describe the parked Paperclip setup |
 | opencode/ (ignored, local) | REFERENCE | OpenCode provider and model config |
 | references/_unreviewed/ (ignored, local) | REFERENCE, DEPRECATED for `early-gdd-2026-07-08/` | Folded in on 2026-09-19; not yet checked as public-safe |
+
+| .agents/skills/security-audit/ | REFERENCE | security-audit skill, https://github.com/cloudflare/security-audit-skill, commit c1c8a8c1471069fb0e188eeaff69b8e8db6564a8, MIT |
+| .agents/skills/hallmark/ | REFERENCE | Hallmark skill by Together AI, https://github.com/nutlope/hallmark, commit 52328cb3129135499e4e178d4864ee90029dea2b, MIT; house note: its photo library points at outside images and is never used here, images come only from sources we own |
+| .agents/skills/impeccable/ | REFERENCE | Impeccable skill, https://github.com/pbakaus/impeccable, commit 414603bf14c7a344edb466bb1f85690c77ce8b7d, Apache 2.0; house note: turn its telemetry off in its config and note that it fetches design directions from impeccable.style when a design starts, which is allowed as research on a public catalog but no asset from it ships |
 
 No QUARANTINED items found; no secrets encountered during this pass.

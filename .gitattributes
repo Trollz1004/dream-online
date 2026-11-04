@@ -20,3 +20,6 @@ ops/hooks/pre-push text eol=lf
 # the free LFS allowance on this repository ran out on 2026-09-24.
 game/godot/DreamSlice/assets/third_party/** -filter -diff -merge
 assets/** -filter -diff -merge
+.agents/skills/security-audit/** -filter -diff -merge
+.agents/skills/hallmark/** -filter -diff -merge
+.agents/skills/impeccable/** -filter -diff -merge
