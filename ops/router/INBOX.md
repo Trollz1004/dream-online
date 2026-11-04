@@ -56,3 +56,23 @@ Adjust the spacing in src/ui/Hud.tsx and add a unit test verifying the layout pr
   - Never merges and never touches `main` or `master`.
   - Writes every routing decision to `ops/router/decisions.log` through the core's secret, path, and private-IP redaction.
   - Stops after three consecutive failures until a human clears `failed\`.
+  - Registration is by the judge or Josh by hand, with `-Apply`, never by a lane.
+
+## 5. Scheduled Task Registration (Alienware)
+
+Scheduled task registration (`DreamRouterInbox`) is performed by the judge or Josh by hand, with `-Apply`, never by a worker or executor lane.
+
+- Both `ops/node/register-inbox-runner.ps1` and `ops/node/unregister-inbox-runner.ps1` are dry runs by default. Without `-Apply`, they describe what would be registered or removed, print `[DRY RUN]`, and exit without changing system state.
+- **Dry run** (default, safe for verification):
+  ```powershell
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\antigravity\DREAM-Engine\ops\node\register-inbox-runner.ps1"
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\antigravity\DREAM-Engine\ops\node\unregister-inbox-runner.ps1"
+  ```
+- **Registration** (Josh or judge lane by hand only, with `-Apply`):
+  ```powershell
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\antigravity\DREAM-Engine\ops\node\register-inbox-runner.ps1" -Apply
+  ```
+- **Removal** (Josh or judge lane by hand only, with `-Apply`):
+  ```powershell
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\antigravity\DREAM-Engine\ops\node\unregister-inbox-runner.ps1" -Apply
+  ```

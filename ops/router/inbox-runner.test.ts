@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -590,7 +591,122 @@ test('Inbox Item 3 & 4: Safety gates (refuses OneDrive inbox, refuses when gh is
     assert.ok(regText.includes('-AtLogOn'));
     assert.ok(regText.includes('-WindowStyle Hidden'));
     assert.ok(regText.includes('-Hidden'));
+    assert.ok(regText.includes('[switch]$Apply'));
   } finally {
     fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('Inbox runner registration scripts dry-run by default without -Apply under temp HOME', (t) => {
+  const isWindows = process.platform === 'win32';
+  const psCandidate = isWindows ? 'powershell.exe' : 'pwsh';
+
+  let psAvailable = false;
+  try {
+    const probe = spawnSync(
+      psCandidate,
+      ['-NoProfile', '-Command', '$PSVersionTable.PSVersion.ToString()'],
+      {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      }
+    );
+    if (probe.status === 0) {
+      psAvailable = true;
+    }
+  } catch {
+    psAvailable = false;
+  }
+
+  if (!psAvailable) {
+    t.skip('powershell is unavailable in this environment');
+    return;
+  }
+
+  const regScriptPath = path.resolve(
+    path.dirname(DEFAULT_INBOX_CONFIG_PATH),
+    '..',
+    'node',
+    'register-inbox-runner.ps1'
+  );
+  const unregScriptPath = path.resolve(
+    path.dirname(DEFAULT_INBOX_CONFIG_PATH),
+    '..',
+    'node',
+    'unregister-inbox-runner.ps1'
+  );
+
+  assert.ok(fs.existsSync(regScriptPath), 'register-inbox-runner.ps1 must exist');
+  assert.ok(fs.existsSync(unregScriptPath), 'unregister-inbox-runner.ps1 must exist');
+
+  const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-ps-dryrun-'));
+  try {
+    const customEnv: NodeJS.ProcessEnv = {
+      ...process.env,
+      HOME: tmpHome,
+      USERPROFILE: tmpHome,
+      LOCALAPPDATA: path.join(tmpHome, 'AppData', 'Local'),
+      APPDATA: path.join(tmpHome, 'AppData', 'Roaming'),
+    };
+
+    // 1. Run register script through powershell with no flags under temp HOME
+    const regRun = spawnSync(
+      psCandidate,
+      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', regScriptPath],
+      {
+        env: customEnv,
+        encoding: 'utf8',
+      }
+    );
+    assert.equal(regRun.status, 0, `register script failed: ${regRun.stderr}`);
+    assert.ok(regRun.stdout.includes('[DRY RUN]'), 'register output must contain [DRY RUN]');
+    assert.ok(
+      regRun.stdout.includes('[DRY RUN] nothing registered; pass -Apply to write'),
+      'register output must contain exact dry run notice line'
+    );
+    assert.ok(regRun.stdout.includes('DreamRouterInbox'), 'register output must mention DreamRouterInbox');
+    assert.ok(regRun.stdout.includes('%USERPROFILE%'), 'register output must show user folder as %USERPROFILE%');
+
+    // 2. Run unregister script through powershell with no flags under temp HOME
+    const unregRun = spawnSync(
+      psCandidate,
+      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', unregScriptPath],
+      {
+        env: customEnv,
+        encoding: 'utf8',
+      }
+    );
+    assert.equal(unregRun.status, 0, `unregister script failed: ${unregRun.stderr}`);
+    assert.ok(unregRun.stdout.includes('[DRY RUN]'), 'unregister output must contain [DRY RUN]');
+    assert.ok(
+      unregRun.stdout.includes('[DRY RUN] nothing unregistered; pass -Apply to write'),
+      'unregister output must contain dry run notice line'
+    );
+    assert.ok(unregRun.stdout.includes('DreamRouterInbox'), 'unregister output must mention DreamRouterInbox');
+
+    // 3. Assert no scheduled task was created (Get-ScheduledTask -TaskName DreamRouterInbox must not exist)
+    if (isWindows) {
+      const taskCheck = spawnSync(
+        psCandidate,
+        [
+          '-NoProfile',
+          '-ExecutionPolicy',
+          'Bypass',
+          '-Command',
+          "if (Get-ScheduledTask -TaskName DreamRouterInbox -ErrorAction SilentlyContinue) { 'TASK_FOUND' } else { 'TASK_NOT_FOUND' }",
+        ],
+        {
+          env: customEnv,
+          encoding: 'utf8',
+        }
+      );
+      assert.equal(taskCheck.status, 0, `task check failed: ${taskCheck.stderr}`);
+      assert.ok(
+        taskCheck.stdout.includes('TASK_NOT_FOUND'),
+        'Get-ScheduledTask -TaskName DreamRouterInbox must not exist'
+      );
+    }
+  } finally {
+    fs.rmSync(tmpHome, { recursive: true, force: true });
   }
 });
