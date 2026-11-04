@@ -4,7 +4,30 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const net = require('net');
+const crypto = require('crypto');
 const { execFile, spawn } = require('child_process');
+
+const VALID_IDENTIFIER_REGEX = /^[a-z0-9_-]{1,32}$/i;
+const STATE_CHANGING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+function isValidAgentOrProfile(value) {
+  return typeof value === 'string' && VALID_IDENTIFIER_REGEX.test(value);
+}
+
+function resolveBindHost(env = process.env) {
+  return String(env.HERMES_LEADGEN_BIND || '').trim() === '0.0.0.0' ? '0.0.0.0' : '127.0.0.1';
+}
+
+function validateBindConfig(env = process.env) {
+  const host = resolveBindHost(env);
+  const token = String(env.HERMES_LEADGEN_TOKEN || '').trim();
+  if (host === '0.0.0.0' && !token) {
+    throw new Error(
+      'Refusing to start HermesLeadGen on 0.0.0.0 without HERMES_LEADGEN_TOKEN: set a non-empty HERMES_LEADGEN_TOKEN or bind to 127.0.0.1.'
+    );
+  }
+  return { host, token };
+}
 
 const PORT = Number(process.env.PORT || 8392);
 const ROOT = __dirname;
@@ -286,6 +309,12 @@ function recordHookEvent(summary, source = 'sabretooth-orchestrator', repo = 'Tr
 }
 
 function executeNodeAutoPrPush({ agent = 'gemini', profile = 'default', message = 'chore(sabretooth): sync apps/hermes-leadgen for Cloud Judges' } = {}) {
+  if (!isValidAgentOrProfile(String(agent)) || !isValidAgentOrProfile(String(profile))) {
+    return Promise.resolve({
+      ok: false,
+      error: 'Invalid agent or profile: must match /^[a-z0-9_-]{1,32}$/i'
+    });
+  }
   return new Promise((resolve) => {
     const scriptPath = path.join(ROOT, 'scripts', 'node-auto-pr-push.ps1');
     if (!fs.existsSync(scriptPath)) {
@@ -763,6 +792,11 @@ function loadDualGraphy() {
 // OBSIDIAN NODE-SPECIFIC SESSION WRITE + T5500 AI-MEMORY (:49374) MIRROR
 // ============================================================================
 function syncObsidianAndMemory({ agent = 'gemini', useCase = 'Sabretooth :8392 Studio Session Sync', summary = '', proof = '' }) {
+  if (!isValidAgentOrProfile(String(agent))) {
+    const err = new Error('Invalid agent: must match /^[a-z0-9_-]{1,32}$/i');
+    err.statusCode = 400;
+    throw err;
+  }
   const now = new Date();
   const stamp = now.toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
   const sabretoothDir = path.join(ANTIGRAVITY_ROOT, 'Sabretooth');
@@ -815,8 +849,6 @@ function proxyHttpRequest(req, res, targetPort, prefixToStrip) {
     },
     (proxyRes) => {
       const resHeaders = { ...proxyRes.headers };
-      delete resHeaders['x-frame-options'];
-      delete resHeaders['content-security-policy'];
       res.writeHead(proxyRes.statusCode || 200, resHeaders);
       proxyRes.pipe(res);
     }
@@ -840,7 +872,25 @@ function readJsonBody(req) {
     req.on('end', () => {
       if (!body) return resolve({});
       try {
-        resolve(JSON.parse(body));
+        const parsed = JSON.parse(body);
+        if (parsed && typeof parsed === 'object') {
+          if (parsed.agent !== undefined && !isValidAgentOrProfile(String(parsed.agent))) {
+            const err = new Error('Invalid agent: must match /^[a-z0-9_-]{1,32}$/i');
+            err.statusCode = 400;
+            return reject(err);
+          }
+          if (parsed.profile !== undefined && !isValidAgentOrProfile(String(parsed.profile))) {
+            const err = new Error('Invalid profile: must match /^[a-z0-9_-]{1,32}$/i');
+            err.statusCode = 400;
+            return reject(err);
+          }
+          if (parsed.targetProfile !== undefined && !isValidAgentOrProfile(String(parsed.targetProfile))) {
+            const err = new Error('Invalid targetProfile: must match /^[a-z0-9_-]{1,32}$/i');
+            err.statusCode = 400;
+            return reject(err);
+          }
+        }
+        resolve(parsed);
       } catch (e) {
         reject(e);
       }
@@ -876,29 +926,84 @@ const ALLOWED_ORIGINS = new Set(Array.from(ALLOWED_ADDRESSES, (a) => `http://${a
 
 function isAllowedHost(req) {
   const host = String(req.headers.host || '').trim().toLowerCase();
-  return ALLOWED_HOSTS.has(host);
+  if (ALLOWED_HOSTS.has(host)) return true;
+  const localPort = req && req.socket && req.socket.localPort;
+  if (localPort) {
+    for (const addr of ALLOWED_ADDRESSES) {
+      if (host === `${addr}:${localPort}`) return true;
+    }
+  }
+  return false;
 }
 
 function isAllowedOrigin(req) {
   const origin = req.headers.origin;
   if (!origin) return true;
-  return ALLOWED_ORIGINS.has(String(origin).trim().toLowerCase());
+  const normalized = String(origin).trim().toLowerCase();
+  if (ALLOWED_ORIGINS.has(normalized)) return true;
+  const localPort = req && req.socket && req.socket.localPort;
+  if (localPort) {
+    for (const addr of ALLOWED_ADDRESSES) {
+      if (normalized === `http://${addr}:${localPort}`) return true;
+    }
+  }
+  return false;
 }
 
 // ============================================================================
 // HTTP SERVER & API ROUTES
 // ============================================================================
+function requireApiAuth(req, res, next) {
+  if (resolveBindHost(process.env) !== '0.0.0.0') {
+    if (typeof next === 'function') next();
+    return true;
+  }
+  const expectedToken = String(process.env.HERMES_LEADGEN_TOKEN || '').trim();
+  if (!expectedToken) {
+    sendJson(res, 401, {
+      ok: false,
+      error: 'Unauthorized: HERMES_LEADGEN_TOKEN is required when HERMES_LEADGEN_BIND=0.0.0.0'
+    });
+    return false;
+  }
+  const authHeader = String((req && req.headers && req.headers.authorization) || '').trim();
+  const match = /^Bearer\s+(\S+)$/i.exec(authHeader);
+  const providedToken = match ? match[1] : '';
+  const expectedBuf = Buffer.from(expectedToken, 'utf8');
+  const providedBuf = Buffer.from(providedToken, 'utf8');
+  const valid =
+    expectedBuf.length === providedBuf.length &&
+    crypto.timingSafeEqual(expectedBuf, providedBuf);
+  if (!valid) {
+    sendJson(res, 401, { ok: false, error: 'Unauthorized: valid Authorization Bearer token required' });
+    return false;
+  }
+  if (typeof next === 'function') next();
+  return true;
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     if (!isAllowedHost(req)) {
       return sendJson(res, 403, { ok: false, error: 'Forbidden host' });
     }
-    if (req.method === 'POST' && !isAllowedOrigin(req)) {
+    const method = String(req.method || 'GET').toUpperCase();
+    if (STATE_CHANGING_METHODS.has(method) && !isAllowedOrigin(req)) {
       return sendJson(res, 403, { ok: false, error: 'Forbidden origin' });
     }
 
     const parsedUrl = new URL(req.url, `http://${req.headers.host || '127.0.0.1:8392'}`);
     const pathname = parsedUrl.pathname;
+
+    if (
+      method === 'POST' ||
+      pathname === '/proxy' ||
+      pathname.startsWith('/proxy/') ||
+      pathname === '/api/memory' ||
+      pathname.startsWith('/api/memory/')
+    ) {
+      if (!requireApiAuth(req, res)) return;
+    }
 
     // 1. Reverse proxies for Free Claude Code (:8082) & Hermes (:9119)
     if (pathname.startsWith('/proxy/fcc')) {
@@ -1545,7 +1650,11 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname.startsWith('/api/souls/') && req.method === 'GET') {
-      const agent = pathname.replace('/api/souls/', '').replace(/[^a-z0-9-_]/gi, '');
+      const rawAgent = decodeURIComponent(pathname.slice('/api/souls/'.length));
+      if (!isValidAgentOrProfile(rawAgent)) {
+        return sendJson(res, 400, { ok: false, error: 'Invalid agent: must match /^[a-z0-9_-]{1,32}$/i' });
+      }
+      const agent = rawAgent;
       const fPath = path.join(SOULS_DIR, `${agent}-agent.md`);
       const altPath = path.join(SOULS_DIR, `${agent}.md`);
       const target = fs.existsSync(fPath) ? fPath : altPath;
@@ -1580,14 +1689,37 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Not found', path: pathname }));
   } catch (err) {
-    sendJson(res, 500, { ok: false, error: err.message });
+    const status = err && err.statusCode ? err.statusCode : 500;
+    sendJson(res, status, { ok: false, error: err.message });
   }
 });
 
-if (require.main === module) {
-  server.listen(PORT, '0.0.0.0', () => {
-    console.log(`[Sabretooth Command Studio] Listening on http://0.0.0.0:${PORT} (http://${SABRETOOTH_HOST}:${PORT}/)`);
+function startServer(port = PORT, env = process.env, onListening) {
+  const { host } = validateBindConfig(env);
+  return server.listen(port, host, () => {
+    console.log(`[Sabretooth Command Studio] Listening on http://${host}:${port} (http://${SABRETOOTH_HOST}:${port}/)`);
+    if (typeof onListening === 'function') onListening();
   });
 }
 
-module.exports = { server, getSabretoothNodeStatus, loadDualGraphy, loadLeads };
+if (require.main === module) {
+  try {
+    startServer(PORT, process.env);
+  } catch (err) {
+    console.error(`[Sabretooth Command Studio] ${err.message}`);
+    process.exit(1);
+  }
+}
+
+module.exports = {
+  server,
+  startServer,
+  resolveBindHost,
+  validateBindConfig,
+  requireApiAuth,
+  isAllowedOrigin,
+  isValidAgentOrProfile,
+  getSabretoothNodeStatus,
+  loadDualGraphy,
+  loadLeads
+};

@@ -27,6 +27,21 @@ import {
 const FORBIDDEN_SCRAPE_REGEX =
   /\b(?:yt-dlp|youtube-dl|scrape-youtube|browser-scrape|headless-scrape)\b/i;
 
+const VALID_HERMES_JOB_ID_REGEX = /^[a-zA-Z0-9_-]{1,80}$/;
+
+const KNOWN_HERMES_JOB_CLASSES: ReadonlySet<string> = new Set([
+  'route',
+  'mechanical',
+  'code-bulk',
+  'code-hard',
+  'engine',
+  'design-visual',
+  'research',
+  'judge',
+  'post-x',
+  'youtube-upload',
+]);
+
 export interface HermesAdapterOptions {
   stagingDir?: string;
   sshHost?: string;
@@ -59,15 +74,40 @@ export class HermesDispatchAdapter implements DispatchAdapter {
       );
     }
 
-    fs.mkdirSync(this.stagingDir, { recursive: true });
+    if (!input.jobClass || !KNOWN_HERMES_JOB_CLASSES.has(input.jobClass)) {
+      throw new Error(
+        `Hermes adapter refuses unknown jobClass "${String(input.jobClass)}": must be one of the known job classes.`
+      );
+    }
 
     const jobId =
       input.jobId ??
       `hermes-${input.jobClass}-${crypto.createHash('sha256').update(input.prompt).digest('hex').slice(0, 10)}`;
 
-    const promptPath = path.join(this.stagingDir, `${jobId}.txt`);
-    const logPath = path.join(this.stagingDir, `${jobId}.log`);
-    const remotePromptPath = `${this.remoteDir}/${jobId}.txt`;
+    if (!VALID_HERMES_JOB_ID_REGEX.test(jobId)) {
+      throw new Error(
+        `Hermes adapter refuses invalid jobId "${jobId}": must match /^[a-zA-Z0-9_-]{1,80}$/ (path traversal and shell injection are forbidden).`
+      );
+    }
+
+    const resolvedStagingDir = path.resolve(this.stagingDir);
+    const promptPath = path.resolve(resolvedStagingDir, `${jobId}.txt`);
+    const logPath = path.resolve(resolvedStagingDir, `${jobId}.log`);
+
+    const isWithinStagingDir = (candidatePath: string): boolean => {
+      const rel = path.relative(resolvedStagingDir, candidatePath);
+      return Boolean(rel) && !rel.startsWith('..') && !path.isAbsolute(rel);
+    };
+
+    if (!isWithinStagingDir(promptPath) || !isWithinStagingDir(logPath)) {
+      throw new Error(
+        'Hermes adapter refuses dispatch: promptPath or logPath resolves outside stagingDir.'
+      );
+    }
+
+    fs.mkdirSync(resolvedStagingDir, { recursive: true });
+
+    const remotePromptPath = path.posix.join(this.remoteDir, [jobId, '.txt'].join(''));
 
     const sanitizedPrompt = replaceDoubleQuotesWithSingle(input.prompt);
     fs.writeFileSync(promptPath, sanitizedPrompt, 'utf8');
@@ -75,8 +115,8 @@ export class HermesDispatchAdapter implements DispatchAdapter {
     const startedIso = this.now().toISOString();
     fs.writeFileSync(logPath, `started ${startedIso}\n`, 'utf8');
 
-    const scpArgs = [promptPath, `${this.sshHost}:${remotePromptPath}`];
-    const sshArgs = [this.sshHost, `hermes -z --query-file ${remotePromptPath}`];
+    const scpArgs = [promptPath, [this.sshHost, remotePromptPath].join(':')];
+    const sshArgs = [this.sshHost, 'hermes', '-z', '--query-file', remotePromptPath];
 
     let finalResult: CommandExecResult | null = null;
     const runPromise = (async (): Promise<CommandExecResult> => {

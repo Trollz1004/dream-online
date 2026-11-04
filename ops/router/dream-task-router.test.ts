@@ -542,12 +542,54 @@ test('Recipe 7 Item 1: Dispatch adapters for agy (.fable-kitchen + single quotes
     assert.equal(hermesCalls[0].command, 'scp');
     assert.ok(hermesCalls[0].args[1].startsWith('sabretooth:'));
     assert.equal(hermesCalls[1].command, 'ssh');
-    assert.equal(hermesCalls[1].args[0], 'sabretooth');
-    assert.ok(hermesCalls[1].args[1].includes('hermes -z --query-file'));
+    assert.deepEqual(hermesCalls[1].args, [
+      'sabretooth',
+      'hermes',
+      '-z',
+      '--query-file',
+      '~/.fable-kitchen/test-hermes-01.txt',
+    ]);
 
     const hermesPoll = await hermesHandle.poll();
     assert.equal(hermesPoll.done, true);
     assert.equal(hermesPoll.prUrl, 'https://github.com/Trollz1004/ANTIGRAVITY/pull/340');
+
+    // Verify Hermes adapter rejects injected jobId, traversal jobId, and unknown jobClass
+    await assert.rejects(
+      () =>
+        hermesAdapter.dispatch({
+          jobId: 'job_1; id',
+          prompt: 'Draft launch announcement for X',
+          jobClass: 'post-x',
+          lane: 'grok',
+          harness: 'hermes',
+        }),
+      /invalid jobId/i
+    );
+
+    await assert.rejects(
+      () =>
+        hermesAdapter.dispatch({
+          jobId: '../traversal-job',
+          prompt: 'Draft launch announcement for X',
+          jobClass: 'post-x',
+          lane: 'grok',
+          harness: 'hermes',
+        }),
+      /invalid jobId|stagingDir/i
+    );
+
+    await assert.rejects(
+      () =>
+        hermesAdapter.dispatch({
+          jobId: 'valid-job-02',
+          prompt: 'Draft launch announcement for X',
+          jobClass: 'not-a-valid-class' as any,
+          lane: 'grok',
+          harness: 'hermes',
+        }),
+      /unknown jobClass/i
+    );
 
     // Verify Hermes adapter refuses any scraping command
     await assert.rejects(

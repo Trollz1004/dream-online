@@ -10,6 +10,7 @@
  * 100% Built with Google Gemini
  */
 
+import crypto from 'crypto';
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -64,21 +65,85 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+export const MAX_SERVER_STATE_ITEMS = 200;
+
+export function resolveDreamEngineBindHost(env: NodeJS.ProcessEnv = process.env): string {
+  return String(env.DREAM_ENGINE_BIND || '').trim() === '0.0.0.0' ? '0.0.0.0' : '127.0.0.1';
+}
+
+export function validateDreamEngineBindConfig(env: NodeJS.ProcessEnv = process.env): {
+  host: string;
+  token: string;
+} {
+  const host = resolveDreamEngineBindHost(env);
+  const token = String(env.DREAM_ENGINE_TOKEN || '').trim();
+  if (host === '0.0.0.0' && !token) {
+    throw new Error(
+      'Refusing to start DREAM Engine on 0.0.0.0 without DREAM_ENGINE_TOKEN: set a non-empty DREAM_ENGINE_TOKEN or bind to 127.0.0.1.'
+    );
+  }
+  return { host, token };
+}
+
+export function requireDreamEngineAuth(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) {
+  if (req.method !== 'POST') {
+    return next();
+  }
+  if (resolveDreamEngineBindHost(process.env) !== '0.0.0.0') {
+    return next();
+  }
+  const expectedToken = String(process.env.DREAM_ENGINE_TOKEN || '').trim();
+  if (!expectedToken) {
+    res.status(401).json({
+      error: 'Unauthorized: DREAM_ENGINE_TOKEN is required when DREAM_ENGINE_BIND=0.0.0.0',
+    });
+    return;
+  }
+  const authHeader = String(req.headers.authorization || '').trim();
+  const match = /^Bearer\s+(\S+)$/i.exec(authHeader);
+  const providedToken = match ? match[1] : '';
+  const expectedBuf = Buffer.from(expectedToken, 'utf8');
+  const providedBuf = Buffer.from(providedToken, 'utf8');
+  const valid =
+    expectedBuf.length === providedBuf.length &&
+    crypto.timingSafeEqual(expectedBuf, providedBuf);
+  if (!valid) {
+    res.status(401).json({
+      error: 'Unauthorized: valid Authorization Bearer token required',
+    });
+    return;
+  }
+  next();
+}
+
 export const app = express();
 app.use(express.json({ limit: '10mb' }));
 app.use('/dreamforge', express.static(path.join(__dirname, 'dreamforge')));
+app.use(['/api/gm', '/api/memory'], requireDreamEngineAuth);
 
 // House rule: no provider key outside the AI Studio app's own voices. The Gemini lane stays off
 // (null client, callers answer 503) unless GEMINI_API_KEY is set AND GEMINI_KEY_APPROVED=finalize.
 export const GEMINI_LANE_OFF_MESSAGE = 'Gemini lane is off until Josh finalizes a key';
 
 // Initialize server-side GoogleGenAI per @google/genai guidelines
+let genAiClientOverride: GoogleGenAI | null = null;
+
+export function setGenAiClientForTests(client: GoogleGenAI | null): void {
+  genAiClientOverride = client;
+}
+
 export function getGenAiClient(): GoogleGenAI | null {
+  if (genAiClientOverride) return genAiClientOverride;
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey || process.env.GEMINI_KEY_APPROVED !== 'finalize') return null;
   return new GoogleGenAI({
     apiKey,
     httpOptions: {
+      timeout: 1500,
       headers: {
         'User-Agent': 'aistudio-build',
       },
@@ -94,7 +159,7 @@ function geminiLaneOff(res: express.Response) {
 // Server-Authoritative Runtime State (GM Control, Economy, Audit, Memory)
 // ============================================================================
 
-const serverState = {
+export const serverState = {
   world: {
     status: 'live-studio',
     server: 'mission-control-3130 · alienware-.40 · t5500-.15',
@@ -170,6 +235,25 @@ const serverState = {
   agentLanes: [...DEFAULT_AGENT_SDK_LANES] as AgentSdkLane[],
   npcProfiles: [...INITIAL_CUSTOM_NPCS],
 };
+
+let checkpointSequence = serverState.checkpoints.length;
+
+function recordCheckpoint(cp: { id: string; meta: string }) {
+  serverState.checkpoints.unshift(cp);
+  if (serverState.checkpoints.length > MAX_SERVER_STATE_ITEMS) {
+    serverState.checkpoints.length = MAX_SERVER_STATE_ITEMS;
+  }
+}
+
+function recordMemoryEntry(entry: AgentMemoryEntry) {
+  serverState.memoryEntries.unshift(entry);
+  if (serverState.memoryEntries.length > MAX_SERVER_STATE_ITEMS) {
+    serverState.memoryEntries.length = MAX_SERVER_STATE_ITEMS;
+  }
+  for (const t of serverState.memoryTiers) {
+    t.entriesCount = serverState.memoryEntries.length;
+  }
+}
 
 function appendAudit(kind: string, msg: string, ok = true) {
   const t = new Date().toLocaleTimeString('en-US', { hour12: false });
@@ -266,8 +350,9 @@ app.post('/api/gm/hotfix/propose', (req, res) => {
   }
   const redaction = redactSecretsWithXXXX(rawProposal);
   const proposal = redaction.sanitized;
-  const cpId = `checkpoint-000${serverState.checkpoints.length + 1}`;
-  serverState.checkpoints.unshift({
+  checkpointSequence = Math.max(checkpointSequence + 1, serverState.checkpoints.length + 1);
+  const cpId = `checkpoint-000${checkpointSequence}`;
+  recordCheckpoint({
     id: cpId,
     meta: `proposed by ${by} · "${proposal.slice(0, 48)}"`,
   });
@@ -299,7 +384,8 @@ app.get('/api/gm/npc/profiles', (_req, res) => {
 
 app.post('/api/gm/npc/dialogue', async (req, res) => {
   const npcId = String(req.body?.npcId || 'sup-guide');
-  const message = String(req.body?.message || 'Status report').trim();
+  const rawMessage = String(req.body?.message || 'Status report').trim();
+  const message = redactSecretsWithXXXX(rawMessage).sanitized;
   const zone = String(req.body?.zone || 'first-gate');
 
   const profile =
@@ -345,10 +431,7 @@ app.post('/api/gm/npc/dialogue', async (req, res) => {
     syncedTiers: ['obsidian-vault', 'viking-context', 'supabase-pgvector', 'supermemory-cloud'],
     updatedAt: new Date().toISOString(),
   };
-  serverState.memoryEntries.unshift(memEntry);
-  for (const t of serverState.memoryTiers) {
-    t.entriesCount = serverState.memoryEntries.length;
-  }
+  recordMemoryEntry(memEntry);
 
   appendAudit('NPC', `${profile.id} replied via ${modelUsed}`, true);
 
@@ -479,10 +562,7 @@ app.post('/api/memory/store', (req, res) => {
     updatedAt: new Date().toISOString(),
   };
 
-  serverState.memoryEntries.unshift(entry);
-  for (const t of serverState.memoryTiers) {
-    t.entriesCount = serverState.memoryEntries.length;
-  }
+  recordMemoryEntry(entry);
 
   appendAudit(
     'MEMORY',
@@ -805,9 +885,10 @@ app.post('/api/dreamforge/generate', (req, res) => {
   });
 });
 
-async function startServer() {
-  const PORT = Number(process.env.PORT) || 9180;
-  const isProd = process.env.NODE_ENV === 'production';
+export async function startServer(env: NodeJS.ProcessEnv = process.env) {
+  const { host } = validateDreamEngineBindConfig(env);
+  const PORT = Number(env.PORT) || 9180;
+  const isProd = env.NODE_ENV === 'production';
 
   if (!isProd) {
     const { createServer: createViteServer } = await import('vite');
@@ -824,11 +905,14 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[DREAM] Full-Stack Engine & Mission Control Bridge running on http://0.0.0.0:${PORT}`);
+  return app.listen(PORT, host, () => {
+    console.log(`[DREAM] Full-Stack Engine & Mission Control Bridge running on http://${host}:${PORT}`);
   });
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
-  startServer();
+  startServer().catch((err) => {
+    console.error(`[DREAM] ${err instanceof Error ? err.message : String(err)}`);
+    process.exit(1);
+  });
 }
