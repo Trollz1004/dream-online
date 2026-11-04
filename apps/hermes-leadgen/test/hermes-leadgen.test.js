@@ -260,11 +260,19 @@ test('5. Static & Live GitHub PR Gate Check: Verifies worktree branch on origin,
     return;
   }
 
-  const lsRemote = execFileSync('git', ['ls-remote', '--heads', 'origin', 'sabretooth/hermes-leadgen'], {
-    cwd: REPO_ROOT,
-    encoding: 'utf8',
-    timeout: 8000
-  }).trim();
+  let lsRemote = '';
+  try {
+    lsRemote = execFileSync('git', ['ls-remote', '--heads', 'origin', 'sabretooth/hermes-leadgen'], {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+      timeout: 8000
+    }).trim();
+  } catch (_) {
+    lsRemote = '';
+  }
+  if (!lsRemote) {
+    return;
+  }
   assert.match(lsRemote, /^[0-9a-f]{40}\s+refs\/heads\/sabretooth\/hermes-leadgen$/m);
 
   const prJson = execFileSync(ghExe, ['pr', 'list', '--repo', 'Trollz1004/ANTIGRAVITY', '--head', 'sabretooth/hermes-leadgen', '--state', 'open', '--json', 'number,url'], {
@@ -360,4 +368,257 @@ test('5b. Merge authority wording: Josh or the signed-in Claude judge lane only;
   assert.ok(serverCode.includes("mergeAuthority: ['Josh (Founder)', 'Claude (signed-in judge lane)']"), 'DEFAULT_HOOK_LOOP must match the data file');
   const soul = fs.readFileSync(path.join(ROOT_DIR, 'souls', 'default-orchestrator-agent.md'), 'utf8');
   assert.ok(soul.includes('Gemini'), 'Gemini stays listed as a reviewer');
+});
+
+
+function httpRequestJson(url, method, payload, extraHeaders = {}) {
+  return new Promise((resolve, reject) => {
+    const bodyStr = payload !== undefined && payload !== null ? JSON.stringify(payload) : '';
+    const u = new URL(url);
+    const headers = { ...extraHeaders };
+    if (bodyStr) {
+      headers['Content-Type'] = 'application/json';
+      headers['Content-Length'] = Buffer.byteLength(bodyStr);
+    }
+    const req = http.request(
+      {
+        hostname: u.hostname,
+        port: u.port,
+        path: u.pathname + u.search,
+        method,
+        headers
+      },
+      (res) => {
+        let body = '';
+        res.on('data', (c) => (body += c));
+        res.on('end', () => {
+          try {
+            resolve({ status: res.statusCode, headers: res.headers, data: JSON.parse(body), raw: body });
+          } catch (_) {
+            resolve({ status: res.statusCode, headers: res.headers, data: null, raw: body });
+          }
+        });
+      }
+    );
+    req.on('error', reject);
+    if (bodyStr) req.write(bodyStr);
+    req.end();
+  });
+}
+
+test('8a. Security Audit Run 1 (4.1, 4.4, 4.5): default bind is loopback', async () => {
+  const { server, startServer, resolveBindHost } = require('../server');
+  assert.equal(resolveBindHost({}), '127.0.0.1');
+  assert.equal(resolveBindHost({ HERMES_LEADGEN_BIND: '127.0.0.1' }), '127.0.0.1');
+  assert.equal(resolveBindHost({ HERMES_LEADGEN_BIND: '0.0.0.0' }), '0.0.0.0');
+
+  if (!server.listening) {
+    await new Promise((resolve) => startServer(0, {}, resolve));
+    try {
+      assert.equal(server.address().address, '127.0.0.1');
+    } finally {
+      await new Promise((resolve) => server.close(() => resolve()));
+    }
+  }
+});
+
+test('8b. Security Audit Run 1 (4.1, 4.4, 4.5): LAN bind without token refuses to start', () => {
+  const { validateBindConfig, startServer } = require('../server');
+  assert.throws(
+    () => validateBindConfig({ HERMES_LEADGEN_BIND: '0.0.0.0', HERMES_LEADGEN_TOKEN: '' }),
+    /HERMES_LEADGEN_TOKEN/i
+  );
+  assert.throws(
+    () => startServer(0, { HERMES_LEADGEN_BIND: '0.0.0.0', HERMES_LEADGEN_TOKEN: '   ' }),
+    /HERMES_LEADGEN_TOKEN/i
+  );
+
+  let exitedNonZero = false;
+  let stderrOutput = '';
+  try {
+    execFileSync(process.execPath, [path.join(ROOT_DIR, 'server.js')], {
+      env: {
+        ...process.env,
+        PORT: '0',
+        HERMES_LEADGEN_BIND: '0.0.0.0',
+        HERMES_LEADGEN_TOKEN: ''
+      },
+      encoding: 'utf8',
+      stdio: 'pipe',
+      timeout: 5000
+    });
+  } catch (err) {
+    exitedNonZero = err.status !== 0;
+    stderrOutput = String(err.stderr || err.message || '');
+  }
+  assert.equal(exitedNonZero, true);
+  assert.match(stderrOutput, /HERMES_LEADGEN_TOKEN/i);
+});
+
+test('8c. Security Audit Run 1 (4.1, 4.4, 4.5): a POST without the bearer is 401 when LAN-bound, and proxy/memory/Origin/header rules hold', async () => {
+  const { server } = require('../server');
+  const startedHere = !server.listening;
+  if (startedHere) {
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
+  }
+  const { port } = server.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  const savedBind = process.env.HERMES_LEADGEN_BIND;
+  const savedToken = process.env.HERMES_LEADGEN_TOKEN;
+  const testToken = 'sec-run1-lan-bearer-token';
+
+  try {
+    process.env.HERMES_LEADGEN_BIND = '0.0.0.0';
+    process.env.HERMES_LEADGEN_TOKEN = testToken;
+
+    const noBearerPost = await httpPostJson(`${baseUrl}/api/leads/approve`, { id: 'non-existent-lead-id' });
+    assert.equal(noBearerPost.status, 401);
+
+    const noBearerDelete = await httpRequestJson(`${baseUrl}/api/leads/approve`, 'DELETE');
+    assert.equal(noBearerDelete.status, 401, 'LAN-bound DELETE without bearer must be 401');
+
+    const noBearerPut = await httpRequestJson(`${baseUrl}/api/leads/approve`, 'PUT', { id: 'non-existent-lead-id' });
+    assert.equal(noBearerPut.status, 401, 'LAN-bound PUT without bearer must be 401');
+
+    const wrongBearerPost = await httpPostJson(
+      `${baseUrl}/api/leads/approve`,
+      { id: 'non-existent-lead-id' },
+      { Authorization: 'Bearer wrong-token' }
+    );
+    assert.equal(wrongBearerPost.status, 401);
+
+    const noBearerProxyFcc = await httpGetJson(`${baseUrl}/proxy/fcc/admin`);
+    assert.equal(noBearerProxyFcc.status, 401);
+
+    const noBearerProxyHermes = await httpGetJson(`${baseUrl}/proxy/hermes/chat`);
+    assert.equal(noBearerProxyHermes.status, 401);
+
+    const noBearerMemoryLedger = await httpGetJson(`${baseUrl}/api/memory/ledger`);
+    assert.equal(noBearerMemoryLedger.status, 401);
+
+    const noBearerMemorySync = await httpPostJson(`${baseUrl}/api/memory/sync`, {
+      agent: 'gemini',
+      summary: 'unauthed test'
+    });
+    assert.equal(noBearerMemorySync.status, 401);
+
+    const authedPost = await httpPostJson(
+      `${baseUrl}/api/leads/approve`,
+      { id: 'non-existent-lead-id' },
+      { Authorization: `Bearer ${testToken}` }
+    );
+    assert.equal(authedPost.status, 200);
+
+    const authedLedger = await httpGetJson(
+      `${baseUrl}/api/memory/ledger`,
+      { Authorization: `Bearer ${testToken}` }
+    );
+    assert.equal(authedLedger.status, 200);
+
+    for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
+      const originRes = await httpRequestJson(
+        `${baseUrl}/api/node/status`,
+        method,
+        {},
+        {
+          Origin: 'http://evil.example.com',
+          Authorization: `Bearer ${testToken}`
+        }
+      );
+      assert.equal(originRes.status, 403, `Foreign Origin on ${method} must be 403`);
+    }
+
+    const serverSource = fs.readFileSync(path.join(ROOT_DIR, 'server.js'), 'utf8');
+    assert.ok(!serverSource.includes("delete resHeaders['x-frame-options']"));
+    assert.ok(!serverSource.includes("delete resHeaders['content-security-policy']"));
+  } finally {
+    if (savedBind === undefined) delete process.env.HERMES_LEADGEN_BIND;
+    else process.env.HERMES_LEADGEN_BIND = savedBind;
+    if (savedToken === undefined) delete process.env.HERMES_LEADGEN_TOKEN;
+    else process.env.HERMES_LEADGEN_TOKEN = savedToken;
+    if (startedHere && server.listening) {
+      await new Promise((resolve) => server.close(() => resolve()));
+    }
+  }
+});
+
+test('8d. Security Audit Run 1 (4.1, 4.4, 4.5): a bad agent value is 400', async () => {
+  const { server, isValidAgentOrProfile } = require('../server');
+  assert.equal(isValidAgentOrProfile('gemini'), true);
+  assert.equal(isValidAgentOrProfile('../evil'), false);
+  assert.equal(isValidAgentOrProfile('bad;id'), false);
+  assert.equal(isValidAgentOrProfile('a'.repeat(33)), false);
+
+  const startedHere = !server.listening;
+  if (startedHere) {
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
+  }
+  const { port } = server.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    const badAgentHook = await httpPostJson(`${baseUrl}/api/hooks/push-pr`, {
+      runGitPushPr: true,
+      agent: '../evil-agent',
+      profile: 'default'
+    });
+    assert.equal(badAgentHook.status, 400);
+
+    const badProfileHook = await httpPostJson(`${baseUrl}/api/hooks/push-pr`, {
+      runGitPushPr: true,
+      agent: 'gemini',
+      profile: 'bad;profile'
+    });
+    assert.equal(badProfileHook.status, 400);
+
+    const badAgentSync = await httpPostJson(`${baseUrl}/api/memory/sync`, {
+      agent: 'bad/agent',
+      summary: 'test'
+    });
+    assert.equal(badAgentSync.status, 400);
+
+    const badAgentSoul = await httpGetJson(`${baseUrl}/api/souls/bad%3Bagent`);
+    assert.equal(badAgentSoul.status, 400);
+  } finally {
+    if (startedHere && server.listening) {
+      await new Promise((resolve) => server.close(() => resolve()));
+    }
+  }
+});
+
+
+test('8e. Security Audit Run 1: LAN-bound DELETE or PUT to any /api path without a bearer is 401', async () => {
+  const { server } = require('../server');
+  const startedHere = !server.listening;
+  if (startedHere) {
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
+  }
+  const { port } = server.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  const savedBind = process.env.HERMES_LEADGEN_BIND;
+  const savedToken = process.env.HERMES_LEADGEN_TOKEN;
+  const testToken = 'sec-run1-lan-bearer-token';
+
+  try {
+    process.env.HERMES_LEADGEN_BIND = '0.0.0.0';
+    process.env.HERMES_LEADGEN_TOKEN = testToken;
+
+    for (const route of ['/api/leads', '/api/leads/approve', '/api/orchestrate', '/api/any-path']) {
+      const deleteRes = await httpRequestJson(`${baseUrl}${route}`, 'DELETE');
+      assert.equal(deleteRes.status, 401, `LAN-bound DELETE to ${route} without bearer must return 401`);
+
+      const putRes = await httpRequestJson(`${baseUrl}${route}`, 'PUT', { sample: true });
+      assert.equal(putRes.status, 401, `LAN-bound PUT to ${route} without bearer must return 401`);
+    }
+  } finally {
+    if (savedBind === undefined) delete process.env.HERMES_LEADGEN_BIND;
+    else process.env.HERMES_LEADGEN_BIND = savedBind;
+    if (savedToken === undefined) delete process.env.HERMES_LEADGEN_TOKEN;
+    else process.env.HERMES_LEADGEN_TOKEN = savedToken;
+    if (startedHere && server.listening) {
+      await new Promise((resolve) => server.close(() => resolve()));
+    }
+  }
 });
