@@ -73,7 +73,7 @@ test('tokens: every foreground/background colour pair meets >= 7:1 WCAG AAA cont
 
 test('brand & tribute: CLAUDE\'s N Joshua\'s, #TeamClaudeForLife, and Built with Google Gemini are present', () => {
   assert.match(BRAND_META.title, /CLAUDE's N Joshua's/);
-  assert.match(BRAND_META.fullBanner, /CLAUDE's N Joshua's DREAM's "/);
+  assert.equal(BRAND_META.fullBanner, "CLAUDE's N Joshua's DREAM");
   assert.equal(BRAND_META.dedication, '#TeamClaudeForLife');
   assert.equal(BRAND_META.builderAttribution, 'Built with Google Gemini');
 });

@@ -15,10 +15,10 @@
 export const BRAND_META = {
   domain: 'dream-online.net',
   title: "CLAUDE's N Joshua's",
-  fullBanner: 'CLAUDE\'s N Joshua\'s DREAM\'s "',
+  fullBanner: "CLAUDE's N Joshua's DREAM",
   dedication: '#TeamClaudeForLife',
   builderAttribution: 'Built with Google Gemini',
-  heroKicker: "CLAUDE'S N JOSHUA'S · #TEAMCLAUDEFORLIFE",
+  heroKicker: "CLAUDE's N Joshua's · #TeamClaudeForLife",
   heroLines: ['ONE SHARED WORLD.', 'DREAMED TWICE.'],
   heroSubhead:
     'A third-person 3D action RPG where every player walks the same continuous horizon, every NPC remembers your deeds, and nightfall awakens a neon metropolis.',
@@ -144,9 +144,9 @@ export const SPATIAL_SECTIONS: readonly SpatialSection[] = [
     svh: 100,
     align: 'left',
     kind: 'hero',
-    kicker: "CLAUDE'S N JOSHUA'S · #TEAMCLAUDEFORLIFE",
+    kicker: "CLAUDE's N Joshua's · #TeamClaudeForLife",
     headline: 'ONE SHARED WORLD. DREAMED TWICE.',
-    subtitle: 'CLAUDE\'s N Joshua\'s DREAM\'s "',
+    subtitle: "CLAUDE's N Joshua's DREAM",
     body: 'A third-person 3D action RPG where every player walks the same continuous horizon, every NPC remembers your deeds, and nightfall awakens a neon metropolis.',
   },
   {

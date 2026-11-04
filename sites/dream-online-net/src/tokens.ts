@@ -46,9 +46,6 @@ export const font = {
   mono: "'IBM Plex Mono', 'JetBrains Mono', ui-monospace, Consolas, monospace",
 } as const;
 
-export const fontStylesheetHref =
-  'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap';
-
 export const fontSize = {
   monoTag: 14,
   caption: 16,

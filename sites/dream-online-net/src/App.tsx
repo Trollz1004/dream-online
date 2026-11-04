@@ -234,26 +234,13 @@ export const App: React.FC = () => {
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'space-between',
                         gap: 12,
                         flexWrap: 'wrap',
                       }}
                     >
-                      <p className="section-kicker">{BRAND_META.heroKicker}</p>
-                      <span
-                        style={{
-                          padding: '4px 12px',
-                          borderRadius: radius.pill,
-                          border: `1px solid ${color.hull}`,
-                          background: color.ink,
-                          color: color.porcelain,
-                          fontFamily: font.mono,
-                          fontSize: 20,
-                          fontWeight: 600,
-                        }}
-                      >
-                        {BRAND_META.fullBanner}
-                      </span>
+                      <p className="section-kicker" style={{ textTransform: 'none' }}>
+                        {BRAND_META.title} · {BRAND_META.dedication}
+                      </p>
                     </div>
 
                     <h1 className="hero-h1">
