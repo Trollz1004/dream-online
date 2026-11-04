@@ -1,12 +1,1175 @@
 /**
- * Ops routing for DREAM agents (task router, :8082 isolation check, clean-room studio roles).
+ * Ops routing for DREAM agents (Jev router core, lane table, weekly ranking, quota fallback,
+ * :8082 isolation check, and clean-room studio roles).
  * Lives under ops/ on purpose: it is operations code, not game code, and must never be bundled
  * into the combat module that ships to players' browsers.
  */
 
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROUTER_DIR = path.dirname(fileURLToPath(import.meta.url));
+export const DEFAULT_LANES_PATH = path.join(ROUTER_DIR, 'lanes.json');
+export const DEFAULT_RANKINGS_DIR = path.join(ROUTER_DIR, 'rankings');
+export const DEFAULT_DECISIONS_LOG_PATH = path.join(ROUTER_DIR, 'decisions.log');
+
 // ============================================================================
-// REA + REMAKE 100% YOURS CLEAN-ROOM GAME STUDIO ROLES (:8082 ISOLATION)
-//    & DETERMINISTIC TASK-TO-AGENT ROUTER (INSPIRED BY PANDAORCHESTRATOR)
+// 1. JEV ROUTER CORE — FIXED JOB CLASSES & TASK PROFILER
+// ============================================================================
+
+export const JEV_JOB_CLASSES = [
+  'route',
+  'mechanical',
+  'code-bulk',
+  'code-hard',
+  'engine',
+  'design-visual',
+  'research',
+  'judge',
+  'post-x',
+  'youtube-upload',
+] as const;
+
+export type JevJobClass = (typeof JEV_JOB_CLASSES)[number];
+
+export interface TaskProfileOptions {
+  files?: string[];
+  screenshotRequired?: boolean;
+}
+
+export interface TaskProfile {
+  jobClass: JevJobClass;
+  reason: string;
+  keywordsMatched: string[];
+  fileTypesNamed: string[];
+  screenshotRequired: boolean;
+}
+
+const FILE_EXT_REGEX = /\b[\w./-]+\.(wgsl|glsl|vert|frag|glb|gltf|blend|uasset|umap|gd|tscn|css|scss|less|html|svg|png|webp|jpg|jpeg|mp4|mov|mkv|ts|tsx|js|jsx|mjs|cjs|py|sql|json|md|txt|yaml|yml|sh|ps1)\b/gi;
+const STANDALONE_EXT_REGEX = /(?:^|\s)\.(wgsl|glsl|vert|frag|glb|gltf|blend|uasset|umap|gd|tscn|css|scss|less|html|svg|png|webp|jpg|jpeg|mp4|mov|mkv|ts|tsx|js|jsx|mjs|cjs|py|sql|json|md|txt|yaml|yml|sh|ps1)\b/gi;
+
+const ENGINE_EXTENSIONS = new Set([
+  'wgsl',
+  'glsl',
+  'vert',
+  'frag',
+  'glb',
+  'gltf',
+  'blend',
+  'uasset',
+  'umap',
+  'gd',
+  'tscn',
+]);
+
+const VISUAL_EXTENSIONS = new Set([
+  'css',
+  'scss',
+  'less',
+  'html',
+  'svg',
+  'png',
+  'webp',
+  'jpg',
+  'jpeg',
+]);
+
+const VIDEO_EXTENSIONS = new Set(['mp4', 'mov', 'mkv']);
+
+const DOC_ONLY_EXTENSIONS = new Set(['md', 'txt']);
+
+const CODE_EXTENSIONS = new Set([
+  'ts',
+  'tsx',
+  'js',
+  'jsx',
+  'mjs',
+  'cjs',
+  'py',
+  'sql',
+  'json',
+  'yaml',
+  'yml',
+  'sh',
+  'ps1',
+]);
+
+function extractFileTypes(taskDescription: string, explicitFiles: string[] = []): string[] {
+  const combined = `${taskDescription} ${explicitFiles.join(' ')}`;
+  const found = new Set<string>();
+
+  for (const match of combined.matchAll(FILE_EXT_REGEX)) {
+    if (match[1]) found.add(match[1].toLowerCase());
+  }
+  for (const match of combined.matchAll(STANDALONE_EXT_REGEX)) {
+    if (match[1]) found.add(match[1].toLowerCase());
+  }
+  return Array.from(found);
+}
+
+function matchKeywordList(lowerText: string, candidates: readonly string[]): string[] {
+  const matched: string[] = [];
+  for (const kw of candidates) {
+    if (lowerText.includes(kw)) {
+      matched.push(kw.replace(/\./g, ' '));
+    }
+  }
+  return matched;
+}
+
+/**
+ * Ensures the returned reason is strictly a single sentence with no internal periods.
+ */
+function toSingleSentence(body: string): string {
+  const cleaned = body
+    .replace(/\r?\n+/g, ' ')
+    .replace(/[.!?]+/g, '')
+    .replace(/;/g, ',')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return `${cleaned}.`;
+}
+
+const ROUTE_KEYWORDS = [
+  'route task',
+  'task router',
+  'routing decision',
+  'classify task',
+  'triage task',
+  'pick a lane',
+  'select a lane',
+  'select lane',
+  'which lane',
+  'dispatch task',
+  'assign lane',
+  'jev router',
+] as const;
+
+const YOUTUBE_UPLOAD_KEYWORDS = [
+  'youtube-upload',
+  'youtube upload',
+  'upload to youtube',
+  'youtube data api',
+  'youtube shorts upload',
+  'youtube short upload',
+  'private youtube',
+  'upload video to youtube',
+  'upload short to youtube',
+] as const;
+
+const POST_X_KEYWORDS = [
+  'post-x',
+  'post to x',
+  'post on x',
+  'publish on x',
+  'x thread',
+  'x post',
+  'tweet',
+  'twitter',
+  'grok x',
+] as const;
+
+const JUDGE_KEYWORDS = [
+  'judge',
+  'fable',
+  'lanes disagree',
+  'ai lanes disagree',
+  'disagreement',
+  'tie-breaker',
+  'tiebreaker',
+  'merge authority',
+  'final ruling',
+  'supreme judge',
+  'arbitrate',
+  'approve merge',
+] as const;
+
+const ENGINE_KEYWORDS = [
+  'webgpu',
+  'three.js',
+  'threejs',
+  'shader',
+  'wgsl',
+  'glsl',
+  '3d engine',
+  'ecs',
+  'unreal',
+  'godot',
+  'blender',
+  'voxel',
+  'raycast',
+  'rigidbody',
+  'mesh',
+  'sunken bastion',
+  'combat window',
+  'render pipeline',
+  'frame data',
+] as const;
+
+const SCREENSHOT_KEYWORDS = [
+  'screenshot',
+  'eyes gate',
+  'visual diff',
+  'before-and-after',
+  'side-by-side',
+  'viewport capture',
+  'pixel diff',
+] as const;
+
+const DESIGN_VISUAL_KEYWORDS = [
+  'design-visual',
+  'visual design',
+  'ui design',
+  'ux design',
+  'layout',
+  'tailwind',
+  'stylesheet',
+  'typography',
+  'color contrast',
+  'landing page',
+  'hero section',
+  'hud',
+  'responsive ui',
+  'component styling',
+] as const;
+
+const RESEARCH_KEYWORDS = [
+  'research',
+  'investigate',
+  'literature survey',
+  'feasibility study',
+  'benchmark comparison',
+  'deep dive',
+  'whitepaper',
+  'survey options',
+  'analyze docs',
+  'source study',
+] as const;
+
+const CODE_HARD_KEYWORDS = [
+  'code-hard',
+  'race condition',
+  'deadlock',
+  'concurrency',
+  'cryptography',
+  'security vulnerability',
+  'memory leak',
+  'distributed',
+  'consensus',
+  'compiler',
+  'parser',
+  'state machine',
+  'protocol design',
+  'root-cause',
+  'architecture',
+  'auth bypass',
+] as const;
+
+const MECHANICAL_KEYWORDS = [
+  'mechanical',
+  'typo',
+  'rename',
+  'format',
+  'prettier',
+  'eslint',
+  'lint fix',
+  'bump version',
+  'sort imports',
+  'whitespace',
+  'fix comment',
+  'remove unused',
+  'gitignore',
+] as const;
+
+const CODE_BULK_KEYWORDS = [
+  'code-bulk',
+  'bulk',
+  'scaffold',
+  'crud',
+  'boilerplate',
+  'batch',
+  'across files',
+  'unit tests',
+  'write tests',
+  'implement',
+  'refactor',
+  'endpoints',
+  'migration',
+] as const;
+
+/**
+ * Profiles a task description into one of the 10 fixed Jev job classes using plain rules
+ * (keywords, file types named, and whether a screenshot is required) and returns a single-sentence reason.
+ */
+export function profileTask(
+  taskDescription: string,
+  options?: TaskProfileOptions
+): TaskProfile {
+  const lower = taskDescription.toLowerCase();
+  const fileTypesNamed = extractFileTypes(taskDescription, options?.files);
+  const screenshotKeywords = matchKeywordList(lower, SCREENSHOT_KEYWORDS);
+  const explicitScreenshot = Boolean(options?.screenshotRequired) || screenshotKeywords.length > 0;
+
+  // 1. Route tasks (checked before judge so routing decisions never go to judge)
+  const routeHits = matchKeywordList(lower, ROUTE_KEYWORDS);
+  if (routeHits.length > 0 || /^\[?route\]?:/i.test(taskDescription.trim())) {
+    const matched = routeHits.length > 0 ? routeHits : ['route prefix'];
+    return {
+      jobClass: 'route',
+      reason: toSingleSentence(
+        `The task matches routing keywords (${matched.join(', ')}) and is classified as route so the router never sends its own routing decisions to judge`
+      ),
+      keywordsMatched: matched,
+      fileTypesNamed,
+      screenshotRequired: false,
+    };
+  }
+
+  // 2. YouTube upload (private YouTube Data API only, never a model)
+  const ytHits = matchKeywordList(lower, YOUTUBE_UPLOAD_KEYWORDS);
+  const hasVideoFile = fileTypesNamed.some((ext) => VIDEO_EXTENSIONS.has(ext));
+  if (ytHits.length > 0 || (lower.includes('youtube') && (hasVideoFile || lower.includes('upload')))) {
+    const matched = ytHits.length > 0 ? ytHits : ['youtube', 'upload'];
+    return {
+      jobClass: 'youtube-upload',
+      reason: toSingleSentence(
+        `The task matches YouTube upload rules (${matched.join(', ')}) and is classified as youtube-upload for private YouTube Data API delivery without calling a model`
+      ),
+      keywordsMatched: matched,
+      fileTypesNamed,
+      screenshotRequired: false,
+    };
+  }
+
+  // 3. Post-X (Grok through Hermes)
+  const postXHits = matchKeywordList(lower, POST_X_KEYWORDS);
+  if (postXHits.length > 0) {
+    return {
+      jobClass: 'post-x',
+      reason: toSingleSentence(
+        `The task matches X publishing keywords (${postXHits.join(', ')}) and is classified as post-x for Grok through Hermes`
+      ),
+      keywordsMatched: postXHits,
+      fileTypesNamed,
+      screenshotRequired: false,
+    };
+  }
+
+  // 4. Judge (Fable on signed-in Claude Code; never receives route tasks)
+  const judgeHits = matchKeywordList(lower, JUDGE_KEYWORDS);
+  if (judgeHits.length > 0) {
+    return {
+      jobClass: 'judge',
+      reason: toSingleSentence(
+        `The task requests an authoritative ruling (${judgeHits.join(', ')}) and is classified as judge for Fable on signed-in Claude Code`
+      ),
+      keywordsMatched: judgeHits,
+      fileTypesNamed,
+      screenshotRequired: false,
+    };
+  }
+
+  // 5. Engine (3D engine, shaders, WebGPU, game simulation)
+  const engineHits = matchKeywordList(lower, ENGINE_KEYWORDS);
+  const engineExts = fileTypesNamed.filter((ext) => ENGINE_EXTENSIONS.has(ext));
+  if (engineHits.length > 0 || engineExts.length > 0) {
+    const signals = [...engineHits, ...engineExts.map((e) => `${e} file`)];
+    return {
+      jobClass: 'engine',
+      reason: toSingleSentence(
+        `The task targets 3D engine or shader work (${signals.join(', ')}) and is classified as engine for Gemini 4 Argon`
+      ),
+      keywordsMatched: engineHits,
+      fileTypesNamed,
+      screenshotRequired: explicitScreenshot,
+    };
+  }
+
+  // 6. Design-Visual (UI/visual work, visual file types, or screenshot required; always followed by Eyes gate)
+  const visualHits = matchKeywordList(lower, DESIGN_VISUAL_KEYWORDS);
+  const visualExts = fileTypesNamed.filter((ext) => VISUAL_EXTENSIONS.has(ext));
+  if (explicitScreenshot || visualHits.length > 0 || visualExts.length > 0) {
+    const signals = [
+      ...visualHits,
+      ...screenshotKeywords,
+      ...visualExts.map((e) => `${e} file`),
+      ...(options?.screenshotRequired ? ['screenshot required'] : []),
+    ];
+    const uniqueSignals = Array.from(new Set(signals));
+    return {
+      jobClass: 'design-visual',
+      reason: toSingleSentence(
+        `The task involves visual presentation or requires a screenshot check (${uniqueSignals.join(', ')}) and is classified as design-visual followed by the Eyes gate`
+      ),
+      keywordsMatched: Array.from(new Set([...visualHits, ...screenshotKeywords])),
+      fileTypesNamed,
+      screenshotRequired: true,
+    };
+  }
+
+  // 7. Research (official Opus or Argon lanes only)
+  const researchHits = matchKeywordList(lower, RESEARCH_KEYWORDS);
+  if (researchHits.length > 0) {
+    return {
+      jobClass: 'research',
+      reason: toSingleSentence(
+        `The task asks for investigation and source synthesis (${researchHits.join(', ')}) and is classified as research on official Opus or Argon lanes`
+      ),
+      keywordsMatched: researchHits,
+      fileTypesNamed,
+      screenshotRequired: false,
+    };
+  }
+
+  // 8. Code-Hard (complex architecture, concurrency, security, deep debugging)
+  const hardHits = matchKeywordList(lower, CODE_HARD_KEYWORDS);
+  if (hardHits.length > 0) {
+    return {
+      jobClass: 'code-hard',
+      reason: toSingleSentence(
+        `The task involves high-complexity systems engineering (${hardHits.join(', ')}) and is classified as code-hard`
+      ),
+      keywordsMatched: hardHits,
+      fileTypesNamed,
+      screenshotRequired: false,
+    };
+  }
+
+  // 9. Mechanical (typos, renames, formatting, lint fixes, simple doc tweaks)
+  const mechanicalHits = matchKeywordList(lower, MECHANICAL_KEYWORDS);
+  const onlyDocExts =
+    fileTypesNamed.length > 0 && fileTypesNamed.every((ext) => DOC_ONLY_EXTENSIONS.has(ext));
+  const bulkHits = matchKeywordList(lower, CODE_BULK_KEYWORDS);
+  if (mechanicalHits.length > 0 || (onlyDocExts && bulkHits.length === 0)) {
+    const signals =
+      mechanicalHits.length > 0
+        ? mechanicalHits
+        : fileTypesNamed.map((e) => `${e} file`);
+    return {
+      jobClass: 'mechanical',
+      reason: toSingleSentence(
+        `The task is a routine mechanical edit (${signals.join(', ')}) and is classified as mechanical for Gemini Flash in agy`
+      ),
+      keywordsMatched: mechanicalHits,
+      fileTypesNamed,
+      screenshotRequired: false,
+    };
+  }
+
+  // 10. Code-Bulk (multi-file implementation, tests, CRUD, scaffolding, or default coding work)
+  const codeExts = fileTypesNamed.filter((ext) => CODE_EXTENSIONS.has(ext));
+  const bulkSignals = [
+    ...bulkHits,
+    ...codeExts.map((e) => `${e} file`),
+  ];
+  const detail = bulkSignals.length > 0 ? bulkSignals.join(', ') : 'standard implementation';
+  return {
+    jobClass: 'code-bulk',
+    reason: toSingleSentence(
+      `The task covers standard implementation or bulk coding (${detail}) and is classified as code-bulk for Claude Sonnet in agy`
+    ),
+    keywordsMatched: bulkHits,
+    fileTypesNamed,
+    screenshotRequired: false,
+  };
+}
+
+// ============================================================================
+// 2. LANE TABLE (ops/router/lanes.json) & QUOTA / COLD-LANE RULES
+// ============================================================================
+
+export interface QuotaGroupSpec {
+  harness: string;
+  lanes: string[];
+  sharedQuota: boolean;
+  fallbackMustBeFamily: string;
+  note: string;
+}
+
+export interface LaneRow {
+  jobClass: JevJobClass;
+  lane: string;
+  ladder: string[];
+  node: string;
+  harness: string;
+  headless: boolean;
+  fallback: string;
+  quotaGroup: string;
+  postGate: 'eyes' | null;
+  officialOnly: boolean;
+  neverModel: boolean;
+  visibility: 'private' | null;
+  neverReceivesJobClasses: JevJobClass[];
+}
+
+export interface LaneTable {
+  version: string;
+  defaultCooldownHours: number;
+  quotaGroups: Record<string, QuotaGroupSpec>;
+  lanes: Record<JevJobClass, LaneRow>;
+}
+
+export function isAgyClaudeLane(lane: string, harness = 'agy'): boolean {
+  return harness === 'agy' && /^claude-/i.test(lane);
+}
+
+export function isGeminiLane(lane: string): boolean {
+  return /^gemini-/i.test(lane);
+}
+
+export function loadLaneTable(lanesPath: string = DEFAULT_LANES_PATH): LaneTable {
+  const raw = fs.readFileSync(lanesPath, 'utf8');
+  const parsed = JSON.parse(raw) as LaneTable;
+  const validation = validateLaneTable(parsed);
+  if (!validation.valid) {
+    throw new Error(`Invalid lanes.json: ${validation.errors.join('; ')}`);
+  }
+  return parsed;
+}
+
+export function validateLaneTable(table: LaneTable): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  if (!table || typeof table !== 'object' || !table.lanes) {
+    return { valid: false, errors: ['Missing lanes object in lane table'] };
+  }
+
+  for (const jobClass of JEV_JOB_CLASSES) {
+    const row = table.lanes[jobClass];
+    if (!row) {
+      errors.push(`Missing job class row: ${jobClass}`);
+      continue;
+    }
+    if (!row.node || typeof row.node !== 'string') {
+      errors.push(`Row ${jobClass} is missing node`);
+    }
+    if (!row.harness || typeof row.harness !== 'string') {
+      errors.push(`Row ${jobClass} is missing harness`);
+    }
+    if (typeof row.headless !== 'boolean') {
+      errors.push(`Row ${jobClass} must carry a boolean headless field`);
+    }
+    if (!row.fallback || typeof row.fallback !== 'string') {
+      errors.push(`Row ${jobClass} is missing fallback lane`);
+    }
+
+    // Tonight's fact: Claude models inside agy share one quota separate from Gemini models,
+    // so a Claude fallback in agy is always a Gemini lane and never another Claude lane in agy.
+    if (isAgyClaudeLane(row.lane, row.harness)) {
+      if (!isGeminiLane(row.fallback)) {
+        errors.push(
+          `Row ${jobClass} uses Claude lane ${row.lane} in agy so its fallback must be a Gemini lane, got ${row.fallback}`
+        );
+      }
+      if (/^claude-/i.test(row.fallback)) {
+        errors.push(
+          `Row ${jobClass} cannot use another Claude lane (${row.fallback}) as fallback for ${row.lane} in agy`
+        );
+      }
+    }
+  }
+
+  // Verify specific ladder assignments required by Recipe 6
+  if (table.lanes.route?.lane !== 'gemini-3.8-flash' || table.lanes.route?.harness !== 'agy') {
+    errors.push('route must go to gemini-3.8-flash in agy');
+  }
+  if (table.lanes.mechanical?.lane !== 'gemini-3.8-flash' || table.lanes.mechanical?.harness !== 'agy') {
+    errors.push('mechanical must go to gemini-3.8-flash in agy');
+  }
+  if (table.lanes['code-bulk']?.lane !== 'claude-sonnet-5-5' || table.lanes['code-bulk']?.harness !== 'agy') {
+    errors.push('code-bulk must go to claude-sonnet-5-5 in agy');
+  }
+  if (
+    !['claude-opus-5-5', 'gemini-4-argon'].includes(table.lanes['code-hard']?.lane) ||
+    table.lanes['code-hard']?.harness !== 'agy'
+  ) {
+    errors.push('code-hard must go to claude-opus-5-5 in agy or gemini-4-argon');
+  }
+  if (table.lanes.engine?.lane !== 'gemini-4-argon') {
+    errors.push('engine must go to gemini-4-argon');
+  }
+  if (
+    !['claude-opus-5-5', 'gemini-4-argon'].includes(table.lanes['design-visual']?.lane) ||
+    table.lanes['design-visual']?.postGate !== 'eyes'
+  ) {
+    errors.push('design-visual must go to claude-opus-5-5 or gemini-4-argon and be followed by the Eyes gate');
+  }
+  if (
+    !['claude-opus-5-5', 'gemini-4-argon'].includes(table.lanes.research?.lane) ||
+    !table.lanes.research?.officialOnly
+  ) {
+    errors.push('research must go to Opus or Argon through official lanes only');
+  }
+  if (
+    table.lanes.judge?.lane !== 'fable' ||
+    table.lanes.judge?.harness !== 'claude-code-signed-in' ||
+    !table.lanes.judge?.neverReceivesJobClasses?.includes('route')
+  ) {
+    errors.push('judge must go to Fable on signed-in Claude Code and never receive route tasks');
+  }
+  if (table.lanes['post-x']?.lane !== 'grok' || table.lanes['post-x']?.harness !== 'hermes') {
+    errors.push('post-x must go to Grok through Hermes');
+  }
+  if (
+    table.lanes['youtube-upload']?.lane !== 'youtube-data-api' ||
+    table.lanes['youtube-upload']?.visibility !== 'private' ||
+    table.lanes['youtube-upload']?.neverModel !== true
+  ) {
+    errors.push('youtube-upload must go to the YouTube Data API, private only, never a model');
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Parses the cooldown hours stated in a quota or 429 error (defaulting to 24 hours).
+ */
+export function parseQuotaCooldownHours(
+  errorInput?: string | Error | { hours?: number; retryAfterHours?: number; message?: string; status?: number },
+  defaultHours = 24
+): number {
+  if (!errorInput) return defaultHours;
+  if (typeof errorInput === 'object' && !(errorInput instanceof Error)) {
+    if (typeof errorInput.hours === 'number' && Number.isFinite(errorInput.hours) && errorInput.hours > 0) {
+      return errorInput.hours;
+    }
+    if (
+      typeof errorInput.retryAfterHours === 'number' &&
+      Number.isFinite(errorInput.retryAfterHours) &&
+      errorInput.retryAfterHours > 0
+    ) {
+      return errorInput.retryAfterHours;
+    }
+  }
+
+  const rawMessage =
+    typeof errorInput === 'string'
+      ? errorInput
+      : errorInput instanceof Error
+        ? errorInput.message
+        : errorInput.message ?? '';
+
+  const match = rawMessage.match(/\b(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b/i);
+  if (match && match[1]) {
+    const parsed = Number(match[1]);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+  return defaultHours;
+}
+
+// ============================================================================
+// 3. WEEKLY RANKING (ops/router/rankings/<YYYY-MM-DD>.json) & 7-DAY RULE
+// ============================================================================
+
+export interface RankingClassEntry {
+  ranked: string[];
+  lane: string;
+  reason: string;
+  sources: string[];
+}
+
+export interface WeeklyRankingFile {
+  date: string;
+  generated_by: string;
+  classes: Partial<Record<JevJobClass, RankingClassEntry>>;
+}
+
+export interface RankingEvaluation {
+  filePath: string | null;
+  rankingDate: string;
+  ageInDays: number | null;
+  stale: boolean;
+  statusNote: 'fresh ranking' | 'stale ranking, default ladder';
+  ranking: WeeklyRankingFile | null;
+}
+
+const RANKING_FILENAME_REGEX = /^(\d{4}-\d{2}-\d{2})\.json$/;
+
+function parseIsoDateToUtcMidnightMs(dateStr: string): number | null {
+  const m = dateStr.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return Date.UTC(year, month - 1, day);
+}
+
+function normalizeNowToUtcMidnightMs(now: Date): number {
+  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+}
+
+/**
+ * Finds and reads the newest ops/router/rankings/<YYYY-MM-DD>.json file and checks the 7-day rule.
+ * If the newest ranking is older than 7 days (ageInDays > 7), marks it stale so the router falls back
+ * to lanes.json and marks every decision "stale ranking, default ladder".
+ */
+export function loadNewestWeeklyRanking(
+  rankingsDir: string = DEFAULT_RANKINGS_DIR,
+  now: Date = new Date()
+): RankingEvaluation {
+  if (!fs.existsSync(rankingsDir)) {
+    return {
+      filePath: null,
+      rankingDate: 'none',
+      ageInDays: null,
+      stale: true,
+      statusNote: 'stale ranking, default ladder',
+      ranking: null,
+    };
+  }
+
+  const candidates = fs
+    .readdirSync(rankingsDir)
+    .map((name) => {
+      const m = name.match(RANKING_FILENAME_REGEX);
+      return m ? { name, dateStr: m[1] } : null;
+    })
+    .filter((item): item is { name: string; dateStr: string } => Boolean(item))
+    .sort((a, b) => b.dateStr.localeCompare(a.dateStr));
+
+  if (candidates.length === 0) {
+    return {
+      filePath: null,
+      rankingDate: 'none',
+      ageInDays: null,
+      stale: true,
+      statusNote: 'stale ranking, default ladder',
+      ranking: null,
+    };
+  }
+
+  const newest = candidates[0];
+  const fullPath = path.join(rankingsDir, newest.name);
+  const parsed = JSON.parse(fs.readFileSync(fullPath, 'utf8')) as WeeklyRankingFile;
+  const effectiveDateStr = parsed.date || newest.dateStr;
+
+  const rankingUtcMs = parseIsoDateToUtcMidnightMs(effectiveDateStr);
+  const nowUtcMs = normalizeNowToUtcMidnightMs(now);
+
+  if (rankingUtcMs === null) {
+    return {
+      filePath: fullPath,
+      rankingDate: effectiveDateStr,
+      ageInDays: null,
+      stale: true,
+      statusNote: 'stale ranking, default ladder',
+      ranking: parsed,
+    };
+  }
+
+  const ageInDays = Math.floor((nowUtcMs - rankingUtcMs) / 86_400_000);
+  // Older than seven days (> 7) is stale; 6 days and 7 days are within the 7-day window.
+  const stale = ageInDays > 7;
+
+  return {
+    filePath: fullPath,
+    rankingDate: effectiveDateStr,
+    ageInDays,
+    stale,
+    statusNote: stale ? 'stale ranking, default ladder' : 'fresh ranking',
+    ranking: parsed,
+  };
+}
+
+// ============================================================================
+// 4. SECRET REDACTION & DECISION LOGGING (ops/router/decisions.log)
+// ============================================================================
+
+export interface ColdLaneInfo {
+  lane: string;
+  quotaGroup: string;
+  markedAt: string;
+  until: string;
+  hours: number;
+  reason: string;
+}
+
+export interface DecisionRecord {
+  timestamp: string;
+  task_hash: string;
+  taskHash: string;
+  job_class: JevJobClass;
+  jobClass: JevJobClass;
+  lane: string;
+  node: string;
+  harness: string;
+  headless: boolean;
+  post_gate: 'eyes' | null;
+  reason: string;
+  ranking_date: string;
+  rankingDateUsed: string;
+  ranking_status: 'fresh ranking' | 'stale ranking, default ladder';
+  stale_ranking: boolean;
+  quota_fallback: boolean;
+  cold_lanes: Record<string, { until: string; hours: number; quotaGroup: string; reason: string }>;
+  coldLaneState: Record<string, { until: string; hours: number; quotaGroup: string; reason: string }>;
+}
+
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Ensures nothing secret, no Windows user folder name, and no private LAN IP ever enters decisions.log.
+ */
+export function sanitizeDecisionLogText(text: string, extraSecrets: string[] = []): string {
+  let out = text;
+
+  for (const s of extraSecrets) {
+    if (s && s.length >= 6) {
+      out = out.split(s).join('[REDACTED:XXXX]');
+    }
+  }
+
+  // Redact environment values for secret-like keys if present in process.env
+  for (const [k, v] of Object.entries(process.env)) {
+    if (v && v.length >= 6 && /KEY|TOKEN|SECRET|PASSWORD|PASS|CREDENTIAL|AUTH/i.test(k)) {
+      out = out.split(v).join('[REDACTED:XXXX]');
+    }
+  }
+
+  // Replace Windows user profile paths with %USERPROFILE%
+  const home = os.homedir();
+  if (home) {
+    for (const variant of [home, home.replace(/\\/g, '/')]) {
+      out = out.replace(new RegExp(escapeRegExp(variant), 'gi'), '%USERPROFILE%');
+    }
+  }
+  out = out.replace(/[A-Za-z]:[\\/]{1,2}[U]sers[\\/]{1,2}[^\\/\s"'`]+/g, '%USERPROFILE%');
+
+  // Redact private LAN IPv4 addresses
+  out = out.replace(
+    /\b(?:192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})\b/g,
+    '[REDACTED:XXXX]'
+  );
+
+  // Redact common API key / token patterns
+  out = out.replace(
+    /\b(?:sk-[A-Za-z0-9_-]{8,}|AIza[A-Za-z0-9_-]{10,}|ghp_[A-Za-z0-9]{10,}|github_pat_[A-Za-z0-9_]{10,}|xox[baprs]-[A-Za-z0-9-]{8,}|Bearer\s+[A-Za-z0-9._~+/=-]{8,})\b/g,
+    '[REDACTED:XXXX]'
+  );
+  out = out.replace(
+    /\b(api[_-]?key|token|secret|password|passwd)\s*([:=])\s*([^\s,;'"`]+)/gi,
+    '$1$2[REDACTED:XXXX]'
+  );
+
+  return out;
+}
+
+export function hashTaskDescription(taskDescription: string): string {
+  return crypto.createHash('sha256').update(taskDescription, 'utf8').digest('hex').slice(0, 16);
+}
+
+// ============================================================================
+// 5. JEV ROUTER STATE & EXECUTION ENGINE
+// ============================================================================
+
+export interface RouteJevTaskOptions {
+  now?: Date;
+  files?: string[];
+  screenshotRequired?: boolean;
+  lanesPath?: string;
+  rankingsDir?: string;
+  decisionsLogPath?: string;
+  /** Optional explicit jobClass override to test guard rules such as never sending route to judge. */
+  requestedTargetLane?: string;
+  /** Optional inline quota/429 error report before routing this task. */
+  quotaError?: {
+    lane: string;
+    error?: string | Error | { hours?: number; message?: string; status?: number };
+  };
+  extraSecretsToRedact?: string[];
+}
+
+export class JevRouter {
+  private readonly coldLanes = new Map<string, ColdLaneInfo>();
+  private readonly lanesPath: string;
+  private readonly rankingsDir: string;
+  private readonly decisionsLogPath: string;
+
+  constructor(config?: {
+    lanesPath?: string;
+    rankingsDir?: string;
+    decisionsLogPath?: string;
+  }) {
+    this.lanesPath = config?.lanesPath ?? DEFAULT_LANES_PATH;
+    this.rankingsDir = config?.rankingsDir ?? DEFAULT_RANKINGS_DIR;
+    this.decisionsLogPath = config?.decisionsLogPath ?? DEFAULT_DECISIONS_LOG_PATH;
+  }
+
+  /**
+   * Marks a lane cold when a quota or 429 error is reported.
+   * Because Claude models inside agy share one quota separate from Gemini models,
+   * reporting a quota/429 error on any Claude lane in agy marks all Claude lanes in agy cold.
+   */
+  public reportQuotaError(
+    lane: string,
+    errorInput?: string | Error | { hours?: number; retryAfterHours?: number; message?: string; status?: number },
+    now: Date = new Date()
+  ): { affectedLanes: string[]; hours: number; until: string; quotaGroup: string } {
+    const table = loadLaneTable(this.lanesPath);
+    const hours = parseQuotaCooldownHours(errorInput, table.defaultCooldownHours ?? 24);
+    const untilDate = new Date(now.getTime() + hours * 3_600_000);
+    const markedAt = now.toISOString();
+    const until = untilDate.toISOString();
+
+    const rawReason =
+      typeof errorInput === 'string'
+        ? errorInput
+        : errorInput instanceof Error
+          ? errorInput.message
+          : errorInput?.message ?? `HTTP 429 quota cooldown (${hours}h)`;
+    const cleanReason = sanitizeDecisionLogText(rawReason);
+
+    // Determine whether this lane belongs to the shared agy-claude quota group
+    const agyClaudeGroup = table.quotaGroups?.['agy-claude'];
+    const isSharedAgyClaude =
+      agyClaudeGroup?.sharedQuota && agyClaudeGroup.lanes.includes(lane);
+
+    const affectedLanes = isSharedAgyClaude ? [...agyClaudeGroup.lanes] : [lane];
+    const quotaGroup = isSharedAgyClaude ? 'agy-claude' : this.findQuotaGroupForLane(table, lane);
+
+    for (const targetLane of affectedLanes) {
+      this.coldLanes.set(targetLane, {
+        lane: targetLane,
+        quotaGroup,
+        markedAt,
+        until,
+        hours,
+        reason: cleanReason,
+      });
+    }
+
+    return { affectedLanes, hours, until, quotaGroup };
+  }
+
+  private findQuotaGroupForLane(table: LaneTable, lane: string): string {
+    for (const [groupName, group] of Object.entries(table.quotaGroups ?? {})) {
+      if (group.lanes.includes(lane)) return groupName;
+    }
+    for (const row of Object.values(table.lanes)) {
+      if (row.lane === lane) return row.quotaGroup;
+    }
+    return 'default';
+  }
+
+  public clearColdLanes(): void {
+    this.coldLanes.clear();
+  }
+
+  public getActiveColdLanes(
+    now: Date = new Date()
+  ): Record<string, { until: string; hours: number; quotaGroup: string; reason: string }> {
+    const active: Record<string, { until: string; hours: number; quotaGroup: string; reason: string }> = {};
+    const nowMs = now.getTime();
+    for (const [lane, info] of this.coldLanes.entries()) {
+      if (Date.parse(info.until) > nowMs) {
+        active[lane] = {
+          until: info.until,
+          hours: info.hours,
+          quotaGroup: info.quotaGroup,
+          reason: info.reason,
+        };
+      } else {
+        this.coldLanes.delete(lane);
+      }
+    }
+    return active;
+  }
+
+  public isLaneCold(lane: string, now: Date = new Date()): boolean {
+    const active = this.getActiveColdLanes(now);
+    return Boolean(active[lane]);
+  }
+
+  public route(taskDescription: string, options?: RouteJevTaskOptions): DecisionRecord {
+    const now = options?.now ?? new Date();
+    const lanesPath = options?.lanesPath ?? this.lanesPath;
+    const rankingsDir = options?.rankingsDir ?? this.rankingsDir;
+    const decisionsLogPath = options?.decisionsLogPath ?? this.decisionsLogPath;
+
+    if (options?.quotaError) {
+      this.reportQuotaError(options.quotaError.lane, options.quotaError.error, now);
+    }
+
+    const table = loadLaneTable(lanesPath);
+    const profile = profileTask(taskDescription, {
+      files: options?.files,
+      screenshotRequired: options?.screenshotRequired,
+    });
+    const jobClass = profile.jobClass;
+    const row = table.lanes[jobClass];
+
+    const rankingEval = loadNewestWeeklyRanking(rankingsDir, now);
+    const activeColdLanes = this.getActiveColdLanes(now);
+
+    // Determine candidate primary lane from weekly ranking if fresh, otherwise from lanes.json
+    let candidateLane = row.lane;
+    const reasonParts: string[] = [profile.reason];
+
+    if (!rankingEval.stale && rankingEval.ranking?.classes?.[jobClass]?.lane) {
+      const rankedEntry = rankingEval.ranking.classes[jobClass]!;
+      candidateLane = rankedEntry.lane;
+      reasonParts.push(`Weekly ranking ${rankingEval.rankingDate} selected ${candidateLane}.`);
+    } else if (rankingEval.stale) {
+      candidateLane = row.lane;
+      reasonParts.push('stale ranking, default ladder.');
+    }
+
+    // Enforce the rule that judge never receives a route task (or the router's own routing decisions)
+    if (
+      jobClass === 'route' &&
+      (candidateLane === 'fable' ||
+        options?.requestedTargetLane === 'fable' ||
+        options?.requestedTargetLane === 'judge')
+    ) {
+      candidateLane = row.lane; // gemini-3.8-flash in agy
+      reasonParts.push(
+        'Guard enforced: judge (fable on signed-in Claude Code) never receives a route task or the router own routing decisions.'
+      );
+    }
+
+    // Enforce youtube-upload is never a model and always private YouTube Data API
+    if (jobClass === 'youtube-upload') {
+      candidateLane = 'youtube-data-api';
+    }
+
+    // Enforce research uses official lanes only (claude-opus-5-5 or gemini-4-argon in agy)
+    if (jobClass === 'research' && !['claude-opus-5-5', 'gemini-4-argon'].includes(candidateLane)) {
+      candidateLane = row.lane;
+      reasonParts.push('Guard enforced: research uses official Opus or Argon lanes only.');
+    }
+
+    // Check cold-lane state and quota fallback rule
+    let selectedLane = candidateLane;
+    let quotaFallbackUsed = false;
+    const coldInfo = activeColdLanes[candidateLane];
+
+    if (coldInfo) {
+      quotaFallbackUsed = true;
+      let fallbackLane = row.fallback;
+
+      // Tonight's fact: Claude models inside agy share one quota separate from Gemini models,
+      // so a Claude fallback is always a Gemini lane and never another Claude lane in agy.
+      if (isAgyClaudeLane(candidateLane, row.harness) && !isGeminiLane(fallbackLane)) {
+        fallbackLane = 'gemini-4-argon';
+      }
+
+      selectedLane = fallbackLane;
+      reasonParts.push(
+        `Quota fallback: ${candidateLane} (${coldInfo.quotaGroup}) is cold for ${coldInfo.hours}h until ${coldInfo.until}, routed to fallback ${selectedLane}.`
+      );
+    }
+
+    if (row.postGate === 'eyes') {
+      reasonParts.push('Followed by mandatory Eyes gate.');
+    }
+
+    const sanitizedReason = sanitizeDecisionLogText(
+      reasonParts.join(' '),
+      options?.extraSecretsToRedact
+    );
+    const taskHash = hashTaskDescription(taskDescription);
+    const rankingDateUsed = rankingEval.stale
+      ? `${rankingEval.rankingDate} (stale ranking, default ladder)`
+      : rankingEval.rankingDate;
+
+    const sanitizedColdLanes: Record<
+      string,
+      { until: string; hours: number; quotaGroup: string; reason: string }
+    > = {};
+    for (const [k, v] of Object.entries(activeColdLanes)) {
+      sanitizedColdLanes[k] = {
+        until: v.until,
+        hours: v.hours,
+        quotaGroup: v.quotaGroup,
+        reason: sanitizeDecisionLogText(v.reason, options?.extraSecretsToRedact),
+      };
+    }
+
+    const decision: DecisionRecord = {
+      timestamp: now.toISOString(),
+      task_hash: taskHash,
+      taskHash,
+      job_class: jobClass,
+      jobClass,
+      lane: selectedLane,
+      node: row.node,
+      harness: row.harness,
+      headless: row.headless,
+      post_gate: row.postGate,
+      reason: sanitizedReason,
+      ranking_date: rankingDateUsed,
+      rankingDateUsed,
+      ranking_status: rankingEval.statusNote,
+      stale_ranking: rankingEval.stale,
+      quota_fallback: quotaFallbackUsed,
+      cold_lanes: sanitizedColdLanes,
+      coldLaneState: sanitizedColdLanes,
+    };
+
+    appendDecisionRecord(decision, decisionsLogPath, options?.extraSecretsToRedact);
+    return decision;
+  }
+}
+
+export function appendDecisionRecord(
+  record: DecisionRecord,
+  decisionsLogPath: string = DEFAULT_DECISIONS_LOG_PATH,
+  extraSecrets: string[] = []
+): void {
+  const dir = path.dirname(decisionsLogPath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  const serialized = sanitizeDecisionLogText(JSON.stringify(record), extraSecrets);
+  fs.appendFileSync(decisionsLogPath, `${serialized}\n`, 'utf8');
+}
+
+export function readDecisionLog(
+  decisionsLogPath: string = DEFAULT_DECISIONS_LOG_PATH
+): DecisionRecord[] {
+  if (!fs.existsSync(decisionsLogPath)) return [];
+  const lines = fs
+    .readFileSync(decisionsLogPath, 'utf8')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return lines.map((line) => JSON.parse(line) as DecisionRecord);
+}
+
+const defaultJevRouter = new JevRouter();
+
+export function routeJevTask(
+  taskDescription: string,
+  options?: RouteJevTaskOptions
+): DecisionRecord {
+  return defaultJevRouter.route(taskDescription, options);
+}
+
+export function reportLaneQuotaError(
+  lane: string,
+  errorInput?: string | Error | { hours?: number; retryAfterHours?: number; message?: string; status?: number },
+  now?: Date
+): { affectedLanes: string[]; hours: number; until: string; quotaGroup: string } {
+  return defaultJevRouter.reportQuotaError(lane, errorInput, now);
+}
+
+export function clearColdLanes(): void {
+  defaultJevRouter.clearColdLanes();
+}
+
+export function getColdLaneState(
+  now?: Date
+): Record<string, { until: string; hours: number; quotaGroup: string; reason: string }> {
+  return defaultJevRouter.getActiveColdLanes(now);
+}
+
+// ============================================================================
+// EXISTING CLEAN-ROOM GAME STUDIO ROLES (:8082 ISOLATION) & LEGACY ROUTER
 // ============================================================================
 
 export type DreamTaskCategory =
