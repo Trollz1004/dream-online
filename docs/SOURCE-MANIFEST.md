@@ -31,6 +31,8 @@ Per directive section 47: every source gets one classification — CANON, ACTIVE
 | docs/ALIENWARE-NODE-STATE-2026-09-19.md | REFERENCE | Signed node state record; verify its SHA-256 anchor before relying on it |
 | ops/node/ | ACTIVE_DESIGN | Alienware node operations; edited by the Claude judge lane only |
 | specs/, .specify/ | ACTIVE_DESIGN | Spec Kit specs and constitution |
+| docs/house/ | ACTIVE_DESIGN | DREAM Space design system, site inventory, and `dream-online.net` brief |
+| sites/dream-online-net/ | ACTIVE_DESIGN | Clean-room `dream-online.net` React + Vite front-facing site (`react` MIT, `react-dom` MIT, `vite` MIT, `@vitejs/plugin-react` MIT, `typescript` Apache-2.0; all motions and 3D dot-sphere implemented in-house under MIT) |
 | paperclip-tro/ (ignored, local) | CANON for `projects/PROJECT-2-DREAM-ONLINE.md`, DEPRECATED for the rest | Full canon document; the other files describe the parked Paperclip setup |
 | opencode/ (ignored, local) | REFERENCE | OpenCode provider and model config |
 | references/_unreviewed/ (ignored, local) | REFERENCE, DEPRECATED for `early-gdd-2026-07-08/` | Folded in on 2026-09-19; not yet checked as public-safe |
