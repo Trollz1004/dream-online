@@ -10,19 +10,19 @@ description: "Task list for the slice demo hosted from the cloud"
 
 **Tests**: the slice's existing headless suite is the merge gate; the headless-Chromium screenshot in Phase 5 below is the publish gate this feature adds.
 
-**Organization**: tasks are grouped by user story, in the same fetch/import/export/verify/publish order as `.github/workflows/godot-slice.yml`, so each story is independently demonstrable.
+**Organization**: tasks are grouped by user story, aligned with `.github/workflows/engine-suite.yml` (the in-house DREAM Engine suite), so each story is independently demonstrable.
 
 ## Phase 1: Setup
 
-- [ ] T001 Confirm the current `main` commit's headless suite still reads 789 of 789 (`game/godot/DreamSlice/tests/run_tests.gd`) before building anything meant to be published.
-- [ ] T002 Fetch the Godot 4.7.2 Linux headless binary the same way `.github/workflows/godot-slice.yml` already does.
-- [ ] T003 [P] Run `.github/scripts/fetch_web_template.py`, which fetches by HTTP byte range only the `web_nothreads_release.zip` member of `Godot_v4.7.2-stable_export_templates.tpz` from the official GitHub release, places it at `~/.local/share/godot/export_templates/4.7.2.stable/`, and writes a `version.txt` beside it.
+- [ ] T001 Confirm the current `main` commit's in-house DREAM Engine headless suite (`npm run lint` and `npm test` via `.github/workflows/engine-suite.yml`) passes before building anything meant to be published.
+- [ ] T002 Prepare the headless build environment aligned with `.github/workflows/engine-suite.yml`.
+- [ ] T003 [P] For the retired reference-slice export, run `.github/scripts/fetch_web_template.py`, which fetches by HTTP byte range only the `web_nothreads_release.zip` member and writes a `version.txt` beside it (the active in-house DREAM Engine in `src/engine/` needs no third-party template).
 
 ## Phase 2: Foundational
 
 **⚠️ Blocking**: no export can happen until this phase is done.
 
-- [ ] T004 Run `--headless --path game/godot/DreamSlice --import` on a fresh checkout so the "Web" preset has a current import cache.
+- [ ] T004 Prepare the clean checkout for the in-house DREAM Engine (`src/engine/`) web build.
 - [ ] T005 Confirm `export_presets.cfg`'s "Web" preset still sets `variant/thread_support=false` and both extension options off, so the export needs no cross-origin-isolation headers.
 
 **Checkpoint**: the project is fetched, templated and imported; export can begin.
@@ -47,7 +47,7 @@ description: "Task list for the slice demo hosted from the cloud"
 
 **Independent Test**: merge a trivial change to `main` and confirm the hosted URL's label now reads the new commit hash, with no manual export step.
 
-- [ ] T011 [US2] Create `.github/workflows/demo-pages.yml`, triggered on a push to `main` that touches `game/godot/**` and on `workflow_dispatch`, with a job that runs only after the headless-suite check passes.
+- [ ] T011 [US2] Create `.github/workflows/demo-pages.yml`, triggered on a push to `main` and on `workflow_dispatch`, with a job that runs only after the in-house DREAM Engine headless-suite check (`.github/workflows/engine-suite.yml`) passes.
 - [ ] T012 [US2] In that workflow, call `.github/scripts/fetch_web_template.py` as its own step (T003's logic), so it never downloads the full 1.28 GB archive.
 - [ ] T013 [US2] In that workflow, run the import, export and `.github/scripts/stamp_demo.py` steps (T004, T006, T007) so every automated build carries the commit it was built from.
 - [ ] T014 [US2] In that workflow, deploy `build/web` to GitHub Pages (`enablement: true`) so it publishes at `https://trollz1004.github.io/dream-online/`, gated on the headless-suite check's success so a red suite never republishes; if the workflow's token lacks the Pages right, Joshua enables it once at Settings, Pages, Source: GitHub Actions.

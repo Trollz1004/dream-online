@@ -1,12 +1,11 @@
 name: Demo on GitHub Pages
 
-# Spec 004 (specs/004-cloud-demo): the real combat slice, exported with the
-# repo's single-threaded "Web" preset, published to GitHub Pages on every merge
-# to main so the hosted demo never lags the merge gate. The build steps are the
-# same as .github/workflows/godot-slice.yml plus the export template, which is
-# read out of the official 1.28 GB archive by HTTP byte range (tens of MB) and
-# never vendored into the repository. The page is stamped with the commit hash
-# and the statement that it is the real slice, not enhanced footage.
+# Spec 004 (specs/004-cloud-demo): the active engine and demo run on the
+# in-house DREAM Engine (src/engine/), whose required check on main is
+# .github/workflows/engine-suite.yml. The steps below are retained from the
+# retired reference-slice Web export, which read the export template out of the
+# archive by HTTP byte range (tens of MB) without vendoring it into the
+# repository and stamped the page with the commit hash.
 
 on:
   push:

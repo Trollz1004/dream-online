@@ -29,7 +29,7 @@ service may take their ports (identity strings are in
 | `9150` | The older JARVIS HUD copy in the stack (optional) | `/health` contains `airi-dashboard` |
 | `3000` | Crosslisting OS (optional, not game work; Obsidian may also answer on `127.0.0.1:3000`) | `/` contains `<div id="root">` |
 | `27123` | Obsidian Local REST API (the game vault's MCP handshake) | answers `initialize` as `obsidian-local-rest-api` |
-| `8099` | The combat slice's browser build, only while `game\godot\Serve-DreamSlice-Web.cmd` runs | serves `build\web` |
+| `8099` | Retired reference-slice web server; the active engine and combat slice run on the in-house DREAM Engine on `9180` | serves `build\web` |
 
 `20128` (OmniRoute) lives on the T5500; nothing on this
 node serves it and nothing here should. The engine uses `9180`.

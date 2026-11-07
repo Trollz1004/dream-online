@@ -26,7 +26,7 @@ budget overall.
 - License: CC0 1.0
 - Files: `textures/ground/aerial_grass_rock_diff_1k.jpg` (albedo),
   `textures/ground/aerial_grass_rock_nor_gl_1k.jpg` (OpenGL-convention normal
-  map, matches Godot), `textures/ground/aerial_grass_rock_rough_1k.jpg`
+  map, matches the in-house DREAM Engine), `textures/ground/aerial_grass_rock_rough_1k.jpg`
   (roughness)
 - Used for: the Day Dream field's PBR ground material (`scripts/dream_env.gd`)
 
@@ -38,8 +38,8 @@ budget overall.
 - Files: `textures/rock/rock_face_03_diff_1k.jpg` (albedo),
   `textures/rock/rock_face_03_nor_gl_1k.jpg` (normal),
   `textures/rock/rock_face_03_arm_1k.jpg` (packed AO/roughness/metallic --
-  Poly Haven's "arm" map, R=AO, G=roughness, B=metallic, read with Godot's
-  `ORMMaterial3D`)
+  Poly Haven's "arm" map, R=AO, G=roughness, B=metallic, read by the in-house
+  DREAM Engine PBR material pipeline)
 - Used for: scattered rocks, dry-stone walls and cottage/ruin stone facing in
   the Day Dream field
 
@@ -68,8 +68,8 @@ budget overall.
 ## Sky
 
 The Day Dream sky's clouds (`_build_sky_clouds` in `scripts/dream_env.gd`) are
-generated at runtime from Godot's own built-in `FastNoiseLite` and
-`NoiseTexture2D` -- no downloaded image. A Poly Haven HDRI
+generated at runtime by the in-house DREAM Engine procedural noise sky pass --
+no downloaded image. A Poly Haven HDRI
 (`kloofendal_48d_partly_cloudy`) was evaluated as the sky background itself
 but not used: swapping the whole sky out from under the hand-tuned
 `ProceduralSkyMaterial` gradient (many judge-review passes recorded in this
@@ -169,11 +169,10 @@ click-through.
   its imported mesh, not assumed) and given a random yaw, so the same three
   meshes never repeat identically.
 - Import note: each file's glTF import is set to embed its own textures
-  (`gltf/embedded_image_handling=3`) rather than the importer's default of
-  extracting them as separate loose files in this folder — the textures are
-  already inside the `.glb` on disk; extracting them a second time would
-  only double the committed size for no benefit, since the extracted copies
-  never leave `.godot/imported/`'s own gitignored cache anyway once embedded.
+  (`gltf/embedded_image_handling=3`) rather than extracting them as separate
+  loose files in this folder — the textures are already inside the `.glb` on
+  disk; extracting them a second time would only double the committed size for
+  no benefit in the in-house DREAM Engine asset pipeline.
 - Size: 2.60 MB (`DeadTree.glb`) + 3.08 MB (`TwistedTree.glb`) + 2.54 MB
   (`CommonTree.glb`) = 8.22 MB.
 
@@ -204,7 +203,7 @@ click-through.
   `_load_ruin_piece` for exactly how a piece's real-world size and pivot were
   confirmed against the imported scene rather than assumed from the raw
   glTF's own per-node scale (several pieces carry a non-uniform scale there
-  that Godot's own importer resolves correctly).
+  that the in-house DREAM Engine glTF loader resolves).
 - Import note: embedded-texture handling set the same way as the tree
   models above (`gltf/embedded_image_handling=3`), for the same reason.
 - Size: 7.97 MB.

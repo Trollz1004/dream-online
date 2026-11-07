@@ -16,7 +16,7 @@ Joshua opens a single web link, on any device, and plays the real combat slice i
 
 **Why this priority**: without a working link there is no hosted demo, only a plan for one. Stories 2 and 3 exist only to keep this link honest and current.
 
-**Independent Test**: on a machine with no repository checkout and no Godot installed, open the published URL and play a short movement-and-combat pass; the label and commit hash must already be visible in the first rendered frame.
+**Independent Test**: on a machine with no repository checkout and no third-party engine installed, open the published in-house DREAM Engine URL and play a short movement-and-combat pass; the label and commit hash must already be visible in the first rendered frame.
 
 **Acceptance Scenarios**:
 
@@ -26,7 +26,7 @@ Joshua opens a single web link, on any device, and plays the real combat slice i
 
 ### User Story 2 - every merge to main can republish the demo (Priority: P2)
 
-Once a change lands on `main`, the hosted demo can be rebuilt from the same fetch, import and export steps `.github/workflows/godot-slice.yml` already runs for the test suite, so the hosted build never lags behind what the merge gate has already verified.
+Once a change lands on `main`, the hosted demo is gated by `.github/workflows/engine-suite.yml` (the in-house DREAM Engine headless suite), so the hosted build never lags behind what the merge gate has already verified.
 
 **Why this priority**: it keeps story 1's link honest over time without a person re-running the export by hand after every merge.
 
@@ -64,13 +64,13 @@ After each publish, the judge lane loads the hosted URL in a headless browser to
 
 - **FR-001**: The hosted page MUST serve the existing single-threaded "Web" export preset's output exactly as the slice's own export step produces it, with no gameplay, cosmetic or difficulty change made only for the hosted copy.
 - **FR-002**: The page MUST show, at or before the first rendered frame, a label stating this is the real slice build and the git commit hash it was exported from.
-- **FR-003**: The web export template (`web_nothreads_release.zip`, inside Godot's official 1.28 GB `Godot_v4.7.2-stable_export_templates.tpz`) MUST be fetched by HTTP byte range for only that member, at build time, and MUST NOT be committed into the repository.
+- **FR-003**: The in-house DREAM Engine (`src/engine/`) requires no third-party engine export template; any retired reference-slice archive member (`web_nothreads_release.zip`) MUST be fetched by HTTP byte range for only that member, at build time, and MUST NOT be committed into the repository.
 - **FR-004**: The browser build output (`build/`) MUST stay git-ignored, matching the rule already in place for the slice.
 - **FR-005**: Hosting MUST be a plain static host needing no cross-origin-isolation headers, matching the single-threaded export. GitHub Pages, published by `.github/workflows/demo-pages.yml`, is the host used, at `https://trollz1004.github.io/dream-online/`; the container's Vercel connector cannot carry the exported files (see Assumptions), so it and any other static host stay a later option, servable from the same build with no code change.
 - **FR-006**: The system MUST NOT collect or transmit analytics that identify individual players; the only on-screen telemetry is the frames-per-second line the readout already prints.
 - **FR-007**: The hosted demo MUST show only what `STATE.md` records as already built in the slice; it adds no feature that is not already real.
 - **FR-008**: No secret, provider token or credential MAY appear in the repository, the build output, or the hosting configuration.
-- **FR-009**: Republishing (User Story 2) MUST reuse the same fetch, import and export steps `.github/workflows/godot-slice.yml` already runs, so the hosted build never diverges from what the merge gate verified.
+- **FR-009**: Republishing (User Story 2) MUST be gated by `.github/workflows/engine-suite.yml` (the in-house DREAM Engine headless suite), so the hosted build never diverges from what the merge gate verified.
 - **FR-010**: Each publish (User Story 3) MUST be verified by a headless-browser screenshot proving the page boots with a clean console, plus a frame-rate reading taken on real hardware, both recorded in `ops/node/JOURNAL.md` with the URL, the commit hash, the screenshot's location and the frame-rate reading.
 
 ### Key Entities

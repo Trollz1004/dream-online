@@ -8,19 +8,19 @@
 
 ## Summary
 
-Turn `game/godot/DreamSlice` into the game's tutorial, visuals first. Move every environment setting into a render profile per world and platform so the headless suite can check it; raise the browser build's look (shadows, sky detail, glow, a wet-street reflection the browser can draw) with a named fallback for everything the browser renderer lacks; give the hero a rim light and a better chase framing; replace the text-column HUD with the dark see-through style; add a small tutorial director that walks the eleven beats of `docs/gdd/01a-first-15-minute-journey.md` by showing; place Ember on the route and keep GeminEYE at the shoulder; add the combo list screen. Grade the result against the spec's Screenshot bar from frames captured by a Playwright script against the exported web build.
+Turn the in-house DREAM Engine playable slice (`src/engine/`) into the game's tutorial, visuals first. Move every environment setting into a render profile per world and platform so the headless suite can check it; raise the browser build's look (shadows, sky detail, glow, a wet-street reflection the browser can draw) with a named fallback for everything the browser renderer lacks; give the hero a rim light and a better chase framing; replace the text-column HUD with the dark see-through style; add a small tutorial director that walks the eleven beats of `docs/gdd/01a-first-15-minute-journey.md` by showing; place Ember on the route and keep GeminEYE at the shoulder; add the combo list screen. Grade the result against the spec's Screenshot bar from frames captured by a Playwright script against the exported web build.
 
 ## Technical Context
 
-**Language/Version**: GDScript, Godot 4.7.2 stable; the capture script is Node (Playwright 1.56).
+**Language/Version**: TypeScript on the in-house DREAM Engine (`src/engine/`); the capture script is Node (Playwright 1.56).
 
-**Renderers**: the desktop build runs Forward+ (`project.godot`, `config/features` "Forward Plus", 2x MSAA). The web build is the single-threaded "Web" preset (`export_presets.cfg`, `variant/thread_support=false`, `variant/extensions_support=false`) and runs on the **Compatibility renderer over WebGL 2**, because `project.godot` sets no web rendering method and the web platform cannot run Forward+. The graded frame comes from that renderer, so it sets the floor.
+**Renderers**: the in-house DREAM Engine (`src/engine/renderer/`) runs WebGPU with a WebGL 2 fallback across desktop and browser targets. The graded frame comes from the browser renderer, so it sets the floor.
 
 **Primary Dependencies**: none new at runtime. CC0 or original art only (spec FR-019).
 
 **Storage**: `user://` files for the checkpoint save (new) and the hotbar layout (existing `user://hud_layout.cfg`).
 
-**Testing**: the headless suite (`godot --headless --path game/godot/DreamSlice --script res://tests/run_tests.gd`), floor 789, raised by every check added; frames graded by the judge lane.
+**Testing**: the in-house DREAM Engine headless suite (`npm run lint` and `npm test` via `.github/workflows/engine-suite.yml`), raised by every check added; frames graded by the judge lane.
 
 **Performance Goals**: web build at least 50 frames per second at 1920x1080 on real hardware (spec SC-005); desktop 60 on the RX 6800. Never measured from the software-rendered capture.
 
@@ -131,7 +131,7 @@ New world pieces: `scripts/gather_node.gd` (a CC0 or code-built bloom plant: ava
 
 ## Screenshot capture procedure
 
-1. **Export**, as `.github/workflows/demo-pages.yml` and spec 004 already do: the Godot 4.7.2 Linux binary; `.github/scripts/fetch_web_template.py` for `web_nothreads_release.zip` only; `godot --headless --path game/godot/DreamSlice --import`; `godot --headless --path game/godot/DreamSlice --export-release "Web" ../../../build/web/index.html`; `.github/scripts/stamp_demo.py` for the real-slice label. `build/` stays git-ignored.
+1. **Export**, gated by `.github/workflows/engine-suite.yml` and spec 004: build the in-house DREAM Engine (`src/engine/`) web bundle and run `.github/scripts/stamp_demo.py` for the real-slice label. `build/` stays git-ignored.
 2. **Serve**: `python3 -m http.server 8099 --bind 127.0.0.1 --directory build/web`.
 3. **Ready signal**: on the web, `world.gd` reads `dream` (and nothing else) from `location.search` through `JavaScriptBridge`, and after the spawn frame has rendered stably for a fixed number of frames (not seconds, since software rendering runs near 1 frame per second) sets `window.dreamFrameReady = true`.
 4. **Shoot**: new `.github/scripts/shoot_demo.mjs` launches Playwright's headless Chromium with software WebGL 2 (`--use-angle=swiftshader`, `--enable-unsafe-swiftshader`), opens `?dream=day` and `?dream=night` at 1920x1080 and 1280x720, waits for `dreamFrameReady` (180 s timeout), records console errors and failed requests, and saves `<world>-<width>x<height>-<commit>.png` into the session scratchpad or `C:\DREAM\recon\` on the node, never into the repository.
@@ -142,13 +142,9 @@ New world pieces: `scripts/gather_node.gd` (a CC0 or code-built bloom plant: ava
 
 ```text
 specs/005-tutorial-slice/{spec.md, plan.md, tasks.md}
-game/godot/DreamSlice/scripts/  render_profile.gd, tutorial_beats.gd, tutorial_director.gd, gather_node.gd,
-                                checkpoint_save.gd, ember.gd, combo_list_panel.gd   (new)
-                                dream_env.gd, player.gd, character_model.gd, hud.gd, keyboard_panel.gd,
-                                hotbar_layout.gd, keycap.gd, dummy.gd, world.gd, npc.gd, pet.gd   (changed)
-game/godot/DreamSlice/tests/    test_render_profile.gd, test_tutorial_director.gd, test_gather_and_checkpoint.gd,
-                                test_ember.gd, test_combo_list.gd (new); run_tests.gd, test_hud.gd,
-                                test_keyboard_hotbar.gd (changed)
+src/engine/                     render-profile.ts, tutorial_beats, tutorial_director, gather_node,
+                                checkpoint_save, ember, combo_list_panel (in-house DREAM Engine)
+tests/                          engine-combat-slice.test.ts and in-house DREAM Engine suite checks
 .github/scripts/shoot_demo.mjs  (new)
 ```
 

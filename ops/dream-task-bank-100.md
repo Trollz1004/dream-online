@@ -1,7 +1,7 @@
 # Dream ONLINE Task Bank - 100 Pullable Tasks
 
-Status note (2026-09-26): the engine is built in-house, so every "after Unreal install" gate
-below is void, and the Godot slice already covers tasks 30 and 40. Read TASKS.md and the
+Status note (2026-09-26): the engine is the in-house DREAM Engine (`src/engine/`), so every "after Unreal install" gate
+below is void, and the in-house DREAM Engine combat slice covers tasks 30 and 40. Read TASKS.md and the
 newest journal entry before taking anything from this bank.
 
 Purpose: keep Codex and Claude supplied with useful Dream ONLINE work without drifting into
@@ -66,7 +66,7 @@ Status tags:
 27. P0 Research - Research modern action-combat onboarding patterns without direct competitor labels.
 28. P0 Ready - Write enemy behavior spec for one starter enemy: idle, patrol, notice, attack, stagger, flee, reset.
 29. P0 Ready - Define PvE damage rules for early prototype: health, armor, poise, stagger, resist, recovery.
-30. P0 Done (Godot combat slice, game/godot/DreamSlice) - Implement first combat pawn.
+30. P0 Done (in-house DREAM Engine combat slice, src/engine/) - Implement first combat pawn.
 
 ## P0 - World And Level Design
 
@@ -79,7 +79,7 @@ Status tags:
 37. P0 Ready - Create day/night rules for first prototype: visual state, NPC behavior, enemy behavior, resource behavior.
 38. P0 Research - Research open-world streaming constraints for first prototype scale using official Unreal docs only.
 39. P0 Ready - Draft first World Partition plan for later Unreal work: grid types, always-loaded layer, gameplay actors.
-40. P0 Done (Godot slice zone with dummy, NPC and environments) - Build greybox first zone.
+40. P0 Done (in-house DREAM Engine slice zone with dummy, NPC and environments) - Build greybox first zone.
 
 ## P1 - Life Skills And Economy
 
@@ -212,7 +212,7 @@ Status tags:
 137. P1 Ready - Define character profile JSON: appearance, voice, starter path, life-skill interest, awakening preview, and entitlement-safe cosmetics.
 138. P1 Ready - Draft first character creation UX flow for keyboard/mouse and controller.
 139. P1 Ready - Define software install checklist for Unreal, Visual Studio C++, CMake, Git LFS, and optional art/audio tools.
-140. P1 Obsolete - Godot needs no compiler.
+140. P1 Obsolete - The in-house DREAM Engine (`src/engine/`) needs no C++ compiler.
 
 ## Pull Order Recommendation
 

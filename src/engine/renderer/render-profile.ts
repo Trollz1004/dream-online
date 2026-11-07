@@ -1,6 +1,6 @@
 /**
  * DREAM Engine — Render Profile System
- * Matches DREAM specification (game/godot/DreamSlice/scripts/render_profile.gd)
+ * Matches the in-house DREAM Engine render profile specification
  * One profile per world and per platform, with named fallbacks when a device cannot draw an effect.
  */
 
