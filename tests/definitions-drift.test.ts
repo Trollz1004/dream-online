@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import childProcess from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -11,7 +12,22 @@ export const HOUSE_MOTION_RULE_PATH = 'docs/house/HOUSE-MOTION-RULE.md';
 export const HOUSE_MOTION_RULE_HEADER =
   'Canonical copy. The drop box copy is the draft; this file is what lanes read.';
 export const HOUSE_MOTION_RULE_SHA256 =
-  'afc6b9cff3a209d4be5f03b0c50a3f2eb1ec9348dfe248f01524480a30b82735';
+  '823d60135160daa8f514e85622958063d3a8626eb3feffc1adeaaacc5f2c22e9';
+
+export const VENDORED_SKILL_FOLDERS: readonly string[] = [
+  '.agents/skills/hallmark',
+  '.agents/skills/impeccable',
+  '.agents/skills/security-audit',
+];
+
+export const VENDORED_UPSTREAM_FILES: readonly string[] = [
+  '.agents/skills/hallmark/SKILL.md',
+  '.agents/skills/hallmark/agents/openai.yaml',
+  '.agents/skills/impeccable/SKILL.md',
+  '.agents/skills/impeccable/agents/openai.yaml',
+  '.agents/skills/security-audit/SKILL.md',
+];
+
 
 export const DEFINITION_GLOBS: readonly string[] = [
   'AGENTS.md',
@@ -92,7 +108,7 @@ export function walkDefinitionFiles(
   globs: readonly string[] = DEFINITION_GLOBS,
 ): string[] {
   const regexes = globs.map(globToRegExp);
-  const matched: string[] = [];
+  const matched = new Set<string>();
 
   function visit(dir: string, relPrefix: string) {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -102,15 +118,24 @@ export function walkDefinitionFiles(
         visit(path.join(dir, entry.name), relPrefix ? `${relPrefix}/${entry.name}` : entry.name);
       } else if (entry.isFile()) {
         const rel = relPrefix ? `${relPrefix}/${entry.name}` : entry.name;
+        const inVF = VENDORED_SKILL_FOLDERS.some((vf) => rel.startsWith(vf + '/'));
+        if (inVF) {
+          if (rel.endsWith('/HOUSE-NOTE.md')) matched.add(rel);
+          continue;
+        }
         if (regexes.some((rx) => rx.test(rel))) {
-          matched.push(rel);
+          matched.add(rel);
         }
       }
     }
   }
 
   visit(rootDir, '');
-  return matched.sort();
+  for (const vf of VENDORED_SKILL_FOLDERS) {
+    const nr = vf + '/HOUSE-NOTE.md';
+    if (fs.existsSync(path.join(rootDir, nr))) matched.add(nr);
+  }
+  return Array.from(matched).sort();
 }
 
 export function computeNormalizedSha256(text: string): string {
@@ -195,6 +220,8 @@ test('silent edit to HOUSE-MOTION-RULE.md or missing pointer in a definition fil
 
   const errJson = checkDefinitionContent('skills-lock.json', '{"version": 1}');
   assert.ok(errJson && errJson.includes('skills-lock.json'));
+  const errNote = checkDefinitionContent('.agents/skills/hallmark/HOUSE-NOTE.md', '# Note\n');
+  assert.ok(errNote && errNote.includes('.agents/skills/hallmark/HOUSE-NOTE.md'));
 });
 
 test('every agent definition file matched by glob carries the house rule and pull-first pointers in its own format', () => {
@@ -209,4 +236,14 @@ test('every agent definition file matched by glob carries the house rule and pul
   }
 
   assert.deepEqual(failures, [], `Definition drift detected:\n${failures.join('\n')}`);
+});
+
+test('five vendored files are byte-identical to SOURCE-MANIFEST recorded upstream tree on origin/main', () => {
+  for (const rel of VENDORED_UPSTREAM_FILES) {
+    const fullPath = path.join(REPO_ROOT, rel);
+    assert.ok(fs.existsSync(fullPath), 'Missing vendored file: ' + rel);
+    const diskHash = childProcess.execFileSync('git', ['hash-object', fullPath], { encoding: 'utf8' }).trim();
+    const originHash = childProcess.execFileSync('git', ['rev-parse', 'origin/main:' + rel], { encoding: 'utf8' }).trim();
+    assert.equal(diskHash, originHash, 'Vendored file ' + rel + ' drifted from origin/main blob hash');
+  }
 });
