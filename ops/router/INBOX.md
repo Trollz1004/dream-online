@@ -13,6 +13,7 @@ The inbox lives in a local folder on the Alienware only and never in OneDrive or
 - `running\` — The single task currently executing. Only one task runs at a time, and never two `agy` runs for the same repository at once.
 - `done\` — Completed tasks that opened a PR and passed the judge check, stored with `<id>.log` beside `<id>.md`.
 - `failed\` — Tasks that failed after one re-queue (or were refused by a safety gate), stored with `<id>.log` beside `<id>.md`.
+- `for-judge\` — Tasks for the judge lane. The runner never executes the judge job class: a task that profiles as `judge`, or whose forced `lane:` resolves to the `claude-code-signed-in` harness (the `fable` lane), is moved here with a one-line `<id>.log` note and `agy` is never started. The judge lane (a live signed-in Claude session) reads this folder. Parking is not a failure and does not count toward the three-failure stop.
 
 ## 2. Base Branch Configuration
 
@@ -50,9 +51,14 @@ Adjust the spacing in src/ui/Hud.tsx and add a unit test verifying the layout pr
 - **Judge step**: When the `agy` handle finishes, the runner checks for a GitHub PR URL in the lane output and, for `design-visual` tasks, an Eyes gate report whose first line starts with `PASS`. Missing either re-queues the task once with the failure reason appended; failing a second time moves the task to `failed\`.
 - **Quota / 429 fallback**: A quota or HTTP 429 error marks the lane cold through the Jev router core (`reportQuotaError`) and re-queues the task once on the fallback lane from `ops/router/lanes.json`.
 - **PR comment**: On pass, the runner posts a comment on the PR whose first line is `Router report: <lane> on Alienware` followed by the lane, the job class, the routing reason, the decision hash, and the test summary extracted from the lane's log.
+- **Judge class**: `judge` is only for review, verdict, approve, merge and ruling jobs. README, docs, wording, rename and reference-fix jobs profile as `mechanical`, never `judge`, even when the text names the judge lane or a `FABLE` file in passing. A judge task is parked in `for-judge\` (section 1) and never run by the runner.
+- **Effort per lane**: `ops/router/lanes.json` carries an optional `laneSettings.<lane>.effort` (`gemini-4-argon`, `claude-opus-5-5` and `claude-sonnet-5-5` are `high`; `gemini-3.8-flash` and `fable` are `none`). The `agy` adapter passes `--effort` only for a lane whose setting is `low`, `medium` or `high`, and omits the flag for `none` or a lane with no setting, because agy 1.5.0 rejects `--effort` for those models.
+- **Token hygiene**: The runner removes `GH_TOKEN`, `GITHUB_TOKEN` and `GH_ENTERPRISE_TOKEN` from the environment it passes to every lane (and to its own git and gh calls), and never loads a `.env` file into a lane; `gh` uses its own stored sign-in.
+- **Owner check**: Before any other gh call the runner runs `gh api user` and compares the login to `expectedOwner` in `ops/router/repos.json` (`Trollz1004`). On a mismatch (or if `gh api user` fails) the task stays in `queued\` and the runner logs a clear line to `decisions.log` and returns `refused-gh-owner` (or `refused-gh-auth`) instead of failing silently later.
+- **Runner opens the PR**: After a lane pushes `ai/inbox/<id>`, if the lane did not open a PR the runner reuses an open PR for the branch or opens one itself with `gh pr create` (title from a `PR title:` line in the lane report, otherwise the task title; body from the lane report), so a lane's own gh trouble never marks finished work as failed. If the branch was not pushed, or `gh pr create` fails, the task fails as before with the reason in its log.
 - **Safety rules**:
   - Refuses any task file or configuration that names a path under `OneDrive` as its inbox.
-  - Refuses to run if `gh` is not signed in (`gh auth status`).
+  - Refuses to run if `gh` is not signed in (`gh auth status`) or is signed in as anyone but the expected owner.
   - Never merges and never touches `main` or `master`.
   - Writes every routing decision to `ops/router/decisions.log` through the core's secret, path, and private-IP redaction.
   - Stops after three consecutive failures until a human clears `failed\`.

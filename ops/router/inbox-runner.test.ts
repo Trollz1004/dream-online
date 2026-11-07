@@ -653,6 +653,25 @@ test('Inbox runner registration scripts dry-run by default without -Apply under 
       APPDATA: path.join(tmpHome, 'AppData', 'Roaming'),
     };
 
+    // Snapshot the DreamRouterInbox definition (Get-ScheduledTask XML) before the dry runs; the real task
+    // may be registered on this machine, so the test compares before and after instead of expecting it absent.
+    const readTaskDefinition = (): string => {
+      const probe = spawnSync(
+        psCandidate,
+        [
+          '-NoProfile',
+          '-ExecutionPolicy',
+          'Bypass',
+          '-Command',
+          "$t = Get-ScheduledTask -TaskName DreamRouterInbox -ErrorAction SilentlyContinue; if ($t) { Export-ScheduledTask -InputObject $t } else { 'TASK_NOT_FOUND' }",
+        ],
+        { env: customEnv, encoding: 'utf8' }
+      );
+      assert.equal(probe.status, 0, `task definition read failed: ${probe.stderr}`);
+      return probe.stdout.trim();
+    };
+    const taskDefinitionBefore = isWindows ? readTaskDefinition() : '';
+
     // 1. Run register script through powershell with no flags under temp HOME
     const regRun = spawnSync(
       psCandidate,
@@ -688,26 +707,14 @@ test('Inbox runner registration scripts dry-run by default without -Apply under 
     );
     assert.ok(unregRun.stdout.includes('DreamRouterInbox'), 'unregister output must mention DreamRouterInbox');
 
-    // 3. Assert no scheduled task was created (Get-ScheduledTask -TaskName DreamRouterInbox must not exist)
+    // 3. Assert the dry run did not change DreamRouterInbox: the task definition XML (or its absence) is
+    // identical before and after, so the test also passes when the real task is registered on this machine.
     if (isWindows) {
-      const taskCheck = spawnSync(
-        psCandidate,
-        [
-          '-NoProfile',
-          '-ExecutionPolicy',
-          'Bypass',
-          '-Command',
-          "if (Get-ScheduledTask -TaskName DreamRouterInbox -ErrorAction SilentlyContinue) { 'TASK_FOUND' } else { 'TASK_NOT_FOUND' }",
-        ],
-        {
-          env: customEnv,
-          encoding: 'utf8',
-        }
-      );
-      assert.equal(taskCheck.status, 0, `task check failed: ${taskCheck.stderr}`);
-      assert.ok(
-        taskCheck.stdout.includes('TASK_NOT_FOUND'),
-        'Get-ScheduledTask -TaskName DreamRouterInbox must not exist'
+      const taskDefinitionAfter = readTaskDefinition();
+      assert.equal(
+        taskDefinitionAfter,
+        taskDefinitionBefore,
+        'Get-ScheduledTask XML for DreamRouterInbox must be unchanged by the dry runs'
       );
     }
   } finally {
