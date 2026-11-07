@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import childProcess from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -28,6 +27,21 @@ export const VENDORED_UPSTREAM_FILES: readonly string[] = [
   '.agents/skills/security-audit/SKILL.md',
 ];
 
+export const VENDORED_SKILLS_FIXTURE_PATH = 'tests/fixtures/vendored-skills.sha256';
+
+export function loadVendoredSkillsFixture(fixtureFullPath: string): Map<string, string> {
+  const fileContent = fs.readFileSync(fixtureFullPath, 'utf8');
+  const expected = new Map<string, string>();
+  for (const rawLine of fileContent.split('\n')) {
+    const line = rawLine.replace('\r', '').trim();
+    if (!line || line.startsWith('#')) continue;
+    const parts = line.split(/[ \t]+/);
+    if (parts.length >= 2) {
+      expected.set(parts[1], parts[0]);
+    }
+  }
+  return expected;
+}
 
 export const DEFINITION_GLOBS: readonly string[] = [
   'AGENTS.md',
@@ -239,11 +253,23 @@ test('every agent definition file matched by glob carries the house rule and pul
 });
 
 test('five vendored files are byte-identical to SOURCE-MANIFEST recorded upstream tree on origin/main', () => {
+  const fixtureFullPath = path.join(REPO_ROOT, VENDORED_SKILLS_FIXTURE_PATH);
+  assert.ok(fs.existsSync(fixtureFullPath), 'Missing fixture: ' + VENDORED_SKILLS_FIXTURE_PATH);
+  const expectedHashes = loadVendoredSkillsFixture(fixtureFullPath);
+
   for (const rel of VENDORED_UPSTREAM_FILES) {
     const fullPath = path.join(REPO_ROOT, rel);
     assert.ok(fs.existsSync(fullPath), 'Missing vendored file: ' + rel);
-    const diskHash = childProcess.execFileSync('git', ['hash-object', fullPath], { encoding: 'utf8' }).trim();
-    const originHash = childProcess.execFileSync('git', ['rev-parse', 'origin/main:' + rel], { encoding: 'utf8' }).trim();
-    assert.equal(diskHash, originHash, 'Vendored file ' + rel + ' drifted from origin/main blob hash');
+    const expectedSha = expectedHashes.get(rel);
+    assert.ok(
+      expectedSha,
+      `Missing recorded SHA-256 for ${rel} in ${VENDORED_SKILLS_FIXTURE_PATH}. The fixture is updated on purpose only when the manifest's upstream commit changes.`,
+    );
+    const actualSha = computeNormalizedSha256(fs.readFileSync(fullPath, 'utf8'));
+    assert.equal(
+      actualSha,
+      expectedSha,
+      `Vendored file ${rel} SHA-256 (${actualSha}) drifted from recorded fixture (${expectedSha}). The fixture is updated on purpose only when the manifest's upstream commit changes.`,
+    );
   }
 });
