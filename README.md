@@ -84,7 +84,7 @@ If founder access attempts to cross this boundary, the canonical response is:
 ## Canonical 2-Monorepo + Standalone App Architecture, Graphy AI Codebase Sync, & Single `$5/mo` Synced Obsidian Vault (`2026-11-01`)
 
 ### 1. Two Canonical Monorepos (Besides Standalone `Misses Trollz`)
-To eliminate duplicate files and scattered repositories across the 3-node fleet (Alienware, T5500, Sabretooth), all code lives in **two canonical monorepos** plus the standalone pediatric app:
+To eliminate duplicate files and scattered repositories across the 3-node fleet (Alienware, T5500, Sabretooth), all code lives in **two canonical monorepos** plus the standalone app:
 1. **Unified Game Monorepo (`Trollz1004/dream-online` / `DREAM-Engine`) — Node 1: Alienware**:
    - Paths on Alienware: `%USERPROFILE%\antigravity\DREAM-Engine` and `C:\DREAM\dream-online` (auto-synchronized via `.git/hooks/post-commit`).
    - Contains the 100% in-house WebGPU/WebGL2 `DREAM Engine` (`src/engine/`, `src/ui/`, `server.ts` on `:9180`), `DREAM Maker Studio`, `Live NPC Lab` (`:9127`), `DreamOps Bridge` (`:9133`), `OPSis Cut & Reach Studio` (`:8390`), `Hermes Leadgen` (`:8392`), `Free Claude Code` (`:8082/admin`), REA clean-room workbench, and `tests/` (`51/51` checks).
@@ -92,7 +92,7 @@ To eliminate duplicate files and scattered repositories across the 3-node fleet 
    - Path on T5500: `C:\ANTIGRAVITY` (Mission Control `:3130`, OmniRoute `:20128`, Shared `ai-memory` `:49374`, production domains `youandinotai.com`, `onlinerecycle.net`, `dream-online.net`, `untilnokidinneed.com`).
    - Path on Sabretooth: `C:\Ai-Dream-Team\Antigravity` (16 GB AMD Radeon RX 6800 GPU offload, Hermes `:9119`, HermesLeadGen GUI `:8392`, YouTube Shorts `<= 59.0s` & Natural Female Voice Podcast Worker `:8391`, Local Ollama `:11434`, and ComfyUI MCP).
 3. **Standalone App (`Misses Trollz`)**:
-   - Kept strictly separate from both monorepos for pediatric hospital / sick child accessibility.
+   - Kept strictly separate from both monorepos as an independent standalone repository.
 
 ### 2. Graphy for AI Codebase Sync, AST Search, and Repo-Specific Node Routing
 Every AI agent on the Council (`Claude`, `Gemini`, `Codex`, `Hermes OPSis`, `Free Claude Code :8082`) uses **Dual Graphies** so agents always know where every file lives and never create duplicate files:

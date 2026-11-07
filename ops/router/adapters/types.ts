@@ -32,6 +32,49 @@ export interface DispatchJobInput {
   harness: string;
   node?: string;
   cwd?: string;
+  /** Environment for the lane process. The adapter always strips the GitHub token variables from it. */
+  env?: NodeJS.ProcessEnv;
+}
+
+/** Reasoning effort agy accepts for a lane. `none` means the lane rejects --effort and the flag is omitted. */
+export type LaneEffort = 'low' | 'medium' | 'high' | 'none';
+
+export const LANE_EFFORT_VALUES: readonly LaneEffort[] = ['low', 'medium', 'high', 'none'];
+
+export interface LaneSetting {
+  effort?: LaneEffort;
+  note?: string;
+}
+
+/**
+ * Returns the --effort value a lane accepts, or null when the lane has none (flag must be omitted).
+ * A lane without an entry in laneSettings returns null as well: agy rejects --effort for some models,
+ * so the flag is only passed for lanes that are listed as accepting it.
+ */
+export function resolveLaneEffort(
+  table: { laneSettings?: Record<string, LaneSetting> },
+  lane: string
+): Exclude<LaneEffort, 'none'> | null {
+  const effort = table.laneSettings?.[lane.trim()]?.effort;
+  return effort === 'low' || effort === 'medium' || effort === 'high' ? effort : null;
+}
+
+/** GitHub token variables that never reach a lane: gh uses its own stored sign-in instead. */
+export const LANE_SCRUBBED_ENV_NAMES = ['GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN'] as const;
+
+/**
+ * Returns a copy of the environment without the GitHub token variables (matched case-insensitively,
+ * as Windows environment names are). The input object is never modified and no value is ever read out.
+ */
+export function scrubLaneEnv(env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  const scrubbed = new Set<string>(LANE_SCRUBBED_ENV_NAMES);
+  const clean: NodeJS.ProcessEnv = {};
+  for (const [key, value] of Object.entries(env)) {
+    if (!scrubbed.has(key.toUpperCase())) {
+      clean[key] = value;
+    }
+  }
+  return clean;
 }
 
 export interface DispatchPollResult {

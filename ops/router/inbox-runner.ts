@@ -24,6 +24,7 @@ import {
   type DispatchPollResult,
   parseEyesGateVerdictFromOutput,
   parsePrUrlFromOutput,
+  scrubLaneEnv,
 } from './adapters/index.ts';
 import {
   appendDecisionRecord,
@@ -34,10 +35,12 @@ import {
   hashTaskDescription,
   type JevJobClass,
   JevRouter,
+  JUDGE_HARNESS,
   type LaneTable,
   loadLaneTable,
   loadNewestWeeklyRanking,
   profileTask,
+  resolveLaneHarness,
   sanitizeDecisionLogText,
 } from './dream-task-router.ts';
 
@@ -46,10 +49,13 @@ export const DEFAULT_REPO_ROOT = path.resolve(ROUTER_DIR, '..', '..');
 export const DEFAULT_INBOX_DIR = path.join(os.homedir(), 'antigravity', '.fable-kitchen', 'inbox');
 export const DEFAULT_WORKTREE_PARENT_DIR = path.join(os.homedir(), 'antigravity');
 export const DEFAULT_INBOX_CONFIG_PATH = path.join(ROUTER_DIR, 'INBOX.md');
-export const DEFAULT_BASE_BRANCH = 'origin/ai/stack2/2026-11-04';
+export const DEFAULT_BASE_BRANCH = 'origin/main';
+export const DEFAULT_REPOS_PATH = path.join(ROUTER_DIR, 'repos.json');
+export const DEFAULT_REPO_NAME = 'dream-online';
+export const ANTIGRAVITY_REPO_ROOT_ENV = 'ANTIGRAVITY_REPO_ROOT';
 export const MAX_CONSECUTIVE_FAILURES = 3;
 
-export const INBOX_SUBFOLDERS = ['queued', 'running', 'done', 'failed'] as const;
+export const INBOX_SUBFOLDERS = ['queued', 'running', 'done', 'failed', 'for-judge'] as const;
 export type InboxSubfolder = (typeof INBOX_SUBFOLDERS)[number];
 
 export interface InboxFolders {
@@ -58,6 +64,8 @@ export interface InboxFolders {
   running: string;
   done: string;
   failed: string;
+  /** Tasks for the judge lane (a live Claude session). The runner parks them here and never starts agy. */
+  forJudge: string;
 }
 
 export interface ParsedInboxTask {
@@ -93,13 +101,18 @@ export type InboxTickStatus =
   | 'failed'
   | 'stopped-three-failures'
   | 'refused-gh-auth'
-  | 'refused-onedrive-inbox';
+  | 'refused-gh-owner'
+  | 'refused-onedrive-inbox'
+  | 'refused-unknown-repo'
+  | 'refused-repo-root-missing'
+  | 'parked-for-judge';
 
 export interface InboxTickResult {
   status: InboxTickStatus;
   taskId: string | null;
   fileName: string | null;
   repo: string | null;
+  repoRoot: string | null;
   lane: string | null;
   jobClass: JevJobClass | null;
   decisionHash: string | null;
@@ -125,6 +138,8 @@ export interface InboxRunnerOptions {
   inboxDir?: string;
   worktreeParentDir?: string;
   repoRoot?: string;
+  reposPath?: string;
+  env?: NodeJS.ProcessEnv;
   configPath?: string;
   baseBranch?: string;
   lanesPath?: string;
@@ -138,7 +153,7 @@ export interface InboxRunnerOptions {
 }
 
 /**
- * Ensures the local inbox folder and its four required subfolders (queued, running, done, failed) exist.
+ * Ensures the local inbox folder and its required subfolders (queued, running, done, failed, for-judge) exist.
  * Refuses any inbox path under OneDrive.
  */
 export function ensureInboxFolders(inboxDir: string = DEFAULT_INBOX_DIR): InboxFolders {
@@ -153,8 +168,16 @@ export function ensureInboxFolders(inboxDir: string = DEFAULT_INBOX_DIR): InboxF
     running: path.join(inboxDir, 'running'),
     done: path.join(inboxDir, 'done'),
     failed: path.join(inboxDir, 'failed'),
+    forJudge: path.join(inboxDir, 'for-judge'),
   };
-  for (const dir of [folders.root, folders.queued, folders.running, folders.done, folders.failed]) {
+  for (const dir of [
+    folders.root,
+    folders.queued,
+    folders.running,
+    folders.done,
+    folders.failed,
+    folders.forJudge,
+  ]) {
     fs.mkdirSync(dir, { recursive: true });
   }
   return folders;
@@ -207,6 +230,177 @@ export function readBaseBranchFromConfig(
   return DEFAULT_BASE_BRANCH;
 }
 
+export interface RepoMapEntry {
+  /** `self` means the runner's own repo root. */
+  root?: string;
+  /** Name of the environment variable that holds the repo root folder. */
+  rootEnv?: string;
+  /** Root used when `rootEnv` is unset or empty; may contain %NAME% placeholders such as %USERPROFILE%. */
+  defaultRoot?: string;
+  /** Worktree folder prefix; the task id is appended. */
+  worktreePrefix?: string;
+}
+
+export interface RepoMap {
+  /** GitHub login gh must be signed in as before the runner makes any gh call. */
+  expectedOwner: string;
+  repos: Record<string, RepoMapEntry>;
+}
+
+export interface ResolvedRepoTarget {
+  /** Canonical repo name as written in the repo map. */
+  name: string;
+  root: string;
+  worktreePrefix: string;
+  /** Human-readable origin of the root (for messages), never an env value. */
+  rootSource: string;
+}
+
+export type RepoResolution =
+  | { ok: true; target: ResolvedRepoTarget }
+  | { ok: false; reason: string };
+
+/**
+ * Loads and validates the repo map (ops/router/repos.json) that backs the task file `repo:` selector.
+ */
+export function loadRepoMap(reposPath: string = DEFAULT_REPOS_PATH): RepoMap {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(fs.readFileSync(reposPath, 'utf8'));
+  } catch (err) {
+    throw new Error(
+      `Inbox runner cannot load the repo map at ${path.basename(reposPath)}: ${
+        err instanceof Error ? err.message : String(err)
+      }`
+    );
+  }
+  const repos = (parsed as { repos?: unknown } | null)?.repos;
+  if (!repos || typeof repos !== 'object' || Array.isArray(repos)) {
+    throw new Error('Inbox runner repo map must contain a "repos" object.');
+  }
+  const expectedOwner = (parsed as { expectedOwner?: unknown } | null)?.expectedOwner;
+  if (typeof expectedOwner !== 'string' || !/^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/.test(expectedOwner.trim())) {
+    throw new Error('Inbox runner repo map must contain an "expectedOwner" GitHub login.');
+  }
+  const map: RepoMap = { expectedOwner: expectedOwner.trim(), repos: repos as Record<string, RepoMapEntry> };
+  for (const [name, entry] of Object.entries(map.repos)) {
+    if (!entry || typeof entry !== 'object') {
+      throw new Error(`Inbox runner repo map entry ${name} must be an object.`);
+    }
+    if (entry.root !== 'self' && !entry.rootEnv && !entry.defaultRoot) {
+      throw new Error(
+        `Inbox runner repo map entry ${name} needs root "self", a rootEnv, or a defaultRoot.`
+      );
+    }
+  }
+  if (!Object.hasOwn(map.repos, DEFAULT_REPO_NAME)) {
+    throw new Error(`Inbox runner repo map must contain the default repo ${DEFAULT_REPO_NAME}.`);
+  }
+  return map;
+}
+
+function readEnvValue(env: NodeJS.ProcessEnv, name: string): string | undefined {
+  if (Object.hasOwn(env, name)) return env[name];
+  const lower = name.toLowerCase();
+  const key = Object.keys(env).find((candidate) => candidate.toLowerCase() === lower);
+  return key === undefined ? undefined : env[key];
+}
+
+/**
+ * Expands %NAME% placeholders from the environment (USERPROFILE falls back to the OS home folder).
+ * Returns null when a placeholder cannot be resolved.
+ */
+export function expandEnvPlaceholders(value: string, env: NodeJS.ProcessEnv = process.env): string | null {
+  let unresolved = false;
+  const expanded = value.replace(/%([A-Za-z_][A-Za-z0-9_]*)%/g, (_match, name: string) => {
+    let resolved = readEnvValue(env, name)?.trim();
+    if (!resolved && name.toUpperCase() === 'USERPROFILE') {
+      resolved = os.homedir();
+    }
+    if (!resolved) {
+      unresolved = true;
+      return '';
+    }
+    return resolved;
+  });
+  return unresolved ? null : expanded;
+}
+
+/**
+ * Writes the user folder back as %USERPROFILE% so messages and logs never carry a user folder name.
+ */
+export function toPortablePath(absolutePath: string, env: NodeJS.ProcessEnv = process.env): string {
+  const homes = [readEnvValue(env, 'USERPROFILE')?.trim(), os.homedir()].filter(
+    (home): home is string => Boolean(home)
+  );
+  for (const home of homes) {
+    const trimmed = home.replace(/[\\/]+$/, '');
+    if (absolutePath.toLowerCase().startsWith(trimmed.toLowerCase())) {
+      return `%USERPROFILE%${absolutePath.slice(trimmed.length)}`;
+    }
+  }
+  return absolutePath;
+}
+
+/**
+ * Resolves a task file `repo:` value through the repo map to a repo root folder.
+ * `dream-online` is the runner's own repo root; `ANTIGRAVITY` is the folder named in the
+ * ANTIGRAVITY_REPO_ROOT environment variable (default from the map). An unknown repo is refused.
+ */
+export function resolveRepoTarget(
+  repoName: string,
+  options: { map: RepoMap; env?: NodeJS.ProcessEnv; selfRoot?: string }
+): RepoResolution {
+  const env = options.env ?? process.env;
+  const requested = (repoName ?? '').trim() || DEFAULT_REPO_NAME;
+  const knownNames = Object.keys(options.map.repos);
+  const canonical = knownNames.find((name) => name.toLowerCase() === requested.toLowerCase());
+  if (!canonical) {
+    return {
+      ok: false,
+      reason: `unknown repo "${requested}". Known repos: ${[...knownNames]
+        .sort((a, b) => a.localeCompare(b))
+        .join(', ')} (see ops/router/repos.json).`,
+    };
+  }
+
+  const entry = options.map.repos[canonical];
+  const worktreePrefix = entry.worktreePrefix?.trim() || `${canonical}-wt-inbox-`;
+
+  if (entry.root === 'self') {
+    return {
+      ok: true,
+      target: {
+        name: canonical,
+        root: path.resolve(options.selfRoot ?? DEFAULT_REPO_ROOT),
+        worktreePrefix,
+        rootSource: 'the runner repo root',
+      },
+    };
+  }
+
+  const fromEnv = entry.rootEnv ? readEnvValue(env, entry.rootEnv)?.trim() : undefined;
+  const rawRoot = fromEnv || entry.defaultRoot;
+  const rootSource = fromEnv
+    ? `the ${entry.rootEnv} environment variable`
+    : `the default root of repo ${canonical}${entry.rootEnv ? ` (set ${entry.rootEnv} to override)` : ''}`;
+  if (!rawRoot) {
+    return {
+      ok: false,
+      reason: `repo ${canonical} has no root; set ${entry.rootEnv ?? 'a root'} in the environment.`,
+    };
+  }
+  const expanded = expandEnvPlaceholders(rawRoot, env);
+  if (!expanded) {
+    return {
+      ok: false,
+      reason: `the root of repo ${canonical} (${rootSource}) uses an environment variable that is not set.`,
+    };
+  }
+  const root = path.resolve(path.normalize(expanded.replace(/[\\/]/g, path.sep)));
+  return { ok: true, target: { name: canonical, root, worktreePrefix, rootSource } };
+}
+
 /**
  * Sanitizes a filename stem into a safe git branch / worktree id.
  */
@@ -228,7 +422,7 @@ export function parseInboxTaskFile(rawContent: string, fileName: string): Parsed
 
   let title = '';
   let forcedLane: string | null = null;
-  let repo = 'dream-online';
+  let repo = DEFAULT_REPO_NAME;
   let baseOverride: string | null = null;
   let inboxHeader: string | null = null;
   const bodyLines: string[] = [];
@@ -417,6 +611,10 @@ export class InboxRunner {
   private readonly inboxDir: string;
   private readonly worktreeParentDir: string;
   private readonly repoRoot: string;
+  private readonly repoMap: RepoMap;
+  private readonly env: NodeJS.ProcessEnv;
+  /** The environment every lane and every runner git/gh call gets: GitHub token variables removed, no .env loaded. */
+  private readonly laneEnv: NodeJS.ProcessEnv;
   private readonly configPath: string;
   private readonly explicitBaseBranch?: string;
   private readonly lanesPath: string;
@@ -437,6 +635,12 @@ export class InboxRunner {
     this.inboxDir = options?.inboxDir ?? DEFAULT_INBOX_DIR;
     this.worktreeParentDir = options?.worktreeParentDir ?? DEFAULT_WORKTREE_PARENT_DIR;
     this.repoRoot = options?.repoRoot ?? DEFAULT_REPO_ROOT;
+    this.env = options?.env ?? process.env;
+    // GH_TOKEN, GITHUB_TOKEN and GH_ENTERPRISE_TOKEN are removed from everything handed to a lane;
+    // gh then uses its own stored sign-in, which is the account the owner check verifies.
+    this.laneEnv = scrubLaneEnv(this.env);
+    // Fail fast at startup (before any task file moves) if the repo map cannot be loaded
+    this.repoMap = loadRepoMap(options?.reposPath ?? DEFAULT_REPOS_PATH);
     this.configPath = options?.configPath ?? DEFAULT_INBOX_CONFIG_PATH;
     this.explicitBaseBranch = options?.baseBranch;
     this.lanesPath = options?.lanesPath ?? DEFAULT_LANES_PATH;
@@ -457,6 +661,7 @@ export class InboxRunner {
       new AgyDispatchAdapter({
         kitchenDir: path.dirname(this.inboxDir),
         runner: this.commandRunner,
+        lanesPath: this.lanesPath,
         now: this.now,
       });
 
@@ -477,6 +682,116 @@ export class InboxRunner {
 
   public getConsecutiveFailures(): number {
     return this.consecutiveFailures;
+  }
+
+  /** Runs a git or gh command with the scrubbed environment (no GitHub token variables). */
+  private runCommand(req: CommandExecRequest): Promise<CommandExecResult> {
+    return this.commandRunner({ ...req, env: this.laneEnv });
+  }
+
+  /**
+   * Reads the signed-in GitHub login with `gh api user` and compares it to the expected owner from
+   * ops/router/repos.json. Returns null when they match, otherwise the refusal to log and return.
+   */
+  private async checkGhOwner(): Promise<{ status: 'refused-gh-auth' | 'refused-gh-owner'; reason: string } | null> {
+    const expected = this.repoMap.expectedOwner;
+    const res = await this.runCommand({
+      command: 'gh',
+      args: ['api', 'user', '--jq', '.login'],
+      cwd: this.repoRoot,
+    });
+    const login = res.stdout.trim();
+    if (res.exitCode !== 0 || !login) {
+      return {
+        status: 'refused-gh-auth',
+        reason: `Inbox runner refused to run: gh api user failed, so the signed-in GitHub login could not be read (expected ${expected}); run gh auth login as ${expected}.`,
+      };
+    }
+    if (login.toLowerCase() !== expected.toLowerCase()) {
+      return {
+        status: 'refused-gh-owner',
+        reason: `Inbox runner refused to run: gh is signed in as ${login} but ops/router/repos.json expects ${expected}; run gh auth switch to ${expected} and the task will start on the next tick.`,
+      };
+    }
+    return null;
+  }
+
+  /** True when branchName exists on origin in the given repo root. */
+  private async isBranchPushed(repoRoot: string, branchName: string): Promise<boolean> {
+    const res = await this.runCommand({
+      command: 'git',
+      args: ['ls-remote', '--heads', 'origin', `refs/heads/${branchName}`],
+      cwd: repoRoot,
+    });
+    return res.exitCode === 0 && res.stdout.trim().length > 0;
+  }
+
+  /**
+   * After a lane pushed its branch, makes sure a PR exists: returns the PR the lane opened, an already open
+   * PR for the branch, or opens one itself with gh (title and body from the lane's report). A lane's own gh
+   * trouble therefore never marks finished work as failed. Returns the failure line when it cannot.
+   */
+  private async ensurePullRequest(params: {
+    repoRoot: string;
+    branchName: string;
+    baseBranch: string;
+    taskTitle: string;
+    laneOutput: string;
+    laneName: string;
+  }): Promise<{ prUrl: string | null; note: string | null }> {
+    if (!(await this.isBranchPushed(params.repoRoot, params.branchName))) {
+      return { prUrl: null, note: null };
+    }
+    const existing = await this.runCommand({
+      command: 'gh',
+      args: ['pr', 'view', params.branchName, '--json', 'url', '--jq', '.url'],
+      cwd: params.repoRoot,
+    });
+    const existingUrl = existing.exitCode === 0 ? parsePrUrlFromOutput(existing.stdout) : null;
+    if (existingUrl) {
+      return { prUrl: existingUrl, note: 'PR already open for the pushed branch' };
+    }
+
+    const report = sanitizeDecisionLogText(params.laneOutput, this.extraSecretsToRedact);
+    const titleLine = report
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .find((line) => /^(?:PR title|Title)\s*:\s*\S/i.test(line));
+    const title = (titleLine ? titleLine.replace(/^[^:]+:\s*/, '') : params.taskTitle).slice(0, 200);
+    const reportTail = report.length > 20_000 ? `...${report.slice(-20_000)}` : report;
+    const body = [
+      `Opened by the inbox runner because lane ${params.laneName} pushed ${params.branchName} but did not open a pull request.`,
+      '',
+      "Lane report:",
+      '',
+      reportTail.trim() || '(the lane printed no report)',
+    ].join('\n');
+
+    const created = await this.runCommand({
+      command: 'gh',
+      args: [
+        'pr',
+        'create',
+        '--base',
+        params.baseBranch.replace(/^origin\//, ''),
+        '--head',
+        params.branchName,
+        '--title',
+        title,
+        '--body',
+        body,
+      ],
+      cwd: params.repoRoot,
+    });
+    const createdUrl = created.exitCode === 0 ? parsePrUrlFromOutput(created.stdout) : null;
+    if (createdUrl) {
+      return { prUrl: createdUrl, note: 'runner opened the PR with gh' };
+    }
+    const detail = sanitizeDecisionLogText(
+      (created.stderr || created.stdout || `gh exited with code ${created.exitCode}`).trim().split(/\r?\n/)[0],
+      this.extraSecretsToRedact
+    );
+    return { prUrl: null, note: `runner could not open the PR with gh: ${detail}` };
   }
 
   private logSafetyDecision(reason: string, taskTextForHash: string): DecisionRecord {
@@ -505,6 +820,59 @@ export class InboxRunner {
     };
     appendDecisionRecord(record, this.decisionsLogPath, this.extraSecretsToRedact);
     return record;
+  }
+
+  /**
+   * Moves a task that was refused before any run (unknown repo, missing repo root) from running/ to failed/
+   * with a log beside it, records the safety decision, and counts it toward the three-failure stop.
+   */
+  private refuseTaskBeforeRun(params: {
+    status: 'refused-unknown-repo' | 'refused-repo-root-missing';
+    reason: string;
+    parsed: ParsedInboxTask;
+    oldestFileName: string;
+    runningFilePath: string;
+    failedDir: string;
+    repoName: string;
+    repoRoot: string | null;
+    transitions: string[];
+  }): InboxTickResult {
+    const refusalRecord = this.logSafetyDecision(params.reason, params.parsed.rawContent);
+    const failedTaskPath = path.join(params.failedDir, params.oldestFileName);
+    const failedLogPath = path.join(params.failedDir, `${params.parsed.id}.log`);
+    fs.renameSync(params.runningFilePath, failedTaskPath);
+    fs.writeFileSync(failedLogPath, `${refusalRecord.reason}\n`, 'utf8');
+    params.transitions.push('running -> failed');
+    this.consecutiveFailures += 1;
+    if (this.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+      this.stoppedUntilFailedCleared = true;
+    }
+    return {
+      status: params.status,
+      taskId: params.parsed.id,
+      fileName: params.oldestFileName,
+      repo: sanitizeDecisionLogText(params.repoName, this.extraSecretsToRedact),
+      repoRoot: params.repoRoot,
+      lane: null,
+      jobClass: null,
+      decisionHash: refusalRecord.task_hash,
+      reason: refusalRecord.reason,
+      prUrl: null,
+      prCommentBody: null,
+      requeued: false,
+      requeueCount: 0,
+      quotaFallbackTriggered: false,
+      forcedLaneRequested: params.parsed.forcedLane,
+      forcedLaneHonoured: false,
+      worktreePath: null,
+      branchName: null,
+      baseBranch: null,
+      worktreeRemoved: false,
+      taskFinalPath: failedTaskPath,
+      logFinalPath: failedLogPath,
+      transitions: params.transitions,
+      attempts: [],
+    };
   }
 
   private routeTaskWithOptionalForcedLane(
@@ -537,6 +905,7 @@ export class InboxRunner {
           this.extraSecretsToRedact
         );
 
+        const forcedHarness = resolveLaneHarness(table, requestedLane);
         const decision: DecisionRecord = {
           timestamp: now.toISOString(),
           task_hash: taskHash,
@@ -545,8 +914,8 @@ export class InboxRunner {
           jobClass: profile.jobClass,
           lane: requestedLane,
           node: 'Alienware',
-          harness: 'agy',
-          headless: true,
+          harness: forcedHarness,
+          headless: forcedHarness !== JUDGE_HARNESS,
           post_gate: row.postGate,
           reason,
           ranking_date: rankingDateUsed,
@@ -598,6 +967,7 @@ export class InboxRunner {
         taskId: null,
         fileName: null,
         repo: null,
+        repoRoot: null,
         lane: null,
         jobClass: null,
         decisionHash: rec.task_hash,
@@ -632,6 +1002,7 @@ export class InboxRunner {
         taskId: null,
         fileName: null,
         repo: null,
+        repoRoot: null,
         lane: null,
         jobClass: null,
         decisionHash: null,
@@ -670,6 +1041,7 @@ export class InboxRunner {
         taskId: null,
         fileName: null,
         repo: null,
+        repoRoot: null,
         lane: null,
         jobClass: null,
         decisionHash: null,
@@ -700,6 +1072,7 @@ export class InboxRunner {
         taskId: null,
         fileName: null,
         repo: null,
+        repoRoot: null,
         lane: null,
         jobClass: null,
         decisionHash: null,
@@ -722,8 +1095,41 @@ export class InboxRunner {
       };
     }
 
-    // Safety 3: Refuse to run if gh is not signed in
-    const ghAuthRes = await this.commandRunner({
+    // Safety 3a: before any other gh call, gh api user must report the expected owner from repos.json.
+    // A wrong account stops the task with a clear log line instead of failing silently later.
+    const ownerRefusal = await this.checkGhOwner();
+    if (ownerRefusal) {
+      const rec = this.logSafetyDecision(ownerRefusal.reason, queuedFiles[0]);
+      return {
+        status: ownerRefusal.status,
+        taskId: null,
+        fileName: queuedFiles[0],
+        repo: null,
+        repoRoot: null,
+        lane: null,
+        jobClass: null,
+        decisionHash: rec.task_hash,
+        reason: rec.reason,
+        prUrl: null,
+        prCommentBody: null,
+        requeued: false,
+        requeueCount: 0,
+        quotaFallbackTriggered: false,
+        forcedLaneRequested: null,
+        forcedLaneHonoured: false,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        worktreeRemoved: false,
+        taskFinalPath: null,
+        logFinalPath: null,
+        transitions: [],
+        attempts: [],
+      };
+    }
+
+    // Safety 3b: Refuse to run if gh is not signed in
+    const ghAuthRes = await this.runCommand({
       command: 'gh',
       args: ['auth', 'status'],
       cwd: this.repoRoot,
@@ -738,6 +1144,7 @@ export class InboxRunner {
         taskId: null,
         fileName: queuedFiles[0],
         repo: null,
+        repoRoot: null,
         lane: null,
         jobClass: null,
         decisionHash: rec.task_hash,
@@ -774,19 +1181,54 @@ export class InboxRunner {
       const rawContent = fs.readFileSync(runningFilePath, 'utf8');
       const parsed = parseInboxTaskFile(rawContent, oldestFileName);
 
+      // Resolve repo: through the repo map (ops/router/repos.json); an unknown repo or a missing root is refused
+      const repoResolution = resolveRepoTarget(parsed.repo, {
+        map: this.repoMap,
+        env: this.env,
+        selfRoot: this.repoRoot,
+      });
+      if (!repoResolution.ok) {
+        return this.refuseTaskBeforeRun({
+          status: 'refused-unknown-repo',
+          reason: `Refused task ${parsed.id}: ${repoResolution.reason}`,
+          parsed,
+          oldestFileName,
+          runningFilePath,
+          failedDir: folders.failed,
+          repoName: parsed.repo,
+          repoRoot: null,
+          transitions,
+        });
+      }
+      const repoTarget = repoResolution.target;
+      if (!fs.existsSync(repoTarget.root)) {
+        return this.refuseTaskBeforeRun({
+          status: 'refused-repo-root-missing',
+          reason: `Refused task ${parsed.id}: root folder for repo ${repoTarget.name} does not exist (${toPortablePath(repoTarget.root, this.env)}); the root came from ${repoTarget.rootSource}.`,
+          parsed,
+          oldestFileName,
+          runningFilePath,
+          failedDir: folders.failed,
+          repoName: repoTarget.name,
+          repoRoot: repoTarget.root,
+          transitions,
+        });
+      }
+
       // Repo-level concurrency guard: never two agy runs for the same repo at once
-      if (this.activeRepos.has(parsed.repo)) {
+      if (this.activeRepos.has(repoTarget.name)) {
         fs.renameSync(runningFilePath, queuedFilePath);
         transitions.push('running -> queued');
         return {
           status: 'busy',
           taskId: parsed.id,
           fileName: oldestFileName,
-          repo: parsed.repo,
+          repo: repoTarget.name,
+          repoRoot: repoTarget.root,
           lane: null,
           jobClass: null,
           decisionHash: null,
-          reason: `Repo ${parsed.repo} already has an active agy run.`,
+          reason: `Repo ${repoTarget.name} already has an active agy run.`,
           prUrl: null,
           prCommentBody: null,
           requeued: false,
@@ -805,7 +1247,7 @@ export class InboxRunner {
         };
       }
 
-      this.activeRepos.add(parsed.repo);
+      this.activeRepos.add(repoTarget.name);
       try {
         // Safety 4: Refuse a task file that names a path under OneDrive as its inbox
         if (taskNamesOneDriveInbox(rawContent, parsed.inboxHeader)) {
@@ -831,7 +1273,8 @@ export class InboxRunner {
             status: 'refused-onedrive-inbox',
             taskId: parsed.id,
             fileName: oldestFileName,
-            repo: parsed.repo,
+            repo: repoTarget.name,
+            repoRoot: repoTarget.root,
             lane: null,
             jobClass: null,
             decisionHash: refusalRecord.task_hash,
@@ -854,6 +1297,53 @@ export class InboxRunner {
           };
         }
 
+        // Profile the task with the core and select the lane (honouring a forced lane only if it exists in
+        // lanes.json) before any worktree exists, so a judge task never costs a fetch or a branch.
+        const routed = this.routeTaskWithOptionalForcedLane(parsed);
+        const routedHarness = resolveLaneHarness(loadLaneTable(this.lanesPath), routed.decision.lane);
+        if (
+          routed.decision.job_class === 'judge' ||
+          routed.decision.harness === JUDGE_HARNESS ||
+          routedHarness === JUDGE_HARNESS
+        ) {
+          // The judge lane (a live signed-in Claude session) is not an executor: park the task for it and never start agy
+          const parkNote = sanitizeDecisionLogText(
+            `Parked ${parsed.id} for the judge lane in for-judge/: job class ${routed.decision.job_class}, lane ${routed.decision.lane} (${routedHarness}) is not an executor, so agy was not started.`,
+            this.extraSecretsToRedact
+          );
+          const parkedTaskPath = path.join(folders.forJudge, oldestFileName);
+          const parkedLogPath = path.join(folders.forJudge, `${parsed.id}.log`);
+          fs.renameSync(runningFilePath, parkedTaskPath);
+          fs.writeFileSync(parkedLogPath, `${parkNote}\n`, 'utf8');
+          transitions.push('running -> for-judge');
+          return {
+            status: 'parked-for-judge',
+            taskId: parsed.id,
+            fileName: oldestFileName,
+            repo: repoTarget.name,
+            repoRoot: repoTarget.root,
+            lane: routed.decision.lane,
+            jobClass: routed.decision.job_class,
+            decisionHash: routed.decision.task_hash,
+            reason: parkNote,
+            prUrl: null,
+            prCommentBody: null,
+            requeued: false,
+            requeueCount: 0,
+            quotaFallbackTriggered: false,
+            forcedLaneRequested: parsed.forcedLane,
+            forcedLaneHonoured: routed.forcedLaneHonoured,
+            worktreePath: null,
+            branchName: null,
+            baseBranch: null,
+            worktreeRemoved: false,
+            taskFinalPath: parkedTaskPath,
+            logFinalPath: parkedLogPath,
+            transitions,
+            attempts: [],
+          };
+        }
+
         // Resolve base branch from config line (or explicit override) and worktree paths
         const configuredBase =
           parsed.baseOverride ??
@@ -866,18 +1356,26 @@ export class InboxRunner {
 
         const worktreePath = path.join(
           this.worktreeParentDir,
-          `DREAM-Engine-wt-inbox-${parsed.id}`
+          `${repoTarget.worktreePrefix}${parsed.id}`
         );
 
-        // Create worktree under %USERPROFILE%\antigravity\DREAM-Engine-wt-inbox-<id> on branch ai/inbox/<id> from base
-        await this.commandRunner({
+        // Current beats existing: fetch origin in the target repo so the base (origin/main) is fresh
+        await this.runCommand({
           command: 'git',
-          args: ['worktree', 'add', '-B', branchName, worktreePath, configuredBase],
-          cwd: this.repoRoot,
+          args: ['fetch', 'origin'],
+          cwd: repoTarget.root,
         });
 
-        // Profile task with core and select lane (honouring forced lane only if it exists in lanes.json)
-        let { decision, forcedLaneHonoured } = this.routeTaskWithOptionalForcedLane(parsed);
+        // Create worktree under %USERPROFILE%\antigravity\<repo prefix><id> on branch ai/inbox/<id> from base,
+        // inside the target repo (dream-online or ANTIGRAVITY)
+        await this.runCommand({
+          command: 'git',
+          args: ['worktree', 'add', '-B', branchName, worktreePath, configuredBase],
+          cwd: repoTarget.root,
+        });
+
+        let decision = routed.decision;
+        const forcedLaneHonoured = routed.forcedLaneHonoured;
 
         const basePromptWithRules = prependCookbookRulesToTask(parsed, {
           branchName,
@@ -911,6 +1409,7 @@ export class InboxRunner {
           harness: 'agy',
           node: 'Alienware',
           cwd: worktreePath,
+          env: this.laneEnv,
         });
         let pollResult = await pollUntilDone(handle.poll);
         combinedLogs.push(pollResult.output);
@@ -966,6 +1465,7 @@ export class InboxRunner {
             harness: 'agy',
             node: 'Alienware',
             cwd: worktreePath,
+            env: this.laneEnv,
           });
           pollResult = await pollUntilDone(handle.poll);
           combinedLogs.push(pollResult.output);
@@ -1009,6 +1509,28 @@ export class InboxRunner {
           };
         };
 
+        // When the lane pushed but did not open a PR (its own gh trouble), the runner opens it with gh
+        // so finished work is never marked failed because of the lane's gh.
+        const ensurePrForResult = async (
+          res: DispatchPollResult,
+          activeDecision: DecisionRecord
+        ): Promise<DispatchPollResult> => {
+          if (res.prUrl ?? parsePrUrlFromOutput(res.output)) return res;
+          const ensured = await this.ensurePullRequest({
+            repoRoot: repoTarget.root,
+            branchName,
+            baseBranch: configuredBase,
+            taskTitle: parsed.title,
+            laneOutput: res.output,
+            laneName: activeDecision.lane,
+          });
+          if (ensured.note) {
+            combinedLogs.push(`[runner] ${ensured.note}`);
+          }
+          return ensured.prUrl ? { ...res, prUrl: ensured.prUrl } : res;
+        };
+
+        pollResult = await ensurePrForResult(pollResult, decision);
         let judgeEval = evaluateJudge(pollResult, decision);
         attempts.push({
           attemptNumber: attempts.length + 1,
@@ -1044,10 +1566,12 @@ export class InboxRunner {
             harness: 'agy',
             node: 'Alienware',
             cwd: worktreePath,
+            env: this.laneEnv,
           });
           pollResult = await pollUntilDone(handle.poll);
           combinedLogs.push(pollResult.output);
 
+          pollResult = await ensurePrForResult(pollResult, decision);
           judgeEval = evaluateJudge(pollResult, decision);
           attempts.push({
             attemptNumber: attempts.length + 1,
@@ -1088,10 +1612,10 @@ export class InboxRunner {
           });
 
           // Post router report comment on the PR via gh
-          await this.commandRunner({
+          await this.runCommand({
             command: 'gh',
             args: ['pr', 'comment', judgeEval.prUrl, '--body', prCommentBody],
-            cwd: this.repoRoot,
+            cwd: repoTarget.root,
           });
 
           taskFinalPath = path.join(folders.done, oldestFileName);
@@ -1115,19 +1639,19 @@ export class InboxRunner {
         }
 
         // Remove the worktree ONLY if the branch was pushed to origin
-        const lsRemoteRes = await this.commandRunner({
+        const lsRemoteRes = await this.runCommand({
           command: 'git',
           args: ['ls-remote', '--heads', 'origin', `refs/heads/${branchName}`],
-          cwd: this.repoRoot,
+          cwd: repoTarget.root,
         });
         const branchWasPushed =
           lsRemoteRes.exitCode === 0 && lsRemoteRes.stdout.trim().length > 0;
         let worktreeRemoved = false;
         if (branchWasPushed) {
-          const rmRes = await this.commandRunner({
+          const rmRes = await this.runCommand({
             command: 'git',
             args: ['worktree', 'remove', worktreePath, '--force'],
-            cwd: this.repoRoot,
+            cwd: repoTarget.root,
           });
           worktreeRemoved = rmRes.exitCode === 0;
         }
@@ -1136,7 +1660,8 @@ export class InboxRunner {
           status: finalStatus,
           taskId: parsed.id,
           fileName: oldestFileName,
-          repo: parsed.repo,
+          repo: repoTarget.name,
+          repoRoot: repoTarget.root,
           lane: decision.lane,
           jobClass: decision.job_class,
           decisionHash: decision.task_hash,
@@ -1160,7 +1685,7 @@ export class InboxRunner {
           attempts,
         };
       } finally {
-        this.activeRepos.delete(parsed.repo);
+        this.activeRepos.delete(repoTarget.name);
       }
     } finally {
       this.isTickActive = false;
@@ -1173,18 +1698,32 @@ export class InboxRunner {
  */
 export function createMockInboxCommandRunner(options?: {
   ghSignedIn?: boolean;
+  /** Login `gh api user` reports (default: the expected owner in ops/router/repos.json). */
+  ghLogin?: string;
   branchPushed?: boolean | ((branchName: string) => boolean);
   onCommand?: (req: CommandExecRequest) => void;
+  /** Answers a command before the defaults do; return undefined to fall through. */
+  respond?: (req: CommandExecRequest) => CommandExecResult | undefined;
 }): {
   runner: CommandRunner;
   commands: CommandExecRequest[];
 } {
   const commands: CommandExecRequest[] = [];
   const ghSignedIn = options?.ghSignedIn ?? true;
+  const ghLogin = options?.ghLogin ?? loadRepoMap().expectedOwner;
 
   const runner: CommandRunner = async (req: CommandExecRequest): Promise<CommandExecResult> => {
     commands.push(req);
     options?.onCommand?.(req);
+
+    const custom = options?.respond?.(req);
+    if (custom) return custom;
+
+    if (req.command === 'gh' && req.args[0] === 'api' && req.args[1] === 'user') {
+      return ghSignedIn
+        ? { exitCode: 0, stdout: `${ghLogin}\n`, stderr: '' }
+        : { exitCode: 1, stdout: '', stderr: 'You are not logged into any GitHub hosts.' };
+    }
 
     if (req.command === 'gh' && req.args[0] === 'auth' && req.args[1] === 'status') {
       return ghSignedIn

@@ -1,6 +1,6 @@
 # Fable DREAM ONLINE Start Here
 
-**Status note (2026-09-26):** This is the Unreal-era brief and is history. The engine is Godot 4.7.2 since 2026-09-20. The root moved to `C:\DREAM\dream-online` on 2026-09-19. DreamOps Bridge is on 9133, and 9119 is the Hermes dashboard's. The repository has been public since 2026-09-20. The live records are `docs/DREAM-DISPATCH.md` and `ops/node/JOURNAL.md`.
+**Status note:** This is an earlier brief and is history. The engine is built in-house (TypeScript/WebGPU DREAM Engine, `src/engine/`, per `docs/tech/engine-decision-2026-09-30-own-engine.md`); neither Unreal nor Godot is the engine. The root moved to `C:\DREAM\dream-online` on 2026-09-19. DreamOps Bridge is on 9133, and 9119 is the Hermes dashboard's. The repository has been public since 2026-09-20. The live records are `docs/DREAM-DISPATCH.md` and `ops/node/JOURNAL.md`.
 
 **Date:** 2026-08-25
 
