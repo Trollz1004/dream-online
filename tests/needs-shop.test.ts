@@ -2,7 +2,7 @@
  * NEEDs Shop v1 (Volume 2, Recipe 3 — the Wardrobe) — Unit & UI Verification Tests
  *
  * Covers docs/gdd/09-interface-style.md and docs/gdd/12-wardrobe-needs-shop.md:
- *  1. The screen never shows a stat (neither in catalog data, row models, nor rendered markup).
+ *  1. The help panel states the stat rule (same percentages anyone can earn in game; nothing buys power) and no shop item carries a raw stat override.
  *  2. The founder pet (TrollinlootNScoot) never shows a currency price and never reaches the currency store.
  *  3. An unreleased item cannot be bought with coins and shows its release month.
  *  4. Kid-safe basics (Plain Tee, Plain Trousers, Plain Sneakers) are always owned and never sold.
@@ -84,15 +84,17 @@ test('categories and layout: defines the 6 required categories and plain-sentenc
   assert.match(combinedRules, /skins never expire/i);
   assert.match(combinedRules, /every skin reaches the currency store a few months after release/i);
   assert.match(combinedRules, /founder pet.*never/i);
-  assert.match(combinedRules, /nothing here changes stats/i);
+  assert.match(combinedRules, /nothing here buys power/i);
   assert.equal(
     NEEDS_SHOP_HELP_RULES[2],
-    'The game is free to play. This shop sells looks and convenience, and looks cost money. Nothing here changes stats.',
+    'The game is free to play. This shop sells looks, time and choice at the same percentages anyone can earn in game. Nothing here buys power.',
   );
   assert.equal(
     NEEDS_SHOP_PAYMENTS_LINE,
-    "Payments: the game's own Square account, kept separate from the date app's.",
+    "Payments: the game's own merchant account. Nothing in this screen is pay-to-win.",
   );
+  // Rule 4: neither product names the other on a surface.
+  assert.equal(/date app/i.test(NEEDS_SHOP_PAYMENTS_LINE), false, 'shop must never name the date app');
   // React escapes the apostrophes in the rendered markup.
   assert.ok(
     html.includes(NEEDS_SHOP_PAYMENTS_LINE.replace(/'/g, '&#x27;')),
@@ -108,13 +110,13 @@ test('categories and layout: defines the 6 required categories and plain-sentenc
   }
 });
 
-test('rule 1 (no stats): the screen never shows a stat in catalog items, row models, or rendered HTML across all categories', () => {
+test('rule 1 (stat rule): the screen states the stat rule and no shop item carries a raw stat override across all categories', () => {
   const shopItems = NEEDS_SHOP_CATALOG.map((entry) => entry.item);
   const validation = validateCatalog(shopItems);
   assert.deepEqual(validation, { ok: true, errors: [] });
 
   const statKeySet = new Set(STAT_KEYS.map((k) => k.toLowerCase()));
-  const wardrobe = createWardrobe('player-no-stats');
+  const wardrobe = createWardrobe('player-stat-rule');
 
   for (const entry of NEEDS_SHOP_CATALOG) {
     assert.equal(validateShopItem(entry.item).ok, true, `item ${entry.item.id} must pass validateShopItem`);
@@ -156,12 +158,11 @@ test('rule 1 (no stats): the screen never shows a stat in catalog items, row mod
       );
     }
 
-    // The only appearance of "stats" in the screen text is the plain rule "Nothing here changes stats."
-    const withoutRuleSentence = html.replace(/Nothing here changes stats\./gi, '');
-    assert.equal(
-      /\bstats?\b/i.test(withoutRuleSentence),
-      false,
-      `category "${category.id}" must never mention stats outside the anti-pay-to-win rule sentence`,
+    assert.ok(
+      html.includes(
+        'The game is free to play. This shop sells looks, time and choice at the same percentages anyone can earn in game. Nothing here buys power.',
+      ),
+      `category "${category.id}" must render the stat rule sentence in the help panel`,
     );
   }
 });

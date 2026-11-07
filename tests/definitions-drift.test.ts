@@ -17,7 +17,7 @@ export const PAYMENT_ACCOUNTS_RULE_PATH = 'docs/house/PAYMENT-ACCOUNTS-RULE.md';
 export const PAYMENT_ACCOUNTS_RULE_HEADER =
   'Canonical copy. The drop box copy is the draft; this file is what lanes read.';
 export const PAYMENT_ACCOUNTS_RULE_SHA256 =
-  'c894842ecc9634e5e24b6b55c71e9235c61dd3f5fb017e296f1f8cd06e3fbb12';
+  '0c9e3899424e3a28e68043328aa5f8879bcb728d0a4162b451f62d2b0537b09f';
 
 export const VENDORED_SKILL_FOLDERS: readonly string[] = [
   '.agents/skills/hallmark',
@@ -244,6 +244,27 @@ test('docs/house/PAYMENT-ACCOUNTS-RULE.md exists, carries canonical header, and 
     PAYMENT_ACCOUNTS_RULE_SHA256,
     `${PAYMENT_ACCOUNTS_RULE_PATH} SHA-256 drifted from fixture (got ${actualSha}, expected ${PAYMENT_ACCOUNTS_RULE_SHA256})`,
   );
+});
+
+test('docs/house/PAYMENT-ACCOUNTS-RULE.md carries no email address (the sign-ins live in the founder vault, never in a repo)', () => {
+  const raw = fs.readFileSync(path.join(REPO_ROOT, PAYMENT_ACCOUNTS_RULE_PATH), 'utf8');
+  assert.equal(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(raw), false);
+});
+
+test('ops/node/skills/house-boot/SKILL.md line 8 carries no Windows user folder path and no private LAN addresses exist in the file', () => {
+  const raw = fs.readFileSync(path.join(REPO_ROOT, 'ops/node/skills/house-boot/SKILL.md'), 'utf8');
+  const line8 = raw.split(/\r?\n/)[7] ?? '';
+  assert.equal(/[A-Za-z]:[\\/]+Users[\\/]+/i.test(raw), false);
+  assert.ok(line8.includes('%USERPROFILE%'));
+  assert.ok(line8.includes('the newest CLAUDE-USER-PREFERENCES file in the drop box'));
+  assert.equal(line8.includes('CLAUDE-USER-PREFERENCES-v2026-10-26.md'), false);
+  assert.equal(
+    /\b(?:192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})\b/.test(
+      raw,
+    ),
+    false,
+  );
+  assert.ok(raw.includes('the node address in the node env file'));
 });
 
 test('silent edit to PAYMENT-ACCOUNTS-RULE.md or a definition file missing its pointer fails with the file name', () => {
