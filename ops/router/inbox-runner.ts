@@ -32,7 +32,9 @@ import {
   DEFAULT_DECISIONS_LOG_PATH,
   DEFAULT_LANES_PATH,
   DEFAULT_RANKINGS_DIR,
+  type ExecutorJobClass,
   hashTaskDescription,
+  isExecutorJobClass,
   type JevJobClass,
   JevRouter,
   JUDGE_HARNESS,
@@ -54,6 +56,8 @@ export const DEFAULT_REPOS_PATH = path.join(ROUTER_DIR, 'repos.json');
 export const DEFAULT_REPO_NAME = 'dream-online';
 export const ANTIGRAVITY_REPO_ROOT_ENV = 'ANTIGRAVITY_REPO_ROOT';
 export const MAX_CONSECUTIVE_FAILURES = 3;
+export const LANE_LIVENESS_TIMEOUT_MS = 10 * 60 * 1000;
+export const LANE_PROCESS_MISSING_REASON = 'lane process missing';
 
 export const INBOX_SUBFOLDERS = ['queued', 'running', 'done', 'failed', 'for-judge'] as const;
 export type InboxSubfolder = (typeof INBOX_SUBFOLDERS)[number];
@@ -150,6 +154,8 @@ export interface InboxRunnerOptions {
   commandRunner?: CommandRunner;
   now?: () => Date;
   extraSecretsToRedact?: string[];
+  /** Optional liveness probe returning whether an agy child process is currently alive under the runner. */
+  hasAgyChildProcess?: () => Promise<boolean> | boolean;
 }
 
 /**
@@ -483,6 +489,11 @@ export function parseInboxTaskFile(rawContent: string, fileName: string): Parsed
 export function isKnownLaneInTable(table: LaneTable, candidateLane: string): boolean {
   const normalized = candidateLane.trim();
   if (!normalized) return false;
+  const lower = normalized.toLowerCase();
+
+  if (isExecutorJobClass(lower)) {
+    return Boolean(table.lanes[lower]);
+  }
 
   for (const row of Object.values(table.lanes)) {
     if (row.lane === normalized || row.fallback === normalized) {
@@ -625,9 +636,11 @@ export class InboxRunner {
   private readonly commandRunner: CommandRunner;
   private readonly now: () => Date;
   private readonly extraSecretsToRedact: string[];
+  private readonly customHasAgyChildProcess?: () => Promise<boolean> | boolean;
 
   private isTickActive = false;
   private readonly activeRepos = new Set<string>();
+  private readonly livenessRequeuedTaskIds = new Set<string>();
   private consecutiveFailures = 0;
   private stoppedUntilFailedCleared = false;
 
@@ -656,6 +669,7 @@ export class InboxRunner {
     this.commandRunner = options?.commandRunner ?? defaultCommandRunner;
     this.now = options?.now ?? (() => new Date());
     this.extraSecretsToRedact = options?.extraSecretsToRedact ?? [];
+    this.customHasAgyChildProcess = options?.hasAgyChildProcess;
     this.adapter =
       options?.adapter ??
       new AgyDispatchAdapter({
@@ -687,6 +701,34 @@ export class InboxRunner {
   /** Runs a git or gh command with the scrubbed environment (no GitHub token variables). */
   private runCommand(req: CommandExecRequest): Promise<CommandExecResult> {
     return this.commandRunner({ ...req, env: this.laneEnv });
+  }
+
+  /**
+   * Checks whether an agy child process is currently alive under the runner process.
+   */
+  public async hasLiveAgyChildProcess(): Promise<boolean> {
+    if (this.customHasAgyChildProcess) {
+      return Boolean(await this.customHasAgyChildProcess());
+    }
+    if (process.platform === 'win32') {
+      const res = await this.runCommand({
+        command: 'powershell.exe',
+        args: [
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          `$p = ${process.pid}; Get-CimInstance Win32_Process | Where-Object { $_.ParentProcessId -eq $p -and $_.Name -match '^agy(\\.exe)?$' } | Select-Object -ExpandProperty Name`,
+        ],
+        cwd: this.repoRoot,
+      });
+      return res.exitCode === 0 && /\bagy(?:\.exe)?\b/i.test(res.stdout);
+    }
+    const res = await this.runCommand({
+      command: 'ps',
+      args: ['-o', 'comm=', '--ppid', String(process.pid)],
+      cwd: this.repoRoot,
+    });
+    return res.exitCode === 0 && /\bagy(?:\.exe)?\b/i.test(res.stdout);
   }
 
   /**
@@ -883,17 +925,40 @@ export class InboxRunner {
   } {
     const now = this.now();
     const table = loadLaneTable(this.lanesPath);
-    const profile = profileTask(parsed.taskText);
     const requestedLane = parsed.forcedLane?.trim() || null;
 
     if (requestedLane) {
+      const lowerLane = requestedLane.toLowerCase();
+
+      // 1. Explicit executor lane class name (engine, mechanical, code-bulk, code-hard, design-visual, research)
+      if (isExecutorJobClass(lowerLane)) {
+        const executorClass = lowerLane as ExecutorJobClass;
+        const decision = this.router.route(parsed.taskText, {
+          now,
+          title: parsed.title,
+          lane: executorClass,
+          lanesPath: this.lanesPath,
+          rankingsDir: this.rankingsDir,
+          decisionsLogPath: this.decisionsLogPath,
+          extraSecretsToRedact: this.extraSecretsToRedact,
+        });
+        return { decision, forcedLaneHonoured: true };
+      }
+
+      // 2. Explicit model lane in lanes.json (only 'lane: fable' parks a task)
       const existsInTable = isKnownLaneInTable(table, requestedLane);
+      const profile = profileTask(parsed.taskText, {
+        title: parsed.title,
+        lane: existsInTable ? requestedLane : null,
+      });
       const isCold = existsInTable ? this.router.isLaneCold(requestedLane, now) : false;
       const forbiddenRouteToJudge =
-        profile.jobClass === 'route' && (requestedLane === 'fable' || requestedLane === 'judge');
+        profile.jobClass === 'route' && (lowerLane === 'fable' || lowerLane === 'judge');
 
       if (existsInTable && !isCold && !forbiddenRouteToJudge) {
-        const row = table.lanes[profile.jobClass];
+        const effectiveJobClass: JevJobClass =
+          lowerLane === 'fable' ? 'judge' : profile.jobClass;
+        const row = table.lanes[effectiveJobClass];
         const rankingEval = loadNewestWeeklyRanking(this.rankingsDir, now);
         const activeCold = this.router.getActiveColdLanes(now);
         const taskHash = hashTaskDescription(parsed.taskText);
@@ -910,8 +975,8 @@ export class InboxRunner {
           timestamp: now.toISOString(),
           task_hash: taskHash,
           taskHash,
-          job_class: profile.jobClass,
-          jobClass: profile.jobClass,
+          job_class: effectiveJobClass,
+          jobClass: effectiveJobClass,
           lane: requestedLane,
           node: 'Alienware',
           harness: forcedHarness,
@@ -933,6 +998,8 @@ export class InboxRunner {
       // Forced lane does not exist in lanes.json (or is cold / forbidden): fall back to profiling
       const fallbackDecision = this.router.route(parsed.taskText, {
         now,
+        title: parsed.title,
+        lane: existsInTable && lowerLane !== 'fable' ? requestedLane : null,
         lanesPath: this.lanesPath,
         rankingsDir: this.rankingsDir,
         decisionsLogPath: this.decisionsLogPath,
@@ -944,6 +1011,7 @@ export class InboxRunner {
 
     const decision = this.router.route(parsed.taskText, {
       now,
+      title: parsed.title,
       lanesPath: this.lanesPath,
       rankingsDir: this.rankingsDir,
       decisionsLogPath: this.decisionsLogPath,
@@ -992,11 +1060,10 @@ export class InboxRunner {
 
     const folders = ensureInboxFolders(this.inboxDir);
 
-    // Concurrency guard: one task at a time, never two agy runs at once
-    if (
-      this.isTickActive ||
-      listMarkdownTaskFilesSortedOldestFirst(folders.running).length > 0
-    ) {
+    // Concurrency guard and lane liveness check:
+    // If a task sits in running\ for more than ten minutes with no agy child process under the runner,
+    // the runner marks it failed with the reason 'lane process missing' and re-queues it once.
+    if (this.isTickActive) {
       return {
         status: 'busy',
         taskId: null,
@@ -1023,6 +1090,96 @@ export class InboxRunner {
         transitions: [],
         attempts: [],
       };
+    }
+
+    let livenessRequeuedFileName: string | null = null;
+    const transitions: string[] = [];
+    const runningFiles = listMarkdownTaskFilesSortedOldestFirst(folders.running);
+    if (runningFiles.length > 0) {
+      const runningFileName = runningFiles[0];
+      const runningPath = path.join(folders.running, runningFileName);
+      const stat = fs.statSync(runningPath);
+      const runningAgeMs = this.now().getTime() - stat.mtimeMs;
+      const isStale = runningAgeMs > LANE_LIVENESS_TIMEOUT_MS;
+      const agyAlive = isStale ? await this.hasLiveAgyChildProcess() : true;
+
+      if (!isStale || agyAlive) {
+        return {
+          status: 'busy',
+          taskId: null,
+          fileName: null,
+          repo: null,
+          repoRoot: null,
+          lane: null,
+          jobClass: null,
+          decisionHash: null,
+          reason: 'Inbox runner is busy: one task at a time, never two agy runs at once.',
+          prUrl: null,
+          prCommentBody: null,
+          requeued: false,
+          requeueCount: 0,
+          quotaFallbackTriggered: false,
+          forcedLaneRequested: null,
+          forcedLaneHonoured: false,
+          worktreePath: null,
+          branchName: null,
+          baseBranch: null,
+          worktreeRemoved: false,
+          taskFinalPath: null,
+          logFinalPath: null,
+          transitions: [],
+          attempts: [],
+        };
+      }
+
+      const rawStuck = fs.readFileSync(runningPath, 'utf8');
+      const parsedStuck = parseInboxTaskFile(rawStuck, runningFileName);
+      if (this.livenessRequeuedTaskIds.has(parsedStuck.id)) {
+        this.livenessRequeuedTaskIds.delete(parsedStuck.id);
+        const livenessRecord = this.logSafetyDecision(LANE_PROCESS_MISSING_REASON, rawStuck);
+        const failedTaskPath = path.join(folders.failed, runningFileName);
+        const failedLogPath = path.join(folders.failed, `${parsedStuck.id}.log`);
+        fs.renameSync(runningPath, failedTaskPath);
+        fs.writeFileSync(failedLogPath, `${LANE_PROCESS_MISSING_REASON}\n`, 'utf8');
+        transitions.push('running -> failed');
+        this.consecutiveFailures += 1;
+        if (this.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+          this.stoppedUntilFailedCleared = true;
+        }
+        return {
+          status: 'failed',
+          taskId: parsedStuck.id,
+          fileName: runningFileName,
+          repo: parsedStuck.repo,
+          repoRoot: null,
+          lane: null,
+          jobClass: null,
+          decisionHash: livenessRecord.task_hash,
+          reason: LANE_PROCESS_MISSING_REASON,
+          prUrl: null,
+          prCommentBody: null,
+          requeued: true,
+          requeueCount: 1,
+          quotaFallbackTriggered: false,
+          forcedLaneRequested: parsedStuck.forcedLane,
+          forcedLaneHonoured: false,
+          worktreePath: null,
+          branchName: null,
+          baseBranch: null,
+          worktreeRemoved: false,
+          taskFinalPath: failedTaskPath,
+          logFinalPath: failedLogPath,
+          transitions,
+          attempts: [],
+        };
+      }
+
+      // Mark failed with reason 'lane process missing' and re-queue it once
+      this.logSafetyDecision(LANE_PROCESS_MISSING_REASON, rawStuck);
+      this.livenessRequeuedTaskIds.add(parsedStuck.id);
+      fs.renameSync(runningPath, path.join(folders.queued, runningFileName));
+      transitions.push('running -> queued (re-queue 1)');
+      livenessRequeuedFileName = runningFileName;
     }
 
     // Safety 2: Stop after three consecutive failures until a human clears failed/
@@ -1167,16 +1324,19 @@ export class InboxRunner {
       };
     }
 
-    const oldestFileName = queuedFiles[0];
+    const oldestFileName =
+      livenessRequeuedFileName && queuedFiles.includes(livenessRequeuedFileName)
+        ? livenessRequeuedFileName
+        : queuedFiles[0];
+    const isLivenessRequeue = oldestFileName === livenessRequeuedFileName;
     const queuedFilePath = path.join(folders.queued, oldestFileName);
     const runningFilePath = path.join(folders.running, oldestFileName);
-    const transitions: string[] = [];
 
     this.isTickActive = true;
     try {
       // Move oldest file from queued/ to running/
       fs.renameSync(queuedFilePath, runningFilePath);
-      transitions.push('queued -> running');
+      transitions.push(isLivenessRequeue ? 'queued -> running (re-queue 1)' : 'queued -> running');
 
       const rawContent = fs.readFileSync(runningFilePath, 'utf8');
       const parsed = parseInboxTaskFile(rawContent, oldestFileName);
@@ -1382,11 +1542,30 @@ export class InboxRunner {
           baseBranch: configuredBase,
         });
 
-        let currentPrompt = basePromptWithRules;
-        let requeueCount = 0;
+        let currentPrompt = isLivenessRequeue
+          ? `${basePromptWithRules}\n\n[Re-queued after failure: ${LANE_PROCESS_MISSING_REASON}]`
+          : basePromptWithRules;
+        let requeueCount = isLivenessRequeue ? 1 : 0;
         let quotaFallbackTriggered = false;
         const attempts: InboxAttemptRecord[] = [];
         const combinedLogs: string[] = [];
+
+        if (isLivenessRequeue) {
+          attempts.push({
+            attemptNumber: 1,
+            lane: decision.lane,
+            jobClass: decision.job_class,
+            decisionHash: decision.task_hash,
+            prompt: basePromptWithRules,
+            prUrl: null,
+            eyesReportFirstLine: null,
+            quotaError: false,
+            passedJudge: false,
+            failureReason: LANE_PROCESS_MISSING_REASON,
+            output: LANE_PROCESS_MISSING_REASON,
+          });
+          combinedLogs.push(LANE_PROCESS_MISSING_REASON);
+        }
 
         const pollUntilDone = async (
           pollFn: () => Promise<DispatchPollResult>
@@ -1400,9 +1579,9 @@ export class InboxRunner {
           return res;
         };
 
-        // Run first attempt
+        // Run attempt
         let handle = await this.adapter.dispatch({
-          jobId: `${parsed.id}-attempt-1`,
+          jobId: isLivenessRequeue ? `${parsed.id}-requeue-1` : `${parsed.id}-attempt-1`,
           prompt: currentPrompt,
           jobClass: decision.job_class,
           lane: decision.lane,
@@ -1449,13 +1628,7 @@ export class InboxRunner {
           fs.renameSync(queuedFilePath, runningFilePath);
           transitions.push('queued -> running (quota fallback)');
 
-          decision = this.router.route(parsed.taskText, {
-            now: this.now(),
-            lanesPath: this.lanesPath,
-            rankingsDir: this.rankingsDir,
-            decisionsLogPath: this.decisionsLogPath,
-            extraSecretsToRedact: this.extraSecretsToRedact,
-          });
+          decision = this.routeTaskWithOptionalForcedLane(parsed).decision;
 
           handle = await this.adapter.dispatch({
             jobId: `${parsed.id}-fallback`,
@@ -1547,7 +1720,7 @@ export class InboxRunner {
         });
 
         // If judge step failed (e.g. task without a PR), re-queue once then fail if still missing
-        if (!judgeEval.passed) {
+        if (!judgeEval.passed && requeueCount === 0) {
           requeueCount = 1;
           fs.renameSync(runningFilePath, queuedFilePath);
           transitions.push('running -> queued (re-queue 1)');
@@ -1597,6 +1770,7 @@ export class InboxRunner {
         let taskFinalPath: string;
         let logFinalPath: string;
         let finalStatus: 'done' | 'failed';
+        this.livenessRequeuedTaskIds.delete(parsed.id);
 
         if (judgeEval.passed && judgeEval.prUrl) {
           finalStatus = 'done';
@@ -1667,7 +1841,9 @@ export class InboxRunner {
           decisionHash: decision.task_hash,
           reason: judgeEval.passed
             ? decision.reason
-            : judgeEval.failureReason ?? 'Judge check failed.',
+            : isLivenessRequeue
+              ? `${LANE_PROCESS_MISSING_REASON}; ${judgeEval.failureReason ?? 'Judge check failed.'}`
+              : judgeEval.failureReason ?? 'Judge check failed.',
           prUrl: judgeEval.prUrl,
           prCommentBody,
           requeued: requeueCount > 0,
@@ -1701,6 +1877,8 @@ export function createMockInboxCommandRunner(options?: {
   /** Login `gh api user` reports (default: the expected owner in ops/router/repos.json). */
   ghLogin?: string;
   branchPushed?: boolean | ((branchName: string) => boolean);
+  /** Whether an agy child process is running under the runner (for lane liveness tests). */
+  agyChildProcessRunning?: boolean | (() => boolean);
   onCommand?: (req: CommandExecRequest) => void;
   /** Answers a command before the defaults do; return undefined to fall through. */
   respond?: (req: CommandExecRequest) => CommandExecResult | undefined;
@@ -1718,6 +1896,21 @@ export function createMockInboxCommandRunner(options?: {
 
     const custom = options?.respond?.(req);
     if (custom) return custom;
+
+    if (
+      (req.command === 'powershell.exe' && req.args.some((a) => a.includes('Win32_Process'))) ||
+      (req.command === 'ps' && req.args.includes('--ppid'))
+    ) {
+      const alive =
+        typeof options?.agyChildProcessRunning === 'function'
+          ? options.agyChildProcessRunning()
+          : Boolean(options?.agyChildProcessRunning);
+      return {
+        exitCode: 0,
+        stdout: alive ? 'agy.exe\n' : '',
+        stderr: '',
+      };
+    }
 
     if (req.command === 'gh' && req.args[0] === 'api' && req.args[1] === 'user') {
       return ghSignedIn
