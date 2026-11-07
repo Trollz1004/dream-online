@@ -7,5 +7,5 @@ Two merchant accounts, never mixed. Square's terms are the reason there are two;
 2. DREAM Online (the game, the NEEDs shop, cosmetics, convenience), merch, and every other product of the LLC take money through the founder's separate Square account for the game and everything else (named in the vault). Never the date app's accounts.
 3. No code, config, doc, design or env file ever points one product at the other's account. A lane that finds a Square key, location id or checkout link in the wrong product stops and reports; it never "fixes" it by copying one across.
 4. Wording on surfaces: the date app says "Square"; the game and shop say "the game's own Square account" or nothing. Neither names the other.
-5. The game is free to play. Its shop sells looks and convenience, and looks cost money; nothing in it changes a stat. "Free to all" means the game, never the shop's items.
+5. The game is free to play. Shop items carry stats at the same percentage per tier as the earned ones; the choice is which stat, never how much; everything sold for cash is also earnable in game; nothing buys power. "Free to all" means the game, never the shop's items.
 6. Nothing costs money until Josh says finalize; prices stay [YOUR PRICE] until then.

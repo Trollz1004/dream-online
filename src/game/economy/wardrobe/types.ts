@@ -5,9 +5,7 @@
  * Three rules are enforced by the SHAPE of these types, not by convention:
  *  1. Bought is owned. An owned skin record carries who, what, when and how it
  *     was acquired. It has no end date and no rental state, so none can exist.
- *  2. Pay-to-win never. Skins, convenience items and basics have no stat field.
- *     The compile-time assertion at the bottom of this file fails `npm run lint`
- *     if anyone adds one.
+ *  2. Stat rule (pay-to-win never): items carry stats at the same percentage per tier on their catalogue entry (choice, never power; everything sold for cash is also earnable in game), while raw Skin, ConvenienceItem and BasicItem records stay looks/convenience records enforced at compile time (`npm run lint`).
  *  3. Kid-safe basics are their own item kind and are never sold.
  */
 

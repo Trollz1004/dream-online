@@ -11,8 +11,9 @@
  *              for items already released to the currency store.
  *      Right:  Help panel explaining the rules in plain sentences (bought is owned forever,
  *              skins never expire, every skin reaches the currency store a few months after release,
- *              the founder pet never does; the game is free to play, the shop sells looks and
- *              convenience, and nothing here changes stats), plus the payments line.
+ *              the founder pet never does; the game is free to play, this shop sells looks, time
+ *              and choice at the same percentages anyone can earn in game, and nothing here buys power),
+ *              plus the payments line.
  *  - One "Back" control at the bottom centre.
  *  - White on dark, no ornament, no other colour, own inline SVG only.
  *  - Wired directly to src/game/economy/wardrobe (never re-implemented).
@@ -175,7 +176,7 @@ export const NEEDS_SHOP_CATEGORIES: readonly NeedsShopCategoryMeta[] = Object.fr
 export const NEEDS_SHOP_HELP_RULES: readonly string[] = Object.freeze([
   'Bought is owned forever.',
   'Skins never expire.',
-  'The game is free to play. This shop sells looks and convenience, and looks cost money. Nothing here changes stats.',
+  'The game is free to play. This shop sells looks, time and choice at the same percentages anyone can earn in game. Nothing here buys power.',
   'Every skin reaches the currency store a few months after release.',
   'The founder pet, TrollinlootNScoot, never reaches the currency store.',
 ]);
