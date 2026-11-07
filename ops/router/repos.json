@@ -1,0 +1,13 @@
+{
+  "repos": {
+    "dream-online": {
+      "root": "self",
+      "worktreePrefix": "DREAM-Engine-wt-inbox-"
+    },
+    "ANTIGRAVITY": {
+      "rootEnv": "ANTIGRAVITY_REPO_ROOT",
+      "defaultRoot": "%USERPROFILE%\\antigravity\\ANTIGRAVITY-wt-pr335",
+      "worktreePrefix": "ANTIGRAVITY-wt-inbox-"
+    }
+  }
+}

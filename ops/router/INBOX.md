@@ -16,13 +16,13 @@ The inbox lives in a local folder on the Alienware only and never in OneDrive or
 
 ## 2. Base Branch Configuration
 
-The runner reads the base branch from the `base:` configuration line below (or from an optional `base:` line in a task file). Once the stack branch has merged to `main`, change this line to `base: main`:
+The runner reads the base branch from the `base:` configuration line below (or from an optional `base:` line in a task file). Branch from `origin/main` by default; before each worktree the runner runs `git fetch origin` in the target repo so the base is current:
 
 ```text
-base: origin/ai/stack2/2026-11-04
+base: origin/main
 ```
 
-Each task creates an isolated worktree at `%USERPROFILE%\antigravity\DREAM-Engine-wt-inbox-<id>` on branch `ai/inbox/<id>` starting from the configured base. The runner removes the worktree when the run finishes only if `ai/inbox/<id>` was pushed to `origin`.
+Each task creates an isolated worktree at `%USERPROFILE%\antigravity\<prefix><id>` (prefix from `ops/router/repos.json`: `DREAM-Engine-wt-inbox-` for `dream-online`, `ANTIGRAVITY-wt-inbox-` for `ANTIGRAVITY`) on branch `ai/inbox/<id>` starting from the configured base, inside the repo the task selected. The runner removes the worktree when the run finishes only if `ai/inbox/<id>` was pushed to `origin`.
 
 ## 3. Task File Format
 
@@ -32,7 +32,7 @@ Format rules:
 
 1. **Title line** (required): The first non-empty line, written as a Markdown heading (`# <Title>`) or plain sentence.
 2. **Optional `lane:` line**: `lane: <lane-id>` forces a specific lane. The runner honours a forced lane only if `<lane-id>` exists in `ops/router/lanes.json`; otherwise it falls back to profiling the task with the Jev router core.
-3. **Optional `repo:` line**: `repo: <repo-name>` selects the target repository (defaults to `dream-online`).
+3. **Optional `repo:` line**: `repo: <repo-name>` selects the target repository through the repo map in `ops/router/repos.json` (defaults to `dream-online`). `dream-online` is the runner's own repo root. `ANTIGRAVITY` is the sibling folder named in the `ANTIGRAVITY_REPO_ROOT` environment variable (default `%USERPROFILE%\antigravity\ANTIGRAVITY-wt-pr335`); that task gets its worktree, branch and PR in that repo. An unknown repo name is refused: the task moves to `failed\` with a log naming the known repos. The one-run-per-repo rule still holds.
 4. **Task text**: Everything after the header lines is the task body sent to the selected lane with the cookbook's common rules prepended (`PR only`, `no user folder names`, `no secrets`, `proof pasted`, `Obsidian note`).
 
 ### Example Task File (`%USERPROFILE%\antigravity\.fable-kitchen\inbox\queued\fix-hud-spacing.md`)

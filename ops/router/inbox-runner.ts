@@ -46,7 +46,10 @@ export const DEFAULT_REPO_ROOT = path.resolve(ROUTER_DIR, '..', '..');
 export const DEFAULT_INBOX_DIR = path.join(os.homedir(), 'antigravity', '.fable-kitchen', 'inbox');
 export const DEFAULT_WORKTREE_PARENT_DIR = path.join(os.homedir(), 'antigravity');
 export const DEFAULT_INBOX_CONFIG_PATH = path.join(ROUTER_DIR, 'INBOX.md');
-export const DEFAULT_BASE_BRANCH = 'origin/ai/stack2/2026-11-04';
+export const DEFAULT_BASE_BRANCH = 'origin/main';
+export const DEFAULT_REPOS_PATH = path.join(ROUTER_DIR, 'repos.json');
+export const DEFAULT_REPO_NAME = 'dream-online';
+export const ANTIGRAVITY_REPO_ROOT_ENV = 'ANTIGRAVITY_REPO_ROOT';
 export const MAX_CONSECUTIVE_FAILURES = 3;
 
 export const INBOX_SUBFOLDERS = ['queued', 'running', 'done', 'failed'] as const;
@@ -93,13 +96,16 @@ export type InboxTickStatus =
   | 'failed'
   | 'stopped-three-failures'
   | 'refused-gh-auth'
-  | 'refused-onedrive-inbox';
+  | 'refused-onedrive-inbox'
+  | 'refused-unknown-repo'
+  | 'refused-repo-root-missing';
 
 export interface InboxTickResult {
   status: InboxTickStatus;
   taskId: string | null;
   fileName: string | null;
   repo: string | null;
+  repoRoot: string | null;
   lane: string | null;
   jobClass: JevJobClass | null;
   decisionHash: string | null;
@@ -125,6 +131,8 @@ export interface InboxRunnerOptions {
   inboxDir?: string;
   worktreeParentDir?: string;
   repoRoot?: string;
+  reposPath?: string;
+  env?: NodeJS.ProcessEnv;
   configPath?: string;
   baseBranch?: string;
   lanesPath?: string;
@@ -207,6 +215,171 @@ export function readBaseBranchFromConfig(
   return DEFAULT_BASE_BRANCH;
 }
 
+export interface RepoMapEntry {
+  /** `self` means the runner's own repo root. */
+  root?: string;
+  /** Name of the environment variable that holds the repo root folder. */
+  rootEnv?: string;
+  /** Root used when `rootEnv` is unset or empty; may contain %NAME% placeholders such as %USERPROFILE%. */
+  defaultRoot?: string;
+  /** Worktree folder prefix; the task id is appended. */
+  worktreePrefix?: string;
+}
+
+export interface RepoMap {
+  repos: Record<string, RepoMapEntry>;
+}
+
+export interface ResolvedRepoTarget {
+  /** Canonical repo name as written in the repo map. */
+  name: string;
+  root: string;
+  worktreePrefix: string;
+  /** Human-readable origin of the root (for messages), never an env value. */
+  rootSource: string;
+}
+
+export type RepoResolution =
+  | { ok: true; target: ResolvedRepoTarget }
+  | { ok: false; reason: string };
+
+/**
+ * Loads and validates the repo map (ops/router/repos.json) that backs the task file `repo:` selector.
+ */
+export function loadRepoMap(reposPath: string = DEFAULT_REPOS_PATH): RepoMap {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(fs.readFileSync(reposPath, 'utf8'));
+  } catch (err) {
+    throw new Error(
+      `Inbox runner cannot load the repo map at ${path.basename(reposPath)}: ${
+        err instanceof Error ? err.message : String(err)
+      }`
+    );
+  }
+  const repos = (parsed as { repos?: unknown } | null)?.repos;
+  if (!repos || typeof repos !== 'object' || Array.isArray(repos)) {
+    throw new Error('Inbox runner repo map must contain a "repos" object.');
+  }
+  const map: RepoMap = { repos: repos as Record<string, RepoMapEntry> };
+  for (const [name, entry] of Object.entries(map.repos)) {
+    if (!entry || typeof entry !== 'object') {
+      throw new Error(`Inbox runner repo map entry ${name} must be an object.`);
+    }
+    if (entry.root !== 'self' && !entry.rootEnv && !entry.defaultRoot) {
+      throw new Error(
+        `Inbox runner repo map entry ${name} needs root "self", a rootEnv, or a defaultRoot.`
+      );
+    }
+  }
+  if (!Object.hasOwn(map.repos, DEFAULT_REPO_NAME)) {
+    throw new Error(`Inbox runner repo map must contain the default repo ${DEFAULT_REPO_NAME}.`);
+  }
+  return map;
+}
+
+function readEnvValue(env: NodeJS.ProcessEnv, name: string): string | undefined {
+  if (Object.hasOwn(env, name)) return env[name];
+  const lower = name.toLowerCase();
+  const key = Object.keys(env).find((candidate) => candidate.toLowerCase() === lower);
+  return key === undefined ? undefined : env[key];
+}
+
+/**
+ * Expands %NAME% placeholders from the environment (USERPROFILE falls back to the OS home folder).
+ * Returns null when a placeholder cannot be resolved.
+ */
+export function expandEnvPlaceholders(value: string, env: NodeJS.ProcessEnv = process.env): string | null {
+  let unresolved = false;
+  const expanded = value.replace(/%([A-Za-z_][A-Za-z0-9_]*)%/g, (_match, name: string) => {
+    let resolved = readEnvValue(env, name)?.trim();
+    if (!resolved && name.toUpperCase() === 'USERPROFILE') {
+      resolved = os.homedir();
+    }
+    if (!resolved) {
+      unresolved = true;
+      return '';
+    }
+    return resolved;
+  });
+  return unresolved ? null : expanded;
+}
+
+/**
+ * Writes the user folder back as %USERPROFILE% so messages and logs never carry a user folder name.
+ */
+export function toPortablePath(absolutePath: string, env: NodeJS.ProcessEnv = process.env): string {
+  const homes = [readEnvValue(env, 'USERPROFILE')?.trim(), os.homedir()].filter(
+    (home): home is string => Boolean(home)
+  );
+  for (const home of homes) {
+    const trimmed = home.replace(/[\\/]+$/, '');
+    if (absolutePath.toLowerCase().startsWith(trimmed.toLowerCase())) {
+      return `%USERPROFILE%${absolutePath.slice(trimmed.length)}`;
+    }
+  }
+  return absolutePath;
+}
+
+/**
+ * Resolves a task file `repo:` value through the repo map to a repo root folder.
+ * `dream-online` is the runner's own repo root; `ANTIGRAVITY` is the folder named in the
+ * ANTIGRAVITY_REPO_ROOT environment variable (default from the map). An unknown repo is refused.
+ */
+export function resolveRepoTarget(
+  repoName: string,
+  options: { map: RepoMap; env?: NodeJS.ProcessEnv; selfRoot?: string }
+): RepoResolution {
+  const env = options.env ?? process.env;
+  const requested = (repoName ?? '').trim() || DEFAULT_REPO_NAME;
+  const knownNames = Object.keys(options.map.repos);
+  const canonical = knownNames.find((name) => name.toLowerCase() === requested.toLowerCase());
+  if (!canonical) {
+    return {
+      ok: false,
+      reason: `unknown repo "${requested}". Known repos: ${[...knownNames]
+        .sort((a, b) => a.localeCompare(b))
+        .join(', ')} (see ops/router/repos.json).`,
+    };
+  }
+
+  const entry = options.map.repos[canonical];
+  const worktreePrefix = entry.worktreePrefix?.trim() || `${canonical}-wt-inbox-`;
+
+  if (entry.root === 'self') {
+    return {
+      ok: true,
+      target: {
+        name: canonical,
+        root: path.resolve(options.selfRoot ?? DEFAULT_REPO_ROOT),
+        worktreePrefix,
+        rootSource: 'the runner repo root',
+      },
+    };
+  }
+
+  const fromEnv = entry.rootEnv ? readEnvValue(env, entry.rootEnv)?.trim() : undefined;
+  const rawRoot = fromEnv || entry.defaultRoot;
+  const rootSource = fromEnv
+    ? `the ${entry.rootEnv} environment variable`
+    : `the default root of repo ${canonical}${entry.rootEnv ? ` (set ${entry.rootEnv} to override)` : ''}`;
+  if (!rawRoot) {
+    return {
+      ok: false,
+      reason: `repo ${canonical} has no root; set ${entry.rootEnv ?? 'a root'} in the environment.`,
+    };
+  }
+  const expanded = expandEnvPlaceholders(rawRoot, env);
+  if (!expanded) {
+    return {
+      ok: false,
+      reason: `the root of repo ${canonical} (${rootSource}) uses an environment variable that is not set.`,
+    };
+  }
+  const root = path.resolve(path.normalize(expanded.replace(/[\\/]/g, path.sep)));
+  return { ok: true, target: { name: canonical, root, worktreePrefix, rootSource } };
+}
+
 /**
  * Sanitizes a filename stem into a safe git branch / worktree id.
  */
@@ -228,7 +401,7 @@ export function parseInboxTaskFile(rawContent: string, fileName: string): Parsed
 
   let title = '';
   let forcedLane: string | null = null;
-  let repo = 'dream-online';
+  let repo = DEFAULT_REPO_NAME;
   let baseOverride: string | null = null;
   let inboxHeader: string | null = null;
   const bodyLines: string[] = [];
@@ -417,6 +590,8 @@ export class InboxRunner {
   private readonly inboxDir: string;
   private readonly worktreeParentDir: string;
   private readonly repoRoot: string;
+  private readonly repoMap: RepoMap;
+  private readonly env: NodeJS.ProcessEnv;
   private readonly configPath: string;
   private readonly explicitBaseBranch?: string;
   private readonly lanesPath: string;
@@ -437,6 +612,9 @@ export class InboxRunner {
     this.inboxDir = options?.inboxDir ?? DEFAULT_INBOX_DIR;
     this.worktreeParentDir = options?.worktreeParentDir ?? DEFAULT_WORKTREE_PARENT_DIR;
     this.repoRoot = options?.repoRoot ?? DEFAULT_REPO_ROOT;
+    this.env = options?.env ?? process.env;
+    // Fail fast at startup (before any task file moves) if the repo map cannot be loaded
+    this.repoMap = loadRepoMap(options?.reposPath ?? DEFAULT_REPOS_PATH);
     this.configPath = options?.configPath ?? DEFAULT_INBOX_CONFIG_PATH;
     this.explicitBaseBranch = options?.baseBranch;
     this.lanesPath = options?.lanesPath ?? DEFAULT_LANES_PATH;
@@ -505,6 +683,59 @@ export class InboxRunner {
     };
     appendDecisionRecord(record, this.decisionsLogPath, this.extraSecretsToRedact);
     return record;
+  }
+
+  /**
+   * Moves a task that was refused before any run (unknown repo, missing repo root) from running/ to failed/
+   * with a log beside it, records the safety decision, and counts it toward the three-failure stop.
+   */
+  private refuseTaskBeforeRun(params: {
+    status: 'refused-unknown-repo' | 'refused-repo-root-missing';
+    reason: string;
+    parsed: ParsedInboxTask;
+    oldestFileName: string;
+    runningFilePath: string;
+    failedDir: string;
+    repoName: string;
+    repoRoot: string | null;
+    transitions: string[];
+  }): InboxTickResult {
+    const refusalRecord = this.logSafetyDecision(params.reason, params.parsed.rawContent);
+    const failedTaskPath = path.join(params.failedDir, params.oldestFileName);
+    const failedLogPath = path.join(params.failedDir, `${params.parsed.id}.log`);
+    fs.renameSync(params.runningFilePath, failedTaskPath);
+    fs.writeFileSync(failedLogPath, `${refusalRecord.reason}\n`, 'utf8');
+    params.transitions.push('running -> failed');
+    this.consecutiveFailures += 1;
+    if (this.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+      this.stoppedUntilFailedCleared = true;
+    }
+    return {
+      status: params.status,
+      taskId: params.parsed.id,
+      fileName: params.oldestFileName,
+      repo: sanitizeDecisionLogText(params.repoName, this.extraSecretsToRedact),
+      repoRoot: params.repoRoot,
+      lane: null,
+      jobClass: null,
+      decisionHash: refusalRecord.task_hash,
+      reason: refusalRecord.reason,
+      prUrl: null,
+      prCommentBody: null,
+      requeued: false,
+      requeueCount: 0,
+      quotaFallbackTriggered: false,
+      forcedLaneRequested: params.parsed.forcedLane,
+      forcedLaneHonoured: false,
+      worktreePath: null,
+      branchName: null,
+      baseBranch: null,
+      worktreeRemoved: false,
+      taskFinalPath: failedTaskPath,
+      logFinalPath: failedLogPath,
+      transitions: params.transitions,
+      attempts: [],
+    };
   }
 
   private routeTaskWithOptionalForcedLane(
@@ -598,6 +829,7 @@ export class InboxRunner {
         taskId: null,
         fileName: null,
         repo: null,
+        repoRoot: null,
         lane: null,
         jobClass: null,
         decisionHash: rec.task_hash,
@@ -632,6 +864,7 @@ export class InboxRunner {
         taskId: null,
         fileName: null,
         repo: null,
+        repoRoot: null,
         lane: null,
         jobClass: null,
         decisionHash: null,
@@ -670,6 +903,7 @@ export class InboxRunner {
         taskId: null,
         fileName: null,
         repo: null,
+        repoRoot: null,
         lane: null,
         jobClass: null,
         decisionHash: null,
@@ -700,6 +934,7 @@ export class InboxRunner {
         taskId: null,
         fileName: null,
         repo: null,
+        repoRoot: null,
         lane: null,
         jobClass: null,
         decisionHash: null,
@@ -738,6 +973,7 @@ export class InboxRunner {
         taskId: null,
         fileName: queuedFiles[0],
         repo: null,
+        repoRoot: null,
         lane: null,
         jobClass: null,
         decisionHash: rec.task_hash,
@@ -774,19 +1010,54 @@ export class InboxRunner {
       const rawContent = fs.readFileSync(runningFilePath, 'utf8');
       const parsed = parseInboxTaskFile(rawContent, oldestFileName);
 
+      // Resolve repo: through the repo map (ops/router/repos.json); an unknown repo or a missing root is refused
+      const repoResolution = resolveRepoTarget(parsed.repo, {
+        map: this.repoMap,
+        env: this.env,
+        selfRoot: this.repoRoot,
+      });
+      if (!repoResolution.ok) {
+        return this.refuseTaskBeforeRun({
+          status: 'refused-unknown-repo',
+          reason: `Refused task ${parsed.id}: ${repoResolution.reason}`,
+          parsed,
+          oldestFileName,
+          runningFilePath,
+          failedDir: folders.failed,
+          repoName: parsed.repo,
+          repoRoot: null,
+          transitions,
+        });
+      }
+      const repoTarget = repoResolution.target;
+      if (!fs.existsSync(repoTarget.root)) {
+        return this.refuseTaskBeforeRun({
+          status: 'refused-repo-root-missing',
+          reason: `Refused task ${parsed.id}: root folder for repo ${repoTarget.name} does not exist (${toPortablePath(repoTarget.root, this.env)}); the root came from ${repoTarget.rootSource}.`,
+          parsed,
+          oldestFileName,
+          runningFilePath,
+          failedDir: folders.failed,
+          repoName: repoTarget.name,
+          repoRoot: repoTarget.root,
+          transitions,
+        });
+      }
+
       // Repo-level concurrency guard: never two agy runs for the same repo at once
-      if (this.activeRepos.has(parsed.repo)) {
+      if (this.activeRepos.has(repoTarget.name)) {
         fs.renameSync(runningFilePath, queuedFilePath);
         transitions.push('running -> queued');
         return {
           status: 'busy',
           taskId: parsed.id,
           fileName: oldestFileName,
-          repo: parsed.repo,
+          repo: repoTarget.name,
+          repoRoot: repoTarget.root,
           lane: null,
           jobClass: null,
           decisionHash: null,
-          reason: `Repo ${parsed.repo} already has an active agy run.`,
+          reason: `Repo ${repoTarget.name} already has an active agy run.`,
           prUrl: null,
           prCommentBody: null,
           requeued: false,
@@ -805,7 +1076,7 @@ export class InboxRunner {
         };
       }
 
-      this.activeRepos.add(parsed.repo);
+      this.activeRepos.add(repoTarget.name);
       try {
         // Safety 4: Refuse a task file that names a path under OneDrive as its inbox
         if (taskNamesOneDriveInbox(rawContent, parsed.inboxHeader)) {
@@ -831,7 +1102,8 @@ export class InboxRunner {
             status: 'refused-onedrive-inbox',
             taskId: parsed.id,
             fileName: oldestFileName,
-            repo: parsed.repo,
+            repo: repoTarget.name,
+            repoRoot: repoTarget.root,
             lane: null,
             jobClass: null,
             decisionHash: refusalRecord.task_hash,
@@ -866,14 +1138,22 @@ export class InboxRunner {
 
         const worktreePath = path.join(
           this.worktreeParentDir,
-          `DREAM-Engine-wt-inbox-${parsed.id}`
+          `${repoTarget.worktreePrefix}${parsed.id}`
         );
 
-        // Create worktree under %USERPROFILE%\antigravity\DREAM-Engine-wt-inbox-<id> on branch ai/inbox/<id> from base
+        // Current beats existing: fetch origin in the target repo so the base (origin/main) is fresh
+        await this.commandRunner({
+          command: 'git',
+          args: ['fetch', 'origin'],
+          cwd: repoTarget.root,
+        });
+
+        // Create worktree under %USERPROFILE%\antigravity\<repo prefix><id> on branch ai/inbox/<id> from base,
+        // inside the target repo (dream-online or ANTIGRAVITY)
         await this.commandRunner({
           command: 'git',
           args: ['worktree', 'add', '-B', branchName, worktreePath, configuredBase],
-          cwd: this.repoRoot,
+          cwd: repoTarget.root,
         });
 
         // Profile task with core and select lane (honouring forced lane only if it exists in lanes.json)
@@ -1091,7 +1371,7 @@ export class InboxRunner {
           await this.commandRunner({
             command: 'gh',
             args: ['pr', 'comment', judgeEval.prUrl, '--body', prCommentBody],
-            cwd: this.repoRoot,
+            cwd: repoTarget.root,
           });
 
           taskFinalPath = path.join(folders.done, oldestFileName);
@@ -1118,7 +1398,7 @@ export class InboxRunner {
         const lsRemoteRes = await this.commandRunner({
           command: 'git',
           args: ['ls-remote', '--heads', 'origin', `refs/heads/${branchName}`],
-          cwd: this.repoRoot,
+          cwd: repoTarget.root,
         });
         const branchWasPushed =
           lsRemoteRes.exitCode === 0 && lsRemoteRes.stdout.trim().length > 0;
@@ -1127,7 +1407,7 @@ export class InboxRunner {
           const rmRes = await this.commandRunner({
             command: 'git',
             args: ['worktree', 'remove', worktreePath, '--force'],
-            cwd: this.repoRoot,
+            cwd: repoTarget.root,
           });
           worktreeRemoved = rmRes.exitCode === 0;
         }
@@ -1136,7 +1416,8 @@ export class InboxRunner {
           status: finalStatus,
           taskId: parsed.id,
           fileName: oldestFileName,
-          repo: parsed.repo,
+          repo: repoTarget.name,
+          repoRoot: repoTarget.root,
           lane: decision.lane,
           jobClass: decision.job_class,
           decisionHash: decision.task_hash,
@@ -1160,7 +1441,7 @@ export class InboxRunner {
           attempts,
         };
       } finally {
-        this.activeRepos.delete(parsed.repo);
+        this.activeRepos.delete(repoTarget.name);
       }
     } finally {
       this.isTickActive = false;
