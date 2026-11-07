@@ -5,7 +5,7 @@ description: "First thing on every session start across the 3-Node Fleet (Alienw
 
 # House Boot (`v2026-10-26` Preferences + `2026-10-27` Canonical 3-Node & 2-Repo State)
 
-Read this in one pass, then act. Trust `C:\Users\joshl\OneDrive\claude-to-claude\CLAUDE-USER-PREFERENCES-v2026-10-26.md`, `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, and `.claude/skills/rooflo-opsis-cut-and-reach/SKILL.md` over any older September note.
+Read this in one pass, then act. Trust `%USERPROFILE%\OneDrive\claude-to-claude\CLAUDE-USER-PREFERENCES-v2026-10-26.md`, `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, and `.claude/skills/rooflo-opsis-cut-and-reach/SKILL.md` over any older September note.
 
 ## 1. Working Directory & Active Repositories
 - **Working Directory for Free Claude Code (`http://127.0.0.1:8082/admin`) on Alienware (`.40`)**:

@@ -185,7 +185,7 @@ export const NEEDS_SHOP_HELP_RULES: readonly string[] = Object.freeze([
  * docs/house/PAYMENT-ACCOUNTS-RULE.md. Display text only; no payment path is wired here.
  */
 export const NEEDS_SHOP_PAYMENTS_LINE =
-  "Payments: the game's own Square account, kept separate from the date app's.";
+  "Payments: the game's own merchant account. Nothing in this screen is pay-to-win.";
 
 /** Default reference timestamp used when a caller does not supply `now`. */
 export const NEEDS_SHOP_DEFAULT_NOW = '2026-11-04T00:00:00Z';

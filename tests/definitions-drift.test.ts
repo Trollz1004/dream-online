@@ -17,7 +17,7 @@ export const PAYMENT_ACCOUNTS_RULE_PATH = 'docs/house/PAYMENT-ACCOUNTS-RULE.md';
 export const PAYMENT_ACCOUNTS_RULE_HEADER =
   'Canonical copy. The drop box copy is the draft; this file is what lanes read.';
 export const PAYMENT_ACCOUNTS_RULE_SHA256 =
-  'c894842ecc9634e5e24b6b55c71e9235c61dd3f5fb017e296f1f8cd06e3fbb12';
+  '9112fa3fd2b5315d8ea43b9dded95f8b35ad7da7d09b47aa06499905e4af5142';
 
 export const VENDORED_SKILL_FOLDERS: readonly string[] = [
   '.agents/skills/hallmark',
@@ -244,6 +244,18 @@ test('docs/house/PAYMENT-ACCOUNTS-RULE.md exists, carries canonical header, and 
     PAYMENT_ACCOUNTS_RULE_SHA256,
     `${PAYMENT_ACCOUNTS_RULE_PATH} SHA-256 drifted from fixture (got ${actualSha}, expected ${PAYMENT_ACCOUNTS_RULE_SHA256})`,
   );
+});
+
+test('docs/house/PAYMENT-ACCOUNTS-RULE.md carries no email address (the sign-ins live in the founder vault, never in a repo)', () => {
+  const raw = fs.readFileSync(path.join(REPO_ROOT, PAYMENT_ACCOUNTS_RULE_PATH), 'utf8');
+  assert.equal(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(raw), false);
+});
+
+test('ops/node/skills/house-boot/SKILL.md line 8 carries no Windows user folder path', () => {
+  const raw = fs.readFileSync(path.join(REPO_ROOT, 'ops/node/skills/house-boot/SKILL.md'), 'utf8');
+  const line8 = raw.split(/\r?\n/)[7] ?? '';
+  assert.equal(/[A-Za-z]:[\\/]+Users[\\/]+/i.test(line8), false);
+  assert.ok(line8.includes('%USERPROFILE%'));
 });
 
 test('silent edit to PAYMENT-ACCOUNTS-RULE.md or a definition file missing its pointer fails with the file name', () => {

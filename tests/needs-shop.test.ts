@@ -91,8 +91,10 @@ test('categories and layout: defines the 6 required categories and plain-sentenc
   );
   assert.equal(
     NEEDS_SHOP_PAYMENTS_LINE,
-    "Payments: the game's own Square account, kept separate from the date app's.",
+    "Payments: the game's own merchant account. Nothing in this screen is pay-to-win.",
   );
+  // Rule 4: neither product names the other on a surface.
+  assert.equal(/date app/i.test(NEEDS_SHOP_PAYMENTS_LINE), false, 'shop must never name the date app');
   // React escapes the apostrophes in the rendered markup.
   assert.ok(
     html.includes(NEEDS_SHOP_PAYMENTS_LINE.replace(/'/g, '&#x27;')),
