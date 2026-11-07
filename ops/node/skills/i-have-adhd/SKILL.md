@@ -15,3 +15,5 @@ Founder Joshua Coleman (electrician founder, gradually losing his vision, fast c
 2. **Short Parallel Lists & Plain Complete Sentences**: Never use markdown tables for prose, never use ASCII art diagrams, and never write telegraphic fragments in user-facing replies.
 3. **High-Contrast WCAG AAA UI**: Front-facing HTML/UI must use clean high-contrast dark surfaces, large readable typography, plain labels, screen-reader support, and zero visual clutter.
 4. **Pick-Up-Cold Ready**: Every note in Obsidian (`gemini-to-gemini.md`, `claude-to-claude.md`, `hermes-to-hermes.md`, `codex-to-codex.md`) must state what changed, where it lives, and how it was verified so any session can resume cold in 10 seconds.
+- House rules: `docs/house/HOUSE-MOTION-RULE.md` and `docs/house/THE-HOUSE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
+- Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports (`ops/handoffs/FABLE-HANDOFFS-2026-11-06.md` section 0).

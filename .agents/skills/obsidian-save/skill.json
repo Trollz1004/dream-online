@@ -1,4 +1,6 @@
 {
+  "house_rules": "docs/house/HOUSE-MOTION-RULE.md and docs/house/THE-HOUSE.md. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.",
+  "current_beats_existing": "Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports (ops/handoffs/FABLE-HANDOFFS-2026-11-06.md section 0).",
   "name": "obsidian-save",
   "description": "Mandatory session-start read and session-end write to the single $5/mo synced Obsidian Vault (<NODE>/<agent>-to-<agent>.md) with automatic backup to Shared ai-memory (:49374), Graphy, OpenViking, Supabase, and Supermemory.",
   "version": "2.1.0",

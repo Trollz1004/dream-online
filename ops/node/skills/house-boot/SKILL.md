@@ -27,3 +27,5 @@ Read this in one pass, then act. Trust `C:\Users\joshl\OneDrive\claude-to-claude
   - `Trash Or Treasure Online Recycler LLC` (`FL #L25000158401`, `EIN 33-4655313`) is a straight for-profit business (`FOUNDER_PERCENTAGE=90`, `CHARITY_TAX_DEDUCTION_CEILING_PERCENTAGE=10`).
   - Target DAO is a **Wyoming DAO LLC** keeping **51% control** with a token sale of up to **49% of ~2.5M tokens** so a smart contract enforces commitments in code.
   - Customer-facing copy sells product value only (never charity/split wording on public surfaces).
+- House rules: `docs/house/HOUSE-MOTION-RULE.md` and `docs/house/THE-HOUSE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
+- Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports (`ops/handoffs/FABLE-HANDOFFS-2026-11-06.md` section 0).

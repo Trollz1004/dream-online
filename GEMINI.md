@@ -13,3 +13,5 @@
    - Unified 3-Pane Shell + 1-Click 5h Model Switcher (`src/ui/UnifiedAntigravityWorkspaceShell.tsx`), Rule One Before-vs-After Screenshot Comparison, Remake `100% Yours` + REA Clean-Room, and Single `$5/mo` Synced Obsidian Vault (`<Node>/gemini-to-gemini.md` + shared `ai-memory`, address in the node env file). Redact all secrets as `XXXX`.
 5. **Mandatory Skills**:
    - The mandatory skill is superpowers (brainstorming, TDD and verification live inside it); caveman is used for the session note; design jobs add ui-ux-pro-max with the 21st.dev designer, motion, impeccable, humanizer and the judges; remake and reverse-engineer-anything are run only by the trusted study models (Claude Opus or Fable, Gemini Argon), never by a wrapper or local model.
+- House rules: `docs/house/HOUSE-MOTION-RULE.md` and `docs/house/THE-HOUSE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
+- Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports (`ops/handoffs/FABLE-HANDOFFS-2026-11-06.md` section 0).
