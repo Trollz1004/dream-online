@@ -10,7 +10,7 @@ team spends time on larger world, economy, PvP, or live-service systems.
 | Risk | Current Status | Impact | Early Signal | Mitigation | Owner Lane |
 | --- | --- | --- | --- | --- | --- |
 | Engine missing | Closed | High | The engine and editor are built in-house (docs/tech/engine-decision-2026-09-30-own-engine.md); no third-party engine install is needed | Closed; continue in src/engine/ | Codex/Claude planning; Joshua approval for install |
-| C++ toolchain missing | Closed | High | Not applicable on the Godot track; Godot needs no C++ compiler | Closed for the Godot track; returns only if the Unreal revisit terms in docs/tech/engine-decision-2026-09-20.md are met | Codex/Claude planning; Joshua approval for install |
+| C++ toolchain missing | Closed | High | Not applicable on the in-house engine track; DREAM Engine needs no C++ compiler | Closed for the in-house engine track; returns only if the Unreal revisit terms in docs/tech/engine-decision-2026-09-20.md are met | Codex/Claude planning; Joshua approval for install |
 | Art assets missing | Open | Medium | First zone has no confirmed greybox kit, enemy mesh, resource node mesh, VFX, or UI pass | Use placeholder-safe asset requirements and text layouts first; require visible landmark, road, enemy, node, and event state before polish | Design and future Unreal lane |
 | AI cost unknown | Open | Medium | Live NPC Lab can run locally, but no per-player call budget or provider routing proof exists | Default to mock/local replies for first playable; require call caps, timeout, fallback, and no-key local path before provider use | Live NPC Lab lane |
 | Network scale unknown | Open | High | No game server, replication model, relevancy budget, or persistence strategy has been proven | Treat first playable as local proof; document one shared world direction separately from current local prototype limits | Tech planning lane |
@@ -19,7 +19,7 @@ team spends time on larger world, economy, PvP, or live-service systems.
 
 The first playable can move into implementation only when these checks are true:
 
-- The Godot headless suite passes at its MINIMUM_CHECKS floor on main.
+- The in-house engine test suite passes on main.
 - Only if the Unreal revisit terms in docs/tech/engine-decision-2026-09-20.md are met: the C++ toolchain can compile a minimal Unreal project.
 - The first zone can be represented with placeholders that clearly show spawn, road,
   guide NPC, resource node, enemy pocket, world event area, and return route.

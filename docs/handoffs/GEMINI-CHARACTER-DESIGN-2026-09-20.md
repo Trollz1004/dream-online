@@ -87,7 +87,7 @@ Joshua is losing his sight, and players who share that should be able to play.
 
 ## Technical constraints
 
-The game is built in **Godot 4.7.2**, not Unreal. Decided 2026-09-20.
+> Engine update (2026-09-30): The game builds on the in-house DREAM Engine (WebGPU/WebGL2, `src/engine/`), not Godot or Unreal (`docs/tech/engine-decision-2026-09-30-own-engine.md`). Earlier Godot and Unreal notes are history.
 
 - Model format: glTF binary (`.glb`), Y up, metres, scale 1.0, origin at the feet.
 - Materials: physically based, one material set per character where possible.
