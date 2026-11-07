@@ -5,13 +5,22 @@
  *
  * Wave One items:
  *  - AFK Fishing Set in zebra fish scale (4 pieces, Square, coins May 2027)
+ *  - Cooking Apron and Chef's Hat (any body, Square, coins May 2027)
  *  - Team Blue Baseball Uniform (4 pieces, number 00 to 99 at purchase, Square, coins May 2027)
  *  - Team Blue Ash Bat, Alloy Bat, Plastic T-Ball Bat (weapon skins, Square, coins May 2027)
  *  - Blu's Tee (oversized white pet tee, Blue Charge only, never in coin or Square store)
  *  - TrollinlootNScoot (founder pet, never in coin store)
  *  - Kid-safe basics (always owned)
  *
+ * The stat rule (docs/gdd/GAME-SYSTEMS-RULING-2026-11-07.md): every item in a tier carries the
+ * same percentage, the player's choice is which stat, everything sold for cash can also be earned
+ * in game, and cash buys time, never power. Each entry records its tier, its bonus (or null when
+ * the item is cosmetic only) and its in-game acquisition path. The Skin record itself stays a
+ * looks-only record; the bonus lives on the catalogue entry.
+ *
+ * "Square" below means the game's own Square account, kept separate from the date app's.
  * Prices remain [YOUR PRICE] placeholders until Josh says finalize.
+ * Percentages Josh has not ruled stay as the [TIER %] placeholder, stats as [STAT].
  * Pure data and helper queries; no UI, no payments code.
  */
 
@@ -50,6 +59,20 @@ export const AFK_FISHING_SHOES: Skin = defineSkin({
   id: 'afk-fishing-shoes',
   name: 'Zebra Fish Scale Boots',
   slot: 'shoes',
+  firstSaleDate: '2026-11-05',
+});
+
+export const COOKING_APRON: Skin = defineSkin({
+  id: 'cooking-apron',
+  name: 'Cooking Apron',
+  slot: 'top',
+  firstSaleDate: '2026-11-05',
+});
+
+export const CHEFS_HAT: Skin = defineSkin({
+  id: 'chefs-hat',
+  name: "Chef's Hat",
+  slot: 'headwear',
   firstSaleDate: '2026-11-05',
 });
 
@@ -118,6 +141,33 @@ export const WAVE_ONE_FOUNDER_PET: Skin = defineSkin({
 
 export type WaveOneHowEarned = 'Square' | 'Blue Charge' | 'always owned';
 
+/** Placeholder for a tier percentage Josh has not ruled yet. */
+export const TIER_PERCENT_PLACEHOLDER = '[TIER %]' as const;
+/** Placeholder for a stat choice Josh has not ruled yet. */
+export const STAT_PLACEHOLDER = '[STAT]' as const;
+
+/** Tiers in Wave One. Every item in a tier carries the same percentage. */
+export type WaveOneTier = 'hat' | 'fishing-set' | 'cooking' | 'team-blue';
+
+/** The stats a Wave One bonus can name. The choice is which stat, never how much. */
+export type WaveOneStat = 'experience' | 'fishing-experience' | 'cooking-experience';
+
+/** A tier bonus. `percent` is a whole percent, or the placeholder until Josh rules it. */
+export interface WaveOneBonus {
+  readonly stat: WaveOneStat | typeof STAT_PLACEHOLDER;
+  readonly percent: number | typeof TIER_PERCENT_PLACEHOLDER;
+}
+
+/**
+ * How a player can get the item without cash.
+ *  - coins: reaches the in-game coin store (see coinStoreRelease)
+ *  - craft: made in game from recipes
+ *  - blue-charge: Blu's Tee, Blue Charge only (not sold for cash)
+ *  - founder-exception: the founder pet, a cash-only founder edition that never reaches the coin store
+ *  - always-owned: kid-safe basics
+ */
+export type WaveOneInGamePath = 'coins' | 'craft' | 'blue-charge' | 'founder-exception' | 'always-owned';
+
 export interface WaveOneCatalogueEntry {
   readonly id: string;
   readonly name: string;
@@ -127,6 +177,12 @@ export interface WaveOneCatalogueEntry {
   readonly coinStoreRelease: string;
   readonly price: string;
   readonly note: string;
+  /** Tier the item belongs to, or null for cosmetic-only items and basics. */
+  readonly tier: WaveOneTier | null;
+  /** The bonus this item gives, or null when the item is cosmetic only. */
+  readonly bonus: WaveOneBonus | null;
+  /** The in-game acquisition path, recorded on the entry. */
+  readonly inGamePath: WaveOneInGamePath;
   readonly item: Skin | BasicItem;
 }
 
@@ -139,7 +195,10 @@ export const WAVE_ONE_CATALOGUE: readonly WaveOneCatalogueEntry[] = Object.freez
     howEarned: 'Square' as const,
     coinStoreRelease: 'May 2027',
     price: '[YOUR PRICE]',
-    note: 'AFK Fishing Set in zebra fish scale (piece 1 of 4). Look only.',
+    note: 'AFK Fishing Set in zebra fish scale (piece 1 of 4). 10 percent fishing experience.',
+    tier: 'hat' as const,
+    bonus: { stat: 'fishing-experience' as const, percent: 10 },
+    inGamePath: 'coins' as const,
     item: AFK_FISHING_HAT,
   }),
   Object.freeze({
@@ -150,7 +209,10 @@ export const WAVE_ONE_CATALOGUE: readonly WaveOneCatalogueEntry[] = Object.freez
     howEarned: 'Square' as const,
     coinStoreRelease: 'May 2027',
     price: '[YOUR PRICE]',
-    note: 'AFK Fishing Set in zebra fish scale (piece 2 of 4). Look only.',
+    note: 'AFK Fishing Set in zebra fish scale (piece 2 of 4). 10 percent fishing experience.',
+    tier: 'fishing-set' as const,
+    bonus: { stat: 'fishing-experience' as const, percent: 10 },
+    inGamePath: 'coins' as const,
     item: AFK_FISHING_TOP,
   }),
   Object.freeze({
@@ -161,7 +223,10 @@ export const WAVE_ONE_CATALOGUE: readonly WaveOneCatalogueEntry[] = Object.freez
     howEarned: 'Square' as const,
     coinStoreRelease: 'May 2027',
     price: '[YOUR PRICE]',
-    note: 'AFK Fishing Set in zebra fish scale (piece 3 of 4). Look only.',
+    note: 'AFK Fishing Set in zebra fish scale (piece 3 of 4). 10 percent fishing experience.',
+    tier: 'fishing-set' as const,
+    bonus: { stat: 'fishing-experience' as const, percent: 10 },
+    inGamePath: 'coins' as const,
     item: AFK_FISHING_BOTTOM,
   }),
   Object.freeze({
@@ -172,8 +237,39 @@ export const WAVE_ONE_CATALOGUE: readonly WaveOneCatalogueEntry[] = Object.freez
     howEarned: 'Square' as const,
     coinStoreRelease: 'May 2027',
     price: '[YOUR PRICE]',
-    note: 'AFK Fishing Set in zebra fish scale (piece 4 of 4). Look only.',
+    note: 'AFK Fishing Set in zebra fish scale (piece 4 of 4). 10 percent fishing experience.',
+    tier: 'fishing-set' as const,
+    bonus: { stat: 'fishing-experience' as const, percent: 10 },
+    inGamePath: 'coins' as const,
     item: AFK_FISHING_SHOES,
+  }),
+  Object.freeze({
+    id: COOKING_APRON.id,
+    name: COOKING_APRON.name,
+    kind: 'skin' as const,
+    slot: COOKING_APRON.slot,
+    howEarned: 'Square' as const,
+    coinStoreRelease: 'May 2027',
+    price: '[YOUR PRICE]',
+    note: 'Cooking Apron, fits any body. 10 percent cooking experience.',
+    tier: 'cooking' as const,
+    bonus: { stat: 'cooking-experience' as const, percent: 10 },
+    inGamePath: 'coins' as const,
+    item: COOKING_APRON,
+  }),
+  Object.freeze({
+    id: CHEFS_HAT.id,
+    name: CHEFS_HAT.name,
+    kind: 'skin' as const,
+    slot: CHEFS_HAT.slot,
+    howEarned: 'Square' as const,
+    coinStoreRelease: 'May 2027',
+    price: '[YOUR PRICE]',
+    note: "Chef's Hat, fits any body. 10 percent cooking experience.",
+    tier: 'hat' as const,
+    bonus: { stat: 'cooking-experience' as const, percent: 10 },
+    inGamePath: 'coins' as const,
+    item: CHEFS_HAT,
   }),
   Object.freeze({
     id: TEAM_BLUE_BASEBALL_CAP.id,
@@ -183,7 +279,10 @@ export const WAVE_ONE_CATALOGUE: readonly WaveOneCatalogueEntry[] = Object.freez
     howEarned: 'Square' as const,
     coinStoreRelease: 'May 2027',
     price: '[YOUR PRICE]',
-    note: 'Team Blue Baseball Uniform (piece 1 of 4). Number 00 to 99 at purchase.',
+    note: 'Team Blue Baseball Uniform (piece 1 of 4). Number 00 to 99 at purchase. Same percentage as the other Team Blue choices, [TIER %].',
+    tier: 'hat' as const,
+    bonus: { stat: 'experience' as const, percent: 10 },
+    inGamePath: 'coins' as const,
     item: TEAM_BLUE_BASEBALL_CAP,
   }),
   Object.freeze({
@@ -194,7 +293,10 @@ export const WAVE_ONE_CATALOGUE: readonly WaveOneCatalogueEntry[] = Object.freez
     howEarned: 'Square' as const,
     coinStoreRelease: 'May 2027',
     price: '[YOUR PRICE]',
-    note: 'Team Blue Baseball Uniform (piece 2 of 4). Number 00 to 99 at purchase.',
+    note: 'Team Blue Baseball Uniform (piece 2 of 4). Number 00 to 99 at purchase. Same percentage as the other Team Blue choices, [TIER %].',
+    tier: 'team-blue' as const,
+    bonus: { stat: STAT_PLACEHOLDER, percent: TIER_PERCENT_PLACEHOLDER },
+    inGamePath: 'coins' as const,
     item: TEAM_BLUE_BASEBALL_JERSEY,
   }),
   Object.freeze({
@@ -205,7 +307,10 @@ export const WAVE_ONE_CATALOGUE: readonly WaveOneCatalogueEntry[] = Object.freez
     howEarned: 'Square' as const,
     coinStoreRelease: 'May 2027',
     price: '[YOUR PRICE]',
-    note: 'Team Blue Baseball Uniform (piece 3 of 4). Number 00 to 99 at purchase.',
+    note: 'Team Blue Baseball Uniform (piece 3 of 4). Number 00 to 99 at purchase. Same percentage as the other Team Blue choices, [TIER %].',
+    tier: 'team-blue' as const,
+    bonus: { stat: STAT_PLACEHOLDER, percent: TIER_PERCENT_PLACEHOLDER },
+    inGamePath: 'coins' as const,
     item: TEAM_BLUE_BASEBALL_PANTS,
   }),
   Object.freeze({
@@ -216,7 +321,10 @@ export const WAVE_ONE_CATALOGUE: readonly WaveOneCatalogueEntry[] = Object.freez
     howEarned: 'Square' as const,
     coinStoreRelease: 'May 2027',
     price: '[YOUR PRICE]',
-    note: 'Team Blue Baseball Uniform (piece 4 of 4). Number 00 to 99 at purchase.',
+    note: 'Team Blue Baseball Uniform (piece 4 of 4). Number 00 to 99 at purchase. Same percentage as the other Team Blue choices, [TIER %].',
+    tier: 'team-blue' as const,
+    bonus: { stat: STAT_PLACEHOLDER, percent: TIER_PERCENT_PLACEHOLDER },
+    inGamePath: 'coins' as const,
     item: TEAM_BLUE_BASEBALL_CLEATS,
   }),
   Object.freeze({
@@ -227,7 +335,10 @@ export const WAVE_ONE_CATALOGUE: readonly WaveOneCatalogueEntry[] = Object.freez
     howEarned: 'Square' as const,
     coinStoreRelease: 'May 2027',
     price: '[YOUR PRICE]',
-    note: 'Weapon skin for any one-handed blunt weapon. Look only, never numbers.',
+    note: 'Weapon skin for any one-handed blunt weapon. Same percentage as the other Team Blue choices, [TIER %].',
+    tier: 'team-blue' as const,
+    bonus: { stat: STAT_PLACEHOLDER, percent: TIER_PERCENT_PLACEHOLDER },
+    inGamePath: 'coins' as const,
     item: TEAM_BLUE_ASH_BAT,
   }),
   Object.freeze({
@@ -238,7 +349,10 @@ export const WAVE_ONE_CATALOGUE: readonly WaveOneCatalogueEntry[] = Object.freez
     howEarned: 'Square' as const,
     coinStoreRelease: 'May 2027',
     price: '[YOUR PRICE]',
-    note: 'Weapon skin for any one-handed blunt weapon. Look only, never numbers.',
+    note: 'Weapon skin for any one-handed blunt weapon. Same percentage as the other Team Blue choices, [TIER %].',
+    tier: 'team-blue' as const,
+    bonus: { stat: STAT_PLACEHOLDER, percent: TIER_PERCENT_PLACEHOLDER },
+    inGamePath: 'coins' as const,
     item: TEAM_BLUE_ALLOY_BAT,
   }),
   Object.freeze({
@@ -249,7 +363,10 @@ export const WAVE_ONE_CATALOGUE: readonly WaveOneCatalogueEntry[] = Object.freez
     howEarned: 'Square' as const,
     coinStoreRelease: 'May 2027',
     price: '[YOUR PRICE]',
-    note: 'Weapon skin for any one-handed blunt weapon. Look only, never numbers.',
+    note: 'Weapon skin for any one-handed blunt weapon. Same percentage as the other Team Blue choices, [TIER %].',
+    tier: 'team-blue' as const,
+    bonus: { stat: STAT_PLACEHOLDER, percent: TIER_PERCENT_PLACEHOLDER },
+    inGamePath: 'coins' as const,
     item: PLASTIC_T_BALL_BAT,
   }),
   Object.freeze({
@@ -260,7 +377,10 @@ export const WAVE_ONE_CATALOGUE: readonly WaveOneCatalogueEntry[] = Object.freez
     howEarned: 'Blue Charge' as const,
     coinStoreRelease: 'Never',
     price: '[YOUR PRICE]',
-    note: "Oversized white pet tee printed \"You're my boy blue!!!\". Bought with Blue Charge only, never in the coin or Square store.",
+    note: "Oversized white pet tee printed \"You're my boy blue!!!\". Bought with Blue Charge only, never in the coin or Square store. Cosmetic only.",
+    tier: null,
+    bonus: null,
+    inGamePath: 'blue-charge' as const,
     item: BLUS_PET_TEE,
   }),
   Object.freeze({
@@ -271,7 +391,10 @@ export const WAVE_ONE_CATALOGUE: readonly WaveOneCatalogueEntry[] = Object.freez
     howEarned: 'Square' as const,
     coinStoreRelease: 'Never',
     price: '[YOUR PRICE]',
-    note: 'Founder pet; troll riding a drift cart with Live NPC memory and clean dad jokes. Never in the coin store.',
+    note: 'Founder pet; troll riding a drift cart with Live NPC memory and clean dad jokes. Never in the coin store. Cosmetic only.',
+    tier: null,
+    bonus: null,
+    inGamePath: 'founder-exception' as const,
     item: WAVE_ONE_FOUNDER_PET,
   }),
   Object.freeze({
@@ -283,6 +406,9 @@ export const WAVE_ONE_CATALOGUE: readonly WaveOneCatalogueEntry[] = Object.freez
     coinStoreRelease: 'Never',
     price: 'Free / Always Owned',
     note: 'Plain tee from the kid-safe basics default set. Always owned by every character.',
+    tier: null,
+    bonus: null,
+    inGamePath: 'always-owned' as const,
     item: KID_SAFE_BASICS.top,
   }),
   Object.freeze({
@@ -294,6 +420,9 @@ export const WAVE_ONE_CATALOGUE: readonly WaveOneCatalogueEntry[] = Object.freez
     coinStoreRelease: 'Never',
     price: 'Free / Always Owned',
     note: 'Plain trousers from the kid-safe basics default set. Always owned by every character.',
+    tier: null,
+    bonus: null,
+    inGamePath: 'always-owned' as const,
     item: KID_SAFE_BASICS.bottom,
   }),
   Object.freeze({
@@ -305,6 +434,9 @@ export const WAVE_ONE_CATALOGUE: readonly WaveOneCatalogueEntry[] = Object.freez
     coinStoreRelease: 'Never',
     price: 'Free / Always Owned',
     note: 'Plain sneakers from the kid-safe basics default set. Always owned by every character.',
+    tier: null,
+    bonus: null,
+    inGamePath: 'always-owned' as const,
     item: KID_SAFE_BASICS.shoes,
   }),
 ]);
