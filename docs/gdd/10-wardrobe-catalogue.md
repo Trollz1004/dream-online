@@ -34,7 +34,7 @@ Payment accounts follow `docs/house/PAYMENT-ACCOUNTS-RULE.md`: money for this ga
 | **Team Blue Ash Bat** | `team-blue-ash-bat` | skin | weapon | The game's own Square account | May 2027 | [YOUR PRICE] | Weapon skin for any one-handed blunt weapon. Look only, never numbers. |
 | **Team Blue Alloy Bat** | `team-blue-alloy-bat` | skin | weapon | The game's own Square account | May 2027 | [YOUR PRICE] | Weapon skin for any one-handed blunt weapon. Look only, never numbers. |
 | **Plastic T-Ball Bat** | `plastic-t-ball-bat` | skin | weapon | The game's own Square account | May 2027 | [YOUR PRICE] | Weapon skin for any one-handed blunt weapon. Look only, never numbers. |
-| **Blu's Tee** | `blus-pet-tee` | skin | pet | Blue Charge | Never | [YOUR PRICE] | Oversized white pet tee printed "You're my boy blue!!!". Bought with Blue Charge only, never in the coin or Square store. |
+| **Blu's Tee** | `blus-pet-tee` | skin | pet | Blue Charge | Never | [YOUR PRICE] | Oversized white pet tee printed "You're my boy blue!!!". Bought with Blue Charge only, never in the coin store or through the game's own Square account. |
 | **TrollinlootNScoot** | `TrollinlootNScoot` | skin | pet | The game's own Square account | Never | [YOUR PRICE] | Founder pet; troll riding a drift cart with Live NPC memory and clean dad jokes. Never in the coin store. |
 | **Plain Tee** | `basics-top` | basic | top | Always owned | Never (not sold) | Free / Owned | Kid-safe basics default set. Plain tee, always owned. |
 | **Plain Trousers** | `basics-bottom` | basic | bottom | Always owned | Never (not sold) | Free / Owned | Kid-safe basics default set. Plain trousers, always owned. |

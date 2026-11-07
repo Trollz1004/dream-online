@@ -92,7 +92,7 @@ test("Blu's Tee: cannot be bought with coins or money (Blue Charge only)", () =>
   assert.equal(entry.howEarned, 'Blue Charge');
   assert.equal(entry.coinStoreRelease, 'Never');
   assert.match(entry.note, /bought with blue charge only/i);
-  assert.match(entry.note, /never in the coin or square store/i);
+  assert.match(entry.note, /never in the coin store or through the game's own square account/i);
 });
 
 // ---------------------------------------------------------------- 2. Founder Pet

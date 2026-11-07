@@ -7,7 +7,7 @@
  *  - AFK Fishing Set in zebra fish scale (4 pieces, Square, coins May 2027)
  *  - Team Blue Baseball Uniform (4 pieces, number 00 to 99 at purchase, Square, coins May 2027)
  *  - Team Blue Ash Bat, Alloy Bat, Plastic T-Ball Bat (weapon skins, Square, coins May 2027)
- *  - Blu's Tee (oversized white pet tee, Blue Charge only, never in coin or Square store)
+ *  - Blu's Tee (oversized white pet tee, Blue Charge only, never in the coin store or through the game's own Square account)
  *  - TrollinlootNScoot (founder pet, never in coin store)
  *  - Kid-safe basics (always owned)
  *
@@ -260,7 +260,7 @@ export const WAVE_ONE_CATALOGUE: readonly WaveOneCatalogueEntry[] = Object.freez
     howEarned: 'Blue Charge' as const,
     coinStoreRelease: 'Never',
     price: '[YOUR PRICE]',
-    note: "Oversized white pet tee printed \"You're my boy blue!!!\". Bought with Blue Charge only, never in the coin or Square store.",
+    note: "Oversized white pet tee printed \"You're my boy blue!!!\". Bought with Blue Charge only, never in the coin store or through the game's own Square account.",
     item: BLUS_PET_TEE,
   }),
   Object.freeze({
@@ -347,7 +347,7 @@ export function canBuyWithCoins(
 /**
  * True if the item can be purchased with real-world money (Square shop).
  * Never true for:
- *  - Blu's Tee (bought with Blue Charge only, never in Square store)
+ *  - Blu's Tee (bought with Blue Charge only, never in the game's own Square account shop)
  *  - Kid-safe basics (always owned, never sold)
  */
 export function canBuyWithMoney(itemId: string): boolean {
