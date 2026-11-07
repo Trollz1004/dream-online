@@ -15,3 +15,5 @@ platforms: [windows, linux, macos]
 5. **VERIFY (Rule One)**: Prove with real HTTP/process probes and a real screenshot for any front-facing HTML/UI. Ensure all background watchdogs run 100% headless (`wscript.exe //B`, `Hidden: True`) so nothing ever steals keyboard focus.
 6. **COMMIT**: Commit to the PR branch so work is never stranded uncommitted in the preview pane. Never push to `main` and never merge; merges go through Josh or the signed-in Claude judge lane.
 7. **MEMORY SYNC**: Append session findings to the single $5/mo synced Obsidian Vault (`<NODE>/<agent>-to-<agent>.md`), Shared `ai-memory` on T5500 (`:49374`), Dual Graphies (`/api/graphy/codebase` + `api.workflow.json`), OpenViking, Supabase, and Supermemory.
+- House rules: `docs/house/HOUSE-MOTION-RULE.md` and `docs/house/THE-HOUSE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
+- Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports (`ops/handoffs/FABLE-HANDOFFS-2026-11-06.md` section 0).

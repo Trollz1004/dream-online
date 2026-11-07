@@ -132,3 +132,5 @@ Each service is judged by its identity string, never by a port answering. Report
 - An app's own settings file can hold secrets. `%APPDATA%\Comfy Desktop\installations.json` keeps API keys in plain text under `envVars`. Print a whitelist of named fields, never a whole object.
 - The Bash tool eats backslashes inside heredocs and inline `-e` or `-c` strings. Write scripts and Windows paths with the Write tool and run the file.
 - Commit early and per unit of work. A reboot mid-task has already cost Sabretooth one full phase.
+- House rules: `docs/house/HOUSE-MOTION-RULE.md` and `docs/house/THE-HOUSE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
+- Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports (`ops/handoffs/FABLE-HANDOFFS-2026-11-06.md` section 0).
