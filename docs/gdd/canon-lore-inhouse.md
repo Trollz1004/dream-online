@@ -71,6 +71,16 @@ DREAM ONLINE takes place in a single geography that transforms across the Day/Ni
 - Myth@s is Ember's father. That much is public by the founder's ruling of 2026-09-28.
 - The end-game story lives only in the founder vault file `%USERPROFILE%\OneDrive\claude-to-claude\SUP@-VAULT-FOUNDER-ONLY.md`. Nothing from it is quoted in this repository.
 
+### Blu, the boss of bosses (ruled by Josh 2026-11-05)
+- Unkillable; no party has done it; a solo attempt is a joke the world tells.
+- He wears the in-house name Blu on every surface and his real name is never written in any repo line, NPC script or gossip seed.
+- Blue while he has patience, every hit he allows sheds a spark the party keeps as Blue Charge.
+- Pushed past his threshold he goes red (a father's sacrifice, a world he guided turning on him) and red ends the attempt.
+- The gossip tick carries the rumor of what he is and no NPC confirms it.
+- Blue Charge is a one-off currency spent only on his pet tee.
+- The vault file `%USERPROFILE%\OneDrive\claude-to-claude\SUP@-VAULT-FOUNDER-ONLY.md` holds the story; cite by path only, quote nothing from it.
+- The only public lore facts remain that Myth@s is Ember's father and Sup@'s one line.
+
 ### First Gate & Haven NPC Roster
 - **FABLE (`fable-smith`):** Haven's dry-humored T1 Blacksmith. Remembers the player's gear durability history, visits, and Red Name record. Operates the town anvil for Sols repairs, gear purchases, and loot sales.
 - **Mireth:** Memory-linked guide NPC in the First Gate slice connected directly to the Live NPC Lab memory store.

@@ -15,7 +15,7 @@
 export type IsoDate = string;
 
 /** Where a skin can be worn. */
-export const SKIN_SLOTS = ['top', 'bottom', 'shoes', 'headwear', 'outfit', 'back', 'pet'] as const;
+export const SKIN_SLOTS = ['top', 'bottom', 'shoes', 'headwear', 'outfit', 'back', 'pet', 'weapon'] as const;
 export type SkinSlot = (typeof SKIN_SLOTS)[number];
 
 /** The slots every character leaves the creator wearing. */
