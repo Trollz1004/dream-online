@@ -54,9 +54,37 @@ export const JEV_JOB_CLASSES = [
 
 export type JevJobClass = (typeof JEV_JOB_CLASSES)[number];
 
+export const EXECUTOR_JOB_CLASSES = [
+  'engine',
+  'mechanical',
+  'code-bulk',
+  'code-hard',
+  'design-visual',
+  'research',
+] as const;
+
+export type ExecutorJobClass = (typeof EXECUTOR_JOB_CLASSES)[number];
+
+export function isExecutorJobClass(value: string): value is ExecutorJobClass {
+  return (EXECUTOR_JOB_CLASSES as readonly string[]).includes(value.trim().toLowerCase());
+}
+
+const KNOWN_EXECUTOR_MODEL_LANES = new Set([
+  'gemini-4-argon',
+  'gemini-3.8-flash',
+  'claude-sonnet-5-5',
+  'claude-opus-5-5',
+  'grok',
+  'youtube-data-api',
+]);
+
 export interface TaskProfileOptions {
   files?: string[];
   screenshotRequired?: boolean;
+  /** Optional explicit task title (first line). When omitted, extracted from the first line of taskDescription. */
+  title?: string;
+  /** Optional explicit lane: header value. */
+  lane?: string | null;
 }
 
 export interface TaskProfile {
@@ -237,14 +265,84 @@ const DOC_MECHANICAL_REGEXES: readonly (readonly [string, RegExp])[] = [
 /** Work that makes a docs mention incidental: real engine or implementation work goes to its own class. */
 const DOC_GUARD_WORK_REGEX = /\b(optimi[sz]e|implement|rewrite|render|animate|simulate|benchmark)\b/i;
 
-function matchJudgeSignals(lowerText: string): string[] {
-  const phrases = matchKeywordList(lowerText, JUDGE_KEYWORDS);
-  const withoutNegations = lowerText.replace(JUDGE_NEGATION_REGEX, ' ');
+/** A title starting with Fable: (with optional markdown heading or brackets) is a Fable-class signal. */
+const FABLE_TITLE_PREFIX_REGEX = /^(?:#+\s*)?\[?fable\]?\s*:/i;
+
+interface ExtractedTaskParts {
+  title: string;
+  explicitLane: string | null;
+  body: string;
+  fullTextWithoutHeaders: string;
+}
+
+function extractTaskParts(
+  taskDescription: string,
+  options?: TaskProfileOptions
+): ExtractedTaskParts {
+  const lines = taskDescription.split(/\r?\n/);
+  let parsedTitle = '';
+  let parsedLane: string | null = null;
+  const bodyLines: string[] = [];
+  let inHeader = true;
+
+  for (const rawLine of lines) {
+    const trimmed = rawLine.trim();
+    if (inHeader) {
+      if (!trimmed) {
+        if (parsedTitle) {
+          inHeader = false;
+        }
+        continue;
+      }
+      const kvMatch = trimmed.match(/^(title|lane|repo|base|inbox)\s*:\s*(.*)$/i);
+      if (kvMatch) {
+        const key = kvMatch[1].toLowerCase();
+        const val = kvMatch[2].trim();
+        if (key === 'title' && val) parsedTitle = val;
+        else if (key === 'lane') parsedLane = val || null;
+        continue;
+      }
+      if (!parsedTitle) {
+        parsedTitle = trimmed.replace(/^#+\s*/, '').trim();
+        continue;
+      }
+      inHeader = false;
+      bodyLines.push(rawLine);
+    } else {
+      bodyLines.push(rawLine);
+    }
+  }
+
+  const title = (options?.title !== undefined ? options.title : parsedTitle)
+    .replace(/^#+\s*/, '')
+    .trim();
+  const explicitLane =
+    options?.lane !== undefined ? (options.lane?.trim() || null) : parsedLane;
+  const body =
+    options?.title !== undefined && parsedLane === null
+      ? taskDescription.trim()
+      : bodyLines.join('\n').trim();
+  const fullTextWithoutHeaders = [title, body].filter(Boolean).join('\n');
+
+  return {
+    title,
+    explicitLane,
+    body,
+    fullTextWithoutHeaders: fullTextWithoutHeaders || taskDescription,
+  };
+}
+
+function matchJudgeSignals(titleText: string): string[] {
+  const trimmedTitle = titleText.trim();
+  const lowerTitle = trimmedTitle.toLowerCase();
+  const prefixHits = FABLE_TITLE_PREFIX_REGEX.test(trimmedTitle) ? ['fable:'] : [];
+  const phrases = matchKeywordList(lowerTitle, JUDGE_KEYWORDS);
+  const withoutNegations = lowerTitle.replace(JUDGE_NEGATION_REGEX, ' ');
   const verbs = new Set<string>();
   for (const match of withoutNegations.matchAll(JUDGE_VERB_REGEX)) {
     verbs.add(match[1].toLowerCase());
   }
-  return [...phrases, ...verbs];
+  return [...prefixHits, ...phrases, ...verbs];
 }
 
 
@@ -369,12 +467,30 @@ export function profileTask(
   taskDescription: string,
   options?: TaskProfileOptions
 ): TaskProfile {
-  const lower = taskDescription.toLowerCase();
-  const fileTypesNamed = extractFileTypes(taskDescription, options?.files);
+  const parts = extractTaskParts(taskDescription, options);
+  const lower = parts.fullTextWithoutHeaders.toLowerCase();
+  const lowerTitle = parts.title.toLowerCase();
+  const normalizedExplicitLane = parts.explicitLane?.trim().toLowerCase() ?? null;
+  const fileTypesNamed = extractFileTypes(parts.fullTextWithoutHeaders, options?.files);
   const screenshotKeywords = matchKeywordList(lower, SCREENSHOT_KEYWORDS);
   const explicitScreenshot = Boolean(options?.screenshotRequired) || screenshotKeywords.length > 0;
 
-  // 1. Route tasks (checked before judge so routing decisions never go to judge)
+  // 1. Explicit lane: header naming an executor lane (engine, mechanical, code-bulk, code-hard, design-visual, research)
+  // wins immediately and body profiling cannot reclassify the job as the Fable class. Only 'lane: fable' parks a task.
+  if (normalizedExplicitLane && isExecutorJobClass(normalizedExplicitLane)) {
+    return {
+      jobClass: normalizedExplicitLane,
+      reason: toSingleSentence(
+        `The task carries an explicit lane header (${normalizedExplicitLane}) so it is classified as ${normalizedExplicitLane} without body reclassification`
+      ),
+      keywordsMatched: [normalizedExplicitLane],
+      fileTypesNamed,
+      screenshotRequired:
+        normalizedExplicitLane === 'design-visual' ? true : explicitScreenshot,
+    };
+  }
+
+  // 2. Route tasks (checked before judge so routing decisions never go to judge)
   const routeHits = matchKeywordList(lower, ROUTE_KEYWORDS);
   if (routeHits.length > 0 || /^\[?route\]?:/i.test(taskDescription.trim())) {
     const matched = routeHits.length > 0 ? routeHits : ['route prefix'];
@@ -388,6 +504,21 @@ export function profileTask(
       screenshotRequired: false,
     };
   }
+
+  if (normalizedExplicitLane === 'fable') {
+    return {
+      jobClass: 'judge',
+      reason: toSingleSentence(
+        'The task carries an explicit lane: fable header and is classified as judge for Fable on signed-in Claude Code'
+      ),
+      keywordsMatched: ['fable'],
+      fileTypesNamed,
+      screenshotRequired: false,
+    };
+  }
+
+  const hasExplicitExecutorModelLane =
+    normalizedExplicitLane !== null && KNOWN_EXECUTOR_MODEL_LANES.has(normalizedExplicitLane);
 
   // 2. YouTube upload (private YouTube Data API only, never a model)
   const ytHits = matchKeywordList(lower, YOUTUBE_UPLOAD_KEYWORDS);
@@ -420,12 +551,15 @@ export function profileTask(
   }
 
   // 4. Docs cleanup, wording, rename and reference-fix jobs are mechanical and never reach judge
-  const docHits = DOC_MECHANICAL_REGEXES.filter(([, pattern]) => pattern.test(taskDescription)).map(
-    ([label]) => label
-  );
+  const docHits = DOC_MECHANICAL_REGEXES.filter(([, pattern]) =>
+    pattern.test(parts.fullTextWithoutHeaders)
+  ).map(([label]) => label);
   if (docHits.length > 0) {
     const strongJudge =
-      STRONG_JUDGE_REGEX.test(lower) || matchKeywordList(lower, JUDGE_KEYWORDS).length > 0;
+      !hasExplicitExecutorModelLane &&
+      (FABLE_TITLE_PREFIX_REGEX.test(parts.title) ||
+        STRONG_JUDGE_REGEX.test(lowerTitle) ||
+        matchKeywordList(lowerTitle, JUDGE_KEYWORDS).length > 0);
     const hasImplementationWork =
       matchKeywordList(lower, CODE_BULK_KEYWORDS).length > 0 ||
       matchKeywordList(lower, RESEARCH_KEYWORDS).length > 0 ||
@@ -446,18 +580,20 @@ export function profileTask(
     }
   }
 
-  // 5. Judge (Fable on signed-in Claude Code; review, verdict, approve, merge and ruling jobs only; never receives route tasks)
-  const judgeHits = matchJudgeSignals(lower);
-  if (judgeHits.length > 0) {
-    return {
-      jobClass: 'judge',
-      reason: toSingleSentence(
-        `The task requests an authoritative ruling (${judgeHits.join(', ')}) and is classified as judge for Fable on signed-in Claude Code`
-      ),
-      keywordsMatched: judgeHits,
-      fileTypesNamed,
-      screenshotRequired: false,
-    };
+  // 5. Judge (Fable on signed-in Claude Code; when no lane header is given, Fable-class signals are matched against the task title / first line only, never the body)
+  if (!hasExplicitExecutorModelLane) {
+    const judgeHits = matchJudgeSignals(parts.title);
+    if (judgeHits.length > 0) {
+      return {
+        jobClass: 'judge',
+        reason: toSingleSentence(
+          `The task requests an authoritative ruling (${judgeHits.join(', ')}) and is classified as judge for Fable on signed-in Claude Code`
+        ),
+        keywordsMatched: judgeHits,
+        fileTypesNamed,
+        screenshotRequired: false,
+      };
+    }
   }
 
   // 6. Engine (3D engine, shaders, WebGPU, game simulation)
@@ -1126,6 +1262,10 @@ export interface RouteJevTaskOptions {
   now?: Date;
   files?: string[];
   screenshotRequired?: boolean;
+  /** Optional explicit task title (first line). */
+  title?: string;
+  /** Optional explicit lane: header value. */
+  lane?: string | null;
   lanesPath?: string;
   rankingsDir?: string;
   decisionsLogPath?: string;
@@ -1254,6 +1394,8 @@ export class JevRouter {
     const profile = profileTask(taskDescription, {
       files: options?.files,
       screenshotRequired: options?.screenshotRequired,
+      title: options?.title,
+      lane: options?.lane,
     });
     const jobClass = profile.jobClass;
     const row = table.lanes[jobClass];
