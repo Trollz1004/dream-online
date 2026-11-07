@@ -13,16 +13,17 @@ The inbox lives in a local folder on the Alienware only and never in OneDrive or
 - `running\` — The single task currently executing. Only one task runs at a time, and never two `agy` runs for the same repository at once.
 - `done\` — Completed tasks that opened a PR and passed the judge check, stored with `<id>.log` beside `<id>.md`.
 - `failed\` — Tasks that failed after one re-queue (or were refused by a safety gate), stored with `<id>.log` beside `<id>.md`.
+- `for-judge\` — Tasks for the judge lane. The runner never executes the judge job class: a task that profiles as `judge`, or whose forced `lane:` resolves to the `claude-code-signed-in` harness (the `fable` lane), is moved here with a one-line `<id>.log` note and `agy` is never started. The judge lane (a live signed-in Claude session) reads this folder. Parking is not a failure and does not count toward the three-failure stop.
 
 ## 2. Base Branch Configuration
 
-The runner reads the base branch from the `base:` configuration line below (or from an optional `base:` line in a task file). Once the stack branch has merged to `main`, change this line to `base: main`:
+The runner reads the base branch from the `base:` configuration line below (or from an optional `base:` line in a task file). Branch from `origin/main` by default; before each worktree the runner runs `git fetch origin` in the target repo so the base is current:
 
 ```text
-base: origin/ai/stack2/2026-11-04
+base: origin/main
 ```
 
-Each task creates an isolated worktree at `%USERPROFILE%\antigravity\DREAM-Engine-wt-inbox-<id>` on branch `ai/inbox/<id>` starting from the configured base. The runner removes the worktree when the run finishes only if `ai/inbox/<id>` was pushed to `origin`.
+Each task creates an isolated worktree at `%USERPROFILE%\antigravity\<prefix><id>` (prefix from `ops/router/repos.json`: `DREAM-Engine-wt-inbox-` for `dream-online`, `ANTIGRAVITY-wt-inbox-` for `ANTIGRAVITY`) on branch `ai/inbox/<id>` starting from the configured base, inside the repo the task selected. The runner removes the worktree when the run finishes only if `ai/inbox/<id>` was pushed to `origin`.
 
 ## 3. Task File Format
 
@@ -32,7 +33,7 @@ Format rules:
 
 1. **Title line** (required): The first non-empty line, written as a Markdown heading (`# <Title>`) or plain sentence.
 2. **Optional `lane:` line**: `lane: <lane-id>` forces a specific lane. The runner honours a forced lane only if `<lane-id>` exists in `ops/router/lanes.json`; otherwise it falls back to profiling the task with the Jev router core.
-3. **Optional `repo:` line**: `repo: <repo-name>` selects the target repository (defaults to `dream-online`).
+3. **Optional `repo:` line**: `repo: <repo-name>` selects the target repository through the repo map in `ops/router/repos.json` (defaults to `dream-online`). `dream-online` is the runner's own repo root. `ANTIGRAVITY` is the sibling folder named in the `ANTIGRAVITY_REPO_ROOT` environment variable (default `%USERPROFILE%\antigravity\ANTIGRAVITY-wt-pr335`); that task gets its worktree, branch and PR in that repo. An unknown repo name is refused: the task moves to `failed\` with a log naming the known repos. The one-run-per-repo rule still holds.
 4. **Task text**: Everything after the header lines is the task body sent to the selected lane with the cookbook's common rules prepended (`PR only`, `no user folder names`, `no secrets`, `proof pasted`, `Obsidian note`).
 
 ### Example Task File (`%USERPROFILE%\antigravity\.fable-kitchen\inbox\queued\fix-hud-spacing.md`)
@@ -50,9 +51,14 @@ Adjust the spacing in src/ui/Hud.tsx and add a unit test verifying the layout pr
 - **Judge step**: When the `agy` handle finishes, the runner checks for a GitHub PR URL in the lane output and, for `design-visual` tasks, an Eyes gate report whose first line starts with `PASS`. Missing either re-queues the task once with the failure reason appended; failing a second time moves the task to `failed\`.
 - **Quota / 429 fallback**: A quota or HTTP 429 error marks the lane cold through the Jev router core (`reportQuotaError`) and re-queues the task once on the fallback lane from `ops/router/lanes.json`.
 - **PR comment**: On pass, the runner posts a comment on the PR whose first line is `Router report: <lane> on Alienware` followed by the lane, the job class, the routing reason, the decision hash, and the test summary extracted from the lane's log.
+- **Judge class**: `judge` is only for review, verdict, approve, merge and ruling jobs. README, docs, wording, rename and reference-fix jobs profile as `mechanical`, never `judge`, even when the text names the judge lane or a `FABLE` file in passing. A judge task is parked in `for-judge\` (section 1) and never run by the runner.
+- **Effort per lane**: `ops/router/lanes.json` carries an optional `laneSettings.<lane>.effort` (`gemini-4-argon`, `claude-opus-5-5` and `claude-sonnet-5-5` are `high`; `gemini-3.8-flash` and `fable` are `none`). The `agy` adapter passes `--effort` only for a lane whose setting is `low`, `medium` or `high`, and omits the flag for `none` or a lane with no setting, because agy 1.5.0 rejects `--effort` for those models.
+- **Token hygiene**: The runner removes `GH_TOKEN`, `GITHUB_TOKEN` and `GH_ENTERPRISE_TOKEN` from the environment it passes to every lane (and to its own git and gh calls), and never loads a `.env` file into a lane; `gh` uses its own stored sign-in.
+- **Owner check**: Before any other gh call the runner runs `gh api user` and compares the login to `expectedOwner` in `ops/router/repos.json` (`Trollz1004`). On a mismatch (or if `gh api user` fails) the task stays in `queued\` and the runner logs a clear line to `decisions.log` and returns `refused-gh-owner` (or `refused-gh-auth`) instead of failing silently later.
+- **Runner opens the PR**: After a lane pushes `ai/inbox/<id>`, if the lane did not open a PR the runner reuses an open PR for the branch or opens one itself with `gh pr create` (title from a `PR title:` line in the lane report, otherwise the task title; body from the lane report), so a lane's own gh trouble never marks finished work as failed. If the branch was not pushed, or `gh pr create` fails, the task fails as before with the reason in its log.
 - **Safety rules**:
   - Refuses any task file or configuration that names a path under `OneDrive` as its inbox.
-  - Refuses to run if `gh` is not signed in (`gh auth status`).
+  - Refuses to run if `gh` is not signed in (`gh auth status`) or is signed in as anyone but the expected owner.
   - Never merges and never touches `main` or `master`.
   - Writes every routing decision to `ops/router/decisions.log` through the core's secret, path, and private-IP redaction.
   - Stops after three consecutive failures until a human clears `failed\`.
