@@ -12,5 +12,5 @@ platforms: [windows, linux, macos]
 2. **Run Real Test Suites & Live Probes**: Run `npm run lint` and `npm test` AND probe the live HTTP endpoint.
 3. **Pass the Remake `100% Yours` & REA Clean-Room Gate**: Verify 100% of slots, copy, fonts, colours, and 3D assets are clean-room owned with zero competitor or source-site residue.
 4. **Capture & Critique Real Screenshots**: For any front-facing HTML/UI, capture the real screenshot, list any flaws from the human viewer's perspective, fix them, and commit to `main`.
-- House rules: `docs/house/HOUSE-MOTION-RULE.md` and `docs/house/THE-HOUSE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
+- House rules: `docs/house/HOUSE-MOTION-RULE.md`, `docs/house/THE-HOUSE.md` and `docs/house/PAYMENT-ACCOUNTS-RULE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
 - Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports (`ops/handoffs/FABLE-HANDOFFS-2026-11-06.md` section 0).

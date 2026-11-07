@@ -639,6 +639,23 @@ test('Inbox runner registration scripts dry-run by default without -Apply under 
   assert.ok(fs.existsSync(regScriptPath), 'register-inbox-runner.ps1 must exist');
   assert.ok(fs.existsSync(unregScriptPath), 'unregister-inbox-runner.ps1 must exist');
 
+  const probeTaskBefore = isWindows
+    ? spawnSync(
+        psCandidate,
+        [
+          '-NoProfile',
+          '-ExecutionPolicy',
+          'Bypass',
+          '-Command',
+          "if (Get-ScheduledTask -TaskName DreamRouterInbox -ErrorAction SilentlyContinue) { 'TASK_FOUND' } else { 'TASK_NOT_FOUND' }",
+        ],
+        {
+          encoding: 'utf8',
+        }
+      )
+    : null;
+  const taskExistedBefore = Boolean(probeTaskBefore?.stdout.includes('TASK_FOUND'));
+
   const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-ps-dryrun-'));
   try {
     const customEnv: NodeJS.ProcessEnv = {
@@ -684,7 +701,7 @@ test('Inbox runner registration scripts dry-run by default without -Apply under 
     );
     assert.ok(unregRun.stdout.includes('DreamRouterInbox'), 'unregister output must mention DreamRouterInbox');
 
-    // 3. Assert no scheduled task was created (Get-ScheduledTask -TaskName DreamRouterInbox must not exist)
+    // 3. Assert no scheduled task was created (or pre-existing task left untouched by dry runs)
     if (isWindows) {
       const taskCheck = spawnSync(
         psCandidate,
@@ -701,10 +718,17 @@ test('Inbox runner registration scripts dry-run by default without -Apply under 
         }
       );
       assert.equal(taskCheck.status, 0, `task check failed: ${taskCheck.stderr}`);
-      assert.ok(
-        taskCheck.stdout.includes('TASK_NOT_FOUND'),
-        'Get-ScheduledTask -TaskName DreamRouterInbox must not exist'
-      );
+      if (taskExistedBefore) {
+        assert.ok(
+          taskCheck.stdout.includes('TASK_FOUND'),
+          'pre-existing DreamRouterInbox task remained untouched by dry-run'
+        );
+      } else {
+        assert.ok(
+          taskCheck.stdout.includes('TASK_NOT_FOUND'),
+          'Get-ScheduledTask -TaskName DreamRouterInbox must not exist'
+        );
+      }
     }
   } finally {
     fs.rmSync(tmpHome, { recursive: true, force: true });

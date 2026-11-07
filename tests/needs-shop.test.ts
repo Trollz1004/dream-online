@@ -40,6 +40,7 @@ import {
   NEEDS_SHOP_CATALOG,
   NEEDS_SHOP_DEFAULT_NOW,
   NEEDS_SHOP_HELP_RULES,
+  NEEDS_SHOP_PAYMENTS_LINE,
   NeedsShopModal,
   buyItemWithCoins,
   formatReleaseMonthUtc,
@@ -83,7 +84,21 @@ test('categories and layout: defines the 6 required categories and plain-sentenc
   assert.match(combinedRules, /skins never expire/i);
   assert.match(combinedRules, /every skin reaches the currency store a few months after release/i);
   assert.match(combinedRules, /founder pet.*never/i);
-  assert.match(combinedRules, /nothing here changes your stats/i);
+  assert.match(combinedRules, /nothing here changes stats/i);
+  assert.equal(
+    NEEDS_SHOP_HELP_RULES[2],
+    'The game is free to play. This shop sells looks and convenience, and looks cost money. Nothing here changes stats.',
+  );
+  assert.equal(
+    NEEDS_SHOP_PAYMENTS_LINE,
+    "Payments: the game's own Square account, kept separate from the date app's.",
+  );
+  // React escapes the apostrophes in the rendered markup.
+  assert.ok(
+    html.includes(NEEDS_SHOP_PAYMENTS_LINE.replace(/'/g, '&#x27;')),
+    'expected rendered help panel to include the payments line',
+  );
+  assert.equal(/square only/i.test(html), false, 'shop must never say "Square only"');
 
   for (const ruleSentence of NEEDS_SHOP_HELP_RULES) {
     assert.ok(
@@ -141,8 +156,8 @@ test('rule 1 (no stats): the screen never shows a stat in catalog items, row mod
       );
     }
 
-    // The only appearance of "stats" in the screen text is the plain rule "Nothing here changes your stats."
-    const withoutRuleSentence = html.replace(/Nothing here changes your stats\./gi, '');
+    // The only appearance of "stats" in the screen text is the plain rule "Nothing here changes stats."
+    const withoutRuleSentence = html.replace(/Nothing here changes stats\./gi, '');
     assert.equal(
       /\bstats?\b/i.test(withoutRuleSentence),
       false,
