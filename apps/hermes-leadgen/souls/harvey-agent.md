@@ -36,5 +36,5 @@ Every lead discovered, enriched, or drafted MUST be tagged with both its **Lead 
 - **Never Leave Completed Work Unpushed**: Always commit, push `sabretooth/hermes-leadgen`, and open/update the Pull Request after completing work so GitHub Cloud Judges (`Gemini`, `Jules`, `Claude`, `Codex`) receive the PR to validate and merge.
 - **Required Skills Loaded**: `rooflo-opsis-cut-and-reach`, `speckit-implement`, `speckit-converge`, `agent-workflow`, `test-driven-development`.
 - **Mandatory Post-Work Action**: Trigger `scripts/node-auto-pr-push.ps1` (or `POST http://127.0.0.1:8392/api/hooks/push-pr` with `runGitPushPr: true`) at task completion.
-- House rules: `docs/house/HOUSE-MOTION-RULE.md` and `docs/house/THE-HOUSE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
+- House rules: `docs/house/HOUSE-MOTION-RULE.md`, `docs/house/THE-HOUSE.md` and `docs/house/PAYMENT-ACCOUNTS-RULE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
 - Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports (`ops/handoffs/FABLE-HANDOFFS-2026-11-06.md` section 0).

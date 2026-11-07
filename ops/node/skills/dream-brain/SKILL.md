@@ -31,5 +31,5 @@ Built 2026-09-23 at Joshua's request: he wanted the skills, the Obsidian setup a
 
 - No boot card at start: run `claude mcp get dream-brain`, then check that `~/.claude/settings.json` still has the two `dream-brain` hooks (another app can rewrite that file) and rerun the installer.
 - The Obsidian MCP needs Obsidian running. `drift` starts it when port 27123 is closed.
-- House rules: `docs/house/HOUSE-MOTION-RULE.md` and `docs/house/THE-HOUSE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
+- House rules: `docs/house/HOUSE-MOTION-RULE.md`, `docs/house/THE-HOUSE.md` and `docs/house/PAYMENT-ACCOUNTS-RULE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
 - Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports (`ops/handoffs/FABLE-HANDOFFS-2026-11-06.md` section 0).

@@ -88,5 +88,5 @@ Each line in the report exists because a session lost time to it.
 Commit and push. Append the journal entry. Move the dispatch's `Last updated:`
 line. Add a changelog line for any protected file. Then run `drift ground` once
 more: it should be GREEN, and if it is not, the next session inherits the mess.
-- House rules: `docs/house/HOUSE-MOTION-RULE.md` and `docs/house/THE-HOUSE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
+- House rules: `docs/house/HOUSE-MOTION-RULE.md`, `docs/house/THE-HOUSE.md` and `docs/house/PAYMENT-ACCOUNTS-RULE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
 - Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports (`ops/handoffs/FABLE-HANDOFFS-2026-11-06.md` section 0).
