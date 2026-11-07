@@ -43,7 +43,7 @@ Primary references:
 
 - `docs/testing/first-playable-acceptance.md`
 - `docs/testing/first-playable-walkthrough.md`
-- `game/godot/DreamSlice/README.md`
+- `docs/tech/engine-decision-2026-09-30-own-engine.md` (in-house DREAM Engine, `src/engine/`)
 - `docs/tech/engine-decision-2026-09-20.md`
 - `game/server/live-npc-lab/data/first-zone.seed.json`
 

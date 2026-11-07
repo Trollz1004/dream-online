@@ -585,8 +585,8 @@ function eventScopeMatches(row, query) {
 
 // A world event has no top-level playerId or npcId of its own (see
 // handleWorldEvent below): the actor posting it is `actorId`, and who
-// witnessed it lives inside `payload.witness`. This scope is what lets an
-// NPC memory client (game/godot/DreamSlice/scripts/npc_memory.gd) read back,
+// witnessed it lives inside `payload.witness`. This scope is what lets the
+// in-house DREAM Engine NPC memory client read back,
 // for one player and one witness, exactly the events it posted to
 // /npc/event — the gap that made GET /npc/memory unable to answer that
 // question before this scope existed.

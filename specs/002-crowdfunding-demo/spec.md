@@ -4,7 +4,7 @@ Status: in progress, set 2026-09-23 by the Claude judge lane on Joshua's own goa
 
 ## What ships
 
-A recorded video of 60 to 90 seconds, `game/godot/DreamSlice/demo/dream-demo.mp4` (the video file is git-ignored; the recipe to make it is committed), rendered from the real Godot slice, with every frame played by the game engine. It is labelled pre-alpha. Nothing in it is painted over, and no sample or licensed asset shown as DREAM's own.
+A recorded video of 60 to 90 seconds (the video file is git-ignored; the recipe to make it is committed), rendered from the in-house DREAM Engine (`src/engine/`), with every frame played by the game engine. It is labelled pre-alpha. Nothing in it is painted over, and no sample or licensed asset shown as DREAM's own.
 
 It shows, in order:
 
@@ -45,7 +45,7 @@ Everything is built in code from primitives and generated meshes. There are no i
 
 ## Recording
 
-`godot --path game/godot/DreamSlice --write-movie demo/dream-demo.avi --fixed-fps 30 -- --demo`, followed by ffmpeg to MP4. A demo director script plays the whole timeline with no person at the keys. The recipe is `game/godot/Record-Demo.cmd`.
+Captured from the in-house DREAM Engine (`src/engine/`) at a fixed 30 fps, followed by ffmpeg to MP4. A demo director script plays the whole timeline with no person at the keys.
 
 ## Done means
 

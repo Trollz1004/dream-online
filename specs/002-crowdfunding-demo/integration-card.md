@@ -40,7 +40,7 @@ The timeline is about 80 s. The times are guides, so adjust for feel.
 
 ## Recording
 
-`game/godot/Record-Demo.cmd` runs `godot --path <slice> --write-movie <slice>\demo\dream-demo.avi --fixed-fps 30 --resolution 1920x1080 -- --demo`. Then it runs `ffmpeg -y -i ...avi -c:v libx264 -crf 18 -preset slow -pix_fmt yuv420p ...mp4` and deletes the AVI. Add `game/godot/*/demo/` to `.gitignore`. Use CRLF and plain ASCII in the .cmd file.
+The demo recording captures the in-house DREAM Engine (`src/engine/`) at 1920x1080 and 30 fps, then runs `ffmpeg -y -i ...avi -c:v libx264 -crf 18 -preset slow -pix_fmt yuv420p ...mp4` and deletes the intermediate AVI while keeping demo video output git-ignored.
 
 ## Proof you must bring back
 

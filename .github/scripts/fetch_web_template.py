@@ -1,5 +1,6 @@
-"""Pull only the web export template out of Godot's 1.28 GB export-templates
-archive using HTTP byte ranges, so the whole archive is never downloaded.
+"""Historical helper for the retired reference slice; the active engine and demo
+run on the in-house DREAM Engine (src/engine/) with no third-party engine
+dependency.
 
 The .tpz is a plain zip. zipfile reads the central directory from the end of
 the file through a file-like object whose read() is a Range request; the

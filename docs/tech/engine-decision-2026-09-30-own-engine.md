@@ -53,8 +53,9 @@ Unreal stays parked, not deleted, for cinematics and reference only, as before.
 
 An engine is a bigger build than a game. The way this stays honest is that
 every stage ends with something on a hosted screen, Stage 1 must match the
-Godot slice that already runs, and the Godot slice stays the public demo until
-the judge lane has seen the new engine beat it. Nothing is deleted on the way.
+verified combat slice in the in-house DREAM Engine (`src/engine/`), and the
+in-house DREAM Engine serves as the public demo once verified by the judge lane.
+Nothing is deleted on the way.
 
 ## What stays true
 
@@ -68,5 +69,6 @@ the judge lane has seen the new engine beat it. Nothing is deleted on the way.
 
 ## For any lane reading this later
 
-Do not re-argue the engine. The answer is: DREAM Engine, staged, hosted, one
-link per stage, Godot slice as the demo until Stage 1 is verified on screen.
+Do not re-argue the engine. The answer is: the in-house DREAM Engine
+(`src/engine/`), staged, hosted, one link per stage, serving as the engine and
+public demo.
