@@ -118,7 +118,7 @@ Status tags:
 67. P1 Research - Research official Unreal replication options for large shared worlds and action combat.
 68. P1 Ready - Create network relevancy budget assumptions for players, NPCs, items, resources, and VFX.
 69. P1 Ready - Define suspicious action logs: impossible movement, impossible hits, rapid trade abuse, duplicated item.
-70. P1 Blocked - Implement dedicated server prototype on the Godot track when the server spine is specified.
+70. P1 Blocked - Implement dedicated server prototype on the in-house engine track when the server spine is specified.
 
 ## P1 - UX, HUD, And Onboarding
 
@@ -217,4 +217,4 @@ Status tags:
 ## Pull Order Recommendation
 
 Start with tasks 1-10, then 11-20, then 21-40. Continue heavy engine work in
-game/godot/DreamSlice, which is unblocked.
+the in-house DREAM Engine (`src/engine/`), which is unblocked.

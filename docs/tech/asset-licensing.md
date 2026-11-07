@@ -5,8 +5,8 @@ ONLINE. It is short on purpose.
 
 ## The two rules
 
-**Nothing paid.** No lane buys anything. Free tools and free assets only. Godot is
-free and MIT licensed, which is why the toolchain costs nothing to keep.
+**Nothing paid.** No lane buys anything. Free tools and free assets only. The in-house
+DREAM Engine and open toolchains cost nothing to keep.
 
 **Free of charge is not free to use.** Price and licence are different questions.
 An asset that costs nothing can still be licensed in a way that forbids what this
@@ -46,7 +46,7 @@ no. Content Examples is flagged 0.
 
 ## What is safe to build on
 
-- Godot itself, and anything under a permissive licence (MIT, Apache 2.0, BSD).
+- The in-house DREAM Engine and open tools, and anything under a permissive licence (MIT, Apache 2.0, BSD).
 - CC0 and public-domain assets, which carry no engine restriction at all. This is
   the right source for stand-in characters and props while DREAM's own art is made.
 - Anything DREAM makes for itself, which is the direction anyway under the

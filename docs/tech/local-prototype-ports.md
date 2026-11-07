@@ -13,7 +13,7 @@ colliding while the first playable is still running on local tools.
 | Live NPC Lab | `127.0.0.1` | `9127` | `DREAM_LIVE_NPC_HOST`, `DREAM_LIVE_NPC_PORT` | Local NPC dialogue, event logging, memory reads, schema and seed inspection |
 | DREAM Engine (3D viewport, graphy and memory bridge) | `127.0.0.1` | `9180` | `PORT` | The in-house engine served by `server.ts`; never `20128` |
 | Future game server | `127.0.0.1` | `9130` reserved | `DREAM_GAME_HOST`, `DREAM_GAME_PORT` planned | First playable game loop once implementation begins |
-| Future web client | `127.0.0.1` | `9131` reserved | `DREAM_WEB_HOST`, `DREAM_WEB_PORT` planned | Local browser-facing prototype, if one is ever needed beside the Godot browser build on `8099` |
+| Future web client | `127.0.0.1` | `9131` reserved | `DREAM_WEB_HOST`, `DREAM_WEB_PORT` planned | Local browser-facing prototype, if one is ever needed beside the in-house engine client on `9180` |
 | Future agent bridge | `127.0.0.1` | `9132` reserved | `DREAM_AGENT_HOST`, `DREAM_AGENT_PORT` planned | Local bridge from game events to safe NPC/provider routing |
 
 ## Ports owned by other services on the same box
