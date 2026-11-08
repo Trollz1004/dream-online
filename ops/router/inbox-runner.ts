@@ -18,14 +18,19 @@ import {
   type CommandExecRequest,
   type CommandExecResult,
   type CommandRunner,
+  DEFAULT_RUNNER_GH_CONFIG_DIR,
   defaultCommandRunner,
   detectQuotaOr429Error,
   type DispatchAdapter,
   type DispatchPollResult,
   parseEyesGateVerdictFromOutput,
   parsePrUrlFromOutput,
+  resolveRunnerGhConfigDir,
+  RUNNER_GH_CONFIG_DIR_PORTABLE,
   scrubLaneEnv,
 } from './adapters/index.ts';
+
+export { DEFAULT_RUNNER_GH_CONFIG_DIR, resolveRunnerGhConfigDir, RUNNER_GH_CONFIG_DIR_PORTABLE };
 import {
   appendDecisionRecord,
   type DecisionRecord,
@@ -140,6 +145,7 @@ export interface InboxTickResult {
 
 export interface InboxRunnerOptions {
   inboxDir?: string;
+  ghConfigDir?: string;
   worktreeParentDir?: string;
   repoRoot?: string;
   reposPath?: string;
@@ -339,10 +345,11 @@ export function toPortablePath(absolutePath: string, env: NodeJS.ProcessEnv = pr
   const homes = [readEnvValue(env, 'USERPROFILE')?.trim(), os.homedir()].filter(
     (home): home is string => Boolean(home)
   );
+  const normalizedTarget = absolutePath.replace(/\\/g, '/');
   for (const home of homes) {
-    const trimmed = home.replace(/[\\/]+$/, '');
-    if (absolutePath.toLowerCase().startsWith(trimmed.toLowerCase())) {
-      return `%USERPROFILE%${absolutePath.slice(trimmed.length)}`;
+    const trimmed = home.replace(/[\\/]+$/, '').replace(/\\/g, '/');
+    if (trimmed && normalizedTarget.toLowerCase().startsWith(trimmed.toLowerCase())) {
+      return `%USERPROFILE%${normalizedTarget.slice(trimmed.length).replace(/\//g, '\\')}`;
     }
   }
   return absolutePath;
@@ -620,11 +627,12 @@ function listMarkdownTaskFilesSortedOldestFirst(dirPath: string): string[] {
  */
 export class InboxRunner {
   private readonly inboxDir: string;
+  private readonly ghConfigDir: string;
   private readonly worktreeParentDir: string;
   private readonly repoRoot: string;
   private readonly repoMap: RepoMap;
   private readonly env: NodeJS.ProcessEnv;
-  /** The environment every lane and every runner git/gh call gets: GitHub token variables removed, no .env loaded. */
+  /** The environment every lane and every runner git/gh call gets: GH_CONFIG_DIR set to the runner folder, GitHub token variables removed, no .env loaded. */
   private readonly laneEnv: NodeJS.ProcessEnv;
   private readonly configPath: string;
   private readonly explicitBaseBranch?: string;
@@ -639,6 +647,7 @@ export class InboxRunner {
   private readonly customHasAgyChildProcess?: () => Promise<boolean> | boolean;
 
   private isTickActive = false;
+  private startupGhChecked = false;
   private readonly activeRepos = new Set<string>();
   private readonly livenessRequeuedTaskIds = new Set<string>();
   private consecutiveFailures = 0;
@@ -649,9 +658,10 @@ export class InboxRunner {
     this.worktreeParentDir = options?.worktreeParentDir ?? DEFAULT_WORKTREE_PARENT_DIR;
     this.repoRoot = options?.repoRoot ?? DEFAULT_REPO_ROOT;
     this.env = options?.env ?? process.env;
-    // GH_TOKEN, GITHUB_TOKEN and GH_ENTERPRISE_TOKEN are removed from everything handed to a lane;
-    // gh then uses its own stored sign-in, which is the account the owner check verifies.
-    this.laneEnv = scrubLaneEnv(this.env);
+    this.ghConfigDir = options?.ghConfigDir ?? resolveRunnerGhConfigDir(this.env);
+    // GH_TOKEN, GITHUB_TOKEN and GH_ENTERPRISE_TOKEN are removed from everything handed to a lane,
+    // and GH_CONFIG_DIR is set to %USERPROFILE%\antigravity\.fable-kitchen\gh-runner so no other lane can switch it.
+    this.laneEnv = scrubLaneEnv(this.env, this.ghConfigDir);
     // Fail fast at startup (before any task file moves) if the repo map cannot be loaded
     this.repoMap = loadRepoMap(options?.reposPath ?? DEFAULT_REPOS_PATH);
     this.configPath = options?.configPath ?? DEFAULT_INBOX_CONFIG_PATH;
@@ -674,6 +684,7 @@ export class InboxRunner {
       options?.adapter ??
       new AgyDispatchAdapter({
         kitchenDir: path.dirname(this.inboxDir),
+        ghConfigDir: this.ghConfigDir,
         runner: this.commandRunner,
         lanesPath: this.lanesPath,
         now: this.now,
@@ -694,11 +705,15 @@ export class InboxRunner {
     return this.router;
   }
 
+  public getGhConfigDir(): string {
+    return this.ghConfigDir;
+  }
+
   public getConsecutiveFailures(): number {
     return this.consecutiveFailures;
   }
 
-  /** Runs a git or gh command with the scrubbed environment (no GitHub token variables). */
+  /** Runs a git or gh command with the scrubbed environment (dedicated GH_CONFIG_DIR, no GitHub token variables). */
   private runCommand(req: CommandExecRequest): Promise<CommandExecResult> {
     return this.commandRunner({ ...req, env: this.laneEnv });
   }
@@ -732,11 +747,13 @@ export class InboxRunner {
   }
 
   /**
-   * Reads the signed-in GitHub login with `gh api user` and compares it to the expected owner from
-   * ops/router/repos.json. Returns null when they match, otherwise the refusal to log and return.
+   * Reads the signed-in GitHub login in the runner's dedicated GH_CONFIG_DIR with `gh api user`
+   * and compares it to the expected owner from ops/router/repos.json.
+   * Returns null when they match, otherwise the refusal to log and return.
    */
   private async checkGhOwner(): Promise<{ status: 'refused-gh-auth' | 'refused-gh-owner'; reason: string } | null> {
     const expected = this.repoMap.expectedOwner;
+    const portableFolder = toPortablePath(this.ghConfigDir, this.env);
     const res = await this.runCommand({
       command: 'gh',
       args: ['api', 'user', '--jq', '.login'],
@@ -746,13 +763,13 @@ export class InboxRunner {
     if (res.exitCode !== 0 || !login) {
       return {
         status: 'refused-gh-auth',
-        reason: `Inbox runner refused to run: gh api user failed, so the signed-in GitHub login could not be read (expected ${expected}); run gh auth login as ${expected}.`,
+        reason: `runner gh config empty: run gh auth login with GH_CONFIG_DIR set to ${portableFolder}`,
       };
     }
     if (login.toLowerCase() !== expected.toLowerCase()) {
       return {
         status: 'refused-gh-owner',
-        reason: `Inbox runner refused to run: gh is signed in as ${login} but ops/router/repos.json expects ${expected}; run gh auth switch to ${expected} and the task will start on the next tick.`,
+        reason: `Inbox runner refused to run: gh is signed in as ${login} in ${portableFolder} but ops/router/repos.json expects ${expected}; run gh auth switch to ${expected} and the task will start on the next tick.`,
       };
     }
     return null;
@@ -1224,6 +1241,39 @@ export class InboxRunner {
     // Check queued/ for the oldest markdown task file
     const queuedFiles = listMarkdownTaskFilesSortedOldestFirst(folders.queued);
     if (queuedFiles.length === 0) {
+      if (!this.startupGhChecked) {
+        this.startupGhChecked = true;
+        const startupRefusal = await this.checkGhOwner();
+        if (startupRefusal) {
+          const rec = this.logSafetyDecision(startupRefusal.reason, 'startup-gh-config');
+          return {
+            status: startupRefusal.status,
+            taskId: null,
+            fileName: null,
+            repo: null,
+            repoRoot: null,
+            lane: null,
+            jobClass: null,
+            decisionHash: rec.task_hash,
+            reason: rec.reason,
+            prUrl: null,
+            prCommentBody: null,
+            requeued: false,
+            requeueCount: 0,
+            quotaFallbackTriggered: false,
+            forcedLaneRequested: null,
+            forcedLaneHonoured: false,
+            worktreePath: null,
+            branchName: null,
+            baseBranch: null,
+            worktreeRemoved: false,
+            taskFinalPath: null,
+            logFinalPath: null,
+            transitions: [],
+            attempts: [],
+          };
+        }
+      }
       return {
         status: 'idle',
         taskId: null,
@@ -1252,8 +1302,10 @@ export class InboxRunner {
       };
     }
 
+    this.startupGhChecked = true;
+
     // Safety 3a: before any other gh call, gh api user must report the expected owner from repos.json.
-    // A wrong account stops the task with a clear log line instead of failing silently later.
+    // An empty gh config folder or a wrong account stops the task with a clear log line instead of failing silently later.
     const ownerRefusal = await this.checkGhOwner();
     if (ownerRefusal) {
       const rec = this.logSafetyDecision(ownerRefusal.reason, queuedFiles[0]);
@@ -1292,8 +1344,9 @@ export class InboxRunner {
       cwd: this.repoRoot,
     });
     if (ghAuthRes.exitCode !== 0) {
+      const portableFolder = toPortablePath(this.ghConfigDir, this.env);
       const rec = this.logSafetyDecision(
-        'Inbox runner refused to run: gh CLI is not signed in (gh auth status failed).',
+        `runner gh config empty: run gh auth login with GH_CONFIG_DIR set to ${portableFolder}`,
         queuedFiles[0]
       );
       return {
@@ -1944,6 +1997,48 @@ export function createMockInboxCommandRunner(options?: {
   return { runner, commands };
 }
 
+export interface InboxSupervisorOptions {
+  /** Single runner invocation returning an exit code (and optional stop signal for testing). */
+  runOnce: () => Promise<{ exitCode: number; stop?: boolean }>;
+  /** Delay between restart attempts in milliseconds (default: 5000). */
+  restartDelayMs?: number;
+  /** Maximum number of restarts before returning (default: Infinity for continuous daemon supervision). */
+  maxRestarts?: number;
+  /** Sleep implementation (injectable for deterministic tests). */
+  sleep?: (ms: number) => Promise<void>;
+  /** Callback invoked whenever the runner throws or exits and is about to be restarted. */
+  onRestart?: (errorOrReason: unknown, restartAttempt: number) => void;
+}
+
+/**
+ * Supervising restart loop: brings the inbox runner back if its iteration throws an unhandled error
+ * or exits unexpectedly, so the wheel never stays dead when the scheduled task is idle.
+ */
+export async function runInboxRunnerWithRestart(options: InboxSupervisorOptions): Promise<void> {
+  const restartDelayMs = options.restartDelayMs ?? 5_000;
+  const maxRestarts = options.maxRestarts ?? Number.POSITIVE_INFINITY;
+  const sleep =
+    options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+
+  let restarts = 0;
+  while (true) {
+    try {
+      const res = await options.runOnce();
+      if (res.stop) {
+        return;
+      }
+      throw new Error(`runner exited with code ${res.exitCode}`);
+    } catch (err) {
+      restarts += 1;
+      options.onRestart?.(err, restarts);
+      if (restarts > maxRestarts) {
+        return;
+      }
+      await sleep(restartDelayMs);
+    }
+  }
+}
+
 // CLI entrypoint when invoked directly (e.g. by DreamRouterInbox scheduled task)
 const isMainModule =
   Boolean(process.argv[1]) &&
@@ -1957,22 +2052,31 @@ if (isMainModule) {
       ? Math.max(1000, Number(process.argv[intervalIdx + 1]) || 15_000)
       : 15_000;
 
+  const writeSanitizedError = (err: unknown): void => {
+    process.stderr.write(
+      `${sanitizeDecisionLogText(err instanceof Error ? err.message : String(err))}\n`
+    );
+  };
+
   const runner = new InboxRunner();
   if (once) {
     runner.tick().catch((err) => {
-      process.stderr.write(
-        `${sanitizeDecisionLogText(err instanceof Error ? err.message : String(err))}\n`
-      );
+      writeSanitizedError(err);
       process.exitCode = 1;
     });
   } else {
+    process.on('uncaughtException', (err) => {
+      writeSanitizedError(err);
+    });
+    process.on('unhandledRejection', (reason) => {
+      writeSanitizedError(reason);
+    });
+
     const loop = async () => {
       try {
         await runner.tick();
       } catch (err) {
-        process.stderr.write(
-          `${sanitizeDecisionLogText(err instanceof Error ? err.message : String(err))}\n`
-        );
+        writeSanitizedError(err);
       }
     };
     void loop();
