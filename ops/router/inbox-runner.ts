@@ -345,10 +345,11 @@ export function toPortablePath(absolutePath: string, env: NodeJS.ProcessEnv = pr
   const homes = [readEnvValue(env, 'USERPROFILE')?.trim(), os.homedir()].filter(
     (home): home is string => Boolean(home)
   );
+  const normalizedTarget = absolutePath.replace(/\\/g, '/');
   for (const home of homes) {
-    const trimmed = home.replace(/[\\/]+$/, '');
-    if (absolutePath.toLowerCase().startsWith(trimmed.toLowerCase())) {
-      return `%USERPROFILE%${absolutePath.slice(trimmed.length)}`;
+    const trimmed = home.replace(/[\\/]+$/, '').replace(/\\/g, '/');
+    if (trimmed && normalizedTarget.toLowerCase().startsWith(trimmed.toLowerCase())) {
+      return `%USERPROFILE%${normalizedTarget.slice(trimmed.length).replace(/\//g, '\\')}`;
     }
   }
   return absolutePath;

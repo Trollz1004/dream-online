@@ -30,6 +30,7 @@ import {
   InboxRunner,
   loadRepoMap,
   runInboxRunnerWithRestart,
+  toPortablePath,
 } from './inbox-runner.ts';
 
 const ROUTER_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -463,6 +464,10 @@ test('owner check: when runner gh config folder has no signed-in account on star
       'runner gh config empty: run gh auth login with GH_CONFIG_DIR set to %USERPROFILE%\\antigravity\\.fable-kitchen\\gh-runner';
 
     // 1. On start with empty queue and no signed-in account in GH_CONFIG_DIR: logs one clear line to decisions.log
+    assert.equal(
+      toPortablePath('/home/runner/antigravity/.fable-kitchen/gh-runner', { USERPROFILE: '/home/runner' }),
+      '%USERPROFILE%\\antigravity\\.fable-kitchen\\gh-runner'
+    );
     const failing = createMockInboxCommandRunner({ ghSignedIn: false });
     const runnerOnStart = new InboxRunner({
       inboxDir,
