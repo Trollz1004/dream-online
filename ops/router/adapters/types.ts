@@ -3,6 +3,8 @@
  * (agy headless, Free Claude Code outbox, Hermes over SSH/SCP, and Console-credit judge).
  */
 
+import os from 'node:os';
+import path from 'node:path';
 import type { JevJobClass } from '../dream-task-router.ts';
 
 export const GITHUB_PR_URL_REGEX =
@@ -62,18 +64,52 @@ export function resolveLaneEffort(
 /** GitHub token variables that never reach a lane: gh uses its own stored sign-in instead. */
 export const LANE_SCRUBBED_ENV_NAMES = ['GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN'] as const;
 
+/** Portable path for the runner's dedicated gh config folder so no other lane on the machine can switch its account. */
+export const RUNNER_GH_CONFIG_DIR_PORTABLE = '%USERPROFILE%\\antigravity\\.fable-kitchen\\gh-runner';
+
+/** Default absolute path for the runner's dedicated gh config folder. */
+export const DEFAULT_RUNNER_GH_CONFIG_DIR = path.join(
+  os.homedir(),
+  'antigravity',
+  '.fable-kitchen',
+  'gh-runner'
+);
+
+/**
+ * Resolves the runner's dedicated gh config folder (%USERPROFILE%\antigravity\.fable-kitchen\gh-runner),
+ * using explicitGhConfigDir when passed, otherwise USERPROFILE from env (falling back to os.homedir()).
+ */
+export function resolveRunnerGhConfigDir(
+  env: NodeJS.ProcessEnv = process.env,
+  explicitGhConfigDir?: string
+): string {
+  if (explicitGhConfigDir && explicitGhConfigDir.trim()) {
+    return explicitGhConfigDir.trim();
+  }
+  const userProfileKey = Object.keys(env).find((key) => key.toUpperCase() === 'USERPROFILE');
+  const userProfile = userProfileKey ? env[userProfileKey]?.trim() : undefined;
+  const home = userProfile || os.homedir();
+  return path.join(home, 'antigravity', '.fable-kitchen', 'gh-runner');
+}
+
 /**
  * Returns a copy of the environment without the GitHub token variables (matched case-insensitively,
- * as Windows environment names are). The input object is never modified and no value is ever read out.
+ * as Windows environment names are) and with GH_CONFIG_DIR set to the runner's dedicated gh config folder
+ * (%USERPROFILE%\antigravity\.fable-kitchen\gh-runner). The input object is never modified.
  */
-export function scrubLaneEnv(env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+export function scrubLaneEnv(
+  env: NodeJS.ProcessEnv = process.env,
+  ghConfigDir?: string
+): NodeJS.ProcessEnv {
   const scrubbed = new Set<string>(LANE_SCRUBBED_ENV_NAMES);
   const clean: NodeJS.ProcessEnv = {};
   for (const [key, value] of Object.entries(env)) {
-    if (!scrubbed.has(key.toUpperCase())) {
+    const upper = key.toUpperCase();
+    if (!scrubbed.has(upper) && upper !== 'GH_CONFIG_DIR') {
       clean[key] = value;
     }
   }
+  clean.GH_CONFIG_DIR = resolveRunnerGhConfigDir(env, ghConfigDir);
   return clean;
 }
 

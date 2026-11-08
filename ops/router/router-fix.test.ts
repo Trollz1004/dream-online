@@ -8,15 +8,19 @@ import {
   AgyDispatchAdapter,
   type CommandExecRequest,
   type CommandExecResult,
+  DEFAULT_RUNNER_GH_CONFIG_DIR,
   type DispatchAdapter,
   type DispatchHandle,
   type DispatchJobInput,
+  HermesDispatchAdapter,
   loadLaneTable,
   parsePrUrlFromOutput,
   profileTask,
   readDecisionLog,
   resolveLaneEffort,
   resolveLaneHarness,
+  resolveRunnerGhConfigDir,
+  RUNNER_GH_CONFIG_DIR_PORTABLE,
   scrubLaneEnv,
   validateLaneTable,
 } from './dream-task-router.ts';
@@ -25,6 +29,7 @@ import {
   ensureInboxFolders,
   InboxRunner,
   loadRepoMap,
+  runInboxRunnerWithRestart,
 } from './inbox-runner.ts';
 
 const ROUTER_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -278,20 +283,34 @@ test('agy adapter: the Flash command line carries no --effort and the Argon one 
 
 const TOKEN_NAMES = ['GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN'];
 
-test('scrubLaneEnv removes the three GitHub token variables case-insensitively and keeps the rest', () => {
+test('scrubLaneEnv removes the three GitHub token variables case-insensitively, sets GH_CONFIG_DIR, and keeps the rest', () => {
   const source: NodeJS.ProcessEnv = {
     GH_TOKEN: 'fake-a',
     github_token: 'fake-b',
     Gh_Enterprise_Token: 'fake-c',
+    gh_config_dir: 'other-lane-gh-folder',
     PATH: 'fake-path',
     KEEP_ME: '1',
   };
   const clean = scrubLaneEnv(source);
-  assert.deepEqual(Object.keys(clean).sort(), ['KEEP_ME', 'PATH']);
-  assert.equal(Object.keys(source).length, 5, 'the input environment is not modified');
+  assert.deepEqual(Object.keys(clean).sort(), ['GH_CONFIG_DIR', 'KEEP_ME', 'PATH']);
+  assert.equal(clean.GH_CONFIG_DIR, DEFAULT_RUNNER_GH_CONFIG_DIR);
+  assert.equal(
+    RUNNER_GH_CONFIG_DIR_PORTABLE,
+    '%USERPROFILE%\\antigravity\\.fable-kitchen\\gh-runner'
+  );
+  assert.equal(Object.keys(source).length, 6, 'the input environment is not modified');
+
+  const fakeHome = path.join(os.tmpdir(), 'fake-home-gh');
+  const fromUserProfile = scrubLaneEnv({ USERPROFILE: fakeHome, GH_TOKEN: 'fake-a' });
+  assert.equal(
+    fromUserProfile.GH_CONFIG_DIR,
+    path.join(fakeHome, 'antigravity', '.fable-kitchen', 'gh-runner')
+  );
+  assert.equal(fromUserProfile.GH_TOKEN, undefined);
 });
 
-test('runner: agy, git and gh get an environment without GH_TOKEN, GITHUB_TOKEN and GH_ENTERPRISE_TOKEN', async () => {
+test('runner and adapters: lane environment carries GH_CONFIG_DIR and no token variables while preserving GCM env', async () => {
   const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-inbox-env-'));
   try {
     const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
@@ -312,8 +331,19 @@ test('runner: agy, git and gh get an environment without GH_TOKEN, GITHUB_TOKEN 
       worktreeParentDir: path.join(tmpRoot, 'antigravity'),
       decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
       commandRunner: runner,
-      env: { PATH: 'fake-path', GH_TOKEN: 'fake-a', github_token: 'fake-b', GH_ENTERPRISE_TOKEN: 'fake-c', OTHER: 'kept' },
+      env: {
+        PATH: 'fake-path',
+        USERPROFILE: tmpRoot,
+        GH_TOKEN: 'fake-a',
+        github_token: 'fake-b',
+        GH_ENTERPRISE_TOKEN: 'fake-c',
+        GH_CONFIG_DIR: 'wrong-shared-gh-dir',
+        OTHER: 'kept',
+      },
     });
+
+    const expectedGhConfigDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'gh-runner');
+    assert.equal(resolveRunnerGhConfigDir({ USERPROFILE: tmpRoot }), expectedGhConfigDir);
 
     const tick = await inboxRunner.tick();
     assert.equal(tick.status, 'done', tick.reason);
@@ -327,8 +357,40 @@ test('runner: agy, git and gh get an environment without GH_TOKEN, GITHUB_TOKEN 
       for (const token of TOKEN_NAMES) {
         assert.ok(!names.includes(token), `${token} must not reach ${call.command} ${call.args[0]}`);
       }
+      assert.equal(call.env!.GH_CONFIG_DIR, expectedGhConfigDir);
       assert.equal(call.env!.PATH, 'fake-path');
+      assert.equal(call.env!.USERPROFILE, tmpRoot);
       assert.equal(call.env!.OTHER, 'kept');
+    }
+
+    // Hermes adapter also sets GH_CONFIG_DIR and strips token variables
+    const hermesCalls: CommandExecRequest[] = [];
+    const hermesAdapter = new HermesDispatchAdapter({
+      stagingDir: path.join(tmpRoot, 'hermes-stage'),
+      runner: async (req) => {
+        hermesCalls.push(req);
+        return { exitCode: 0, stdout: `Opened ${OWNER_PR_URL}`, stderr: '' };
+      },
+    });
+    const hermesHandle = await hermesAdapter.dispatch({
+      jobId: 'hermes-env-01',
+      prompt: 'Draft launch announcement for X',
+      jobClass: 'post-x',
+      lane: 'grok',
+      harness: 'hermes',
+      env: {
+        USERPROFILE: tmpRoot,
+        GH_TOKEN: 'secret-tok',
+        GITHUB_TOKEN: 'secret-tok-2',
+      },
+    });
+    await hermesHandle.poll();
+    assert.equal(hermesCalls.length, 2);
+    for (const call of hermesCalls) {
+      assert.ok(call.env);
+      assert.equal(call.env!.GH_CONFIG_DIR, expectedGhConfigDir);
+      assert.equal(call.env!.GH_TOKEN, undefined);
+      assert.equal(call.env!.GITHUB_TOKEN, undefined);
     }
   } finally {
     fs.rmSync(tmpRoot, { recursive: true, force: true });
@@ -390,32 +452,51 @@ test('owner check: a gh login that is not the expected owner stops the task with
   }
 });
 
-test('owner check: a failing gh api user is refused as not signed in, and a matching login (any case) proceeds', async () => {
+test('owner check: when runner gh config folder has no signed-in account on start or tick, logs clear line to decisions.log and refuses tasks', async () => {
   const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-inbox-owner2-'));
   try {
     const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
     const folders = ensureInboxFolders(inboxDir);
-    dropEngineTask(folders, 'owner-ok');
     const seen: DispatchJobInput[] = [];
+    const decisionsLogPath = path.join(tmpRoot, 'decisions.log');
+    const expectedLine =
+      'runner gh config empty: run gh auth login with GH_CONFIG_DIR set to %USERPROFILE%\\antigravity\\.fable-kitchen\\gh-runner';
 
+    // 1. On start with empty queue and no signed-in account in GH_CONFIG_DIR: logs one clear line to decisions.log
     const failing = createMockInboxCommandRunner({ ghSignedIn: false });
-    const refused = await new InboxRunner({
+    const runnerOnStart = new InboxRunner({
       inboxDir,
       worktreeParentDir: path.join(tmpRoot, 'antigravity'),
-      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      decisionsLogPath,
       adapter: makeAdapter(tmpRoot, seen, OWNER_PR_URL),
       commandRunner: failing.runner,
-    }).tick();
-    assert.equal(refused.status, 'refused-gh-auth');
-    assert.match(refused.reason, /gh api user failed/);
+      env: { USERPROFILE: tmpRoot },
+    });
+    const startTick = await runnerOnStart.tick();
+    assert.equal(startTick.status, 'refused-gh-auth');
+    assert.equal(startTick.reason, expectedLine);
+    assert.equal(readDecisionLog(decisionsLogPath).length, 1);
+    assert.equal(readDecisionLog(decisionsLogPath)[0].reason, expectedLine);
 
+    // 2. With a task in queued/ and no signed-in account: refuses task, leaves it in queued/, logs the clear line
+    dropEngineTask(folders, 'owner-ok');
+    const refused = await runnerOnStart.tick();
+    assert.equal(refused.status, 'refused-gh-auth');
+    assert.equal(refused.reason, expectedLine);
+    assert.ok(fs.existsSync(path.join(folders.queued, 'owner-ok.md')), 'task stays in queued/');
+    assert.equal(seen.length, 0);
+    assert.equal(readDecisionLog(decisionsLogPath).length, 2);
+    assert.equal(readDecisionLog(decisionsLogPath)[1].reason, expectedLine);
+
+    // 3. Matching login (any case) proceeds
     const matching = createMockInboxCommandRunner({ ghLogin: 'trollz1004' });
     const ok = await new InboxRunner({
       inboxDir,
       worktreeParentDir: path.join(tmpRoot, 'antigravity'),
-      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      decisionsLogPath: path.join(tmpRoot, 'decisions-ok.log'),
       adapter: makeAdapter(tmpRoot, seen, `Opened pull request ${OWNER_PR_URL}`),
       commandRunner: matching.runner,
+      env: { USERPROFILE: tmpRoot },
     }).tick();
     assert.equal(ok.status, 'done');
     assert.equal(seen.length, 1);
@@ -540,9 +621,64 @@ test('PR opening: when gh pr create itself fails the task fails with a clear log
   }
 });
 
-test('INBOX.md documents the for-judge folder, the effort rule, the owner check and the runner-opened PR', () => {
+test('INBOX.md documents the for-judge folder, the effort rule, the owner check, the dedicated GH_CONFIG_DIR folder and the runner-opened PR', () => {
   const doc = fs.readFileSync(path.join(ROUTER_DIR, 'INBOX.md'), 'utf8');
-  for (const needle of ['for-judge', 'laneSettings', '--effort', 'expectedOwner', 'gh pr create', 'GH_TOKEN', 'base: origin/main', 'repos.json']) {
+  for (const needle of [
+    'for-judge',
+    'laneSettings',
+    '--effort',
+    'expectedOwner',
+    'gh pr create',
+    'GH_TOKEN',
+    'GH_CONFIG_DIR',
+    '%USERPROFILE%\\antigravity\\.fable-kitchen\\gh-runner',
+    'gh auth login',
+    'base: origin/main',
+    'repos.json',
+  ]) {
     assert.ok(doc.includes(needle), `INBOX.md must mention ${needle}`);
   }
+});
+
+test('restart on exit: supervising loop brings the runner back after an exit or unhandled error, and register-inbox-runner.ps1 carries the restart loop', async () => {
+  const events: string[] = [];
+  let runs = 0;
+
+  await runInboxRunnerWithRestart({
+    maxRestarts: 2,
+    restartDelayMs: 1,
+    sleep: async (ms) => {
+      events.push(`sleep:${ms}`);
+    },
+    onRestart: (err, attempt) => {
+      events.push(`restart:${attempt}:${err instanceof Error ? err.message : String(err)}`);
+    },
+    runOnce: async () => {
+      runs += 1;
+      events.push(`run:${runs}`);
+      if (runs === 1) {
+        throw new Error('simulated crash 1');
+      }
+      if (runs === 2) {
+        return { exitCode: 1 };
+      }
+      return { exitCode: 0, stop: true };
+    },
+  });
+
+  assert.equal(runs, 3, 'runner must be restarted after crash and after unexpected exit');
+  assert.deepEqual(events, [
+    'run:1',
+    'restart:1:simulated crash 1',
+    'sleep:1',
+    'run:2',
+    'restart:2:runner exited with code 1',
+    'sleep:1',
+    'run:3',
+  ]);
+
+  const regScriptPath = path.resolve(ROUTER_DIR, '..', 'node', 'register-inbox-runner.ps1');
+  const regText = fs.readFileSync(regScriptPath, 'utf8');
+  assert.match(regText, /while\s*\(\s*`?\$true\s*\)/i, 'register-inbox-runner.ps1 action must loop to restart on exit');
+  assert.match(regText, /Start-Sleep/i, 'register-inbox-runner.ps1 restart loop must sleep briefly before restarting');
 });
