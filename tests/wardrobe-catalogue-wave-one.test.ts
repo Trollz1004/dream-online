@@ -191,7 +191,7 @@ test('Pay-to-win guard: no skin in Wave One carries any stat', () => {
     assert.match(entry.note, /look only, never numbers/i);
   }
 
-  // Kid-safe basics carry no stats
+  // Kid-safe basics are the plain default look and carry no stat field
   for (const slot of ['top', 'bottom', 'shoes'] as const) {
     const basic = KID_SAFE_BASICS[slot];
     assert.deepEqual(Object.keys(basic).sort(), ['id', 'kind', 'name', 'slot']);
