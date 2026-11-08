@@ -542,7 +542,313 @@ test('PR opening: when gh pr create itself fails the task fails with a clear log
 
 test('INBOX.md documents the for-judge folder, the effort rule, the owner check and the runner-opened PR', () => {
   const doc = fs.readFileSync(path.join(ROUTER_DIR, 'INBOX.md'), 'utf8');
-  for (const needle of ['for-judge', 'laneSettings', '--effort', 'expectedOwner', 'gh pr create', 'GH_TOKEN', 'base: origin/main', 'repos.json']) {
+  for (const needle of [
+    'for-judge',
+    'laneSettings',
+    '--effort',
+    'expectedOwner',
+    'gh pr create',
+    'GH_TOKEN',
+    'base: origin/main',
+    'repos.json',
+    'lane process missing',
+    'Fable:',
+  ]) {
     assert.ok(doc.includes(needle), `INBOX.md must mention ${needle}`);
+  }
+});
+
+// ---- 6. explicit lane header wins; Fable-class signals from title only; lane liveness ----
+
+const TRIGGER_WORDS_BODY = [
+  'When the hit lands, review the decision and check the outcome.',
+  'Issue a final ruling and verdict after we approve and merge the branch.',
+  'Even if AI lanes disagree or ask a supreme judge to arbitrate, check the land and decision.',
+].join('\n');
+
+test('explicit lane: a body full of trigger words with lane: engine runs on Argon and never parks', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-inbox-explicit-engine-'));
+  try {
+    const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+    const folders = ensureInboxFolders(inboxDir);
+    const taskContent = [
+      '# Update combat camera offset',
+      'lane: engine',
+      '',
+      TRIGGER_WORDS_BODY,
+    ].join('\n');
+    fs.writeFileSync(path.join(folders.queued, 'engine-with-triggers.md'), taskContent, 'utf8');
+
+    assert.equal(profileTask(taskContent).jobClass, 'engine');
+
+    const seen: DispatchJobInput[] = [];
+    const { runner } = createMockInboxCommandRunner();
+    const inboxRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir: path.join(tmpRoot, 'antigravity'),
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      adapter: makeAdapter(tmpRoot, seen, `Opened pull request ${OWNER_PR_URL}`),
+      commandRunner: runner,
+    });
+
+    const tick = await inboxRunner.tick();
+    assert.equal(tick.status, 'done', tick.reason);
+    assert.equal(tick.jobClass, 'engine');
+    assert.equal(tick.lane, 'gemini-4-argon');
+    assert.equal(tick.forcedLaneRequested, 'engine');
+    assert.equal(tick.forcedLaneHonoured, true);
+    assert.equal(seen.length, 1);
+    assert.equal(seen[0].lane, 'gemini-4-argon');
+    assert.equal(seen[0].jobClass, 'engine');
+    assert.ok(fs.existsSync(path.join(folders.done, 'engine-with-triggers.md')));
+    assert.ok(!fs.existsSync(path.join(folders.forJudge, 'engine-with-triggers.md')));
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('explicit lane: all six executor lane headers (engine, mechanical, code-bulk, code-hard, design-visual, research) win over trigger words and only lane: fable parks', async () => {
+  const expectedByExecutorLane: Array<{
+    headerLane: 'engine' | 'mechanical' | 'code-bulk' | 'code-hard' | 'design-visual' | 'research';
+    expectedModel: string;
+    output: string;
+  }> = [
+    { headerLane: 'engine', expectedModel: 'gemini-4-argon', output: `Opened pull request ${OWNER_PR_URL}` },
+    { headerLane: 'mechanical', expectedModel: 'gemini-3.8-flash', output: `Opened pull request ${OWNER_PR_URL}` },
+    { headerLane: 'code-bulk', expectedModel: 'claude-sonnet-5-5', output: `Opened pull request ${OWNER_PR_URL}` },
+    { headerLane: 'code-hard', expectedModel: 'claude-opus-5-5', output: `Opened pull request ${OWNER_PR_URL}` },
+    {
+      headerLane: 'design-visual',
+      expectedModel: 'claude-opus-5-5',
+      output: `PASS · Eyes gate v1\nOpened pull request ${OWNER_PR_URL}`,
+    },
+    { headerLane: 'research', expectedModel: 'claude-opus-5-5', output: `Opened pull request ${OWNER_PR_URL}` },
+  ];
+
+  for (const item of expectedByExecutorLane) {
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), `jev-inbox-exec-${item.headerLane}-`));
+    try {
+      const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+      const folders = ensureInboxFolders(inboxDir);
+      fs.writeFileSync(
+        path.join(folders.queued, `${item.headerLane}-task.md`),
+        [`# Task for ${item.headerLane}`, `lane: ${item.headerLane}`, '', TRIGGER_WORDS_BODY].join('\n'),
+        'utf8'
+      );
+      const seen: DispatchJobInput[] = [];
+      const { runner } = createMockInboxCommandRunner();
+      const inboxRunner = new InboxRunner({
+        inboxDir,
+        worktreeParentDir: path.join(tmpRoot, 'antigravity'),
+        decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+        adapter: makeAdapter(tmpRoot, seen, item.output),
+        commandRunner: runner,
+      });
+      const tick = await inboxRunner.tick();
+      assert.equal(tick.status, 'done', `${item.headerLane}: ${tick.reason}`);
+      assert.equal(tick.jobClass, item.headerLane);
+      assert.equal(tick.lane, item.expectedModel);
+      assert.equal(tick.forcedLaneHonoured, true);
+      assert.equal(seen.length, 1);
+    } finally {
+      fs.rmSync(tmpRoot, { recursive: true, force: true });
+    }
+  }
+});
+
+test('title-only Fable signals: a title that starts with Fable: with no lane header parks in for-judge', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-inbox-fable-title-'));
+  try {
+    const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+    const folders = ensureInboxFolders(inboxDir);
+    const taskContent = [
+      '# Fable: check the wardrobe combat camera offset',
+      '',
+      'Inspect src/engine/camera.ts and record notes.',
+    ].join('\n');
+    fs.writeFileSync(path.join(folders.queued, 'fable-title.md'), taskContent, 'utf8');
+
+    assert.equal(profileTask(taskContent).jobClass, 'judge');
+
+    const seen: DispatchJobInput[] = [];
+    const { runner } = createMockInboxCommandRunner();
+    const inboxRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir: path.join(tmpRoot, 'antigravity'),
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      adapter: makeAdapter(tmpRoot, seen, `Opened pull request ${OWNER_PR_URL}`),
+      commandRunner: runner,
+    });
+
+    const tick = await inboxRunner.tick();
+    assert.equal(tick.status, 'parked-for-judge');
+    assert.equal(tick.jobClass, 'judge');
+    assert.equal(tick.lane, 'fable');
+    assert.equal(seen.length, 0);
+    assert.ok(fs.existsSync(path.join(folders.forJudge, 'fable-title.md')));
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('title-only Fable signals: a body with the trigger words, no lane header, and a plain title runs as profiled by the other signals', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-inbox-plain-title-'));
+  try {
+    const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+    const folders = ensureInboxFolders(inboxDir);
+    const engineBodyWithTriggers = [
+      '# Tune water caustics mesh in Sunken Bastion',
+      '',
+      TRIGGER_WORDS_BODY,
+      'Update the WebGPU shader in src/shaders/water.wgsl.',
+    ].join('\n');
+    const mechanicalBodyWithTriggers = [
+      '# Clean up configuration comments',
+      '',
+      TRIGGER_WORDS_BODY,
+      'Fix typo and sort imports in the config header.',
+    ].join('\n');
+
+    assert.equal(profileTask(engineBodyWithTriggers).jobClass, 'engine');
+    assert.equal(profileTask(mechanicalBodyWithTriggers).jobClass, 'mechanical');
+
+    const t1 = path.join(folders.queued, '01-plain-engine.md');
+    const t2 = path.join(folders.queued, '02-plain-mechanical.md');
+    fs.writeFileSync(t1, engineBodyWithTriggers, 'utf8');
+    fs.utimesSync(t1, new Date('2026-11-07T01:00:00Z'), new Date('2026-11-07T01:00:00Z'));
+    fs.writeFileSync(t2, mechanicalBodyWithTriggers, 'utf8');
+    fs.utimesSync(t2, new Date('2026-11-07T02:00:00Z'), new Date('2026-11-07T02:00:00Z'));
+
+    const seen: DispatchJobInput[] = [];
+    const { runner } = createMockInboxCommandRunner();
+    const inboxRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir: path.join(tmpRoot, 'antigravity'),
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      adapter: makeAdapter(tmpRoot, seen, `Opened pull request ${OWNER_PR_URL}`),
+      commandRunner: runner,
+    });
+
+    const tick1 = await inboxRunner.tick();
+    assert.equal(tick1.status, 'done', tick1.reason);
+    assert.equal(tick1.jobClass, 'engine');
+    assert.equal(tick1.lane, 'gemini-4-argon');
+
+    const tick2 = await inboxRunner.tick();
+    assert.equal(tick2.status, 'done', tick2.reason);
+    assert.equal(tick2.jobClass, 'mechanical');
+    assert.equal(tick2.lane, 'gemini-3.8-flash');
+    assert.equal(seen.length, 2);
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('lane liveness check: a task in running/ for >10m with no agy child process is marked failed with reason "lane process missing" and re-queued once', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-inbox-liveness-'));
+  try {
+    const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+    const folders = ensureInboxFolders(inboxDir);
+    const now = new Date('2026-11-07T06:00:00Z');
+    const runningTaskPath = path.join(folders.running, 'stuck-lane.md');
+    fs.writeFileSync(
+      runningTaskPath,
+      ['# Optimize water shader', 'lane: engine', '', 'Optimize src/shaders/water.wgsl.'].join('\n'),
+      'utf8'
+    );
+
+    // 1. Sitting in running/ for 5 minutes (<= 10m) stays busy
+    const fiveMinAgo = new Date(now.getTime() - 5 * 60 * 1000);
+    fs.utimesSync(runningTaskPath, fiveMinAgo, fiveMinAgo);
+
+    const seen: DispatchJobInput[] = [];
+    let agyAlive = false;
+    const { runner } = createMockInboxCommandRunner({
+      agyChildProcessRunning: () => agyAlive,
+    });
+    const inboxRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir: path.join(tmpRoot, 'antigravity'),
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      adapter: makeAdapter(tmpRoot, seen, `Opened pull request ${OWNER_PR_URL}`),
+      commandRunner: runner,
+      now: () => now,
+    });
+
+    const busyShort = await inboxRunner.tick();
+    assert.equal(busyShort.status, 'busy');
+    assert.equal(seen.length, 0);
+
+    // 2. Sitting in running/ for 11 minutes (> 10m) WITH a live agy child process stays busy
+    const elevenMinAgo = new Date(now.getTime() - 11 * 60 * 1000);
+    fs.utimesSync(runningTaskPath, elevenMinAgo, elevenMinAgo);
+    agyAlive = true;
+    const busyLiveChild = await inboxRunner.tick();
+    assert.equal(busyLiveChild.status, 'busy');
+    assert.equal(seen.length, 0);
+
+    // 3. Sitting in running/ for 11 minutes (> 10m) with NO agy child process:
+    //    marks it failed with reason 'lane process missing' and re-queues it once
+    agyAlive = false;
+    const recovered = await inboxRunner.tick();
+    assert.equal(recovered.status, 'done', recovered.reason);
+    assert.equal(recovered.requeued, true);
+    assert.equal(recovered.requeueCount, 1);
+    assert.equal(recovered.attempts.length, 2);
+    assert.equal(recovered.attempts[0].passedJudge, false);
+    assert.equal(recovered.attempts[0].failureReason, 'lane process missing');
+    assert.equal(recovered.attempts[1].passedJudge, true);
+    assert.ok(recovered.attempts[1].prompt.includes('[Re-queued after failure: lane process missing]'));
+    assert.deepEqual(recovered.transitions, [
+      'running -> queued (re-queue 1)',
+      'queued -> running (re-queue 1)',
+      'running -> done',
+    ]);
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('lane liveness check: if the re-queued task fails again after lane process missing, it moves to failed/ and is not re-queued a second time', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-inbox-liveness-fail-'));
+  try {
+    const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+    const folders = ensureInboxFolders(inboxDir);
+    const now = new Date('2026-11-07T07:00:00Z');
+    const runningTaskPath = path.join(folders.running, 'stuck-twice.md');
+    fs.writeFileSync(
+      runningTaskPath,
+      ['# Optimize water shader', 'lane: engine', '', 'Optimize src/shaders/water.wgsl.'].join('\n'),
+      'utf8'
+    );
+    const elevenMinAgo = new Date(now.getTime() - 11 * 60 * 1000);
+    fs.utimesSync(runningTaskPath, elevenMinAgo, elevenMinAgo);
+
+    const seen: DispatchJobInput[] = [];
+    const { runner } = createMockInboxCommandRunner({
+      agyChildProcessRunning: false,
+      branchPushed: false,
+    });
+    const inboxRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir: path.join(tmpRoot, 'antigravity'),
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      adapter: makeAdapter(tmpRoot, seen, 'lane exited without opening a PR'),
+      commandRunner: runner,
+      now: () => now,
+    });
+
+    const failedTick = await inboxRunner.tick();
+    assert.equal(failedTick.status, 'failed');
+    assert.equal(failedTick.requeued, true);
+    assert.equal(failedTick.requeueCount, 1);
+    assert.equal(seen.length, 1, 'dispatched only once on the single re-queue');
+    assert.equal(failedTick.attempts[0].failureReason, 'lane process missing');
+    assert.match(failedTick.reason, /lane process missing/);
+    assert.ok(fs.existsSync(path.join(folders.failed, 'stuck-twice.md')));
+    const failedLog = fs.readFileSync(path.join(folders.failed, 'stuck-twice.log'), 'utf8');
+    assert.match(failedLog, /lane process missing/);
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
 });
