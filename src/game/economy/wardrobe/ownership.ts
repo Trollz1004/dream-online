@@ -15,7 +15,8 @@ export type AcquireRefusal =
   | 'already-owned'
   | 'not-yet-on-sale'
   | 'not-in-currency-store-yet'
-  | 'founder-pet-never-in-currency-store';
+  | 'founder-pet-never-in-currency-store'
+  | 'blu-tee-never-in-shop';
 
 export type AcquireResult =
   | { readonly ok: true; readonly wardrobe: Wardrobe; readonly owned: OwnedSkin }
@@ -51,6 +52,7 @@ export function acquireSkin(
     throw new WardrobeRuleError(`unknown acquire channel: ${String(channel)}`);
   }
   if (ownsSkin(wardrobe, skin.id)) return { ok: false, reason: 'already-owned' };
+  if (skin.id.toLowerCase() === 'blus-pet-tee') return { ok: false, reason: 'blu-tee-never-in-shop' };
   if (!isOnNeedsShop(skin, now)) return { ok: false, reason: 'not-yet-on-sale' };
   if (channel === 'currency-store') {
     if (isCurrencyStoreExcluded(skin.id)) return { ok: false, reason: 'founder-pet-never-in-currency-store' };
