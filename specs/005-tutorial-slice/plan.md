@@ -131,7 +131,7 @@ New world pieces: `scripts/gather_node.gd` (a CC0 or code-built bloom plant: ava
 
 ## Screenshot capture procedure
 
-1. **Export**, gated by `.github/workflows/engine-suite.yml` and spec 004: build the in-house DREAM Engine (`src/engine/`) web bundle and run `.github/scripts/stamp_demo.py` for the real-slice label. `build/` stays git-ignored.
+1. **Export**, gated by `.github/workflows/engine-suite.yml`: the public slice will be the in-house engine (`src/engine/`) on dream-online.net. `build/` stays git-ignored.
 2. **Serve**: `python3 -m http.server 8099 --bind 127.0.0.1 --directory build/web`.
 3. **Ready signal**: on the web, `world.gd` reads `dream` (and nothing else) from `location.search` through `JavaScriptBridge`, and after the spawn frame has rendered stably for a fixed number of frames (not seconds, since software rendering runs near 1 frame per second) sets `window.dreamFrameReady = true`.
 4. **Shoot**: new `.github/scripts/shoot_demo.mjs` launches Playwright's headless Chromium with software WebGL 2 (`--use-angle=swiftshader`, `--enable-unsafe-swiftshader`), opens `?dream=day` and `?dream=night` at 1920x1080 and 1280x720, waits for `dreamFrameReady` (180 s timeout), records console errors and failed requests, and saves `<world>-<width>x<height>-<commit>.png` into the session scratchpad or `C:\DREAM\recon\` on the node, never into the repository.

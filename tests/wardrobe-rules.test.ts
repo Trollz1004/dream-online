@@ -352,7 +352,7 @@ test('rule 4: the default set covers every basic slot with one plain item each',
   assert.throws(() => ((KID_SAFE_BASICS as unknown as Record<string, unknown>).hat = {}), TypeError);
 });
 
-test('rule 4: basics carry no stats and are never in the shop or the currency store', () => {
+test('rule 4: basics carry no stat field and are never in the shop or the currency store', () => {
   for (const slot of BASIC_SLOTS) {
     const item = KID_SAFE_BASICS[slot];
     assert.deepEqual(Object.keys(item).sort(), ['id', 'kind', 'name', 'slot']);

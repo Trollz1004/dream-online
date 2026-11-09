@@ -65,6 +65,7 @@ export const defaultCommandRunner: CommandRunner = (
 
 export interface AgyAdapterOptions {
   kitchenDir?: string;
+  ghConfigDir?: string;
   agyExecutable?: string;
   /**
    * Fallback --effort for a lane that has no entry in laneSettings. Lanes listed in lanes.json always use
@@ -104,6 +105,7 @@ export function readLaneSettingsFromFile(lanesPath: string = DEFAULT_AGY_LANES_P
 export class AgyDispatchAdapter implements DispatchAdapter {
   public readonly name = 'agy' as const;
   private readonly kitchenDir: string;
+  private readonly ghConfigDir?: string;
   private readonly agyExecutable: string;
   private readonly fallbackEffort: 'low' | 'medium' | 'high' | null;
   private readonly laneSettings: Record<string, LaneSetting>;
@@ -113,6 +115,7 @@ export class AgyDispatchAdapter implements DispatchAdapter {
 
   constructor(options?: AgyAdapterOptions) {
     this.kitchenDir = options?.kitchenDir ?? getDefaultFableKitchenDir();
+    this.ghConfigDir = options?.ghConfigDir;
     this.agyExecutable = options?.agyExecutable ?? 'agy.exe';
     this.fallbackEffort = options?.effort ?? null;
     this.laneSettings = options?.laneSettings ?? readLaneSettingsFromFile(options?.lanesPath);
@@ -165,8 +168,8 @@ export class AgyDispatchAdapter implements DispatchAdapter {
       command: this.agyExecutable,
       args,
       cwd: input.cwd ?? process.cwd(),
-      // GH_TOKEN, GITHUB_TOKEN and GH_ENTERPRISE_TOKEN never reach a lane, and no .env file is loaded for it
-      env: scrubLaneEnv(input.env ?? process.env),
+      // GH_TOKEN, GITHUB_TOKEN and GH_ENTERPRISE_TOKEN never reach a lane, GH_CONFIG_DIR is set to the runner's dedicated folder, and no .env file is loaded for it
+      env: scrubLaneEnv(input.env ?? process.env, this.ghConfigDir),
     }).then((res) => {
       execResult = res;
       const combined = [res.stdout, res.stderr].filter(Boolean).join('\n');

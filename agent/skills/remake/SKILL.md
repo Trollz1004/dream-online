@@ -74,5 +74,5 @@ Then `remake images --make`. It uses the best source available: Codex image gene
 ## 6. Rebuild mode (only if asked)
 
 The default remake keeps the original's own HTML, CSS and scripts, which is why it matches. If the user wants an editable component codebase (React, Next.js), read [references/rebuild.md](references/rebuild.md): rebuild one section at a time, with the score as a lock that must keep passing.
-- House rules: `docs/house/HOUSE-MOTION-RULE.md` and `docs/house/THE-HOUSE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
+- House rules: `docs/house/HOUSE-MOTION-RULE.md`, `docs/house/THE-HOUSE.md` and `docs/house/PAYMENT-ACCOUNTS-RULE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
 - Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports (`ops/handoffs/FABLE-HANDOFFS-2026-11-06.md` section 0).

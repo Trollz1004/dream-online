@@ -18,21 +18,28 @@ import {
   type CommandExecRequest,
   type CommandExecResult,
   type CommandRunner,
+  DEFAULT_RUNNER_GH_CONFIG_DIR,
   defaultCommandRunner,
   detectQuotaOr429Error,
   type DispatchAdapter,
   type DispatchPollResult,
   parseEyesGateVerdictFromOutput,
   parsePrUrlFromOutput,
+  resolveRunnerGhConfigDir,
+  RUNNER_GH_CONFIG_DIR_PORTABLE,
   scrubLaneEnv,
 } from './adapters/index.ts';
+
+export { DEFAULT_RUNNER_GH_CONFIG_DIR, resolveRunnerGhConfigDir, RUNNER_GH_CONFIG_DIR_PORTABLE };
 import {
   appendDecisionRecord,
   type DecisionRecord,
   DEFAULT_DECISIONS_LOG_PATH,
   DEFAULT_LANES_PATH,
   DEFAULT_RANKINGS_DIR,
+  type ExecutorJobClass,
   hashTaskDescription,
+  isExecutorJobClass,
   type JevJobClass,
   JevRouter,
   JUDGE_HARNESS,
@@ -47,6 +54,12 @@ import {
 const ROUTER_DIR = path.dirname(fileURLToPath(import.meta.url));
 export const DEFAULT_REPO_ROOT = path.resolve(ROUTER_DIR, '..', '..');
 export const DEFAULT_INBOX_DIR = path.join(os.homedir(), 'antigravity', '.fable-kitchen', 'inbox');
+export const DEFAULT_RUNNER_RESTART_LOG_PATH = path.join(
+  os.homedir(),
+  'antigravity',
+  '.fable-kitchen',
+  'runner-restart.log'
+);
 export const DEFAULT_WORKTREE_PARENT_DIR = path.join(os.homedir(), 'antigravity');
 export const DEFAULT_INBOX_CONFIG_PATH = path.join(ROUTER_DIR, 'INBOX.md');
 export const DEFAULT_BASE_BRANCH = 'origin/main';
@@ -54,6 +67,8 @@ export const DEFAULT_REPOS_PATH = path.join(ROUTER_DIR, 'repos.json');
 export const DEFAULT_REPO_NAME = 'dream-online';
 export const ANTIGRAVITY_REPO_ROOT_ENV = 'ANTIGRAVITY_REPO_ROOT';
 export const MAX_CONSECUTIVE_FAILURES = 3;
+export const LANE_LIVENESS_TIMEOUT_MS = 10 * 60 * 1000;
+export const LANE_PROCESS_MISSING_REASON = 'lane process missing';
 
 export const INBOX_SUBFOLDERS = ['queued', 'running', 'done', 'failed', 'for-judge'] as const;
 export type InboxSubfolder = (typeof INBOX_SUBFOLDERS)[number];
@@ -92,6 +107,7 @@ export interface InboxAttemptRecord {
   passedJudge: boolean;
   failureReason: string | null;
   output: string;
+  exitCode?: number | null;
 }
 
 export type InboxTickStatus =
@@ -136,6 +152,7 @@ export interface InboxTickResult {
 
 export interface InboxRunnerOptions {
   inboxDir?: string;
+  ghConfigDir?: string;
   worktreeParentDir?: string;
   repoRoot?: string;
   reposPath?: string;
@@ -145,11 +162,15 @@ export interface InboxRunnerOptions {
   lanesPath?: string;
   rankingsDir?: string;
   decisionsLogPath?: string;
+  runnerRestartLogPath?: string;
+  stoppedPollIntervalMs?: number;
   router?: JevRouter;
   adapter?: DispatchAdapter;
   commandRunner?: CommandRunner;
   now?: () => Date;
   extraSecretsToRedact?: string[];
+  /** Optional liveness probe returning whether an agy child process is currently alive under the runner. */
+  hasAgyChildProcess?: () => Promise<boolean> | boolean;
 }
 
 /**
@@ -333,10 +354,11 @@ export function toPortablePath(absolutePath: string, env: NodeJS.ProcessEnv = pr
   const homes = [readEnvValue(env, 'USERPROFILE')?.trim(), os.homedir()].filter(
     (home): home is string => Boolean(home)
   );
+  const normalizedTarget = absolutePath.replace(/\\/g, '/');
   for (const home of homes) {
-    const trimmed = home.replace(/[\\/]+$/, '');
-    if (absolutePath.toLowerCase().startsWith(trimmed.toLowerCase())) {
-      return `%USERPROFILE%${absolutePath.slice(trimmed.length)}`;
+    const trimmed = home.replace(/[\\/]+$/, '').replace(/\\/g, '/');
+    if (trimmed && normalizedTarget.toLowerCase().startsWith(trimmed.toLowerCase())) {
+      return `%USERPROFILE%${normalizedTarget.slice(trimmed.length).replace(/\//g, '\\')}`;
     }
   }
   return absolutePath;
@@ -483,6 +505,11 @@ export function parseInboxTaskFile(rawContent: string, fileName: string): Parsed
 export function isKnownLaneInTable(table: LaneTable, candidateLane: string): boolean {
   const normalized = candidateLane.trim();
   if (!normalized) return false;
+  const lower = normalized.toLowerCase();
+
+  if (isExecutorJobClass(lower)) {
+    return Boolean(table.lanes[lower]);
+  }
 
   for (const row of Object.values(table.lanes)) {
     if (row.lane === normalized || row.fallback === normalized) {
@@ -608,37 +635,47 @@ function listMarkdownTaskFilesSortedOldestFirst(dirPath: string): string[] {
  * Headless inbox runner for the Alienware node.
  */
 export class InboxRunner {
+  public static readonly STOPPED_POLL_INTERVAL_MS = 60_000;
+
   private readonly inboxDir: string;
+  private readonly ghConfigDir: string;
   private readonly worktreeParentDir: string;
   private readonly repoRoot: string;
   private readonly repoMap: RepoMap;
   private readonly env: NodeJS.ProcessEnv;
-  /** The environment every lane and every runner git/gh call gets: GitHub token variables removed, no .env loaded. */
+  /** The environment every lane and every runner git/gh call gets: GH_CONFIG_DIR set to the runner folder, GitHub token variables removed, no .env loaded. */
   private readonly laneEnv: NodeJS.ProcessEnv;
   private readonly configPath: string;
   private readonly explicitBaseBranch?: string;
   private readonly lanesPath: string;
   private readonly rankingsDir: string;
   private readonly decisionsLogPath: string;
+  private readonly runnerRestartLogPath: string;
+  private readonly stoppedPollIntervalMs: number;
   private readonly router: JevRouter;
   private readonly adapter: DispatchAdapter;
   private readonly commandRunner: CommandRunner;
   private readonly now: () => Date;
   private readonly extraSecretsToRedact: string[];
+  private readonly customHasAgyChildProcess?: () => Promise<boolean> | boolean;
 
   private isTickActive = false;
+  private startupGhChecked = false;
   private readonly activeRepos = new Set<string>();
+  private readonly livenessRequeuedTaskIds = new Set<string>();
   private consecutiveFailures = 0;
   private stoppedUntilFailedCleared = false;
+  private stoppedCheckTimer: NodeJS.Timeout | null = null;
 
   constructor(options?: InboxRunnerOptions) {
     this.inboxDir = options?.inboxDir ?? DEFAULT_INBOX_DIR;
     this.worktreeParentDir = options?.worktreeParentDir ?? DEFAULT_WORKTREE_PARENT_DIR;
     this.repoRoot = options?.repoRoot ?? DEFAULT_REPO_ROOT;
     this.env = options?.env ?? process.env;
-    // GH_TOKEN, GITHUB_TOKEN and GH_ENTERPRISE_TOKEN are removed from everything handed to a lane;
-    // gh then uses its own stored sign-in, which is the account the owner check verifies.
-    this.laneEnv = scrubLaneEnv(this.env);
+    this.ghConfigDir = options?.ghConfigDir ?? resolveRunnerGhConfigDir(this.env);
+    // GH_TOKEN, GITHUB_TOKEN and GH_ENTERPRISE_TOKEN are removed from everything handed to a lane,
+    // and GH_CONFIG_DIR is set to %USERPROFILE%\antigravity\.fable-kitchen\gh-runner so no other lane can switch it.
+    this.laneEnv = scrubLaneEnv(this.env, this.ghConfigDir);
     // Fail fast at startup (before any task file moves) if the repo map cannot be loaded
     this.repoMap = loadRepoMap(options?.reposPath ?? DEFAULT_REPOS_PATH);
     this.configPath = options?.configPath ?? DEFAULT_INBOX_CONFIG_PATH;
@@ -646,6 +683,11 @@ export class InboxRunner {
     this.lanesPath = options?.lanesPath ?? DEFAULT_LANES_PATH;
     this.rankingsDir = options?.rankingsDir ?? DEFAULT_RANKINGS_DIR;
     this.decisionsLogPath = options?.decisionsLogPath ?? DEFAULT_DECISIONS_LOG_PATH;
+    this.runnerRestartLogPath =
+      options?.runnerRestartLogPath ??
+      path.join(path.dirname(this.inboxDir), 'runner-restart.log');
+    this.stoppedPollIntervalMs =
+      options?.stoppedPollIntervalMs ?? InboxRunner.STOPPED_POLL_INTERVAL_MS;
     this.router =
       options?.router ??
       new JevRouter({
@@ -656,10 +698,12 @@ export class InboxRunner {
     this.commandRunner = options?.commandRunner ?? defaultCommandRunner;
     this.now = options?.now ?? (() => new Date());
     this.extraSecretsToRedact = options?.extraSecretsToRedact ?? [];
+    this.customHasAgyChildProcess = options?.hasAgyChildProcess;
     this.adapter =
       options?.adapter ??
       new AgyDispatchAdapter({
         kitchenDir: path.dirname(this.inboxDir),
+        ghConfigDir: this.ghConfigDir,
         runner: this.commandRunner,
         lanesPath: this.lanesPath,
         now: this.now,
@@ -671,7 +715,7 @@ export class InboxRunner {
       const existingFailed = listMarkdownTaskFilesSortedOldestFirst(failedDir).length;
       if (existingFailed >= MAX_CONSECUTIVE_FAILURES) {
         this.consecutiveFailures = existingFailed;
-        this.stoppedUntilFailedCleared = true;
+        this.enterStoppedState(failedDir);
       }
     }
   }
@@ -680,21 +724,124 @@ export class InboxRunner {
     return this.router;
   }
 
+  public getGhConfigDir(): string {
+    return this.ghConfigDir;
+  }
+
   public getConsecutiveFailures(): number {
     return this.consecutiveFailures;
   }
 
-  /** Runs a git or gh command with the scrubbed environment (no GitHub token variables). */
+  public isStopped(): boolean {
+    return this.stoppedUntilFailedCleared;
+  }
+
+  public getRunnerRestartLogPath(): string {
+    return this.runnerRestartLogPath;
+  }
+
+  /**
+   * Checks failed\ while stopped and resumes on its own once fewer than 3 task files remain.
+   */
+  public checkFailedFolderAndResume(): boolean {
+    if (!this.stoppedUntilFailedCleared) {
+      return true;
+    }
+    const failedDir = path.join(this.inboxDir, 'failed');
+    const failedCount = fs.existsSync(failedDir)
+      ? listMarkdownTaskFilesSortedOldestFirst(failedDir).length
+      : 0;
+    if (failedCount < MAX_CONSECUTIVE_FAILURES) {
+      this.consecutiveFailures = 0;
+      this.stoppedUntilFailedCleared = false;
+      this.stopFailedClearTimer();
+      return true;
+    }
+    return false;
+  }
+
+  private startFailedClearTimer(): void {
+    if (this.stoppedCheckTimer) return;
+    this.stoppedCheckTimer = setInterval(() => {
+      this.checkFailedFolderAndResume();
+    }, this.stoppedPollIntervalMs);
+    this.stoppedCheckTimer.unref?.();
+  }
+
+  private stopFailedClearTimer(): void {
+    if (this.stoppedCheckTimer) {
+      clearInterval(this.stoppedCheckTimer);
+      this.stoppedCheckTimer = null;
+    }
+  }
+
+  /**
+   * Enters the stopped-until-failed-cleared state and writes one explanatory line to
+   * ops/router/decisions.log and one line to runner-restart.log.
+   */
+  private enterStoppedState(failedDir: string): void {
+    if (this.stoppedUntilFailedCleared) return;
+    this.stoppedUntilFailedCleared = true;
+    const failedFiles = listMarkdownTaskFilesSortedOldestFirst(failedDir);
+    const fileList = failedFiles.length > 0 ? failedFiles.join(', ') : 'none';
+    const msg = `Inbox runner stopped: ${failedFiles.length} failures in failed\\ (${fileList}). Move them to failed-cleared\\ to resume.`;
+    const rec = this.logSafetyDecision(msg, 'stopped-three-failures');
+
+    try {
+      const restartLogDir = path.dirname(this.runnerRestartLogPath);
+      if (!fs.existsSync(restartLogDir)) {
+        fs.mkdirSync(restartLogDir, { recursive: true });
+      }
+      const iso = this.now().toISOString();
+      const restartLogLine = `${iso} ${rec.reason}\n`;
+      fs.appendFileSync(this.runnerRestartLogPath, restartLogLine, 'utf8');
+    } catch {
+      // Best-effort writing to runner-restart.log
+    }
+    this.startFailedClearTimer();
+  }
+
+  /** Runs a git or gh command with the scrubbed environment (dedicated GH_CONFIG_DIR, no GitHub token variables). */
   private runCommand(req: CommandExecRequest): Promise<CommandExecResult> {
     return this.commandRunner({ ...req, env: this.laneEnv });
   }
 
   /**
-   * Reads the signed-in GitHub login with `gh api user` and compares it to the expected owner from
-   * ops/router/repos.json. Returns null when they match, otherwise the refusal to log and return.
+   * Checks whether an agy child process is currently alive under the runner process.
+   */
+  public async hasLiveAgyChildProcess(): Promise<boolean> {
+    if (this.customHasAgyChildProcess) {
+      return Boolean(await this.customHasAgyChildProcess());
+    }
+    if (process.platform === 'win32') {
+      const res = await this.runCommand({
+        command: 'powershell.exe',
+        args: [
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          `$p = ${process.pid}; Get-CimInstance Win32_Process | Where-Object { $_.ParentProcessId -eq $p -and $_.Name -match '^agy(\\.exe)?$' } | Select-Object -ExpandProperty Name`,
+        ],
+        cwd: this.repoRoot,
+      });
+      return res.exitCode === 0 && /\bagy(?:\.exe)?\b/i.test(res.stdout);
+    }
+    const res = await this.runCommand({
+      command: 'ps',
+      args: ['-o', 'comm=', '--ppid', String(process.pid)],
+      cwd: this.repoRoot,
+    });
+    return res.exitCode === 0 && /\bagy(?:\.exe)?\b/i.test(res.stdout);
+  }
+
+  /**
+   * Reads the signed-in GitHub login in the runner's dedicated GH_CONFIG_DIR with `gh api user`
+   * and compares it to the expected owner from ops/router/repos.json.
+   * Returns null when they match, otherwise the refusal to log and return.
    */
   private async checkGhOwner(): Promise<{ status: 'refused-gh-auth' | 'refused-gh-owner'; reason: string } | null> {
     const expected = this.repoMap.expectedOwner;
+    const portableFolder = toPortablePath(this.ghConfigDir, this.env);
     const res = await this.runCommand({
       command: 'gh',
       args: ['api', 'user', '--jq', '.login'],
@@ -704,13 +851,13 @@ export class InboxRunner {
     if (res.exitCode !== 0 || !login) {
       return {
         status: 'refused-gh-auth',
-        reason: `Inbox runner refused to run: gh api user failed, so the signed-in GitHub login could not be read (expected ${expected}); run gh auth login as ${expected}.`,
+        reason: `runner gh config empty: run gh auth login with GH_CONFIG_DIR set to ${portableFolder}`,
       };
     }
     if (login.toLowerCase() !== expected.toLowerCase()) {
       return {
         status: 'refused-gh-owner',
-        reason: `Inbox runner refused to run: gh is signed in as ${login} but ops/router/repos.json expects ${expected}; run gh auth switch to ${expected} and the task will start on the next tick.`,
+        reason: `Inbox runner refused to run: gh is signed in as ${login} in ${portableFolder} but ops/router/repos.json expects ${expected}; run gh auth switch to ${expected} and the task will start on the next tick.`,
       };
     }
     return null;
@@ -845,7 +992,7 @@ export class InboxRunner {
     params.transitions.push('running -> failed');
     this.consecutiveFailures += 1;
     if (this.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-      this.stoppedUntilFailedCleared = true;
+      this.enterStoppedState(params.failedDir);
     }
     return {
       status: params.status,
@@ -883,17 +1030,40 @@ export class InboxRunner {
   } {
     const now = this.now();
     const table = loadLaneTable(this.lanesPath);
-    const profile = profileTask(parsed.taskText);
     const requestedLane = parsed.forcedLane?.trim() || null;
 
     if (requestedLane) {
+      const lowerLane = requestedLane.toLowerCase();
+
+      // 1. Explicit executor lane class name (engine, mechanical, code-bulk, code-hard, design-visual, research)
+      if (isExecutorJobClass(lowerLane)) {
+        const executorClass = lowerLane as ExecutorJobClass;
+        const decision = this.router.route(parsed.taskText, {
+          now,
+          title: parsed.title,
+          lane: executorClass,
+          lanesPath: this.lanesPath,
+          rankingsDir: this.rankingsDir,
+          decisionsLogPath: this.decisionsLogPath,
+          extraSecretsToRedact: this.extraSecretsToRedact,
+        });
+        return { decision, forcedLaneHonoured: true };
+      }
+
+      // 2. Explicit model lane in lanes.json (only 'lane: fable' parks a task)
       const existsInTable = isKnownLaneInTable(table, requestedLane);
+      const profile = profileTask(parsed.taskText, {
+        title: parsed.title,
+        lane: existsInTable ? requestedLane : null,
+      });
       const isCold = existsInTable ? this.router.isLaneCold(requestedLane, now) : false;
       const forbiddenRouteToJudge =
-        profile.jobClass === 'route' && (requestedLane === 'fable' || requestedLane === 'judge');
+        profile.jobClass === 'route' && (lowerLane === 'fable' || lowerLane === 'judge');
 
       if (existsInTable && !isCold && !forbiddenRouteToJudge) {
-        const row = table.lanes[profile.jobClass];
+        const effectiveJobClass: JevJobClass =
+          lowerLane === 'fable' ? 'judge' : profile.jobClass;
+        const row = table.lanes[effectiveJobClass];
         const rankingEval = loadNewestWeeklyRanking(this.rankingsDir, now);
         const activeCold = this.router.getActiveColdLanes(now);
         const taskHash = hashTaskDescription(parsed.taskText);
@@ -910,8 +1080,8 @@ export class InboxRunner {
           timestamp: now.toISOString(),
           task_hash: taskHash,
           taskHash,
-          job_class: profile.jobClass,
-          jobClass: profile.jobClass,
+          job_class: effectiveJobClass,
+          jobClass: effectiveJobClass,
           lane: requestedLane,
           node: 'Alienware',
           harness: forcedHarness,
@@ -933,6 +1103,8 @@ export class InboxRunner {
       // Forced lane does not exist in lanes.json (or is cold / forbidden): fall back to profiling
       const fallbackDecision = this.router.route(parsed.taskText, {
         now,
+        title: parsed.title,
+        lane: existsInTable && lowerLane !== 'fable' ? requestedLane : null,
         lanesPath: this.lanesPath,
         rankingsDir: this.rankingsDir,
         decisionsLogPath: this.decisionsLogPath,
@@ -944,6 +1116,7 @@ export class InboxRunner {
 
     const decision = this.router.route(parsed.taskText, {
       now,
+      title: parsed.title,
       lanesPath: this.lanesPath,
       rankingsDir: this.rankingsDir,
       decisionsLogPath: this.decisionsLogPath,
@@ -992,11 +1165,10 @@ export class InboxRunner {
 
     const folders = ensureInboxFolders(this.inboxDir);
 
-    // Concurrency guard: one task at a time, never two agy runs at once
-    if (
-      this.isTickActive ||
-      listMarkdownTaskFilesSortedOldestFirst(folders.running).length > 0
-    ) {
+    // Concurrency guard and lane liveness check:
+    // If a task sits in running\ for more than ten minutes with no agy child process under the runner,
+    // the runner marks it failed with the reason 'lane process missing' and re-queues it once.
+    if (this.isTickActive) {
       return {
         status: 'busy',
         taskId: null,
@@ -1025,17 +1197,108 @@ export class InboxRunner {
       };
     }
 
-    // Safety 2: Stop after three consecutive failures until a human clears failed/
+    let livenessRequeuedFileName: string | null = null;
+    const transitions: string[] = [];
+    const runningFiles = listMarkdownTaskFilesSortedOldestFirst(folders.running);
+    if (runningFiles.length > 0) {
+      const runningFileName = runningFiles[0];
+      const runningPath = path.join(folders.running, runningFileName);
+      const stat = fs.statSync(runningPath);
+      const runningAgeMs = this.now().getTime() - stat.mtimeMs;
+      const isStale = runningAgeMs > LANE_LIVENESS_TIMEOUT_MS;
+      const agyAlive = isStale ? await this.hasLiveAgyChildProcess() : true;
+
+      if (!isStale || agyAlive) {
+        return {
+          status: 'busy',
+          taskId: null,
+          fileName: null,
+          repo: null,
+          repoRoot: null,
+          lane: null,
+          jobClass: null,
+          decisionHash: null,
+          reason: 'Inbox runner is busy: one task at a time, never two agy runs at once.',
+          prUrl: null,
+          prCommentBody: null,
+          requeued: false,
+          requeueCount: 0,
+          quotaFallbackTriggered: false,
+          forcedLaneRequested: null,
+          forcedLaneHonoured: false,
+          worktreePath: null,
+          branchName: null,
+          baseBranch: null,
+          worktreeRemoved: false,
+          taskFinalPath: null,
+          logFinalPath: null,
+          transitions: [],
+          attempts: [],
+        };
+      }
+
+      const rawStuck = fs.readFileSync(runningPath, 'utf8');
+      const parsedStuck = parseInboxTaskFile(rawStuck, runningFileName);
+      if (this.livenessRequeuedTaskIds.has(parsedStuck.id)) {
+        this.livenessRequeuedTaskIds.delete(parsedStuck.id);
+        const livenessRecord = this.logSafetyDecision(LANE_PROCESS_MISSING_REASON, rawStuck);
+        const failedTaskPath = path.join(folders.failed, runningFileName);
+        const failedLogPath = path.join(folders.failed, `${parsedStuck.id}.log`);
+        fs.renameSync(runningPath, failedTaskPath);
+        fs.writeFileSync(failedLogPath, `${LANE_PROCESS_MISSING_REASON}\n`, 'utf8');
+        transitions.push('running -> failed');
+        this.consecutiveFailures += 1;
+        if (this.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+          this.enterStoppedState(folders.failed);
+        }
+        return {
+          status: 'failed',
+          taskId: parsedStuck.id,
+          fileName: runningFileName,
+          repo: parsedStuck.repo,
+          repoRoot: null,
+          lane: null,
+          jobClass: null,
+          decisionHash: livenessRecord.task_hash,
+          reason: LANE_PROCESS_MISSING_REASON,
+          prUrl: null,
+          prCommentBody: null,
+          requeued: true,
+          requeueCount: 1,
+          quotaFallbackTriggered: false,
+          forcedLaneRequested: parsedStuck.forcedLane,
+          forcedLaneHonoured: false,
+          worktreePath: null,
+          branchName: null,
+          baseBranch: null,
+          worktreeRemoved: false,
+          taskFinalPath: failedTaskPath,
+          logFinalPath: failedLogPath,
+          transitions,
+          attempts: [],
+        };
+      }
+
+      // Mark failed with reason 'lane process missing' and re-queue it once
+      this.logSafetyDecision(LANE_PROCESS_MISSING_REASON, rawStuck);
+      this.livenessRequeuedTaskIds.add(parsedStuck.id);
+      fs.renameSync(runningPath, path.join(folders.queued, runningFileName));
+      transitions.push('running -> queued (re-queue 1)');
+      livenessRequeuedFileName = runningFileName;
+    }
+
+    // Safety 2: Stop after three consecutive failures until fewer than 3 task files remain in failed/
+    this.checkFailedFolderAndResume();
     const failedFilesOnDisk = listMarkdownTaskFilesSortedOldestFirst(folders.failed);
-    if (failedFilesOnDisk.length === 0) {
-      this.consecutiveFailures = 0;
-      this.stoppedUntilFailedCleared = false;
-    } else if (
+    if (
       this.stoppedUntilFailedCleared ||
       this.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES ||
       failedFilesOnDisk.length >= MAX_CONSECUTIVE_FAILURES
     ) {
-      this.stoppedUntilFailedCleared = true;
+      if (!this.stoppedUntilFailedCleared) {
+        this.enterStoppedState(folders.failed);
+      }
+      const fileList = failedFilesOnDisk.length > 0 ? failedFilesOnDisk.join(', ') : 'none';
       return {
         status: 'stopped-three-failures',
         taskId: null,
@@ -1045,7 +1308,7 @@ export class InboxRunner {
         lane: null,
         jobClass: null,
         decisionHash: null,
-        reason: `Inbox runner stopped after ${MAX_CONSECUTIVE_FAILURES} consecutive failures until a human clears failed/.`,
+        reason: `Inbox runner stopped: ${failedFilesOnDisk.length} failures in failed\\ (${fileList}). Move them to failed-cleared\\ to resume.`,
         prUrl: null,
         prCommentBody: null,
         requeued: false,
@@ -1067,6 +1330,39 @@ export class InboxRunner {
     // Check queued/ for the oldest markdown task file
     const queuedFiles = listMarkdownTaskFilesSortedOldestFirst(folders.queued);
     if (queuedFiles.length === 0) {
+      if (!this.startupGhChecked) {
+        this.startupGhChecked = true;
+        const startupRefusal = await this.checkGhOwner();
+        if (startupRefusal) {
+          const rec = this.logSafetyDecision(startupRefusal.reason, 'startup-gh-config');
+          return {
+            status: startupRefusal.status,
+            taskId: null,
+            fileName: null,
+            repo: null,
+            repoRoot: null,
+            lane: null,
+            jobClass: null,
+            decisionHash: rec.task_hash,
+            reason: rec.reason,
+            prUrl: null,
+            prCommentBody: null,
+            requeued: false,
+            requeueCount: 0,
+            quotaFallbackTriggered: false,
+            forcedLaneRequested: null,
+            forcedLaneHonoured: false,
+            worktreePath: null,
+            branchName: null,
+            baseBranch: null,
+            worktreeRemoved: false,
+            taskFinalPath: null,
+            logFinalPath: null,
+            transitions: [],
+            attempts: [],
+          };
+        }
+      }
       return {
         status: 'idle',
         taskId: null,
@@ -1095,8 +1391,10 @@ export class InboxRunner {
       };
     }
 
+    this.startupGhChecked = true;
+
     // Safety 3a: before any other gh call, gh api user must report the expected owner from repos.json.
-    // A wrong account stops the task with a clear log line instead of failing silently later.
+    // An empty gh config folder or a wrong account stops the task with a clear log line instead of failing silently later.
     const ownerRefusal = await this.checkGhOwner();
     if (ownerRefusal) {
       const rec = this.logSafetyDecision(ownerRefusal.reason, queuedFiles[0]);
@@ -1135,8 +1433,9 @@ export class InboxRunner {
       cwd: this.repoRoot,
     });
     if (ghAuthRes.exitCode !== 0) {
+      const portableFolder = toPortablePath(this.ghConfigDir, this.env);
       const rec = this.logSafetyDecision(
-        'Inbox runner refused to run: gh CLI is not signed in (gh auth status failed).',
+        `runner gh config empty: run gh auth login with GH_CONFIG_DIR set to ${portableFolder}`,
         queuedFiles[0]
       );
       return {
@@ -1167,16 +1466,19 @@ export class InboxRunner {
       };
     }
 
-    const oldestFileName = queuedFiles[0];
+    const oldestFileName =
+      livenessRequeuedFileName && queuedFiles.includes(livenessRequeuedFileName)
+        ? livenessRequeuedFileName
+        : queuedFiles[0];
+    const isLivenessRequeue = oldestFileName === livenessRequeuedFileName;
     const queuedFilePath = path.join(folders.queued, oldestFileName);
     const runningFilePath = path.join(folders.running, oldestFileName);
-    const transitions: string[] = [];
 
     this.isTickActive = true;
     try {
       // Move oldest file from queued/ to running/
       fs.renameSync(queuedFilePath, runningFilePath);
-      transitions.push('queued -> running');
+      transitions.push(isLivenessRequeue ? 'queued -> running (re-queue 1)' : 'queued -> running');
 
       const rawContent = fs.readFileSync(runningFilePath, 'utf8');
       const parsed = parseInboxTaskFile(rawContent, oldestFileName);
@@ -1266,7 +1568,7 @@ export class InboxRunner {
           transitions.push('running -> failed');
           this.consecutiveFailures += 1;
           if (this.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-            this.stoppedUntilFailedCleared = true;
+            this.enterStoppedState(folders.failed);
           }
 
           return {
@@ -1382,11 +1684,30 @@ export class InboxRunner {
           baseBranch: configuredBase,
         });
 
-        let currentPrompt = basePromptWithRules;
-        let requeueCount = 0;
+        let currentPrompt = isLivenessRequeue
+          ? `${basePromptWithRules}\n\n[Re-queued after failure: ${LANE_PROCESS_MISSING_REASON}]`
+          : basePromptWithRules;
+        let requeueCount = isLivenessRequeue ? 1 : 0;
         let quotaFallbackTriggered = false;
         const attempts: InboxAttemptRecord[] = [];
         const combinedLogs: string[] = [];
+
+        if (isLivenessRequeue) {
+          attempts.push({
+            attemptNumber: 1,
+            lane: decision.lane,
+            jobClass: decision.job_class,
+            decisionHash: decision.task_hash,
+            prompt: basePromptWithRules,
+            prUrl: null,
+            eyesReportFirstLine: null,
+            quotaError: false,
+            passedJudge: false,
+            failureReason: LANE_PROCESS_MISSING_REASON,
+            output: LANE_PROCESS_MISSING_REASON,
+          });
+          combinedLogs.push(LANE_PROCESS_MISSING_REASON);
+        }
 
         const pollUntilDone = async (
           pollFn: () => Promise<DispatchPollResult>
@@ -1400,9 +1721,9 @@ export class InboxRunner {
           return res;
         };
 
-        // Run first attempt
+        // Run attempt
         let handle = await this.adapter.dispatch({
-          jobId: `${parsed.id}-attempt-1`,
+          jobId: isLivenessRequeue ? `${parsed.id}-requeue-1` : `${parsed.id}-attempt-1`,
           prompt: currentPrompt,
           jobClass: decision.job_class,
           lane: decision.lane,
@@ -1433,6 +1754,7 @@ export class InboxRunner {
             passedJudge: false,
             failureReason: `Quota or 429 error on ${decision.lane}: ${quotaCheck.errorSummary}`,
             output: pollResult.output,
+            exitCode: pollResult.exitCode,
           });
 
           // Mark the lane cold through the core and re-queue the task once on the fallback lane
@@ -1449,13 +1771,7 @@ export class InboxRunner {
           fs.renameSync(queuedFilePath, runningFilePath);
           transitions.push('queued -> running (quota fallback)');
 
-          decision = this.router.route(parsed.taskText, {
-            now: this.now(),
-            lanesPath: this.lanesPath,
-            rankingsDir: this.rankingsDir,
-            decisionsLogPath: this.decisionsLogPath,
-            extraSecretsToRedact: this.extraSecretsToRedact,
-          });
+          decision = this.routeTaskWithOptionalForcedLane(parsed).decision;
 
           handle = await this.adapter.dispatch({
             jobId: `${parsed.id}-fallback`,
@@ -1489,6 +1805,9 @@ export class InboxRunner {
             : null;
 
           const failures: string[] = [];
+          if (typeof res.exitCode === 'number' && res.exitCode !== 0) {
+            failures.push(`lane exited with code ${res.exitCode}`);
+          }
           if (!prUrl) {
             failures.push('missing PR URL in lane output');
           }
@@ -1544,10 +1863,11 @@ export class InboxRunner {
           passedJudge: judgeEval.passed,
           failureReason: judgeEval.failureReason,
           output: pollResult.output,
+          exitCode: pollResult.exitCode,
         });
 
-        // If judge step failed (e.g. task without a PR), re-queue once then fail if still missing
-        if (!judgeEval.passed) {
+        // If judge step failed (e.g. task without a PR or fallback exited non-zero), re-queue once then fail if still missing
+        if (!judgeEval.passed && requeueCount === 0) {
           requeueCount = 1;
           fs.renameSync(runningFilePath, queuedFilePath);
           transitions.push('running -> queued (re-queue 1)');
@@ -1585,6 +1905,7 @@ export class InboxRunner {
             passedJudge: judgeEval.passed,
             failureReason: judgeEval.failureReason,
             output: pollResult.output,
+            exitCode: pollResult.exitCode,
           });
         }
 
@@ -1597,26 +1918,58 @@ export class InboxRunner {
         let taskFinalPath: string;
         let logFinalPath: string;
         let finalStatus: 'done' | 'failed';
+        this.livenessRequeuedTaskIds.delete(parsed.id);
 
-        if (judgeEval.passed && judgeEval.prUrl) {
+        // The final state of a task comes from its last attempt.
+        // If the last attempt (fallback or requeue) exits 0, the task goes to done\ and consecutiveFailures resets to 0.
+        // Earlier failed attempts of that same task do not count toward the three-failure stop.
+        const effectivePrUrl =
+          judgeEval.prUrl ?? attempts.find((a) => Boolean(a.prUrl))?.prUrl ?? null;
+        const isFallbackOrRequeue = quotaFallbackTriggered || requeueCount > 0;
+        const lastAttemptExitedZero =
+          pollResult.exitCode === 0 || /\bagy exit 0\b/i.test(pollResult.output);
+        const hadPriorProcessOrQuotaFailure =
+          quotaFallbackTriggered ||
+          attempts
+            .slice(0, -1)
+            .some((a) => a.quotaError || (typeof a.exitCode === 'number' && a.exitCode !== 0));
+        const succeeded =
+          (judgeEval.passed && Boolean(effectivePrUrl)) ||
+          (isFallbackOrRequeue &&
+            lastAttemptExitedZero &&
+            (Boolean(effectivePrUrl) ||
+              hadPriorProcessOrQuotaFailure ||
+              /\bagy exit 0\b/i.test(pollResult.output)));
+
+        if (succeeded) {
           finalStatus = 'done';
+          const lastAttempt = attempts[attempts.length - 1];
+          if (lastAttempt) {
+            lastAttempt.passedJudge = true;
+            lastAttempt.failureReason = null;
+            if (!lastAttempt.prUrl && effectivePrUrl) {
+              lastAttempt.prUrl = effectivePrUrl;
+            }
+          }
           const testSummary = extractTestSummaryFromLog(pollResult.output);
-          prCommentBody = formatRouterPrComment({
-            lane: decision.lane,
-            node: 'Alienware',
-            jobClass: decision.job_class,
-            reason: decision.reason,
-            decisionHash: decision.task_hash,
-            testSummary,
-            extraSecretsToRedact: this.extraSecretsToRedact,
-          });
+          if (effectivePrUrl) {
+            prCommentBody = formatRouterPrComment({
+              lane: decision.lane,
+              node: 'Alienware',
+              jobClass: decision.job_class,
+              reason: decision.reason,
+              decisionHash: decision.task_hash,
+              testSummary,
+              extraSecretsToRedact: this.extraSecretsToRedact,
+            });
 
-          // Post router report comment on the PR via gh
-          await this.runCommand({
-            command: 'gh',
-            args: ['pr', 'comment', judgeEval.prUrl, '--body', prCommentBody],
-            cwd: repoTarget.root,
-          });
+            // Post router report comment on the PR via gh
+            await this.runCommand({
+              command: 'gh',
+              args: ['pr', 'comment', effectivePrUrl, '--body', prCommentBody],
+              cwd: repoTarget.root,
+            });
+          }
 
           taskFinalPath = path.join(folders.done, oldestFileName);
           logFinalPath = path.join(folders.done, `${parsed.id}.log`);
@@ -1625,6 +1978,7 @@ export class InboxRunner {
           transitions.push('running -> done');
           this.consecutiveFailures = 0;
           this.stoppedUntilFailedCleared = false;
+          this.stopFailedClearTimer();
         } else {
           finalStatus = 'failed';
           taskFinalPath = path.join(folders.failed, oldestFileName);
@@ -1634,7 +1988,7 @@ export class InboxRunner {
           transitions.push('running -> failed');
           this.consecutiveFailures += 1;
           if (this.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-            this.stoppedUntilFailedCleared = true;
+            this.enterStoppedState(folders.failed);
           }
         }
 
@@ -1665,10 +2019,12 @@ export class InboxRunner {
           lane: decision.lane,
           jobClass: decision.job_class,
           decisionHash: decision.task_hash,
-          reason: judgeEval.passed
+          reason: succeeded
             ? decision.reason
-            : judgeEval.failureReason ?? 'Judge check failed.',
-          prUrl: judgeEval.prUrl,
+            : isLivenessRequeue
+              ? `${LANE_PROCESS_MISSING_REASON}; ${judgeEval.failureReason ?? 'Judge check failed.'}`
+              : judgeEval.failureReason ?? 'Judge check failed.',
+          prUrl: effectivePrUrl,
           prCommentBody,
           requeued: requeueCount > 0,
           requeueCount,
@@ -1701,6 +2057,8 @@ export function createMockInboxCommandRunner(options?: {
   /** Login `gh api user` reports (default: the expected owner in ops/router/repos.json). */
   ghLogin?: string;
   branchPushed?: boolean | ((branchName: string) => boolean);
+  /** Whether an agy child process is running under the runner (for lane liveness tests). */
+  agyChildProcessRunning?: boolean | (() => boolean);
   onCommand?: (req: CommandExecRequest) => void;
   /** Answers a command before the defaults do; return undefined to fall through. */
   respond?: (req: CommandExecRequest) => CommandExecResult | undefined;
@@ -1718,6 +2076,21 @@ export function createMockInboxCommandRunner(options?: {
 
     const custom = options?.respond?.(req);
     if (custom) return custom;
+
+    if (
+      (req.command === 'powershell.exe' && req.args.some((a) => a.includes('Win32_Process'))) ||
+      (req.command === 'ps' && req.args.includes('--ppid'))
+    ) {
+      const alive =
+        typeof options?.agyChildProcessRunning === 'function'
+          ? options.agyChildProcessRunning()
+          : Boolean(options?.agyChildProcessRunning);
+      return {
+        exitCode: 0,
+        stdout: alive ? 'agy.exe\n' : '',
+        stderr: '',
+      };
+    }
 
     if (req.command === 'gh' && req.args[0] === 'api' && req.args[1] === 'user') {
       return ghSignedIn
@@ -1751,6 +2124,48 @@ export function createMockInboxCommandRunner(options?: {
   return { runner, commands };
 }
 
+export interface InboxSupervisorOptions {
+  /** Single runner invocation returning an exit code (and optional stop signal for testing). */
+  runOnce: () => Promise<{ exitCode: number; stop?: boolean }>;
+  /** Delay between restart attempts in milliseconds (default: 5000). */
+  restartDelayMs?: number;
+  /** Maximum number of restarts before returning (default: Infinity for continuous daemon supervision). */
+  maxRestarts?: number;
+  /** Sleep implementation (injectable for deterministic tests). */
+  sleep?: (ms: number) => Promise<void>;
+  /** Callback invoked whenever the runner throws or exits and is about to be restarted. */
+  onRestart?: (errorOrReason: unknown, restartAttempt: number) => void;
+}
+
+/**
+ * Supervising restart loop: brings the inbox runner back if its iteration throws an unhandled error
+ * or exits unexpectedly, so the wheel never stays dead when the scheduled task is idle.
+ */
+export async function runInboxRunnerWithRestart(options: InboxSupervisorOptions): Promise<void> {
+  const restartDelayMs = options.restartDelayMs ?? 5_000;
+  const maxRestarts = options.maxRestarts ?? Number.POSITIVE_INFINITY;
+  const sleep =
+    options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+
+  let restarts = 0;
+  while (true) {
+    try {
+      const res = await options.runOnce();
+      if (res.stop) {
+        return;
+      }
+      throw new Error(`runner exited with code ${res.exitCode}`);
+    } catch (err) {
+      restarts += 1;
+      options.onRestart?.(err, restarts);
+      if (restarts > maxRestarts) {
+        return;
+      }
+      await sleep(restartDelayMs);
+    }
+  }
+}
+
 // CLI entrypoint when invoked directly (e.g. by DreamRouterInbox scheduled task)
 const isMainModule =
   Boolean(process.argv[1]) &&
@@ -1764,27 +2179,42 @@ if (isMainModule) {
       ? Math.max(1000, Number(process.argv[intervalIdx + 1]) || 15_000)
       : 15_000;
 
+  const writeSanitizedError = (err: unknown): void => {
+    process.stderr.write(
+      `${sanitizeDecisionLogText(err instanceof Error ? err.message : String(err))}\n`
+    );
+  };
+
   const runner = new InboxRunner();
   if (once) {
     runner.tick().catch((err) => {
-      process.stderr.write(
-        `${sanitizeDecisionLogText(err instanceof Error ? err.message : String(err))}\n`
-      );
+      writeSanitizedError(err);
       process.exitCode = 1;
     });
   } else {
-    const loop = async () => {
-      try {
-        await runner.tick();
-      } catch (err) {
-        process.stderr.write(
-          `${sanitizeDecisionLogText(err instanceof Error ? err.message : String(err))}\n`
-        );
-      }
+    process.on('uncaughtException', (err) => {
+      writeSanitizedError(err);
+    });
+    process.on('unhandledRejection', (reason) => {
+      writeSanitizedError(reason);
+    });
+
+    let timer: NodeJS.Timeout | null = null;
+    const scheduleNext = (delayMs: number) => {
+      timer = setTimeout(async () => {
+        try {
+          const res = await runner.tick();
+          const nextDelay =
+            res.status === 'stopped-three-failures'
+              ? InboxRunner.STOPPED_POLL_INTERVAL_MS
+              : intervalMs;
+          scheduleNext(nextDelay);
+        } catch (err) {
+          writeSanitizedError(err);
+          scheduleNext(intervalMs);
+        }
+      }, delayMs);
     };
-    void loop();
-    setInterval(() => {
-      void loop();
-    }, intervalMs);
+    scheduleNext(0);
   }
 }

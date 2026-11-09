@@ -1,7 +1,7 @@
 /**
  * Wardrobe rules: the pay-to-win guard.
  *
- * A skin or convenience item has no stat field at all. Two layers keep it that way:
+ * Stat rule: items carry stats at the same percentage per tier on their catalogue entry (choice, never power; everything sold for cash is also earnable in game), while raw Skin and ConvenienceItem records carry no ad-hoc stat field. Two layers keep raw records clean:
  *  - Compile time: defineSkin / defineConvenienceItem reject any key that is not part of
  *    the item type, even when the object comes from a variable (excess-property checks
  *    alone only catch literals). The assertion in types.ts fails lint if a stat key is
@@ -56,7 +56,7 @@ export function validateShopItem(raw: unknown): ValidationResult {
     } else if (!allowed.includes(key)) {
       errors.push(
         STAT_KEYS_LOWER.has(key.toLowerCase())
-          ? `field "${key}" is a stat: shop items carry no stats`
+          ? `field "${key}" is a stat: items carry tier-shared stat percentages on the catalogue entry, never as a raw item field`
           : `unknown field "${key}"`,
       );
     }

@@ -13,6 +13,12 @@ export const HOUSE_MOTION_RULE_HEADER =
 export const HOUSE_MOTION_RULE_SHA256 =
   '823d60135160daa8f514e85622958063d3a8626eb3feffc1adeaaacc5f2c22e9';
 
+export const PAYMENT_ACCOUNTS_RULE_PATH = 'docs/house/PAYMENT-ACCOUNTS-RULE.md';
+export const PAYMENT_ACCOUNTS_RULE_HEADER =
+  'Canonical copy. The drop box copy is the draft; this file is what lanes read.';
+export const PAYMENT_ACCOUNTS_RULE_SHA256 =
+  '0c9e3899424e3a28e68043328aa5f8879bcb728d0a4162b451f62d2b0537b09f';
+
 export const VENDORED_SKILL_FOLDERS: readonly string[] = [
   '.agents/skills/hallmark',
   '.agents/skills/impeccable',
@@ -162,6 +168,7 @@ export function checkDefinitionContent(relPath: string, content: string): string
   const requiredSubstrings = [
     'docs/house/HOUSE-MOTION-RULE.md',
     'docs/house/THE-HOUSE.md',
+    'docs/house/PAYMENT-ACCOUNTS-RULE.md',
     'Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.',
     'Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports',
     'ops/handoffs/FABLE-HANDOFFS-2026-11-06.md',
@@ -193,7 +200,8 @@ export function checkDefinitionContent(relPath: string, content: string): string
     }
     if (
       typeof parsed.house_rules !== 'string' ||
-      !parsed.house_rules.includes('docs/house/HOUSE-MOTION-RULE.md')
+      !parsed.house_rules.includes('docs/house/HOUSE-MOTION-RULE.md') ||
+      !parsed.house_rules.includes('docs/house/PAYMENT-ACCOUNTS-RULE.md')
     ) {
       return `${relPath}: missing JSON field "house_rules"`;
     }
@@ -222,6 +230,63 @@ test('docs/house/HOUSE-MOTION-RULE.md exists, carries canonical header, and matc
     HOUSE_MOTION_RULE_SHA256,
     `${HOUSE_MOTION_RULE_PATH} SHA-256 drifted from fixture (got ${actualSha}, expected ${HOUSE_MOTION_RULE_SHA256})`,
   );
+});
+
+test('docs/house/PAYMENT-ACCOUNTS-RULE.md exists, carries canonical header, and matches recorded SHA-256 fixture', () => {
+  const fullPath = path.join(REPO_ROOT, PAYMENT_ACCOUNTS_RULE_PATH);
+  assert.ok(fs.existsSync(fullPath), `Missing ${PAYMENT_ACCOUNTS_RULE_PATH}`);
+  const raw = fs.readFileSync(fullPath, 'utf8');
+  const firstLine = raw.split(/\r?\n/)[0];
+  assert.equal(firstLine, PAYMENT_ACCOUNTS_RULE_HEADER);
+  const actualSha = computeNormalizedSha256(raw);
+  assert.equal(
+    actualSha,
+    PAYMENT_ACCOUNTS_RULE_SHA256,
+    `${PAYMENT_ACCOUNTS_RULE_PATH} SHA-256 drifted from fixture (got ${actualSha}, expected ${PAYMENT_ACCOUNTS_RULE_SHA256})`,
+  );
+});
+
+test('docs/house/PAYMENT-ACCOUNTS-RULE.md carries no email address (the sign-ins live in the founder vault, never in a repo)', () => {
+  const raw = fs.readFileSync(path.join(REPO_ROOT, PAYMENT_ACCOUNTS_RULE_PATH), 'utf8');
+  assert.equal(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(raw), false);
+});
+
+test('ops/node/skills/house-boot/SKILL.md line 8 carries no Windows user folder path and no private LAN addresses exist in the file', () => {
+  const raw = fs.readFileSync(path.join(REPO_ROOT, 'ops/node/skills/house-boot/SKILL.md'), 'utf8');
+  const line8 = raw.split(/\r?\n/)[7] ?? '';
+  assert.equal(/[A-Za-z]:[\\/]+Users[\\/]+/i.test(raw), false);
+  assert.ok(line8.includes('%USERPROFILE%'));
+  assert.ok(line8.includes('the newest CLAUDE-USER-PREFERENCES file in the drop box'));
+  assert.equal(line8.includes('CLAUDE-USER-PREFERENCES-v2026-10-26.md'), false);
+  assert.equal(
+    /\b(?:192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})\b/.test(
+      raw,
+    ),
+    false,
+  );
+  assert.ok(raw.includes('the node address in the node env file'));
+});
+
+test('silent edit to PAYMENT-ACCOUNTS-RULE.md or a definition file missing its pointer fails with the file name', () => {
+  const fullPath = path.join(REPO_ROOT, PAYMENT_ACCOUNTS_RULE_PATH);
+  const raw = fs.readFileSync(fullPath, 'utf8');
+  const edited = raw + ' ';
+  const editedSha = computeNormalizedSha256(edited);
+  assert.notEqual(editedSha, PAYMENT_ACCOUNTS_RULE_SHA256);
+  const message = `${PAYMENT_ACCOUNTS_RULE_PATH} SHA-256 drifted from fixture (got ${editedSha}, expected ${PAYMENT_ACCOUNTS_RULE_SHA256})`;
+  assert.ok(message.includes('PAYMENT-ACCOUNTS-RULE.md'));
+
+  const houseOnly =
+    '- House rules: `docs/house/HOUSE-MOTION-RULE.md` and `docs/house/THE-HOUSE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.\n' +
+    '- Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports (`ops/handoffs/FABLE-HANDOFFS-2026-11-06.md` section 0).\n';
+  const errMd = checkDefinitionContent('AGENTS.md', houseOnly);
+  assert.ok(errMd && errMd.includes('AGENTS.md') && errMd.includes('PAYMENT-ACCOUNTS-RULE.md'));
+
+  const errJson = checkDefinitionContent(
+    'skills-lock.json',
+    JSON.stringify({ house_rules: 'docs/house/HOUSE-MOTION-RULE.md' }),
+  );
+  assert.ok(errJson && errJson.includes('skills-lock.json'));
 });
 
 test('silent edit to HOUSE-MOTION-RULE.md or missing pointer in a definition file fails with the file name', () => {

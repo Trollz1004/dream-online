@@ -14,13 +14,19 @@
 [CmdletBinding()]
 param(
   [switch]$Apply,
-  [string]$RepoRoot = (Join-Path $env:USERPROFILE 'antigravity\DREAM-Engine'),
+  [string]$RepoRoot,
   [string]$RunnerRelativePath = 'ops\router\inbox-runner.ts',
   [switch]$Uninstall,
   [switch]$DefinitionOnly
 )
 
 $ErrorActionPreference = 'Stop'
+
+$userHome = if ($env:USERPROFILE) { $env:USERPROFILE } elseif ($env:HOME) { $env:HOME } else { '.' }
+if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
+  $RepoRoot = Join-Path $userHome 'antigravity\DREAM-Engine'
+}
+$isOnWindows = if (Test-Path Variable:IsWindows) { [bool]$IsWindows } else { [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT }
 
 function ConvertTo-PortablePath([string]$RawPath) {
   if ([string]::IsNullOrWhiteSpace($RawPath)) { return $RawPath }
@@ -51,7 +57,9 @@ if ($Uninstall) {
     Write-Output "[DRY RUN] nothing unregistered; pass -Apply to write"
     exit 0
   }
-  Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
+  if ($isOnWindows) {
+    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
+  }
   Write-Output "Scheduled task '$TaskName' removed."
   return
 }
@@ -60,7 +68,7 @@ $portableRepoRoot = ConvertTo-PortablePath $RepoRoot
 $RunnerFullPath = Join-Path $RepoRoot $RunnerRelativePath
 $portableRunnerPath = ConvertTo-PortablePath $RunnerFullPath
 
-$psArgs = "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command `"Set-Location -LiteralPath '$portableRepoRoot'; npx tsx '$portableRunnerPath'`""
+$psArgs = "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command `"Set-Location -LiteralPath '$portableRepoRoot'; while (`$true) { npx tsx '$portableRunnerPath'; Start-Sleep -Seconds 5 }`""
 $actionDescription = "powershell.exe $psArgs"
 $runLevel = 'Limited'
 $triggerDescription = 'AtLogOn'
@@ -79,20 +87,20 @@ if (-not (Test-Path -LiteralPath $RunnerFullPath)) {
   throw "Inbox runner not found at $RunnerFullPath"
 }
 
-$InboxRoot = Join-Path $env:USERPROFILE 'antigravity\.fable-kitchen\inbox'
-foreach ($sub in 'queued', 'running', 'done', 'failed') {
-  $subPath = Join-Path $InboxRoot $sub
-  if (-not (Test-Path -LiteralPath $subPath)) {
-    New-Item -ItemType Directory -Path $subPath -Force | Out-Null
-  }
-}
+$user = if ($env:USERDOMAIN -and $env:USERNAME) { "$env:USERDOMAIN\$env:USERNAME" } elseif ($env:USERNAME) { $env:USERNAME } elseif ($env:USER) { $env:USER } else { 'SYSTEM' }
+$actualPsArgs = "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command `"Set-Location -LiteralPath '$RepoRoot'; while (`$true) { npx tsx '$RunnerFullPath'; Start-Sleep -Seconds 5 }`""
 
-$user = if ($env:USERDOMAIN -and $env:USERNAME) { "$env:USERDOMAIN\$env:USERNAME" } else { $env:USERNAME }
-$actualPsArgs = "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command `"Set-Location -LiteralPath '$RepoRoot'; npx tsx '$RunnerFullPath'`""
-$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $actualPsArgs -WorkingDirectory $RepoRoot
-$trigger = New-ScheduledTaskTrigger -AtLogOn -User $user
-$settings = New-ScheduledTaskSettingsSet -Hidden -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew
-$principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
+if ($isOnWindows) {
+  $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $actualPsArgs -WorkingDirectory $RepoRoot
+  $trigger = New-ScheduledTaskTrigger -AtLogOn -User $user
+  $settings = New-ScheduledTaskSettingsSet -Hidden -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1)
+  $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
+} else {
+  $action = $actionDescription
+  $trigger = $triggerDescription
+  $settings = $null
+  $principal = $null
+}
 
 if ($DefinitionOnly) {
   return [pscustomobject]@{
@@ -104,14 +112,30 @@ if ($DefinitionOnly) {
   }
 }
 
-Register-ScheduledTask `
-  -TaskName $TaskName `
-  -Action $action `
-  -Trigger $trigger `
-  -Settings $settings `
-  -Principal $principal `
-  -Description 'Headless Jev router inbox runner (the wheel) on Alienware. Starts at logon with window hidden.' `
-  -Force `
-  -ErrorAction Stop | Out-Null
+$InboxRoot = Join-Path $userHome 'antigravity\.fable-kitchen\inbox'
+foreach ($sub in 'queued', 'running', 'done', 'failed', 'for-judge') {
+  $subPath = Join-Path $InboxRoot $sub
+  if (-not (Test-Path -LiteralPath $subPath)) {
+    New-Item -ItemType Directory -Path $subPath -Force | Out-Null
+  }
+}
+$GhRunnerDir = Join-Path $userHome 'antigravity\.fable-kitchen\gh-runner'
+if (-not (Test-Path -LiteralPath $GhRunnerDir)) {
+  New-Item -ItemType Directory -Path $GhRunnerDir -Force | Out-Null
+}
 
-Write-Output "Scheduled task '$TaskName' registered (AtLogOn, Hidden window, MultipleInstances=IgnoreNew)."
+if ($isOnWindows) {
+  Register-ScheduledTask `
+    -TaskName $TaskName `
+    -Action $action `
+    -Trigger $trigger `
+    -Settings $settings `
+    -Principal $principal `
+    -Description 'Headless Jev router inbox runner (the wheel) on Alienware. Starts at logon with window hidden.' `
+    -Force `
+    -ErrorAction Stop | Out-Null
+
+  Write-Output "Scheduled task '$TaskName' registered (AtLogOn, Hidden window, MultipleInstances=IgnoreNew)."
+} else {
+  Write-Output "[APPLIED] (non-Windows platform) Queues initialized under $InboxRoot"
+}

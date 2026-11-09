@@ -1,5 +1,5 @@
 {
-  "house_rules": "docs/house/HOUSE-MOTION-RULE.md and docs/house/THE-HOUSE.md. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.",
+  "house_rules": "docs/house/HOUSE-MOTION-RULE.md, docs/house/THE-HOUSE.md and docs/house/PAYMENT-ACCOUNTS-RULE.md. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.",
   "current_beats_existing": "Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports (ops/handoffs/FABLE-HANDOFFS-2026-11-06.md section 0).",
   "name": "verification-before-completion",
   "description": "Rule One + Remake 100% Yours enforcement: done means the real human user would accept it and 100% Yours clean-room ownership passes. Requires live HTTP/process verification, full test pass, and real screenshots for any UI.",

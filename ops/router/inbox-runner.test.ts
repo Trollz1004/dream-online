@@ -453,7 +453,7 @@ test('Inbox Item 5e: the three-failure stop halts after three consecutive failur
             done: true,
             prUrl: parsePrUrlFromOutput(output),
             output,
-            exitCode: 0,
+            exitCode: shouldSucceed ? 0 : 1,
           }),
         };
       },
@@ -478,20 +478,168 @@ test('Inbox Item 5e: the three-failure stop halts after three consecutive failur
     assert.equal(inboxRunner.getConsecutiveFailures(), 3);
 
     // 4th tick must stop without picking up 04-task.md
+    assert.equal(InboxRunner.STOPPED_POLL_INTERVAL_MS, 60_000);
     const r4Stopped = await inboxRunner.tick();
     assert.equal(r4Stopped.status, 'stopped-three-failures');
     assert.ok(fs.existsSync(path.join(folders.queued, '04-task.md')));
+    assert.equal(inboxRunner.isStopped(), true);
 
-    // Human clears failed/ -> runner resumes and processes 04-task.md
-    for (const f of fs.readdirSync(folders.failed)) {
-      fs.rmSync(path.join(folders.failed, f), { force: true });
-    }
+    // Verify line written to decisions.log
+    const logged = readDecisionLog(decisionsLogPath);
+    const stoppedRecord = logged.find((r) => r.reason.includes('stopped:'));
+    assert.ok(stoppedRecord, 'decisions.log carries the stopped entry');
+    assert.ok(stoppedRecord.reason.includes('01-task.md'));
+    assert.ok(stoppedRecord.reason.includes('02-task.md'));
+    assert.ok(stoppedRecord.reason.includes('03-task.md'));
+    assert.ok(stoppedRecord.reason.includes('failed-cleared'));
+
+    // Verify line written to runner-restart.log
+    assert.ok(fs.existsSync(inboxRunner.getRunnerRestartLogPath()));
+    const restartLog = fs.readFileSync(inboxRunner.getRunnerRestartLogPath(), 'utf8');
+    assert.ok(restartLog.includes('runner stopped: 3 failures in failed'));
+    assert.ok(restartLog.includes('01-task.md'));
+    assert.ok(restartLog.includes('02-task.md'));
+    assert.ok(restartLog.includes('03-task.md'));
+    assert.ok(restartLog.includes('failed-cleared'));
+
+    // Moving 1 file to failed-cleared/ leaves 2 in failed/ (< 3) -> resumes on its own without restart
+    const failedClearedDir = path.join(inboxDir, 'failed-cleared');
+    fs.mkdirSync(failedClearedDir, { recursive: true });
+    fs.renameSync(
+      path.join(folders.failed, '01-task.md'),
+      path.join(failedClearedDir, '01-task.md')
+    );
     shouldSucceed = true;
 
     const r4Resumed = await inboxRunner.tick();
     assert.equal(r4Resumed.status, 'done');
     assert.equal(r4Resumed.taskId, '04-task');
     assert.ok(fs.existsSync(path.join(folders.done, '04-task.md')));
+    assert.equal(inboxRunner.isStopped(), false);
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('router: a requeue that exits 0 lands in done, and earlier failed attempts do not count toward the three-failure stop', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-inbox-requeue-done-'));
+  try {
+    const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+    const worktreeParentDir = path.join(tmpRoot, 'antigravity');
+    const decisionsLogPath = path.join(tmpRoot, 'decisions.log');
+    const folders = ensureInboxFolders(inboxDir);
+
+    const t1 = path.join(folders.queued, '01-prior-fail.md');
+    const t2 = path.join(folders.queued, '02-prior-fail.md');
+    const t3 = path.join(folders.queued, '03-requeued-task.md');
+    fs.writeFileSync(t1, '# Prior fail 1\n\nImplement item 1 in src/api/a.ts.', 'utf8');
+    fs.writeFileSync(t2, '# Prior fail 2\n\nImplement item 2 in src/api/b.ts.', 'utf8');
+    fs.writeFileSync(
+      t3,
+      ['# Phone fixes', 'lane: design-visual', 'repo: dream-online', '', 'Fix phone header and run Eyes gate.'].join('\n'),
+      'utf8'
+    );
+    fs.utimesSync(t1, new Date('2026-11-08T19:01:00Z'), new Date('2026-11-08T19:01:00Z'));
+    fs.utimesSync(t2, new Date('2026-11-08T19:02:00Z'), new Date('2026-11-08T19:02:00Z'));
+    fs.utimesSync(t3, new Date('2026-11-08T19:03:00Z'), new Date('2026-11-08T19:03:00Z'));
+
+    let requeuedTaskAttempt = 0;
+    const mockAdapter: DispatchAdapter = {
+      name: 'agy',
+      async dispatch(input: DispatchJobInput): Promise<DispatchHandle> {
+        const isRequeuedTask = (input.jobId ?? '').startsWith('03-requeued-task');
+        if (!isRequeuedTask) {
+          return {
+            jobId: input.jobId ?? 'mock-fail',
+            adapter: 'agy',
+            lane: input.lane,
+            harness: 'agy',
+            promptPath: path.join(tmpRoot, `${input.jobId ?? 'fail'}.txt`),
+            sanitizedPrompt: input.prompt,
+            mode: 'headless-cli',
+            httpSessionSupported: false,
+            note: 'mock prior failure',
+            poll: async () => ({
+              done: true,
+              prUrl: null,
+              output: 'Failed without opening a PR.',
+              exitCode: 1,
+            }),
+          };
+        }
+
+        requeuedTaskAttempt += 1;
+        // Attempt 1: hits agy Claude quota (exit 3)
+        // Attempt 2 (fallback): times out (exit 1)
+        // Attempt 3 (requeue-1): finishes cleanly on gemini-4-argon (exit 0, PR #362)
+        let output: string;
+        let exitCode: number;
+        if (requeuedTaskAttempt === 1) {
+          output =
+            'AGY_ERROR: {"short_error":"RESOURCE_EXHAUSTED (code 429): Individual quota reached."}\nagy exit 3 at 2026-11-08T23:53:03.422Z';
+          exitCode = 3;
+        } else if (requeuedTaskAttempt === 2) {
+          output = 'started 2026-11-08T23:53:03.438Z\nagy exit 1 at 2026-11-09T00:13:03.515Z';
+          exitCode = 1;
+        } else {
+          output = [
+            '- **Pull Request**: https://github.com/Trollz1004/dream-online/pull/362',
+            '- **Eyes gate (`--spec docs/house/HOUSE-MOTION-RULE.md`)**: `PASS · Eyes gate v1.1 · average 4.71 of 5 · lowest 3 (Layout match) · requeued-task`',
+            'agy exit 0 at 2026-11-09T00:30:50.433Z',
+          ].join('\n');
+          exitCode = 0;
+        }
+
+        return {
+          jobId: input.jobId ?? `mock-${requeuedTaskAttempt}`,
+          adapter: 'agy',
+          lane: input.lane,
+          harness: 'agy',
+          promptPath: path.join(tmpRoot, `prompt-${requeuedTaskAttempt}.txt`),
+          sanitizedPrompt: input.prompt,
+          mode: 'headless-cli',
+          httpSessionSupported: false,
+          note: 'mock requeue success test',
+          poll: async () => ({
+            done: true,
+            prUrl: parsePrUrlFromOutput(output),
+            output,
+            exitCode,
+          }),
+        };
+      },
+    };
+
+    const { runner: cmdRunner } = createMockInboxCommandRunner({ ghSignedIn: true });
+    const inboxRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir,
+      decisionsLogPath,
+      adapter: mockAdapter,
+      commandRunner: cmdRunner,
+      now: () => new Date('2026-11-08T20:00:00Z'),
+    });
+
+    const fail1 = await inboxRunner.tick();
+    const fail2 = await inboxRunner.tick();
+    assert.equal(fail1.status, 'failed');
+    assert.equal(fail2.status, 'failed');
+    assert.equal(inboxRunner.getConsecutiveFailures(), 2);
+
+    const result = await inboxRunner.tick();
+    assert.equal(result.status, 'done');
+    assert.equal(result.taskId, '03-requeued-task');
+    assert.equal(result.quotaFallbackTriggered, true);
+    assert.equal(result.requeued, true);
+    assert.equal(result.requeueCount, 1);
+    assert.equal(result.attempts.length, 3);
+    assert.equal(result.prUrl, 'https://github.com/Trollz1004/dream-online/pull/362');
+    assert.equal(inboxRunner.getConsecutiveFailures(), 0);
+    assert.equal(inboxRunner.isStopped(), false);
+
+    assert.ok(fs.existsSync(path.join(folders.done, '03-requeued-task.md')));
+    assert.ok(fs.existsSync(path.join(folders.done, '03-requeued-task.log')));
+    assert.ok(!fs.existsSync(path.join(folders.failed, '03-requeued-task.md')));
   } finally {
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
@@ -602,9 +750,14 @@ test('Inbox Item 3 & 4: Safety gates (refuses OneDrive inbox, refuses when gh is
 });
 
 function resolvePowerShell(): string | null {
+  const probeEnv: NodeJS.ProcessEnv = {
+    ...process.env,
+    XDG_CACHE_HOME: path.join(os.tmpdir(), 'dream-pwsh-probe-cache'),
+  };
   for (const exe of ['pwsh', 'powershell.exe', 'powershell']) {
     try {
       const probe = spawnSync(exe, ['-NoProfile', '-Command', 'exit 0'], {
+        env: probeEnv,
         stdio: 'ignore',
         windowsHide: true,
       });
@@ -649,6 +802,7 @@ test('Inbox runner registration scripts dry-run by default without -Apply under 
       ...process.env,
       HOME: tmpHome,
       USERPROFILE: tmpHome,
+      XDG_CACHE_HOME: path.join(tmpHome, '.cache'),
       LOCALAPPDATA: path.join(tmpHome, 'AppData', 'Local'),
       APPDATA: path.join(tmpHome, 'AppData', 'Roaming'),
     };

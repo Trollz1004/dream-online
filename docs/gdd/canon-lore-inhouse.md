@@ -71,6 +71,16 @@ DREAM ONLINE takes place in a single geography that transforms across the Day/Ni
 - Myth@s is Ember's father. That much is public by the founder's ruling of 2026-09-28.
 - The end-game story lives only in the founder vault file `%USERPROFILE%\OneDrive\claude-to-claude\SUP@-VAULT-FOUNDER-ONLY.md`. Nothing from it is quoted in this repository.
 
+### Blu, the boss of bosses (ruled by Josh 2026-11-05)
+- Unkillable; no party has done it; a solo attempt is a joke the world tells.
+- He wears the in-house name Blu on every surface and his real name is never written in any repo line, NPC script or gossip seed.
+- Blue while he has patience, every hit he allows sheds a spark the party keeps as Blue Charge.
+- Pushed past his threshold he goes red (a father's sacrifice, a world he guided turning on him) and red ends the attempt.
+- The gossip tick carries the rumor of what he is and no NPC confirms it.
+- Blue Charge is a one-off currency spent only on his pet tee.
+- The vault file `%USERPROFILE%\OneDrive\claude-to-claude\SUP@-VAULT-FOUNDER-ONLY.md` holds the story; cite by path only, quote nothing from it.
+- The only public lore facts remain that Myth@s is Ember's father and Sup@'s one line.
+
 ### First Gate & Haven NPC Roster
 - **FABLE (`fable-smith`):** Haven's dry-humored T1 Blacksmith. Remembers the player's gear durability history, visits, and Red Name record. Operates the town anvil for Sols repairs, gear purchases, and loot sales.
 - **Mireth:** Memory-linked guide NPC in the First Gate slice connected directly to the Live NPC Lab memory store.
@@ -150,7 +160,7 @@ At **Level 45** (working cap target: Level 50), Dreamers unlock a transformative
 
 ### Dual Currency Model
 1. **Sols:** Earned strictly in-game (mob drops, selling loot/fish/materials). Spent on gear, tonics, and town blacksmith repairs. Never sold for cash.
-2. **NEEDs:** In-game convenience currency (earned via ~1.5% rare mob drops, fishing treasures, and guaranteed boss drops, or purchased as a strict in-game product via Square-hosted checkout). Spent on cosmetic outfits, pet skins, FABLE's Popup Camper, Storage/Market Runners, Mercy Writs, and capped convenience boosters (Solo/Party Seals and Scrolls with diminishing returns).
+2. **NEEDs:** In-game convenience currency (earned via ~1.5% rare mob drops, fishing treasures, and guaranteed boss drops, or purchased as a strict in-game product via hosted checkout on the game's own Square account). Spent on cosmetic outfits, pet skins, FABLE's Popup Camper, Storage/Market Runners, Mercy Writs, and capped convenience boosters (Solo/Party Seals and Scrolls with diminishing returns).
 3. **Six-Month Cosmetic Rule:** Every cash-shop cosmetic skin becomes earnable in-game 6 months after release, excluding only the founder-funding limited edition `TrollinlootNScoot` skin and limited-event trophies.
 
 ### Compliance & Ethics Wall (Florida §496.405)

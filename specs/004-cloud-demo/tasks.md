@@ -36,7 +36,7 @@ description: "Task list for the slice demo hosted from the cloud"
 - [ ] T006 [US1] Export the "Web" preset to `build/web/index.html` from the imported project (depends on T004, T005; verified: about 8 seconds after the import pass).
 - [ ] T007 [US1] Run `.github/scripts/stamp_demo.py` on the exported page: it prefixes the page title and inserts a fixed, click-through label naming the commit, the date, "real gameplay in your browser, nothing enhanced," and the roughly 130 MB first load, visible at or before the first rendered frame.
 - [ ] T008 [US1] Confirm the exported build still shows the existing frames-per-second readout and the "Click to look around." pointer-lock hint, unchanged from the desktop and local web builds.
-- [ ] T009 [US1] Merge to `main` and let `.github/workflows/demo-pages.yml` publish; then read the page URL (`https://trollz1004.github.io/dream-online/`) from the workflow's `github-pages` environment.
+- [ ] T009 [US1] The public slice will be the in-house engine on dream-online.net.
 - [ ] T010 [US1] Open the published URL in headless Chromium at 1280x720, confirm the canvas renders with zero console errors and zero failed network requests, and confirm the label and commit hash are visible in the first frame.
 
 **Checkpoint**: Joshua has one working link; User Story 1 is demonstrable on its own.
@@ -47,10 +47,10 @@ description: "Task list for the slice demo hosted from the cloud"
 
 **Independent Test**: merge a trivial change to `main` and confirm the hosted URL's label now reads the new commit hash, with no manual export step.
 
-- [ ] T011 [US2] Create `.github/workflows/demo-pages.yml`, triggered on a push to `main` and on `workflow_dispatch`, with a job that runs only after the in-house DREAM Engine headless-suite check (`.github/workflows/engine-suite.yml`) passes.
+- [ ] T011 [US2] The public slice will be the in-house engine on dream-online.net, gated on the in-house DREAM Engine headless-suite check (`.github/workflows/engine-suite.yml`).
 - [ ] T012 [US2] In that workflow, call `.github/scripts/fetch_web_template.py` as its own step (T003's logic), so it never downloads the full 1.28 GB archive.
 - [ ] T013 [US2] In that workflow, run the import, export and `.github/scripts/stamp_demo.py` steps (T004, T006, T007) so every automated build carries the commit it was built from.
-- [ ] T014 [US2] In that workflow, deploy `build/web` to GitHub Pages (`enablement: true`) so it publishes at `https://trollz1004.github.io/dream-online/`, gated on the headless-suite check's success so a red suite never republishes; if the workflow's token lacks the Pages right, Joshua enables it once at Settings, Pages, Source: GitHub Actions.
+- [ ] T014 [US2] The public slice will be the in-house engine on dream-online.net.
 
 **Checkpoint**: User Stories 1 and 2 both work; the link now stays current with `main` on its own.
 

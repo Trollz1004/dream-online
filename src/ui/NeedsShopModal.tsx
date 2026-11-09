@@ -11,7 +11,9 @@
  *              for items already released to the currency store.
  *      Right:  Help panel explaining the rules in plain sentences (bought is owned forever,
  *              skins never expire, every skin reaches the currency store a few months after release,
- *              the founder pet never does, nothing here changes your stats).
+ *              the founder pet never does; the game is free to play, this shop sells looks, time
+ *              and choice at the same percentages anyone can earn in game, and nothing here buys power),
+ *              plus the payments line.
  *  - One "Back" control at the bottom centre.
  *  - White on dark, no ornament, no other colour, own inline SVG only.
  *  - Wired directly to src/game/economy/wardrobe (never re-implemented).
@@ -174,10 +176,17 @@ export const NEEDS_SHOP_CATEGORIES: readonly NeedsShopCategoryMeta[] = Object.fr
 export const NEEDS_SHOP_HELP_RULES: readonly string[] = Object.freeze([
   'Bought is owned forever.',
   'Skins never expire.',
+  'The game is free to play. This shop sells looks, time and choice at the same percentages anyone can earn in game. Nothing here buys power.',
   'Every skin reaches the currency store a few months after release.',
   'The founder pet, TrollinlootNScoot, never reaches the currency store.',
-  'Nothing here changes your stats.',
 ]);
+
+/**
+ * Payments line shown under the rules in the help panel. Wording ruled in
+ * docs/house/PAYMENT-ACCOUNTS-RULE.md. Display text only; no payment path is wired here.
+ */
+export const NEEDS_SHOP_PAYMENTS_LINE =
+  "Payments: the game's own merchant account. Nothing in this screen is pay-to-win.";
 
 /** Default reference timestamp used when a caller does not supply `now`. */
 export const NEEDS_SHOP_DEFAULT_NOW = '2026-11-04T00:00:00Z';
@@ -1095,6 +1104,17 @@ export const NeedsShopModal: React.FC<NeedsShopModalProps> = ({
                 {sentence}
               </p>
             ))}
+            <p
+              style={{
+                margin: 0,
+                fontSize: '14px',
+                lineHeight: 1.5,
+                fontWeight: 300,
+                color: '#E5E5EA',
+              }}
+            >
+              {NEEDS_SHOP_PAYMENTS_LINE}
+            </p>
           </div>
 
           <div
@@ -1112,7 +1132,7 @@ export const NeedsShopModal: React.FC<NeedsShopModalProps> = ({
             </div>
             <div>
               In-game currency store delay: {config.currencyStoreDelayMonths} months after first
-              release (except {FOUNDER_PET_SKIN_ID}). Nothing here costs real money and no payment is wired.
+              release (except {FOUNDER_PET_SKIN_ID}). No payment is wired yet.
             </div>
           </div>
         </aside>

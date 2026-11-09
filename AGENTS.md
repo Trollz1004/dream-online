@@ -21,5 +21,5 @@
    - The mandatory skill is superpowers (brainstorming, TDD and verification live inside it); caveman is used for the session note; design jobs add ui-ux-pro-max with the 21st.dev designer, motion, impeccable, humanizer and the judges; remake and reverse-engineer-anything are run only by the trusted study models (Claude Opus or Fable, Gemini Argon), never by a wrapper or local model.
 6. **1-AND-ONLY-1 `$5/MO` SYNCED OBSIDIAN VAULT (`1 GB` Cap) & `[REDACTED:XXXX]` SECRETS**:
    - Write only to your separated node/agent file (`Alienware/<agent>-to-<agent>.md`, `Sabretooth/<agent>-to-<agent>.md`, `T5500/<agent>-to-<agent>.md`) + Shared `ai-memory` (address in the node env file). Mask all secrets/keys as `XXXX`.
-- House rules: `docs/house/HOUSE-MOTION-RULE.md` and `docs/house/THE-HOUSE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
+- House rules: `docs/house/HOUSE-MOTION-RULE.md`, `docs/house/THE-HOUSE.md` and `docs/house/PAYMENT-ACCOUNTS-RULE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
 - Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports (`ops/handoffs/FABLE-HANDOFFS-2026-11-06.md` section 0).

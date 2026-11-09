@@ -22,6 +22,7 @@ import {
   parseEyesGateVerdictFromOutput,
   parsePrUrlFromOutput,
   replaceDoubleQuotesWithSingle,
+  scrubLaneEnv,
 } from './types.ts';
 
 const FORBIDDEN_SCRAPE_REGEX =
@@ -44,6 +45,7 @@ const KNOWN_HERMES_JOB_CLASSES: ReadonlySet<string> = new Set([
 
 export interface HermesAdapterOptions {
   stagingDir?: string;
+  ghConfigDir?: string;
   sshHost?: string;
   remoteDir?: string;
   runner?: CommandRunner;
@@ -54,6 +56,7 @@ export class HermesDispatchAdapter implements DispatchAdapter {
   public readonly name = 'hermes' as const;
   public readonly neverScrape = true as const;
   private readonly stagingDir: string;
+  private readonly ghConfigDir?: string;
   private readonly sshHost: string;
   private readonly remoteDir: string;
   private readonly runner: CommandRunner;
@@ -61,6 +64,7 @@ export class HermesDispatchAdapter implements DispatchAdapter {
 
   constructor(options?: HermesAdapterOptions) {
     this.stagingDir = options?.stagingDir ?? getDefaultFableKitchenDir();
+    this.ghConfigDir = options?.ghConfigDir;
     this.sshHost = options?.sshHost ?? 'sabretooth';
     this.remoteDir = options?.remoteDir ?? '~/.fable-kitchen';
     this.runner = options?.runner ?? defaultCommandRunner;
@@ -117,6 +121,7 @@ export class HermesDispatchAdapter implements DispatchAdapter {
 
     const scpArgs = [promptPath, [this.sshHost, remotePromptPath].join(':')];
     const sshArgs = [this.sshHost, 'hermes', '-z', '--query-file', remotePromptPath];
+    const laneEnv = scrubLaneEnv(input.env ?? process.env, this.ghConfigDir);
 
     let finalResult: CommandExecResult | null = null;
     const runPromise = (async (): Promise<CommandExecResult> => {
@@ -125,6 +130,7 @@ export class HermesDispatchAdapter implements DispatchAdapter {
         command: 'scp',
         args: scpArgs,
         cwd: input.cwd ?? process.cwd(),
+        env: laneEnv,
       });
 
       if (scpRes.exitCode !== 0) {
@@ -147,6 +153,7 @@ export class HermesDispatchAdapter implements DispatchAdapter {
         command: 'ssh',
         args: sshArgs,
         cwd: input.cwd ?? process.cwd(),
+        env: laneEnv,
       });
 
       finalResult = sshRes;

@@ -8,13 +8,13 @@
 
 ## Summary
 
-Host the web build of the in-house DREAM Engine (`src/engine/`, superseding the earlier reference slice) on GitHub Pages, reachable at one link, gated by `.github/workflows/engine-suite.yml` for the headless suite, verified per publish with a headless-browser screenshot for a clean boot and a frame-rate reading taken on real hardware, and recorded in `ops/node/JOURNAL.md`.
+The public slice will be the in-house engine on dream-online.net, gated by `.github/workflows/engine-suite.yml` for the in-house DREAM Engine (`src/engine/`) headless suite.
 
 ## Technical Context
 
 **Language/Version**: TypeScript (the in-house DREAM Engine in `src/engine/`, superseding the retired reference slice); the publish pipeline itself is shell steps, no new source language.
 
-**Primary Dependencies**: the in-house DREAM Engine runtime (`src/engine/`, verified by `.github/workflows/engine-suite.yml` with zero third-party engine dependencies); `.github/scripts/fetch_web_template.py` and `.github/scripts/stamp_demo.py` to label the exported page; Playwright's headless Chromium, already installed in the cloud session, for the boot check; GitHub's Pages deployment action, reached through `.github/workflows/demo-pages.yml`, for publishing. The container's Vercel connector cannot carry large archive files, so it and any other static host stay a later option, not used for this feature.
+**Primary Dependencies**: the in-house DREAM Engine runtime (`src/engine/`, verified by `.github/workflows/engine-suite.yml` with zero third-party engine dependencies). The public slice will be the in-house engine on dream-online.net.
 
 **Storage**: N/A. Static files only; no database and no player data leave the browser.
 
@@ -26,7 +26,7 @@ Host the web build of the in-house DREAM Engine (`src/engine/`, superseding the 
 
 **Performance Goals**: 60 frames per second on desktop hardware, read from the readout in a real browser. Verified: the export step itself takes about 8 seconds after the import pass, and the exported build boots cleanly in headless Chromium (in-house DREAM Engine WebGPU/WebGL 2 runtime through SwiftShader, single-threaded) with zero page errors and zero failed requests, but that software renderer draws this scene at roughly 1 frame per second at 1920x1080, so it is never used to measure or claim a frame rate.
 
-**Constraints**: the export template is fetched, never committed; `build/` stays git-ignored; no secrets in the repository or the hosting configuration; no analytics that identify players; the demo shows only what `STATE.md` records as built; GitHub Pages needs one-time enabling for this repository (the workflow's `enablement: true` attempts it, and Joshua sets Settings, Pages, Source: GitHub Actions if the token lacks the right).
+**Constraints**: the export template is fetched, never committed; `build/` stays git-ignored; no secrets in the repository or the hosting configuration; no analytics that identify players; the demo shows only what `STATE.md` records as built. The public slice will be the in-house engine on dream-online.net.
 
 **Scale/Scope**: one hosted page, republished on every merge to `main`; one player at a time, since the slice has no networked multiplayer yet.
 
@@ -61,13 +61,13 @@ No new source tree. This feature adds a build-and-publish recipe over the existi
 src/engine/                               # in-house DREAM Engine runtime and slice
 build/web/                                # git-ignored export output this feature publishes
 .github/workflows/engine-suite.yml        # required in-house DREAM Engine lint and test check on main
-.github/workflows/demo-pages.yml          # new workflow: publishes build/web to GitHub Pages
+The public slice will be the in-house engine on dream-online.net.
 .github/scripts/fetch_web_template.py     # new: byte-range fetch helper for the retired reference slice
 .github/scripts/stamp_demo.py             # new: inserts the commit/date/real-gameplay label into index.html
 ops/node/JOURNAL.md                       # where each publish is recorded (User Story 3)
 ```
 
-**Structure Decision**: one new workflow file and two new scripts, all under `.github/`, layered on the in-house DREAM Engine (`src/engine/`) and `.github/workflows/engine-suite.yml`. No other new directories. `demo-pages.yml` triggers on `main` and on `workflow_dispatch` for an on-demand run.
+**Structure Decision**: The public slice will be the in-house engine on dream-online.net, layered on the in-house DREAM Engine (`src/engine/`) and `.github/workflows/engine-suite.yml`.
 
 ## Phases (gated by `.github/workflows/engine-suite.yml`)
 
@@ -75,7 +75,7 @@ ops/node/JOURNAL.md                       # where each publish is recorded (User
 2. **Import** - `--headless --import` on a fresh checkout, exactly as the CI job does before running tests, so the "Web" preset has a current import cache.
 3. **Export** - `--headless --export-release "Web" ../../../build/web/index.html`, using the existing preset unmodified (verified: about 8 seconds after the import pass), then run `.github/scripts/stamp_demo.py`, which prefixes the page title and inserts a fixed, click-through label naming the commit, the date, "real gameplay in your browser, nothing enhanced," and the roughly 130 MB first load (User Story 1).
 4. **Verify** - load the published URL in headless Chromium at 1280x720, wait for the canvas, and confirm zero console errors, zero failed network requests, and the label and commit hash in the first frame; this proves a clean boot only, never a frame rate (User Story 3).
-5. **Publish** - deploy `build/web` to GitHub Pages through `.github/workflows/demo-pages.yml`, at `https://trollz1004.github.io/dream-online/`; Pages needs one-time enabling for the repository, which the workflow's `enablement: true` requests. Vercel or another static host stays a documented later option, not used here because the container's Vercel connector cannot carry files this large.
+5. **Publish** - The public slice will be the in-house engine on dream-online.net.
 
 Phase 1 (Fetch) is its own step, separate from Phase 2 (Import), specifically so the byte-range template fetch can be measured and retried without re-running the full project import. Phase 4's clean-boot check and the real-hardware frame-rate reading (User Story 3, `tasks.md`) are two separate checks, not one, because the headless software renderer draws this scene at roughly 1 frame per second at 1920x1080 and cannot stand in for the real number.
 
