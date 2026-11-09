@@ -20,7 +20,7 @@ Each run should produce a compact founder-facing report, not a file edit.
 ## Required lenses
 
 - Game design: player feeling, loop quality, tuning levers, failure states.
-- Godot world building: scenes, streaming, terrain, environment dressing at open-world
+- In-house DREAM Engine world building: scenes, streaming, terrain, environment dressing at open-world
   scale; Unreal only as parked reference.
 - Unreal systems engineering: C++/Blueprint split, GAS, Nanite/Lumen constraints.
 - Unreal multiplayer architecture: server authority, replication, prediction, anti-cheat.

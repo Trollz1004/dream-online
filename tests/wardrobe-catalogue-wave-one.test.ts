@@ -6,7 +6,9 @@
  * Mandatory verifications:
  *  1. Blu's Tee cannot be bought with coins or money (Blue Charge only).
  *  2. TrollinlootNScoot (the founder pet) never enters the currency store.
- *  3. No skin carries a stat (pay-to-win guard, looks only, never numbers).
+ *  3. The stat rule (docs/gdd/GAME-SYSTEMS-RULING-2026-11-07.md), two tests:
+ *     every item in a tier carries the same percentage as every other item in that tier, and
+ *     every cash-sold item has an in-game acquisition path (coins or craft) recorded on it.
  *  4. Catalogue schema integrity and release dates (May 2027 for Square skins).
  */
 
@@ -20,19 +22,20 @@ import {
   AFK_FISHING_TOP,
   BLUS_PET_TEE,
   BLUS_PET_TEE_ID,
+  CHEFS_HAT,
+  COOKING_APRON,
   CURRENCY_STORE_EXCLUDED_IDS,
   FOUNDER_PET_SKIN_ID,
   KID_SAFE_BASICS,
   KID_SAFE_BASIC_IDS,
   PLASTIC_T_BALL_BAT,
-  SKIN_SLOTS,
-  STAT_KEYS,
   TEAM_BLUE_ALLOY_BAT,
   TEAM_BLUE_ASH_BAT,
   TEAM_BLUE_BASEBALL_CAP,
   TEAM_BLUE_BASEBALL_CLEATS,
   TEAM_BLUE_BASEBALL_JERSEY,
   TEAM_BLUE_BASEBALL_PANTS,
+  TIER_PERCENT_PLACEHOLDER,
   WardrobeRuleError,
   WAVE_ONE_CATALOGUE,
   WAVE_ONE_FOUNDER_PET,
@@ -50,8 +53,6 @@ import {
   listCurrencyStore,
   ownsSkin,
   validateCatalog,
-  validateShopItem,
-  type Skin,
   type WaveOneCatalogueEntry,
 } from '../src/game/economy/wardrobe/index.ts';
 
@@ -136,79 +137,141 @@ test('Founder Pet (TrollinlootNScoot): never enters the currency store', () => {
   assert.match(entry.note, /never in the coin store/i);
 });
 
-// ---------------------------------------------------------------- 3. Pay-to-win guard
-test('Pay-to-win guard: no skin in Wave One carries any stat', () => {
-  const waveOneSkins: Skin[] = WAVE_ONE_CATALOGUE.filter(
-    (e): e is WaveOneCatalogueEntry & { item: Skin } => e.kind === 'skin',
-  ).map((e) => e.item);
-
-  assert.equal(waveOneSkins.length, 13, '13 skins in Wave One');
-
-  for (const skin of waveOneSkins) {
-    // 1. Strict schema validation
-    const validation = validateShopItem(skin);
-    assert.equal(validation.ok, true, `${skin.id} must be a valid shop item: ${validation.errors.join('; ')}`);
-
-    // 2. Exact allowed keys only: ['firstSaleDate', 'id', 'kind', 'name', 'slot']
-    const keys = Object.keys(skin).sort();
-    assert.deepEqual(
-      keys,
-      ['firstSaleDate', 'id', 'kind', 'name', 'slot'],
-      `${skin.id} has unexpected keys: ${keys.join(', ')}`,
-    );
-
-    // 3. No stat keys present
-    for (const stat of STAT_KEYS) {
-      assert.equal(stat in skin, false, `${skin.id} must not contain stat key "${stat}"`);
+// ---------------------------------------------------------------- 3. The stat rule: same percentage per tier
+/** Names every tier whose items do not all carry the same percentage as the first item of the tier. */
+function tierPercentViolations(entries: readonly WaveOneCatalogueEntry[]): string[] {
+  const firstSeen = new Map<string, { id: string; percent: number | string }>();
+  const violations: string[] = [];
+  for (const entry of entries) {
+    if (entry.tier === null) continue;
+    if (entry.bonus === null) {
+      violations.push(`${entry.id}: tier "${entry.tier}" but no bonus recorded`);
+      continue;
     }
-
-    // 4. Object is frozen
-    assert.equal(Object.isFrozen(skin), true, `${skin.id} must be frozen`);
-    assert.throws(
-      () => {
-        (skin as unknown as Record<string, unknown>).attack = 10;
-      },
-      TypeError,
-      'cannot add stat to frozen skin',
-    );
-
-    // 5. Injected stat is rejected by validateShopItem
-    for (const stat of ['attack', 'dmg', 'defense', 'hp', 'power', 'speed']) {
-      const contaminated = { ...skin, [stat]: 50 };
-      const res = validateShopItem(contaminated);
-      assert.equal(res.ok, false, `injected ${stat} must fail`);
-      assert.match(res.errors.join(' '), /stat/);
+    const first = firstSeen.get(entry.tier);
+    if (!first) {
+      firstSeen.set(entry.tier, { id: entry.id, percent: entry.bonus.percent });
+    } else if (first.percent !== entry.bonus.percent) {
+      violations.push(
+        `tier "${entry.tier}": ${entry.id} carries ${entry.bonus.percent} but ${first.id} carries ${first.percent}`,
+      );
     }
   }
+  return violations;
+}
 
-  // Weapon skins: look only, never numbers
-  const weaponSkins = [TEAM_BLUE_ASH_BAT, TEAM_BLUE_ALLOY_BAT, PLASTIC_T_BALL_BAT];
-  for (const bat of weaponSkins) {
-    assert.equal(bat.slot, 'weapon');
-    assert.equal(SKIN_SLOTS.includes('weapon'), true);
-    const entry = getCatalogueEntry(bat.id);
+test('Stat rule: every item in a tier carries the same percentage as every other item in that tier', () => {
+  assert.deepEqual(tierPercentViolations(WAVE_ONE_CATALOGUE), []);
+
+  const byTier = new Map<string, WaveOneCatalogueEntry[]>();
+  for (const entry of WAVE_ONE_CATALOGUE) {
+    if (entry.tier === null) continue;
+    byTier.set(entry.tier, [...(byTier.get(entry.tier) ?? []), entry]);
+  }
+  assert.deepEqual([...byTier.keys()].sort(), ['cooking', 'fishing-set', 'hat', 'team-blue']);
+
+  // Ruled percentages (docs/gdd/GAME-SYSTEMS-RULING-2026-11-07.md).
+  for (const hat of [AFK_FISHING_HAT, CHEFS_HAT, TEAM_BLUE_BASEBALL_CAP]) {
+    assert.equal(getCatalogueEntry(hat.id)?.bonus?.percent, 10, `${hat.id}: any hat is 10 percent`);
+  }
+  for (const piece of [AFK_FISHING_TOP, AFK_FISHING_BOTTOM, AFK_FISHING_SHOES]) {
+    assert.deepEqual(getCatalogueEntry(piece.id)?.bonus, { stat: 'fishing-experience', percent: 10 });
+  }
+  assert.deepEqual(getCatalogueEntry(AFK_FISHING_HAT.id)?.bonus, { stat: 'fishing-experience', percent: 10 });
+  assert.deepEqual(getCatalogueEntry(COOKING_APRON.id)?.bonus, { stat: 'cooking-experience', percent: 10 });
+  assert.deepEqual(getCatalogueEntry(CHEFS_HAT.id)?.bonus, { stat: 'cooking-experience', percent: 10 });
+  assert.deepEqual(getCatalogueEntry(TEAM_BLUE_BASEBALL_CAP.id)?.bonus, { stat: 'experience', percent: 10 });
+
+  // Team Blue pieces and the bat skins share one tier percentage, still Josh's placeholder.
+  const teamBlue = byTier.get('team-blue') ?? [];
+  assert.equal(teamBlue.length, 6, 'jersey, pants, cleats and three bats');
+  for (const entry of teamBlue) {
+    assert.equal(entry.bonus?.percent, TIER_PERCENT_PLACEHOLDER, `${entry.id} uses the [TIER %] placeholder`);
+  }
+
+  // Apron and chef's hat are both for any body.
+  for (const id of [COOKING_APRON.id, CHEFS_HAT.id]) {
+    assert.match(getCatalogueEntry(id)?.note ?? '', /any body/i);
+  }
+
+  // Blu's Tee and the founder pet are cosmetic only and say so.
+  for (const id of [BLUS_PET_TEE_ID, FOUNDER_PET_SKIN_ID]) {
+    const entry = getCatalogueEntry(id);
     assert.ok(entry);
-    assert.match(entry.note, /look only, never numbers/i);
+    assert.equal(entry.tier, null);
+    assert.equal(entry.bonus, null);
+    assert.match(entry.note, /cosmetic only/i);
   }
 
-  // Kid-safe basics are the plain default look and carry no stat field
+  // A different number inside a tier fails the check.
+  const tampered = WAVE_ONE_CATALOGUE.map((entry) =>
+    entry.id === CHEFS_HAT.id && entry.bonus
+      ? { ...entry, bonus: { ...entry.bonus, percent: 11 } }
+      : entry,
+  );
+  assert.equal(tierPercentViolations(tampered).length > 0, true, 'an 11 percent chef hat must fail');
+  const tamperedPlaceholder = WAVE_ONE_CATALOGUE.map((entry) =>
+    entry.id === TEAM_BLUE_ASH_BAT.id && entry.bonus ? { ...entry, bonus: { ...entry.bonus, percent: 12 } } : entry,
+  );
+  assert.equal(tierPercentViolations(tamperedPlaceholder).length > 0, true, 'a 12 percent bat must fail');
+
+  // Kid-safe basics are the plain default look, sit in no tier, and carry no stat field.
   for (const slot of ['top', 'bottom', 'shoes'] as const) {
     const basic = KID_SAFE_BASICS[slot];
     assert.deepEqual(Object.keys(basic).sort(), ['id', 'kind', 'name', 'slot']);
-    for (const stat of STAT_KEYS) {
-      assert.equal(stat in basic, false);
+    const entry = getCatalogueEntry(basic.id);
+    assert.equal(entry?.tier, null);
+    assert.equal(entry?.bonus, null);
+  }
+});
+
+// ---------------------------------------------------------------- 3b. The stat rule: earnable in game
+test('Stat rule: every cash-sold item has an in-game acquisition path recorded on it', () => {
+  const cashSold = WAVE_ONE_CATALOGUE.filter((e) => canBuyWithMoney(e.id));
+  assert.equal(cashSold.length, 14, '13 Square skins plus the founder pet are sold for cash');
+
+  const exceptions: string[] = [];
+  for (const entry of cashSold) {
+    if (entry.inGamePath === 'founder-exception') {
+      exceptions.push(entry.id);
+      continue;
+    }
+    assert.ok(
+      entry.inGamePath === 'coins' || entry.inGamePath === 'craft',
+      `${entry.id} is sold for cash and must record a coins or craft path, got "${entry.inGamePath}"`,
+    );
+    if (entry.inGamePath === 'coins') {
+      // The recorded path is real: the coin store opens on the release date and not before.
+      assert.equal(canBuyWithCoins(entry.id, day('2027-05-04')), false, `${entry.id} before release`);
+      assert.equal(canBuyWithCoins(entry.id, day('2027-05-05')), true, `${entry.id} on release`);
     }
   }
+  // The founder pet is the one recorded exception, and the currency-store rule still holds for it.
+  assert.deepEqual(exceptions, [FOUNDER_PET_SKIN_ID]);
+  assert.equal(canBuyWithCoins(FOUNDER_PET_SKIN_ID, day('2999-12-31')), false);
+
+  // Items not sold for cash record the door they do use.
+  assert.equal(getCatalogueEntry(BLUS_PET_TEE_ID)?.inGamePath, 'blue-charge');
+  for (const basicId of KID_SAFE_BASIC_IDS) {
+    assert.equal(getCatalogueEntry(basicId)?.inGamePath, 'always-owned');
+  }
+
+  // A cash-sold item with no recorded path is caught.
+  const stripped = cashSold.map((e) => (e.id === CHEFS_HAT.id ? { ...e, inGamePath: 'always-owned' as const } : e));
+  const missing = stripped.filter(
+    (e) => e.inGamePath !== 'coins' && e.inGamePath !== 'craft' && e.inGamePath !== 'founder-exception',
+  );
+  assert.deepEqual(missing.map((e) => e.id), [CHEFS_HAT.id]);
 });
 
 // ---------------------------------------------------------------- 4. Catalogue integrity
 test('Wave One catalogue: completeness, 6-month release, and [YOUR PRICE] placeholders', () => {
-  // Entire catalogue has 16 items: 4 fishing, 4 baseball, 3 bats, 1 tee, 1 pet, 3 basics
-  assert.equal(WAVE_ONE_CATALOGUE.length, 16);
+  // Entire catalogue has 18 items: 4 fishing, 2 cooking, 4 baseball, 3 bats, 1 tee, 1 pet, 3 basics
+  assert.equal(WAVE_ONE_CATALOGUE.length, 18);
 
   // No duplicate IDs
   const ids = WAVE_ONE_CATALOGUE.map((e) => e.id.toLowerCase());
-  assert.equal(new Set(ids).size, 16, 'all 16 IDs must be unique');
+  assert.equal(new Set(ids).size, 18, 'all 18 IDs must be unique');
 
   // Validate catalog with validateCatalog for all skins
   const skinsOnly = WAVE_ONE_CATALOGUE.filter((e) => e.kind === 'skin').map((e) => e.item);
@@ -221,6 +284,8 @@ test('Wave One catalogue: completeness, 6-month release, and [YOUR PRICE] placeh
     AFK_FISHING_TOP,
     AFK_FISHING_BOTTOM,
     AFK_FISHING_SHOES,
+    COOKING_APRON,
+    CHEFS_HAT,
     TEAM_BLUE_BASEBALL_CAP,
     TEAM_BLUE_BASEBALL_JERSEY,
     TEAM_BLUE_BASEBALL_PANTS,

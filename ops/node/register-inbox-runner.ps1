@@ -60,7 +60,7 @@ $portableRepoRoot = ConvertTo-PortablePath $RepoRoot
 $RunnerFullPath = Join-Path $RepoRoot $RunnerRelativePath
 $portableRunnerPath = ConvertTo-PortablePath $RunnerFullPath
 
-$psArgs = "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command `"Set-Location -LiteralPath '$portableRepoRoot'; npx tsx '$portableRunnerPath'`""
+$psArgs = "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command `"Set-Location -LiteralPath '$portableRepoRoot'; while (`$true) { npx tsx '$portableRunnerPath'; Start-Sleep -Seconds 5 }`""
 $actionDescription = "powershell.exe $psArgs"
 $runLevel = 'Limited'
 $triggerDescription = 'AtLogOn'
@@ -79,19 +79,11 @@ if (-not (Test-Path -LiteralPath $RunnerFullPath)) {
   throw "Inbox runner not found at $RunnerFullPath"
 }
 
-$InboxRoot = Join-Path $env:USERPROFILE 'antigravity\.fable-kitchen\inbox'
-foreach ($sub in 'queued', 'running', 'done', 'failed') {
-  $subPath = Join-Path $InboxRoot $sub
-  if (-not (Test-Path -LiteralPath $subPath)) {
-    New-Item -ItemType Directory -Path $subPath -Force | Out-Null
-  }
-}
-
 $user = if ($env:USERDOMAIN -and $env:USERNAME) { "$env:USERDOMAIN\$env:USERNAME" } else { $env:USERNAME }
-$actualPsArgs = "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command `"Set-Location -LiteralPath '$RepoRoot'; npx tsx '$RunnerFullPath'`""
+$actualPsArgs = "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command `"Set-Location -LiteralPath '$RepoRoot'; while (`$true) { npx tsx '$RunnerFullPath'; Start-Sleep -Seconds 5 }`""
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $actualPsArgs -WorkingDirectory $RepoRoot
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $user
-$settings = New-ScheduledTaskSettingsSet -Hidden -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew
+$settings = New-ScheduledTaskSettingsSet -Hidden -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1)
 $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
 
 if ($DefinitionOnly) {
@@ -102,6 +94,18 @@ if ($DefinitionOnly) {
     Settings  = $settings
     Principal = $principal
   }
+}
+
+$InboxRoot = Join-Path $env:USERPROFILE 'antigravity\.fable-kitchen\inbox'
+foreach ($sub in 'queued', 'running', 'done', 'failed', 'for-judge') {
+  $subPath = Join-Path $InboxRoot $sub
+  if (-not (Test-Path -LiteralPath $subPath)) {
+    New-Item -ItemType Directory -Path $subPath -Force | Out-Null
+  }
+}
+$GhRunnerDir = Join-Path $env:USERPROFILE 'antigravity\.fable-kitchen\gh-runner'
+if (-not (Test-Path -LiteralPath $GhRunnerDir)) {
+  New-Item -ItemType Directory -Path $GhRunnerDir -Force | Out-Null
 }
 
 Register-ScheduledTask `

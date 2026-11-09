@@ -1,7 +1,6 @@
 # Dream ONLINE Agent Swarm Plan
 
-Status note (2026-09-26): this plan predates the 2026-09-20 engine decision and still
-describes the Unreal-era agent roles.
+Status note: superseded by the engine decision (`docs/tech/engine-decision-2026-09-30-own-engine.md`): the engine is built in-house (TypeScript/WebGPU DREAM Engine, `src/engine/`); Godot and Unreal roles are historical reference only.
 
 ## Rule
 
@@ -13,8 +12,8 @@ No agent edits `C:\antigravity` for this game lane. Dream ONLINE work lives in `
 |---|---|
 | Codex Lead | Architecture, code, integration, final decisions |
 | Game Designer | GDD, systems, combat/economy rules |
-| Godot Gameplay Scripter | GDScript states, combat rules as plain data, server-authoritative boundaries |
-| Godot World Builder | scenes, environments, CC0 assets under the originality rule |
+| DREAM Engine Gameplay Scripter | Gameplay states, combat rules as plain data, server-authoritative boundaries |
+| DREAM Engine World Builder | scenes, environments, CC0 assets under the originality rule |
 | UX Architect | HUD, menus, input clarity, accessibility |
 | Economy Designer | Life skills, crafting, durability, market sinks |
 | QA Agent | Test matrix, bug reproduction, regression notes |

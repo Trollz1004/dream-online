@@ -5,8 +5,9 @@
  * - Writes the prompt file under the local antigravity folder's .fable-kitchen
  *   (%USERPROFILE%\antigravity\.fable-kitchen\<jobId>.txt).
  * - Replaces all double quotes (") with single quotes (') before the call.
- * - Runs agy.exe headless from the repo folder with --model <lane>, --effort high,
- *   --dangerously-skip-permissions, --output-format text, --print-timeout 20m,
+ * - Runs agy.exe headless from the repo folder with --model <lane>, --effort <per-lane effort from
+ *   lanes.json> (omitted for lanes that reject it), --dangerously-skip-permissions, --output-format text,
+ *   --print-timeout 20m,
  *   and "--print=<sanitizedPrompt>", writing output to <jobId>.log beside the prompt file.
  */
 
@@ -15,6 +16,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   type CommandExecRequest,
   type CommandExecResult,
@@ -22,9 +24,12 @@ import {
   type DispatchAdapter,
   type DispatchHandle,
   type DispatchJobInput,
+  type LaneSetting,
   parseEyesGateVerdictFromOutput,
   parsePrUrlFromOutput,
   replaceDoubleQuotesWithSingle,
+  resolveLaneEffort,
+  scrubLaneEnv,
 } from './types.ts';
 
 export function getDefaultFableKitchenDir(): string {
@@ -60,29 +65,71 @@ export const defaultCommandRunner: CommandRunner = (
 
 export interface AgyAdapterOptions {
   kitchenDir?: string;
+  ghConfigDir?: string;
   agyExecutable?: string;
+  /**
+   * Fallback --effort for a lane that has no entry in laneSettings. Lanes listed in lanes.json always use
+   * their own setting (`none` omits the flag). Without this option an unlisted lane gets no --effort.
+   */
   effort?: 'low' | 'medium' | 'high';
+  /** Per-lane settings; defaults to the laneSettings block of ops/router/lanes.json. */
+  laneSettings?: Record<string, LaneSetting>;
+  /** lanes.json to read laneSettings from when laneSettings is not passed. */
+  lanesPath?: string;
   printTimeout?: string;
   runner?: CommandRunner;
   now?: () => Date;
 }
 
+export const DEFAULT_AGY_LANES_PATH = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'lanes.json'
+);
+
+/**
+ * Reads the laneSettings block of lanes.json without importing the router core (which imports this adapter).
+ * A missing or unreadable file yields no settings, so no lane gets --effort.
+ */
+export function readLaneSettingsFromFile(lanesPath: string = DEFAULT_AGY_LANES_PATH): Record<string, LaneSetting> {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(lanesPath, 'utf8')) as {
+      laneSettings?: Record<string, LaneSetting>;
+    };
+    return parsed.laneSettings && typeof parsed.laneSettings === 'object' ? parsed.laneSettings : {};
+  } catch {
+    return {};
+  }
+}
+
 export class AgyDispatchAdapter implements DispatchAdapter {
   public readonly name = 'agy' as const;
   private readonly kitchenDir: string;
+  private readonly ghConfigDir?: string;
   private readonly agyExecutable: string;
-  private readonly effort: 'low' | 'medium' | 'high';
+  private readonly fallbackEffort: 'low' | 'medium' | 'high' | null;
+  private readonly laneSettings: Record<string, LaneSetting>;
   private readonly printTimeout: string;
   private readonly runner: CommandRunner;
   private readonly now: () => Date;
 
   constructor(options?: AgyAdapterOptions) {
     this.kitchenDir = options?.kitchenDir ?? getDefaultFableKitchenDir();
+    this.ghConfigDir = options?.ghConfigDir;
     this.agyExecutable = options?.agyExecutable ?? 'agy.exe';
-    this.effort = options?.effort ?? 'high';
+    this.fallbackEffort = options?.effort ?? null;
+    this.laneSettings = options?.laneSettings ?? readLaneSettingsFromFile(options?.lanesPath);
     this.printTimeout = options?.printTimeout ?? '20m';
     this.runner = options?.runner ?? defaultCommandRunner;
     this.now = options?.now ?? (() => new Date());
+  }
+
+  /** The --effort value for a lane, or null when the lane has none and the flag must be omitted. */
+  public effortForLane(lane: string): 'low' | 'medium' | 'high' | null {
+    if (Object.hasOwn(this.laneSettings, lane.trim())) {
+      return resolveLaneEffort({ laneSettings: this.laneSettings }, lane);
+    }
+    return this.fallbackEffort;
   }
 
   public async dispatch(input: DispatchJobInput): Promise<DispatchHandle> {
@@ -102,11 +149,12 @@ export class AgyDispatchAdapter implements DispatchAdapter {
     const startedIso = this.now().toISOString();
     fs.writeFileSync(logPath, `started ${startedIso}\n`, 'utf8');
 
+    // agy 1.5.0 rejects --effort for some models, so the flag is passed only for lanes that accept it
+    const effort = this.effortForLane(input.lane);
     const args = [
       '--model',
       input.lane,
-      '--effort',
-      this.effort,
+      ...(effort ? ['--effort', effort] : []),
       '--dangerously-skip-permissions',
       '--output-format',
       'text',
@@ -120,6 +168,8 @@ export class AgyDispatchAdapter implements DispatchAdapter {
       command: this.agyExecutable,
       args,
       cwd: input.cwd ?? process.cwd(),
+      // GH_TOKEN, GITHUB_TOKEN and GH_ENTERPRISE_TOKEN never reach a lane, GH_CONFIG_DIR is set to the runner's dedicated folder, and no .env file is loaded for it
+      env: scrubLaneEnv(input.env ?? process.env, this.ghConfigDir),
     }).then((res) => {
       execResult = res;
       const combined = [res.stdout, res.stderr].filter(Boolean).join('\n');

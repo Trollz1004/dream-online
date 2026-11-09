@@ -3,6 +3,13 @@
   "current_beats_existing": "Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports (ops/handoffs/FABLE-HANDOFFS-2026-11-06.md section 0).",
   "version": "jev-router-v1",
   "defaultCooldownHours": 24,
+  "laneSettings": {
+    "gemini-4-argon": { "effort": "high" },
+    "claude-opus-5-5": { "effort": "high" },
+    "claude-sonnet-5-5": { "effort": "high" },
+    "gemini-3.8-flash": { "effort": "none", "note": "agy 1.5.0 rejects --effort for this model, so the adapter omits the flag." },
+    "fable": { "effort": "none", "note": "agy 1.5.0 rejects --effort for this model; fable is a judge lane and never runs through agy." }
+  },
   "quotaGroups": {
     "agy-claude": {
       "harness": "agy",

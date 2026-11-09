@@ -15,9 +15,13 @@ import {
 import {
   createMockInboxCommandRunner,
   DEFAULT_INBOX_CONFIG_PATH,
+  DEFAULT_REPO_ROOT,
   ensureInboxFolders,
   InboxRunner,
+  loadRepoMap,
+  parseInboxTaskFile,
   readBaseBranchFromConfig,
+  resolveRepoTarget,
 } from './inbox-runner.ts';
 
 test('Inbox format doc (ops/router/INBOX.md) and base config line', () => {
@@ -28,7 +32,7 @@ test('Inbox format doc (ops/router/INBOX.md) and base config line', () => {
   assert.ok(docText.includes('running'));
   assert.ok(docText.includes('done'));
   assert.ok(docText.includes('failed'));
-  assert.equal(readBaseBranchFromConfig(DEFAULT_INBOX_CONFIG_PATH), 'origin/ai/stack2/2026-11-04');
+  assert.equal(readBaseBranchFromConfig(DEFAULT_INBOX_CONFIG_PATH), 'origin/main');
   assert.equal(readBaseBranchFromConfig('base: main\n'), 'main');
 });
 
@@ -123,7 +127,7 @@ test('Inbox Item 5a: a task flows queued to done with a PR (oldest first, worktr
     assert.equal(tick1.lane, 'gemini-4-argon');
     assert.equal(tick1.prUrl, 'https://github.com/Trollz1004/dream-online/pull/101');
     assert.equal(tick1.branchName, 'ai/inbox/01-shader-water');
-    assert.equal(tick1.baseBranch, 'origin/ai/stack2/2026-11-04');
+    assert.equal(tick1.baseBranch, 'origin/main');
     assert.equal(
       tick1.worktreePath,
       path.join(worktreeParentDir, 'DREAM-Engine-wt-inbox-01-shader-water')
@@ -639,23 +643,6 @@ test('Inbox runner registration scripts dry-run by default without -Apply under 
   assert.ok(fs.existsSync(regScriptPath), 'register-inbox-runner.ps1 must exist');
   assert.ok(fs.existsSync(unregScriptPath), 'unregister-inbox-runner.ps1 must exist');
 
-  const probeTaskBefore = isWindows
-    ? spawnSync(
-        psCandidate,
-        [
-          '-NoProfile',
-          '-ExecutionPolicy',
-          'Bypass',
-          '-Command',
-          "if (Get-ScheduledTask -TaskName DreamRouterInbox -ErrorAction SilentlyContinue) { 'TASK_FOUND' } else { 'TASK_NOT_FOUND' }",
-        ],
-        {
-          encoding: 'utf8',
-        }
-      )
-    : null;
-  const taskExistedBefore = Boolean(probeTaskBefore?.stdout.includes('TASK_FOUND'));
-
   const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-ps-dryrun-'));
   try {
     const customEnv: NodeJS.ProcessEnv = {
@@ -665,6 +652,25 @@ test('Inbox runner registration scripts dry-run by default without -Apply under 
       LOCALAPPDATA: path.join(tmpHome, 'AppData', 'Local'),
       APPDATA: path.join(tmpHome, 'AppData', 'Roaming'),
     };
+
+    // Snapshot the DreamRouterInbox definition (Get-ScheduledTask XML) before the dry runs; the real task
+    // may be registered on this machine, so the test compares before and after instead of expecting it absent.
+    const readTaskDefinition = (): string => {
+      const probe = spawnSync(
+        psCandidate,
+        [
+          '-NoProfile',
+          '-ExecutionPolicy',
+          'Bypass',
+          '-Command',
+          "$t = Get-ScheduledTask -TaskName DreamRouterInbox -ErrorAction SilentlyContinue; if ($t) { Export-ScheduledTask -InputObject $t } else { 'TASK_NOT_FOUND' }",
+        ],
+        { env: customEnv, encoding: 'utf8' }
+      );
+      assert.equal(probe.status, 0, `task definition read failed: ${probe.stderr}`);
+      return probe.stdout.trim();
+    };
+    const taskDefinitionBefore = isWindows ? readTaskDefinition() : '';
 
     // 1. Run register script through powershell with no flags under temp HOME
     const regRun = spawnSync(
@@ -701,36 +707,261 @@ test('Inbox runner registration scripts dry-run by default without -Apply under 
     );
     assert.ok(unregRun.stdout.includes('DreamRouterInbox'), 'unregister output must mention DreamRouterInbox');
 
-    // 3. Assert no scheduled task was created (or pre-existing task left untouched by dry runs)
+    // 3. Assert the dry run did not change DreamRouterInbox: the task definition XML (or its absence) is
+    // identical before and after, so the test also passes when the real task is registered on this machine.
     if (isWindows) {
-      const taskCheck = spawnSync(
-        psCandidate,
-        [
-          '-NoProfile',
-          '-ExecutionPolicy',
-          'Bypass',
-          '-Command',
-          "if (Get-ScheduledTask -TaskName DreamRouterInbox -ErrorAction SilentlyContinue) { 'TASK_FOUND' } else { 'TASK_NOT_FOUND' }",
-        ],
-        {
-          env: customEnv,
-          encoding: 'utf8',
-        }
+      const taskDefinitionAfter = readTaskDefinition();
+      assert.equal(
+        taskDefinitionAfter,
+        taskDefinitionBefore,
+        'Get-ScheduledTask XML for DreamRouterInbox must be unchanged by the dry runs'
       );
-      assert.equal(taskCheck.status, 0, `task check failed: ${taskCheck.stderr}`);
-      if (taskExistedBefore) {
-        assert.ok(
-          taskCheck.stdout.includes('TASK_FOUND'),
-          'pre-existing DreamRouterInbox task remained untouched by dry-run'
-        );
-      } else {
-        assert.ok(
-          taskCheck.stdout.includes('TASK_NOT_FOUND'),
-          'Get-ScheduledTask -TaskName DreamRouterInbox must not exist'
-        );
-      }
     }
   } finally {
     fs.rmSync(tmpHome, { recursive: true, force: true });
+  }
+});
+
+// ---- repo selector (ops/router/repos.json) ----
+
+function makePrAdapter(tmpRoot: string, seen: DispatchJobInput[]): DispatchAdapter {
+  return {
+    name: 'agy',
+    async dispatch(input: DispatchJobInput): Promise<DispatchHandle> {
+      seen.push(input);
+      const output = 'Opened pull request https://github.com/Trollz1004/dream-online/pull/201';
+      return {
+        jobId: input.jobId ?? 'mock-repo-job',
+        adapter: 'agy',
+        lane: input.lane,
+        harness: 'agy',
+        promptPath: path.join(tmpRoot, 'prompt.txt'),
+        sanitizedPrompt: input.prompt,
+        mode: 'headless-cli',
+        httpSessionSupported: false,
+        note: 'mock repo selector run',
+        poll: async () => ({ done: true, prUrl: parsePrUrlFromOutput(output), output, exitCode: 0 }),
+      };
+    },
+  };
+}
+
+test('Repo map (ops/router/repos.json): dream-online is the runner root and ANTIGRAVITY comes from ANTIGRAVITY_REPO_ROOT', () => {
+  const map = loadRepoMap();
+  assert.deepEqual(Object.keys(map.repos).sort(), ['ANTIGRAVITY', 'dream-online']);
+  const selfRoot = path.join(os.tmpdir(), 'jev-self-root');
+  const fakeHome = path.join(os.tmpdir(), 'jev-fake-home');
+  const siblingRoot = path.join(os.tmpdir(), 'jev-antigravity-sibling');
+
+  assert.equal(parseInboxTaskFile('# No repo line\n\nDo a thing.', 'a.md').repo, 'dream-online');
+
+  const own = resolveRepoTarget('dream-online', { map, env: {}, selfRoot });
+  assert.ok(own.ok);
+  assert.equal(own.ok && own.target.root, path.resolve(selfRoot));
+  assert.equal(own.ok && own.target.worktreePrefix, 'DREAM-Engine-wt-inbox-');
+
+  // Env variable wins
+  const fromEnv = resolveRepoTarget('ANTIGRAVITY', {
+    map,
+    env: { ANTIGRAVITY_REPO_ROOT: siblingRoot, USERPROFILE: fakeHome },
+    selfRoot,
+  });
+  assert.ok(fromEnv.ok);
+  assert.equal(fromEnv.ok && fromEnv.target.root, path.resolve(siblingRoot));
+  assert.equal(fromEnv.ok && fromEnv.target.name, 'ANTIGRAVITY');
+  assert.equal(fromEnv.ok && fromEnv.target.worktreePrefix, 'ANTIGRAVITY-wt-inbox-');
+
+  // Unset or empty env variable falls back to the default written with %USERPROFILE%
+  for (const env of [{ USERPROFILE: fakeHome }, { USERPROFILE: fakeHome, ANTIGRAVITY_REPO_ROOT: '  ' }]) {
+    const fallback = resolveRepoTarget('antigravity', { map, env, selfRoot });
+    assert.ok(fallback.ok);
+    assert.equal(
+      fallback.ok && fallback.target.root,
+      path.resolve(path.join(fakeHome, 'antigravity', 'ANTIGRAVITY-wt-pr335'))
+    );
+    assert.equal(fallback.ok && fallback.target.name, 'ANTIGRAVITY');
+  }
+
+  // repos.json itself never types a user folder name
+  const rawMap = fs.readFileSync(path.join(path.dirname(DEFAULT_INBOX_CONFIG_PATH), 'repos.json'), 'utf8');
+  assert.ok(rawMap.includes('%USERPROFILE%'));
+  assert.ok(!/Users[\\/]/i.test(rawMap.replace(/%USERPROFILE%/g, '')));
+});
+
+test('Repo map: an unknown repo is refused with a clear message', () => {
+  const map = loadRepoMap();
+  for (const name of ['nope-repo', '__proto__', 'constructor', '../ANTIGRAVITY']) {
+    const res = resolveRepoTarget(name, { map, env: {} });
+    assert.equal(res.ok, false, `${name} must be refused`);
+    assert.ok(!res.ok && res.reason.includes(`unknown repo "${name}"`));
+    assert.ok(!res.ok && res.reason.includes('Known repos: ANTIGRAVITY, dream-online'));
+  }
+});
+
+test('Repo selector: a task file with repo: ANTIGRAVITY gets its worktree, branch and PR commands in the ANTIGRAVITY root', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-inbox-repo-ag-'));
+  try {
+    const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+    const worktreeParentDir = path.join(tmpRoot, 'antigravity');
+    const agRoot = path.join(tmpRoot, 'antigravity', 'ANTIGRAVITY-sibling');
+    fs.mkdirSync(agRoot, { recursive: true });
+    const folders = ensureInboxFolders(inboxDir);
+    fs.writeFileSync(
+      path.join(folders.queued, 'ag-task.md'),
+      ['# Edit the ANTIGRAVITY standard', 'repo: ANTIGRAVITY', '', 'Implement a docs change in docs/standards/note.ts.'].join('\n'),
+      'utf8'
+    );
+
+    const seen: DispatchJobInput[] = [];
+    const { runner: cmdRunner, commands } = createMockInboxCommandRunner({ ghSignedIn: true });
+    const inboxRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir,
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      adapter: makePrAdapter(tmpRoot, seen),
+      commandRunner: cmdRunner,
+      env: { ANTIGRAVITY_REPO_ROOT: agRoot },
+      now: () => new Date('2026-11-07T03:00:00Z'),
+    });
+
+    const res = await inboxRunner.tick();
+    assert.equal(res.status, 'done');
+    assert.equal(res.repo, 'ANTIGRAVITY');
+    assert.equal(res.repoRoot, path.resolve(agRoot));
+    assert.equal(res.branchName, 'ai/inbox/ag-task');
+    assert.equal(res.baseBranch, 'origin/main');
+    assert.equal(res.worktreePath, path.join(worktreeParentDir, 'ANTIGRAVITY-wt-inbox-ag-task'));
+
+    // dispatch runs inside the ANTIGRAVITY worktree, with the PR base main in the prompt
+    assert.equal(seen.length, 1);
+    assert.equal(seen[0].cwd, res.worktreePath);
+    assert.ok(seen[0].prompt.includes('open a pull request with gh against base main'));
+
+    // every repo-scoped git/gh command ran in the ANTIGRAVITY root (gh auth status is the only runner-level call)
+    const repoScoped = commands.filter(
+      (c) =>
+        (c.command === 'git' && ['fetch', 'worktree', 'ls-remote'].includes(c.args[0])) ||
+        (c.command === 'gh' && c.args[0] === 'pr')
+    );
+    assert.ok(repoScoped.length >= 4, 'expected fetch, worktree add, pr comment, ls-remote, worktree remove');
+    for (const c of repoScoped) {
+      assert.equal(c.cwd, path.resolve(agRoot), `${c.command} ${c.args[0]} must run in the ANTIGRAVITY root`);
+    }
+    const add = commands.find((c) => c.command === 'git' && c.args[0] === 'worktree' && c.args[1] === 'add');
+    assert.ok(add);
+    assert.deepEqual(add!.args, ['worktree', 'add', '-B', 'ai/inbox/ag-task', res.worktreePath, 'origin/main']);
+    const fetchIdx = commands.findIndex((c) => c.command === 'git' && c.args[0] === 'fetch');
+    assert.equal(commands[fetchIdx].args.join(' '), 'fetch origin');
+    assert.ok(fetchIdx < commands.indexOf(add!), 'fetch origin comes before worktree add');
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('Repo selector: an unknown repo is refused, never dispatched, and lands in failed/ with a clear log', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-inbox-repo-unknown-'));
+  try {
+    const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+    const folders = ensureInboxFolders(inboxDir);
+    fs.writeFileSync(
+      path.join(folders.queued, 'typo-task.md'),
+      ['# Wrong repo', 'repo: dream-offline', '', 'Implement a thing in src/api/x.ts.'].join('\n'),
+      'utf8'
+    );
+    const seen: DispatchJobInput[] = [];
+    const { runner: cmdRunner, commands } = createMockInboxCommandRunner({ ghSignedIn: true });
+    const inboxRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir: path.join(tmpRoot, 'antigravity'),
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      adapter: makePrAdapter(tmpRoot, seen),
+      commandRunner: cmdRunner,
+      env: {},
+    });
+
+    const res = await inboxRunner.tick();
+    assert.equal(res.status, 'refused-unknown-repo');
+    assert.ok(res.reason.includes('unknown repo "dream-offline"'));
+    assert.ok(res.reason.includes('Known repos: ANTIGRAVITY, dream-online'));
+    assert.equal(seen.length, 0, 'adapter must never be called');
+    assert.equal(
+      commands.filter((c) => c.command === 'git').length,
+      0,
+      'no git command may run for an unknown repo'
+    );
+    assert.ok(fs.existsSync(path.join(folders.failed, 'typo-task.md')));
+    const log = fs.readFileSync(path.join(folders.failed, 'typo-task.log'), 'utf8');
+    assert.ok(log.includes('unknown repo "dream-offline"'));
+    assert.ok(!fs.existsSync(path.join(folders.running, 'typo-task.md')));
+    assert.deepEqual(res.transitions, ['queued -> running', 'running -> failed']);
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('Repo selector: a missing ANTIGRAVITY root is refused with the portable path, not a silent git failure', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-inbox-repo-noroot-'));
+  try {
+    const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+    const folders = ensureInboxFolders(inboxDir);
+    fs.writeFileSync(
+      path.join(folders.queued, 'ag-missing.md'),
+      ['# AG task', 'repo: ANTIGRAVITY', '', 'Implement a thing in src/api/y.ts.'].join('\n'),
+      'utf8'
+    );
+    const seen: DispatchJobInput[] = [];
+    const { runner: cmdRunner, commands } = createMockInboxCommandRunner({ ghSignedIn: true });
+    const inboxRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir: path.join(tmpRoot, 'antigravity'),
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      adapter: makePrAdapter(tmpRoot, seen),
+      commandRunner: cmdRunner,
+      env: { USERPROFILE: path.join(tmpRoot, 'no-such-home') },
+    });
+    const res = await inboxRunner.tick();
+    assert.equal(res.status, 'refused-repo-root-missing');
+    assert.equal(res.repo, 'ANTIGRAVITY');
+    assert.ok(res.reason.includes('does not exist'));
+    assert.ok(res.reason.includes('ANTIGRAVITY_REPO_ROOT'));
+    assert.equal(seen.length, 0);
+    assert.equal(commands.filter((c) => c.command === 'git').length, 0);
+    assert.ok(fs.existsSync(path.join(folders.failed, 'ag-missing.md')));
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('Repo selector: the default stays dream-online at the runner root', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-inbox-repo-default-'));
+  try {
+    const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+    const worktreeParentDir = path.join(tmpRoot, 'antigravity');
+    const folders = ensureInboxFolders(inboxDir);
+    fs.writeFileSync(
+      path.join(folders.queued, 'plain-task.md'),
+      ['# No repo line', '', 'Implement a thing in src/api/z.ts.'].join('\n'),
+      'utf8'
+    );
+    const seen: DispatchJobInput[] = [];
+    const { runner: cmdRunner, commands } = createMockInboxCommandRunner({ ghSignedIn: true });
+    const inboxRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir,
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      adapter: makePrAdapter(tmpRoot, seen),
+      commandRunner: cmdRunner,
+      env: { ANTIGRAVITY_REPO_ROOT: path.join(tmpRoot, 'must-not-be-used') },
+    });
+    const res = await inboxRunner.tick();
+    assert.equal(res.status, 'done');
+    assert.equal(res.repo, 'dream-online');
+    assert.equal(res.repoRoot, DEFAULT_REPO_ROOT);
+    assert.equal(res.baseBranch, 'origin/main');
+    assert.equal(res.worktreePath, path.join(worktreeParentDir, 'DREAM-Engine-wt-inbox-plain-task'));
+    const add = commands.find((c) => c.command === 'git' && c.args[0] === 'worktree' && c.args[1] === 'add');
+    assert.equal(add!.cwd, DEFAULT_REPO_ROOT);
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
 });
