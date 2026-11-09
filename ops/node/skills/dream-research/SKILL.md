@@ -84,5 +84,5 @@ His usage is the scarce resource. One authoritative fetch beats five vague searc
 ## 7. Where findings live
 
 Chat is not storage. A finding that changes a decision goes into the repository the same session: a `docs/gdd/` document for design, `ops/node/JOURNAL.md` for node work, `C:\DREAM\recon\QUEUE.md` for anything the next session must pick up, and the auto-memory for a durable rule about how he wants to work.
-- House rules: `docs/house/HOUSE-MOTION-RULE.md` and `docs/house/THE-HOUSE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
+- House rules: `docs/house/HOUSE-MOTION-RULE.md`, `docs/house/THE-HOUSE.md` and `docs/house/PAYMENT-ACCOUNTS-RULE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
 - Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports (`ops/handoffs/FABLE-HANDOFFS-2026-11-06.md` section 0).

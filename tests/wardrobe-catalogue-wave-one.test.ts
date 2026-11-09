@@ -93,7 +93,7 @@ test("Blu's Tee: cannot be bought with coins or money (Blue Charge only)", () =>
   assert.equal(entry.howEarned, 'Blue Charge');
   assert.equal(entry.coinStoreRelease, 'Never');
   assert.match(entry.note, /bought with blue charge only/i);
-  assert.match(entry.note, /never in the coin or square store/i);
+  assert.match(entry.note, /never in the coin store or through the game's own square account/i);
 });
 
 // ---------------------------------------------------------------- 2. Founder Pet
@@ -215,9 +215,11 @@ test('Stat rule: every item in a tier carries the same percentage as every other
   );
   assert.equal(tierPercentViolations(tamperedPlaceholder).length > 0, true, 'a 12 percent bat must fail');
 
-  // Kid-safe basics are the plain default look and sit in no tier.
+  // Kid-safe basics are the plain default look, sit in no tier, and carry no stat field.
   for (const slot of ['top', 'bottom', 'shoes'] as const) {
-    const entry = getCatalogueEntry(KID_SAFE_BASICS[slot].id);
+    const basic = KID_SAFE_BASICS[slot];
+    assert.deepEqual(Object.keys(basic).sort(), ['id', 'kind', 'name', 'slot']);
+    const entry = getCatalogueEntry(basic.id);
     assert.equal(entry?.tier, null);
     assert.equal(entry?.bonus, null);
   }

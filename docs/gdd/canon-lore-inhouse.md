@@ -160,7 +160,7 @@ At **Level 45** (working cap target: Level 50), Dreamers unlock a transformative
 
 ### Dual Currency Model
 1. **Sols:** Earned strictly in-game (mob drops, selling loot/fish/materials). Spent on gear, tonics, and town blacksmith repairs. Never sold for cash.
-2. **NEEDs:** In-game convenience currency (earned via ~1.5% rare mob drops, fishing treasures, and guaranteed boss drops, or purchased as a strict in-game product via Square-hosted checkout). Spent on cosmetic outfits, pet skins, FABLE's Popup Camper, Storage/Market Runners, Mercy Writs, and capped convenience boosters (Solo/Party Seals and Scrolls with diminishing returns).
+2. **NEEDs:** In-game convenience currency (earned via ~1.5% rare mob drops, fishing treasures, and guaranteed boss drops, or purchased as a strict in-game product via hosted checkout on the game's own Square account). Spent on cosmetic outfits, pet skins, FABLE's Popup Camper, Storage/Market Runners, Mercy Writs, and capped convenience boosters (Solo/Party Seals and Scrolls with diminishing returns).
 3. **Six-Month Cosmetic Rule:** Every cash-shop cosmetic skin becomes earnable in-game 6 months after release, excluding only the founder-funding limited edition `TrollinlootNScoot` skin and limited-event trophies.
 
 ### Compliance & Ethics Wall (Florida §496.405)
