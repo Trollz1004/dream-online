@@ -202,9 +202,14 @@ export function parseEyesGateVerdictFromOutput(
 
   // Otherwise search output lines for an Eyes gate report header line (PASS or FAIL)
   for (const line of lines) {
-    if (/^(PASS|FAIL)\b.*Eyes gate/i.test(line) || /^Eyes gate report:\s*(PASS|FAIL)\b/i.test(line)) {
-      const normalized = line.replace(/^Eyes gate report:\s*/i, '').trim();
-      const passed = /^PASS\b/.test(normalized);
+    if (
+      /^(PASS|FAIL)\b.*Eyes gate/i.test(line) ||
+      /^Eyes gate report:\s*(PASS|FAIL)\b/i.test(line) ||
+      (/Eyes gate/i.test(line) && /\b(PASS|FAIL)\b/i.test(line))
+    ) {
+      const match = line.match(/\b(PASS|FAIL)\b/i);
+      const passed = match ? match[1].toUpperCase() === 'PASS' : false;
+      const normalized = line.replace(/^Eyes gate report:\s*/i, '').replace(/^[-* \t]+/, '').trim();
       return {
         found: true,
         passed,
