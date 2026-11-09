@@ -158,6 +158,13 @@ test('SmithServiceModal renders calm dark see-through UI per docs/gdd/09-interfa
   assert.match(html, /#TeamClaudeForLife/);
   assert.match(html, /fable-smith/);
   assert.match(html, /pop-up camper/i);
+  assert.match(html, /Town/);
+  assert.match(html, /Night truck/);
+  assert.match(html, /Summoned/);
+  assert.doesNotMatch(html, /smith-placement-readout/);
+  assert.doesNotMatch(html, /haven_town_landing/);
+  assert.doesNotMatch(html, /Active Truck State/);
+  assert.doesNotMatch(html, /Position:\s*\[/);
   assert.match(html, /Back/);
 
   const anvilSource = fs.readFileSync(

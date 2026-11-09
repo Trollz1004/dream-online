@@ -194,9 +194,9 @@ export const DEFAULT_SMITH_DEMO_GEAR: readonly SmithGearItem[] = Object.freeze([
 ]);
 
 export const SMITH_LOCATION_LABELS: Readonly<Record<SmithLocationKind, string>> = Object.freeze({
-  town: 'Town Smith · Haven Town Landing',
-  'route-truck': "Fable's Armor Truck · Night Route Midway Spot",
-  'summoned-camp': "Summoned Armor Truck + Pop-Up Camper · Beside Player",
+  town: 'Town',
+  'route-truck': 'Night truck',
+  'summoned-camp': 'Summoned',
 });
 
 export function formatSmithQuoteCost(quote: SmithServicePriceQuote): string {
@@ -720,7 +720,7 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
                 lineHeight: 1.25,
               }}
             >
-              {SMITH_LOCATION_LABELS[activeLocation]}
+              Location: {SMITH_LOCATION_LABELS[activeLocation]}
             </div>
             <div
               style={{
@@ -750,12 +750,11 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
                       fontSize: isCompactViewport ? '11px' : '12px',
                       fontWeight: chosenLoc ? 400 : 300,
                       letterSpacing: '0.04em',
-                      textTransform: 'uppercase',
                       fontFamily: FONT_STACK,
                       cursor: 'pointer',
                     }}
                   >
-                    {loc === 'town' ? 'Town' : loc === 'route-truck' ? 'Night Truck' : 'Summoned'}
+                    {SMITH_LOCATION_LABELS[loc]}
                   </button>
                 );
               })}
@@ -829,37 +828,6 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
           </div>
 
           {activeGear.map((item) => renderGearRow(item))}
-
-          {/* Placement & Route Summary Box */}
-          <div
-            data-testid="smith-placement-readout"
-            style={{
-              backgroundColor: 'rgba(10, 10, 12, 0.84)',
-              border: '1px solid rgba(255, 255, 255, 0.16)',
-              padding: isCompactViewport ? '3px 8px' : '10px 14px',
-              fontSize: isCompactViewport ? '10px' : '13px',
-              fontWeight: 300,
-              color: '#D1D1D6',
-              lineHeight: isCompactViewport ? 1.2 : 1.45,
-            }}
-          >
-            <div>
-              Town Smith ({TOWN_SMITH_PLACEMENT.zoneId}): [
-              {TOWN_SMITH_PLACEMENT.position.map((n) => Number(n.toFixed(2))).join(', ')}]
-            </div>
-            <div>
-              Night Route Midway Spot ({NIGHT_ARMOR_TRUCK_ROUTE.truckId}, pop-up camper:{' '}
-              {NIGHT_ARMOR_TRUCK_ROUTE.towsPopupCamper ? 'yes' : 'no'}): [
-              {NIGHT_ARMOR_TRUCK_ROUTE.midwayParkPosition
-                .map((n) => Number(n.toFixed(2)))
-                .join(', ')}
-              ]
-            </div>
-            <div>
-              Active Truck State: {resolvedTruck.mode} · Position: [
-              {resolvedTruck.position.map((n) => Number(n.toFixed(2))).join(', ')}]
-            </div>
-          </div>
 
           {statusNotice && (
             <div
