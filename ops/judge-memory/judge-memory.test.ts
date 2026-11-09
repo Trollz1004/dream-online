@@ -46,6 +46,11 @@ function makeTempTestEnv(extraEnv: Record<string, string> = {}): {
 
   const env: NodeJS.ProcessEnv = {
     ...process.env,
+    HOME: tmpDir,
+    USERPROFILE: tmpDir,
+    XDG_CACHE_HOME: path.join(tmpDir, '.cache'),
+    LOCALAPPDATA: path.join(tmpDir, 'AppData', 'Local'),
+    APPDATA: path.join(tmpDir, 'AppData', 'Roaming'),
     [JUDGE_SESSION_MARKER_ENV]: JUDGE_SESSION_MARKER_VALUE,
     JUDGE_MEMORY_DB_PATH: dbPath,
     JUDGE_MEMORY_DIR: path.dirname(dbPath),
@@ -524,9 +529,14 @@ test('Section 8: Fleet memory MCP digest push defaults off and backup copies SQL
 });
 
 function resolvePowerShell(): string | null {
+  const probeEnv: NodeJS.ProcessEnv = {
+    ...process.env,
+    XDG_CACHE_HOME: path.join(os.tmpdir(), 'dream-pwsh-probe-cache'),
+  };
   for (const exe of ['pwsh', 'powershell.exe', 'powershell']) {
     try {
       const probe = spawnSync(exe, ['-NoProfile', '-Command', 'exit 0'], {
+        env: probeEnv,
         stdio: 'ignore',
         windowsHide: true,
       });
@@ -569,7 +579,7 @@ test('Section 9: Register and unregister scripts only print planned changes unle
         '-StoreDir',
         fakeStoreDir,
       ],
-      { encoding: 'utf8', windowsHide: true }
+      { env: ctx.env, encoding: 'utf8', windowsHide: true }
     );
     assert.ok(dryRegOut.includes('[DRY RUN]'));
     assert.ok(dryRegOut.includes('dream-judge-memory'));
@@ -595,7 +605,7 @@ test('Section 9: Register and unregister scripts only print planned changes unle
         fakeStoreDir,
         '-Apply',
       ],
-      { encoding: 'utf8', windowsHide: true }
+      { env: ctx.env, encoding: 'utf8', windowsHide: true }
     );
     assert.ok(applyRegOut.includes('[APPLIED]'));
     assert.equal(fs.existsSync(fakeSettingsPath), true);
@@ -620,7 +630,7 @@ test('Section 9: Register and unregister scripts only print planned changes unle
         '-SettingsPath',
         fakeSettingsPath,
       ],
-      { encoding: 'utf8', windowsHide: true }
+      { env: ctx.env, encoding: 'utf8', windowsHide: true }
     );
     assert.ok(dryUnregOut.includes('[DRY RUN]'));
     const stillRegistered = JSON.parse(fs.readFileSync(fakeSettingsPath, 'utf8'));
@@ -640,7 +650,7 @@ test('Section 9: Register and unregister scripts only print planned changes unle
         fakeSettingsPath,
         '-Apply',
       ],
-      { encoding: 'utf8', windowsHide: true }
+      { env: ctx.env, encoding: 'utf8', windowsHide: true }
     );
     assert.ok(applyUnregOut.includes('[APPLIED]'));
     const afterUnreg = JSON.parse(fs.readFileSync(fakeSettingsPath, 'utf8'));

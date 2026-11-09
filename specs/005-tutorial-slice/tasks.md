@@ -82,7 +82,7 @@ description: "Task list for the tutorial slice, worthy of the judge lane's name"
 
 - [ ] T080 [Judge] Export the web build from the merge candidate, stamp it, and shoot day and night at 1920x1080 and 1280x720 with `shoot_demo.mjs`; zero console errors, zero failed requests. (SB-12)
 - [ ] T081 [Judge] Grade all four frames against SB-01 to SB-15, opening each; any no goes back to its phase's worker with the frame. (SC-001, SC-002)
-- [ ] T082 [Judge] Merge with `git merge --no-ff` into `main` through the pull request; let `demo-pages.yml` republish.
+- [ ] T082 [Judge] The public slice will be the in-house engine on dream-online.net.
 - [ ] T083 [Judge] Ask Joshua (or the node lane) for the real-hardware frame-rate reading from the published page; if under the SC-005 floor, drop the costliest render-table item to its fallback and re-grade. (SC-005)
 - [ ] T084 [Judge] Journal the commit, the frame paths, the SB grade next to the T002 baseline, the frame-rate reading, and update `STATE.md`, `docs/gdd/10-crowdfunding-readiness.md` (combo list screen done) and the slice `README.md` (tutorial, L key).
 

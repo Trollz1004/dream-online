@@ -21,5 +21,8 @@ if (-not $Apply) {
   exit 0
 }
 
-Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
+$isOnWindows = if (Test-Path Variable:IsWindows) { [bool]$IsWindows } else { [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT }
+if ($isOnWindows) {
+  Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
+}
 Write-Output "Scheduled task '$TaskName' removed."

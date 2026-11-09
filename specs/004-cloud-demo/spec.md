@@ -55,7 +55,7 @@ After each publish, the judge lane loads the hosted URL in a headless browser to
 - The exported `.wasm` and `.pck` together are roughly 130 MB (`index.wasm` about 39.5 MB, `index.pck` about 86 MB); the stamped label says plainly that the first load takes a moment, since a plain static host is not asked to transcode or split them.
 - A browser with no WebGL 2 support shows the engine's own unsupported-browser message; the demo adds nothing on top of that.
 - Pointer lock cannot be taken until a user gesture, so the readout keeps showing "Click to look around." until the canvas is clicked, exactly as the desktop and local web builds already do.
-- GitHub Pages needs enabling once for this repository before the first publish succeeds; the workflow requests this itself (`enablement: true`), and if the workflow's token lacks the right, Joshua sets it once at the repository's Settings, Pages, Source: GitHub Actions.
+- The public slice will be the in-house engine on dream-online.net.
 - The headless software renderer (WebGL 2 through SwiftShader) draws this scene at roughly 1 frame per second at 1920x1080, so it proves the page boots and runs cleanly but is never used to measure or claim a frame rate; real hardware is.
 
 ## Requirements *(mandatory)*
@@ -66,7 +66,7 @@ After each publish, the judge lane loads the hosted URL in a headless browser to
 - **FR-002**: The page MUST show, at or before the first rendered frame, a label stating this is the real slice build and the git commit hash it was exported from.
 - **FR-003**: The web export template (`web_nothreads_release.zip`, inside Godot's official 1.28 GB `Godot_v4.7.2-stable_export_templates.tpz`) MUST be fetched by HTTP byte range for only that member, at build time, and MUST NOT be committed into the repository.
 - **FR-004**: The browser build output (`build/`) MUST stay git-ignored, matching the rule already in place for the slice.
-- **FR-005**: Hosting MUST be a plain static host needing no cross-origin-isolation headers, matching the single-threaded export. GitHub Pages, published by `.github/workflows/demo-pages.yml`, is the host used, at `https://trollz1004.github.io/dream-online/`; the container's Vercel connector cannot carry the exported files (see Assumptions), so it and any other static host stay a later option, servable from the same build with no code change.
+- **FR-005**: The public slice will be the in-house engine on dream-online.net.
 - **FR-006**: The system MUST NOT collect or transmit analytics that identify individual players; the only on-screen telemetry is the frames-per-second line the readout already prints.
 - **FR-007**: The hosted demo MUST show only what `STATE.md` records as already built in the slice; it adds no feature that is not already real.
 - **FR-008**: No secret, provider token or credential MAY appear in the repository, the build output, or the hosting configuration.
@@ -89,7 +89,7 @@ After each publish, the judge lane loads the hosted URL in a headless browser to
 
 ## Assumptions
 
-- The container's Vercel connector cannot carry the exported files (`index.wasm` about 39.5 MB and `index.pck` about 86 MB), so GitHub Pages is the host, published by `.github/workflows/demo-pages.yml`; Vercel or any other static host stays a later option, not ruled out, just not used here.
+- The public slice will be the in-house engine on dream-online.net.
 - The claude.ai Artifact host is not used for this feature either, since its 15 MB per-file limit is smaller still than either exported file on its own.
 - No networked multiplayer exists yet, so the hosted demo serves one player at a time with no server-side game state of its own.
 - Headless Chromium (already available to the judge lane) proves the page boots cleanly, but its software renderer is far too slow to stand in for a frame-rate reading, so that number always comes from real hardware, recorded by hand from the on-screen readout.
