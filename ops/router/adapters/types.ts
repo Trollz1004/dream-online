@@ -251,6 +251,9 @@ export function detectQuotaOr429Error(
   errorText?: string | null,
   exitCode?: number | null
 ): { isQuotaError: boolean; errorSummary: string } {
+  if (exitCode === 0) {
+    return { isQuotaError: false, errorSummary: '' };
+  }
   const combined = `${output ?? ''}\n${errorText ?? ''}`.trim();
   if (!combined && exitCode !== 429) {
     return { isQuotaError: false, errorSummary: '' };

@@ -478,6 +478,7 @@ test('Inbox Item 5e: the three-failure stop halts after three consecutive failur
     assert.equal(inboxRunner.getConsecutiveFailures(), 3);
 
     // 4th tick must stop without picking up 04-task.md
+    assert.equal(InboxRunner.STOPPED_POLL_INTERVAL_MS, 60_000);
     const r4Stopped = await inboxRunner.tick();
     assert.equal(r4Stopped.status, 'stopped-three-failures');
     assert.ok(fs.existsSync(path.join(folders.queued, '04-task.md')));
@@ -497,6 +498,8 @@ test('Inbox Item 5e: the three-failure stop halts after three consecutive failur
     const restartLog = fs.readFileSync(inboxRunner.getRunnerRestartLogPath(), 'utf8');
     assert.ok(restartLog.includes('runner stopped: 3 failures in failed'));
     assert.ok(restartLog.includes('01-task.md'));
+    assert.ok(restartLog.includes('02-task.md'));
+    assert.ok(restartLog.includes('03-task.md'));
     assert.ok(restartLog.includes('failed-cleared'));
 
     // Moving 1 file to failed-cleared/ leaves 2 in failed/ (< 3) -> resumes on its own without restart
@@ -526,31 +529,73 @@ test('router: a requeue that exits 0 lands in done, and earlier failed attempts 
     const decisionsLogPath = path.join(tmpRoot, 'decisions.log');
     const folders = ensureInboxFolders(inboxDir);
 
+    const t1 = path.join(folders.queued, '01-prior-fail.md');
+    const t2 = path.join(folders.queued, '02-prior-fail.md');
+    const t3 = path.join(folders.queued, '03-requeued-task.md');
+    fs.writeFileSync(t1, '# Prior fail 1\n\nImplement item 1 in src/api/a.ts.', 'utf8');
+    fs.writeFileSync(t2, '# Prior fail 2\n\nImplement item 2 in src/api/b.ts.', 'utf8');
     fs.writeFileSync(
-      path.join(folders.queued, 'requeued-task.md'),
+      t3,
       ['# Phone fixes', 'lane: design-visual', 'repo: dream-online', '', 'Fix phone header and run Eyes gate.'].join('\n'),
       'utf8'
     );
+    fs.utimesSync(t1, new Date('2026-11-08T19:01:00Z'), new Date('2026-11-08T19:01:00Z'));
+    fs.utimesSync(t2, new Date('2026-11-08T19:02:00Z'), new Date('2026-11-08T19:02:00Z'));
+    fs.utimesSync(t3, new Date('2026-11-08T19:03:00Z'), new Date('2026-11-08T19:03:00Z'));
 
-    let attemptCount = 0;
+    let requeuedTaskAttempt = 0;
     const mockAdapter: DispatchAdapter = {
       name: 'agy',
       async dispatch(input: DispatchJobInput): Promise<DispatchHandle> {
-        attemptCount += 1;
-        const isRequeue = attemptCount > 1;
-        const output = isRequeue
-          ? [
-              '- **Pull Request**: https://github.com/Trollz1004/dream-online/pull/362',
-              '- **Eyes gate (`--spec docs/house/HOUSE-MOTION-RULE.md`)**: `PASS · Eyes gate v1.1 · average 4.71 of 5 · lowest 3 (Layout match) · requeued-task`',
-              'agy exit 0 at 2026-11-09T00:30:50.433Z',
-            ].join('\n')
-          : 'Attempt 1 failed: timeout without PR.\nagy exit 1 at 2026-11-09T00:10:00.000Z';
+        const isRequeuedTask = (input.jobId ?? '').startsWith('03-requeued-task');
+        if (!isRequeuedTask) {
+          return {
+            jobId: input.jobId ?? 'mock-fail',
+            adapter: 'agy',
+            lane: input.lane,
+            harness: 'agy',
+            promptPath: path.join(tmpRoot, `${input.jobId ?? 'fail'}.txt`),
+            sanitizedPrompt: input.prompt,
+            mode: 'headless-cli',
+            httpSessionSupported: false,
+            note: 'mock prior failure',
+            poll: async () => ({
+              done: true,
+              prUrl: null,
+              output: 'Failed without opening a PR.',
+              exitCode: 1,
+            }),
+          };
+        }
+
+        requeuedTaskAttempt += 1;
+        // Attempt 1: hits agy Claude quota (exit 3)
+        // Attempt 2 (fallback): times out (exit 1)
+        // Attempt 3 (requeue-1): finishes cleanly on gemini-4-argon (exit 0, PR #362)
+        let output: string;
+        let exitCode: number;
+        if (requeuedTaskAttempt === 1) {
+          output =
+            'AGY_ERROR: {"short_error":"RESOURCE_EXHAUSTED (code 429): Individual quota reached."}\nagy exit 3 at 2026-11-08T23:53:03.422Z';
+          exitCode = 3;
+        } else if (requeuedTaskAttempt === 2) {
+          output = 'started 2026-11-08T23:53:03.438Z\nagy exit 1 at 2026-11-09T00:13:03.515Z';
+          exitCode = 1;
+        } else {
+          output = [
+            '- **Pull Request**: https://github.com/Trollz1004/dream-online/pull/362',
+            '- **Eyes gate (`--spec docs/house/HOUSE-MOTION-RULE.md`)**: `PASS · Eyes gate v1.1 · average 4.71 of 5 · lowest 3 (Layout match) · requeued-task`',
+            'agy exit 0 at 2026-11-09T00:30:50.433Z',
+          ].join('\n');
+          exitCode = 0;
+        }
+
         return {
-          jobId: input.jobId ?? `mock-${attemptCount}`,
+          jobId: input.jobId ?? `mock-${requeuedTaskAttempt}`,
           adapter: 'agy',
           lane: input.lane,
           harness: 'agy',
-          promptPath: path.join(tmpRoot, `prompt-${attemptCount}.txt`),
+          promptPath: path.join(tmpRoot, `prompt-${requeuedTaskAttempt}.txt`),
           sanitizedPrompt: input.prompt,
           mode: 'headless-cli',
           httpSessionSupported: false,
@@ -559,7 +604,7 @@ test('router: a requeue that exits 0 lands in done, and earlier failed attempts 
             done: true,
             prUrl: parsePrUrlFromOutput(output),
             output,
-            exitCode: isRequeue ? 0 : 1,
+            exitCode,
           }),
         };
       },
@@ -575,18 +620,26 @@ test('router: a requeue that exits 0 lands in done, and earlier failed attempts 
       now: () => new Date('2026-11-08T20:00:00Z'),
     });
 
+    const fail1 = await inboxRunner.tick();
+    const fail2 = await inboxRunner.tick();
+    assert.equal(fail1.status, 'failed');
+    assert.equal(fail2.status, 'failed');
+    assert.equal(inboxRunner.getConsecutiveFailures(), 2);
+
     const result = await inboxRunner.tick();
     assert.equal(result.status, 'done');
-    assert.equal(result.taskId, 'requeued-task');
+    assert.equal(result.taskId, '03-requeued-task');
+    assert.equal(result.quotaFallbackTriggered, true);
     assert.equal(result.requeued, true);
     assert.equal(result.requeueCount, 1);
+    assert.equal(result.attempts.length, 3);
     assert.equal(result.prUrl, 'https://github.com/Trollz1004/dream-online/pull/362');
     assert.equal(inboxRunner.getConsecutiveFailures(), 0);
     assert.equal(inboxRunner.isStopped(), false);
 
-    assert.ok(fs.existsSync(path.join(folders.done, 'requeued-task.md')));
-    assert.ok(fs.existsSync(path.join(folders.done, 'requeued-task.log')));
-    assert.ok(!fs.existsSync(path.join(folders.failed, 'requeued-task.md')));
+    assert.ok(fs.existsSync(path.join(folders.done, '03-requeued-task.md')));
+    assert.ok(fs.existsSync(path.join(folders.done, '03-requeued-task.log')));
+    assert.ok(!fs.existsSync(path.join(folders.failed, '03-requeued-task.md')));
   } finally {
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
