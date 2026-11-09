@@ -1874,8 +1874,7 @@ export class InboxRunner {
         this.livenessRequeuedTaskIds.delete(parsed.id);
 
         const lastAttemptExitedZero = pollResult.exitCode === 0;
-        const passedJudgeWithPr = Boolean(judgeEval.passed && judgeEval.prUrl);
-        const succeeded = passedJudgeWithPr || lastAttemptExitedZero;
+        const succeeded = Boolean(judgeEval.prUrl) && (judgeEval.passed || lastAttemptExitedZero);
 
         if (succeeded) {
           finalStatus = 'done';

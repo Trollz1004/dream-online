@@ -453,7 +453,7 @@ test('Inbox Item 5e: the three-failure stop halts after three consecutive failur
             done: true,
             prUrl: parsePrUrlFromOutput(output),
             output,
-            exitCode: 0,
+            exitCode: shouldSucceed ? 0 : 1,
           }),
         };
       },
@@ -481,17 +481,112 @@ test('Inbox Item 5e: the three-failure stop halts after three consecutive failur
     const r4Stopped = await inboxRunner.tick();
     assert.equal(r4Stopped.status, 'stopped-three-failures');
     assert.ok(fs.existsSync(path.join(folders.queued, '04-task.md')));
+    assert.equal(inboxRunner.isStopped(), true);
 
-    // Human clears failed/ -> runner resumes and processes 04-task.md
-    for (const f of fs.readdirSync(folders.failed)) {
-      fs.rmSync(path.join(folders.failed, f), { force: true });
-    }
+    // Verify line written to decisions.log
+    const logged = readDecisionLog(decisionsLogPath);
+    const stoppedRecord = logged.find((r) => r.reason.includes('stopped:'));
+    assert.ok(stoppedRecord, 'decisions.log carries the stopped entry');
+    assert.ok(stoppedRecord.reason.includes('01-task.md'));
+    assert.ok(stoppedRecord.reason.includes('02-task.md'));
+    assert.ok(stoppedRecord.reason.includes('03-task.md'));
+    assert.ok(stoppedRecord.reason.includes('failed-cleared'));
+
+    // Verify line written to runner-restart.log
+    assert.ok(fs.existsSync(inboxRunner.getRunnerRestartLogPath()));
+    const restartLog = fs.readFileSync(inboxRunner.getRunnerRestartLogPath(), 'utf8');
+    assert.ok(restartLog.includes('runner stopped: 3 failures in failed'));
+    assert.ok(restartLog.includes('01-task.md'));
+    assert.ok(restartLog.includes('failed-cleared'));
+
+    // Moving 1 file to failed-cleared/ leaves 2 in failed/ (< 3) -> resumes on its own without restart
+    const failedClearedDir = path.join(inboxDir, 'failed-cleared');
+    fs.mkdirSync(failedClearedDir, { recursive: true });
+    fs.renameSync(
+      path.join(folders.failed, '01-task.md'),
+      path.join(failedClearedDir, '01-task.md')
+    );
     shouldSucceed = true;
 
     const r4Resumed = await inboxRunner.tick();
     assert.equal(r4Resumed.status, 'done');
     assert.equal(r4Resumed.taskId, '04-task');
     assert.ok(fs.existsSync(path.join(folders.done, '04-task.md')));
+    assert.equal(inboxRunner.isStopped(), false);
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('router: a requeue that exits 0 lands in done, and earlier failed attempts do not count toward the three-failure stop', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-inbox-requeue-done-'));
+  try {
+    const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+    const worktreeParentDir = path.join(tmpRoot, 'antigravity');
+    const decisionsLogPath = path.join(tmpRoot, 'decisions.log');
+    const folders = ensureInboxFolders(inboxDir);
+
+    fs.writeFileSync(
+      path.join(folders.queued, 'requeued-task.md'),
+      ['# Phone fixes', 'lane: design-visual', 'repo: dream-online', '', 'Fix phone header and run Eyes gate.'].join('\n'),
+      'utf8'
+    );
+
+    let attemptCount = 0;
+    const mockAdapter: DispatchAdapter = {
+      name: 'agy',
+      async dispatch(input: DispatchJobInput): Promise<DispatchHandle> {
+        attemptCount += 1;
+        const isRequeue = attemptCount > 1;
+        const output = isRequeue
+          ? [
+              '- **Pull Request**: https://github.com/Trollz1004/dream-online/pull/362',
+              '- **Eyes gate (`--spec docs/house/HOUSE-MOTION-RULE.md`)**: `PASS · Eyes gate v1.1 · average 4.71 of 5 · lowest 3 (Layout match) · requeued-task`',
+              'agy exit 0 at 2026-11-09T00:30:50.433Z',
+            ].join('\n')
+          : 'Attempt 1 failed: timeout without PR.\nagy exit 1 at 2026-11-09T00:10:00.000Z';
+        return {
+          jobId: input.jobId ?? `mock-${attemptCount}`,
+          adapter: 'agy',
+          lane: input.lane,
+          harness: 'agy',
+          promptPath: path.join(tmpRoot, `prompt-${attemptCount}.txt`),
+          sanitizedPrompt: input.prompt,
+          mode: 'headless-cli',
+          httpSessionSupported: false,
+          note: 'mock requeue success test',
+          poll: async () => ({
+            done: true,
+            prUrl: parsePrUrlFromOutput(output),
+            output,
+            exitCode: isRequeue ? 0 : 1,
+          }),
+        };
+      },
+    };
+
+    const { runner: cmdRunner } = createMockInboxCommandRunner({ ghSignedIn: true });
+    const inboxRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir,
+      decisionsLogPath,
+      adapter: mockAdapter,
+      commandRunner: cmdRunner,
+      now: () => new Date('2026-11-08T20:00:00Z'),
+    });
+
+    const result = await inboxRunner.tick();
+    assert.equal(result.status, 'done');
+    assert.equal(result.taskId, 'requeued-task');
+    assert.equal(result.requeued, true);
+    assert.equal(result.requeueCount, 1);
+    assert.equal(result.prUrl, 'https://github.com/Trollz1004/dream-online/pull/362');
+    assert.equal(inboxRunner.getConsecutiveFailures(), 0);
+    assert.equal(inboxRunner.isStopped(), false);
+
+    assert.ok(fs.existsSync(path.join(folders.done, 'requeued-task.md')));
+    assert.ok(fs.existsSync(path.join(folders.done, 'requeued-task.log')));
+    assert.ok(!fs.existsSync(path.join(folders.failed, 'requeued-task.md')));
   } finally {
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
