@@ -66,6 +66,7 @@ export const DEFAULT_BASE_BRANCH = 'origin/main';
 export const DEFAULT_REPOS_PATH = path.join(ROUTER_DIR, 'repos.json');
 export const DEFAULT_REPO_NAME = 'dream-online';
 export const ANTIGRAVITY_REPO_ROOT_ENV = 'ANTIGRAVITY_REPO_ROOT';
+export const DREAM_INTAKE_REPO_ROOT_ENV = 'DREAM_INTAKE_REPO_ROOT';
 export const MAX_CONSECUTIVE_FAILURES = 3;
 export const LANE_LIVENESS_TIMEOUT_MS = 10 * 60 * 1000;
 export const LANE_PROCESS_MISSING_REASON = 'lane process missing';
