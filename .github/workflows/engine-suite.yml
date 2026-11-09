@@ -1,9 +1,7 @@
-name: DREAM Engine & Combat Slice Suite
+name: DREAM Engine suite
 
-# Runs the 100% in-house WebGPU/WebGL2 + TypeScript DREAM Engine & Sunken Bastion
-# combat slice test suite (npm run lint && npm test — 51/51 checks).
-# Keeps the job display name "Godot headless suite" so the existing GitHub
-# branch-protection required status check name on main is satisfied.
+# This suite is the in-house DREAM Engine's lint and tests and is a required
+# check on main.
 
 on:
   push:
@@ -14,7 +12,7 @@ permissions:
 
 jobs:
   headless-suite:
-    name: Godot headless suite
+    name: Engine headless suite
     runs-on: ubuntu-latest
     timeout-minutes: 15
 

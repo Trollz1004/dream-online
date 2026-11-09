@@ -52,9 +52,9 @@ Stage 0, first light. A ground plane, a sky with a sun, a capsule that walks
 with W A S D, the mouse looks, Escape frees the mouse, N toggles Day and
 Night, a frame-rate pill at the bottom right. Hosted.
 
-Stage 1, combat parity. Reproduce the DREAM combat slice exactly as the
-reference repository specifies it in `docs/gdd/02-action-combat.md` and
-`game/godot/DreamSlice/scripts/combo_list.gd`: dash with invulnerability
+Stage 1, combat parity. Reproduce the DREAM combat slice in the in-house DREAM
+Engine (`src/engine/`) exactly as the reference repository specifies it in
+`docs/gdd/02-action-combat.md` and `src/engine/combat/combo.ts`: dash with invulnerability
 frames (hold Shift and a direction, then an action key), a training dummy that
 winds up for 1.4 seconds, locks its line at the start of the wind-up, then
 fires along it; the character glows yellow during the invulnerable window and
@@ -104,8 +104,8 @@ Reference repository, read-only: `https://github.com/Trollz1004/dream-online`.
 Read first: `docs/gdd/02-action-combat.md`,
 `docs/gdd/08-day-dreams-night-dreams-world.md`,
 `docs/gdd/09-interface-style.md`, `docs/tech/data-contracts.md`,
-`game/godot/DreamSlice/scripts/combo_list.gd`,
-`game/godot/DreamSlice/scripts/render_profile.gd`.
+`src/engine/combat/combo.ts`,
+`src/engine/renderer/render-profile.ts` (in-house DREAM Engine).
 
 Start with Stage 0 now. When it runs at a link, write `HANDBACK.md` and stop.
 
@@ -125,8 +125,8 @@ Start with Stage 0 now. When it runs at a link, write `HANDBACK.md` and stop.
   tool. Cloud Run pricing applies by usage; the AI Studio preview link is the
   zero-cost fallback if a deploy is ever unwanted.
 - Stages end on a screen because Joshua decides from a screen, never from a
-  spec. Stage 1 is parity with the Godot slice so the new engine is measured
-  against something that already runs.
+  spec. Stage 1 is full combat-slice parity in the in-house DREAM Engine so the
+  runtime is measured against the verified combat contract.
 - Joshua ruled the same afternoon, when the lane reached the Publish step:
   nothing is published, deployed or hosted on Cloud Run until he says
   finalize, because that step costs him money. Everything stays in AI Studio,
@@ -148,8 +148,8 @@ Start with Stage 0 now. When it runs at a link, write `HANDBACK.md` and stop.
    imports none of them.
 4. Grep for other games' names, keys and absolute paths.
 5. Write the verdict in `ops/node/JOURNAL.md` and the next stage's go or
-   no-go in `docs/DREAM-DISPATCH.md`. The Godot slice stays the public demo
-   until Stage 1 is verified on screen.
+   no-go in `docs/DREAM-DISPATCH.md`. The in-house DREAM Engine (`src/engine/`)
+   is the public demo once Stage 1 is verified on screen.
 
 ## Part 4. Open items Joshua may want to rule on later
 

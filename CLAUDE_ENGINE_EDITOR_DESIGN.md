@@ -624,18 +624,16 @@ four hard platform constraints visible in the codebase today:
 6. WHAT COULD NOT BE DETERMINED FROM THE PROJECT FILES
 ================================================================================
 
-1. **External Godot `DreamSlice` & Markdown Spec Files Referenced in File Headers**:
-   Multiple files in `/src/engine/` cite external files in their top comments that do **not**
-   exist in this repository:
+1. **In-House DREAM Engine Spec & Reference Parity Notes in File Headers**:
+   Multiple files in `/src/engine/` cite design and parity notes in their top comments:
    - `docs/gdd/02-action-combat.md` (cited in `/src/engine/combat/combat-manager.ts` line 5,
      `dash-state.ts` line 3, `sentinel.ts` line 3)
    - `docs/tech/data-contracts.md` and `specs/001-world-bus-cross-eyed-slice` (cited in
      `/src/engine/contracts/world-event.ts` line 3 and `/src/engine/combat/event-log.ts` line 3)
-   - `game/godot/DreamSlice/scripts/render_profile.gd`, `player.gd`, `dummy.gd`, `combo.gd`,
-     `combo_list.gd` (cited in `/src/engine/renderer/render-profile.ts` line 3,
-     `/src/engine/controller/character-controller.ts` line 24, `/src/engine/combat/sentinel.ts` line 3,
-     `/src/engine/combat/combo.ts` line 3).
-   None of `docs/`, `specs/`, or `game/godot/` are present in the workspace directory tree.
+   - In-house DREAM Engine parity modules for render profile, player controller, sentinel dummy,
+     and combo chain (implemented in `/src/engine/renderer/render-profile.ts`,
+     `/src/engine/controller/character-controller.ts`, `/src/engine/combat/sentinel.ts`,
+     and `/src/engine/combat/combo.ts`).
 2. **Checkout / Payment & `dream-online.net` Deployment Infrastructure**:
    While the prompt notes DREAM Online is served from `dream-online.net` with its own checkout,
    there are no checkout, payment, or deployment config files for `dream-online.net` inside this

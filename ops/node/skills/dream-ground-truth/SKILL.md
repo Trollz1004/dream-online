@@ -51,8 +51,9 @@ Each line in the report exists because a session lost time to it.
   work uncommitted. The next session had to read the diff and work out whether it
   was its own. Commit per unit of work, always with an explicit pathspec, never
   `git add -A`.
-- **Records.** The dispatch described Unreal for a day after Godot became the
-  engine, and the README pointed at three ports nothing on this machine serves.
+- **Records.** The dispatch described Unreal after the engine decision moved (the
+  engine is the in-house DREAM Engine in `src/engine/`), and the README pointed
+  at three ports nothing on this machine serves.
   Anyone reading either was sent somewhere false. The dispatch carries a
   `Last updated:` line; move it whenever the file is touched.
 - **Installed copies.** `drift.cmd` and the launch skill exist twice, tracked and
