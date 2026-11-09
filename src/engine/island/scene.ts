@@ -728,8 +728,8 @@ export function resolveIslandSlicePlacement(
   }
 
   // 'summoned' or 'service-table': Using Fable's Anvil summons the same Armor Truck beside the player.
-  const playerPos: Vec3 = options.playerPosition ?? [0, DECK_Y, -20.5];
-  const playerYaw = options.playerYaw ?? 0.95;
+  const playerPos: Vec3 = options.playerPosition ?? [-8.5, DECK_Y, -35.2];
+  const playerYaw = options.playerYaw ?? 1.65;
   const used = useFablesAnvil(baseAnvil, playerPos, {
     nowSec: options.nowSec ?? 12,
     spawnOffset: [2.4, 0, -1.6],
@@ -752,8 +752,8 @@ export function resolveIslandSlicePlacement(
     activeServiceTable: truckState.serviceTable,
     playerPos,
     playerYaw,
-    cameraEye: [playerPos[0] - 4.2, cy + 2.2, playerPos[2] + 4.2] as Vec3,
-    cameraTarget: [cx + 0.45, cy + 1.0, cz + 0.35] as Vec3,
+    cameraEye: [playerPos[0] - 3.6, cy + 2.15, playerPos[2] + 3.8] as Vec3,
+    cameraTarget: [cx + 0.55, cy + 0.95, cz + 0.35] as Vec3,
   });
 }
 
