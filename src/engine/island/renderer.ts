@@ -13,11 +13,13 @@ import {
   BLUR_WGSL, BRIGHT_WGSL, COMMON_WGSL, COMPOSITE_WGSL, GRASS_WGSL, MESH_WGSL, SHAFTS_WGSL, SKY_WGSL, VFX_WGSL, WATER_WGSL,
 } from './shaders.ts';
 import {
-  buildBroadleaf, buildFox, buildPine, buildRock, buildStaticScene, buildTerrain, type PointLightDef, type WindmillRig,
+  buildArmorTruckMesh, buildBroadleaf, buildFox, buildPine, buildRock, buildStaticScene, buildTerrain, type PointLightDef, type WindmillRig, type WorldDayPhase,
 } from './scene.ts';
 import {
   WATER_Y, grassPlacements, rockPlacements, shellSurfaceLocal, treePlacements, worldToTurtleLocal,
 } from './world.ts';
+import { IslandWebGL2Fallback } from './webglFallback.ts';
+import type { ArmorTruckState } from '../../game/economy/smith/index.ts';
 
 const HDR_FORMAT: GPUTextureFormat = 'rgba16float';
 const DEPTH_FORMAT: GPUTextureFormat = 'depth32float';
@@ -116,6 +118,7 @@ export class IslandRenderer {
 
   private terrain: GpuMesh | null = null;
   private world: GpuMesh | null = null;
+  private armorTruck: GpuMesh | null = null;
   private fox: GpuMesh | null = null;
   private rocks: GpuMesh | null = null;
   private treeMeshes: GpuMesh[] = [];
@@ -123,8 +126,13 @@ export class IslandRenderer {
   private grassCount = 0;
   private windmills: WindmillRig[] = [];
   private lanterns: PointLightDef[] = [];
+  private truckLanterns: PointLightDef[] = [];
+  private currentTruckState: ArmorTruckState | null = null;
+  private currentTruckYaw: number | undefined = undefined;
   private treeInstances: Float32Array[] = [];
   private lastLodUpdate = -1;
+  private webglFallback: IslandWebGL2Fallback | null = null;
+  worldDayPhase: WorldDayPhase = 'day';
 
   private renderW = 0;
   private renderH = 0;
@@ -144,32 +152,81 @@ export class IslandRenderer {
     this.canvas = canvas;
   }
 
-  async init(tier: QualityTier, fallback = false): Promise<boolean> {
-    if (!('gpu' in navigator)) return false;
-    const adapter = await navigator.gpu.requestAdapter(fallback ? { forceFallbackAdapter: true } : { powerPreference: 'high-performance' });
-    if (!adapter) return false;
-    const info = (adapter as GPUAdapter & { info?: GPUAdapterInfo }).info;
-    this.adapterInfo = info ? `${info.vendor || ''} ${info.architecture || ''} ${info.description || ''}`.trim() : 'WebGPU adapter';
-    this.timestamps = adapter.features.has('timestamp-query');
-    this.device = await adapter.requestDevice({
-      requiredFeatures: this.timestamps ? ['timestamp-query'] : [],
-      requiredLimits: { maxStorageBufferBindingSize: adapter.limits.maxStorageBufferBindingSize },
+  private initWebGL2Fallback(tier: QualityTier): boolean {
+    const gl = this.canvas.getContext('webgl2', {
+      antialias: true,
+      preserveDrawingBuffer: true,
+      powerPreference: 'high-performance',
     });
-    this.context = this.canvas.getContext('webgpu') as GPUCanvasContext;
-    this.format = navigator.gpu.getPreferredCanvasFormat();
-    this.context.configure({ device: this.device, format: this.format, alphaMode: 'opaque' });
-    this.createStatic();
-    this.createPipelines();
-    if (this.timestamps) {
-      this.querySet = this.device.createQuerySet({ type: 'timestamp', count: 2 });
-      this.queryResolve = this.device.createBuffer({ size: 16, usage: GPUBufferUsage.QUERY_RESOLVE | GPUBufferUsage.COPY_SRC });
-      for (let i = 0; i < 8; i++) {
-        this.queryReadback.push(this.device.createBuffer({ size: 16, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ }));
-        this.readbackBusy.push(false);
+    if (!gl) return false;
+    this.adapterInfo = 'WebGL2 Fallback Adapter';
+    this.tier = tier;
+    this.webglFallback = new IslandWebGL2Fallback(gl);
+    this.webglFallback.setTier(tier);
+    if (this.currentTruckState) {
+      this.webglFallback.setArmorTruck(this.currentTruckState, this.currentTruckYaw);
+    }
+    return true;
+  }
+
+  async init(tier: QualityTier, fallback = false): Promise<boolean> {
+    if ('gpu' in navigator && !fallback) {
+      try {
+        const adapter =
+          (await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' })) ??
+          (await navigator.gpu.requestAdapter({ forceFallbackAdapter: true }));
+        if (adapter) {
+          const info = (adapter as GPUAdapter & { info?: GPUAdapterInfo }).info;
+          this.adapterInfo = info ? `${info.vendor || ''} ${info.architecture || ''} ${info.description || ''}`.trim() : 'WebGPU adapter';
+          this.timestamps = adapter.features.has('timestamp-query');
+          this.device = await adapter.requestDevice({
+            requiredFeatures: this.timestamps ? ['timestamp-query'] : [],
+            requiredLimits: { maxStorageBufferBindingSize: adapter.limits.maxStorageBufferBindingSize },
+          });
+          this.context = this.canvas.getContext('webgpu') as GPUCanvasContext;
+          this.format = navigator.gpu.getPreferredCanvasFormat();
+          this.context.configure({ device: this.device, format: this.format, alphaMode: 'opaque' });
+          this.createStatic();
+          this.createPipelines();
+          if (this.timestamps) {
+            this.querySet = this.device.createQuerySet({ type: 'timestamp', count: 2 });
+            this.queryResolve = this.device.createBuffer({ size: 16, usage: GPUBufferUsage.QUERY_RESOLVE | GPUBufferUsage.COPY_SRC });
+            for (let i = 0; i < 8; i++) {
+              this.queryReadback.push(this.device.createBuffer({ size: 16, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ }));
+              this.readbackBusy.push(false);
+            }
+          }
+          this.setTier(tier);
+          return true;
+        }
+      } catch {
+        // Fall through to WebGL2 fallback when WebGPU device creation fails in headless Chromium.
       }
     }
-    this.setTier(tier);
-    return true;
+    return this.initWebGL2Fallback(tier);
+  }
+
+  setWorldDayPhase(phase: WorldDayPhase) {
+    this.worldDayPhase = phase;
+  }
+
+  setArmorTruckState(truckState: ArmorTruckState | null, yawOverride?: number) {
+    this.currentTruckState = truckState;
+    this.currentTruckYaw = yawOverride;
+    if (this.webglFallback) {
+      this.webglFallback.setArmorTruck(truckState, yawOverride);
+      return;
+    }
+    if (!this.device) return;
+    this.destroyMesh(this.armorTruck);
+    if (!truckState || truckState.mode === 'town-day-depot') {
+      this.armorTruck = null;
+      this.truckLanterns = [];
+      return;
+    }
+    const built = buildArmorTruckMesh(truckState, yawOverride);
+    this.armorTruck = this.upload(built.mesh, IslandRenderer.identityInstance());
+    this.truckLanterns = built.lanterns;
   }
 
   // -------------------------------------------------------------------------
@@ -362,6 +419,13 @@ export class IslandRenderer {
 
   setTier(tier: QualityTier) {
     this.tier = tier;
+    if (this.webglFallback) {
+      this.webglFallback.setTier(tier);
+      if (this.currentTruckState) {
+        this.webglFallback.setArmorTruck(this.currentTruckState, this.currentTruckYaw);
+      }
+      return;
+    }
     const t0 = performance.now();
     [this.terrain, this.world, this.fox, this.rocks, ...this.treeMeshes].forEach((m) => this.destroyMesh(m));
     this.grassBuf?.destroy();
@@ -372,6 +436,9 @@ export class IslandRenderer {
     this.lanterns = scene.lanterns;
     this.world = this.upload(scene.world, IslandRenderer.identityInstance());
     this.fox = this.upload(buildFox(), IslandRenderer.identityInstance());
+    if (this.currentTruckState) {
+      this.setArmorTruckState(this.currentTruckState, this.currentTruckYaw);
+    }
 
     // Rocks (prefix of the persistent list).
     const rp = rockPlacements().slice(0, tier.rockCount);
@@ -533,6 +600,7 @@ export class IslandRenderer {
     pass.setPipeline(this.meshPipe);
     this.drawMesh(pass, this.terrain);
     this.drawMesh(pass, this.world);
+    this.drawMesh(pass, this.armorTruck);
     this.drawMesh(pass, this.rocks);
     for (const t of this.treeMeshes) this.drawMesh(pass, t);
     this.drawMesh(pass, this.fox);
@@ -544,11 +612,24 @@ export class IslandRenderer {
   }
 
   render(s: FrameState) {
+    if (this.webglFallback) {
+      this.webglFallback.render(s, {
+        sunDir: this.sunDir,
+        sunIntensity: this.sunIntensity,
+        fogDensity: this.fogDensity,
+        exposure: this.exposure,
+        worldDayPhase: this.worldDayPhase,
+        rotateSailFn: rotateSail,
+      });
+      return;
+    }
     this.ensureTargets();
     const d = this.device;
     const tier = this.tier;
     const aspect = this.renderW / this.renderH;
-    const L = this.sunDir;
+    const isNight = this.worldDayPhase === 'night';
+    const L = isNight ? v3.norm([-0.45, 0.52, -0.35]) : this.sunDir;
+    const sunInt = isNight ? 1.55 : this.sunIntensity;
 
     // Cameras.
     const main = this.writeCamera(this.camUbo, s.eye, s.target, s.fovY, aspect, false);
@@ -572,15 +653,23 @@ export class IslandRenderer {
     const f = this.frameData;
     f.fill(0);
     f.set(lightViewProj, 0);
-    f.set([L[0], L[1], L[2], this.sunIntensity], 16);
-    f.set([1.0, 0.9, 0.76, 0], 20);
-    f.set([0.2, 0.43, 0.95, 0], 24);
-    f.set([0.6, 0.74, 0.9, 0].map((x) => x * 1.05), 28);
-    f.set([0.42, 0.37, 0.28, 0].map((x) => x * 0.5), 32);
+    f.set([L[0], L[1], L[2], sunInt], 16);
+    f.set(isNight ? [0.58, 0.72, 0.98, 0] : [1.0, 0.9, 0.76, 0], 20);
+    f.set(isNight ? [0.04, 0.07, 0.16, 0] : [0.2, 0.43, 0.95, 0], 24);
+    f.set(isNight ? [0.1, 0.15, 0.28, 0] : [0.6, 0.74, 0.9, 0].map((x) => x * 1.05), 28);
+    f.set(isNight ? [0.08, 0.09, 0.12, 0] : [0.42, 0.37, 0.28, 0].map((x) => x * 0.5), 32);
     f.set([s.time, tier.shadowTaps, tier.detailNormals ? 1 : 0, tier.caustics ? 1 : 0], 36);
     f.set([this.fogDensity, 1 / tier.shadowMapSize, tier.grassDistance, this.exposure], 40);
     f.set([s.foxPos[0], s.foxPos[1], s.foxPos[2], s.foxInWater ? 1 : 0], 44);
-    const lights: { pos: Vec3; color: Vec3; radius: number; intensity: number }[] = this.lanterns.map((l) => ({ ...l, intensity: 2.2 }));
+    const lights: { pos: Vec3; color: Vec3; radius: number; intensity: number }[] = [
+      ...this.truckLanterns.map((l) => ({ ...l, intensity: isNight ? 4.2 : 2.8 })),
+      ...this.lanterns.map((l) => ({ ...l, intensity: isNight ? 3.2 : 2.2 })),
+    ];
+    lights.sort(
+      (a, b) =>
+        Math.hypot(a.pos[0] - s.eye[0], a.pos[2] - s.eye[2]) -
+        Math.hypot(b.pos[0] - s.eye[0], b.pos[2] - s.eye[2]),
+    );
     if (s.cast) {
       const age = s.time - s.cast.start;
       const env = smoothstep(0, 0.2, age) * (1 - smoothstep(0.6, 2.2, age));
@@ -652,6 +741,7 @@ export class IslandRenderer {
       pass.setBindGroup(0, this.camBG);
       pass.setBindGroup(1, this.frameShadowBG);
       this.drawMesh(pass, this.world);
+      this.drawMesh(pass, this.armorTruck);
       this.drawMesh(pass, this.rocks);
       for (const t of this.treeMeshes) this.drawMesh(pass, t);
       this.drawMesh(pass, this.fox);

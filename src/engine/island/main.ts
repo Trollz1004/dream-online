@@ -1,19 +1,37 @@
 /**
- * Island test scene — entry point: fox controller, follow camera, input, HUD, benchmark.
+ * Island test scene — entry point: fox controller, follow camera, input, HUD, benchmark,
+ * and Fable's town smith (`fable-smith`), night-route Armor Truck + pop-up camper, Fable's Anvil
+ * summon beside the player, and Smith Service Table (`?slice=town|night-midway|summoned|service-table`).
  * URL flags: ?tier=low|medium|high|ultra  ?capture=1 (hide HUD)  ?bench=1 (all-tier benchmark)
  *            ?autopilot=1 (scripted run for video)  ?manual=1 (time advanced only by window.__ISLAND__.step)
+ *            ?slice=town|night-midway|summoned|service-table
  */
+import React from 'react';
+import { createRoot, type Root } from 'react-dom/client';
 import { type Mat4, type Vec3, multiply, rotationX, rotationY, rotationZ, scaling, translation, v3, clamp, lerp } from './math.ts';
 import { IslandRenderer, type CastState, type FrameState } from './renderer.ts';
-import { FOX_BONES, FOX_PIVOTS } from './scene.ts';
+import {
+  FOX_BONES,
+  FOX_PIVOTS,
+  resolveIslandSlicePlacement,
+  type IslandSliceMode,
+  type IslandSlicePlacementOptions,
+  type IslandSlicePlacementState,
+} from './scene.ts';
 import { TIERS, TIER_ORDER, parseTier, type TierName } from './quality.ts';
 import { WATER_Y, groundHeight, terrainHeight } from './world.ts';
+import { SmithServiceModal } from '../../ui/SmithServiceModal.tsx';
+import type { SmithLocationKind } from '../../game/economy/smith/index.ts';
 
 const params = new URLSearchParams(location.search);
 const capture = params.get('capture') === '1';
 const benchMode = params.get('bench') === '1';
 const autopilot = params.get('autopilot') === '1';
 const manual = params.get('manual') === '1';
+const VALID_SLICE_MODES: readonly IslandSliceMode[] = ['town', 'night-midway', 'summoned', 'service-table'];
+const initialSliceParam = params.get('slice') as IslandSliceMode | null;
+const initialSliceMode: IslandSliceMode | null =
+  initialSliceParam && VALID_SLICE_MODES.includes(initialSliceParam) ? initialSliceParam : null;
 const ELEMENTS = ['Fire', 'Water', 'Wind', 'Earth'];
 
 interface Fox {
@@ -158,11 +176,91 @@ const canvas = document.getElementById('view') as HTMLCanvasElement;
 const hud = document.getElementById('hud') as HTMLDivElement;
 const help = document.getElementById('help') as HTMLDivElement;
 const fail = document.getElementById('fail') as HTMLDivElement;
+const smithModalHost = document.getElementById('smith-modal-root');
+let smithModalRoot: Root | null = smithModalHost ? createRoot(smithModalHost) : null;
 if (capture) { hud.style.display = 'none'; help.style.display = 'none'; }
 
 const renderer = new IslandRenderer(canvas);
 let tierName: TierName = parseTier(params.get('tier'));
 const fps = { frames: 0, acc: 0, value: 0, dts: [] as number[], gpu: [] as number[] };
+let currentPlacement: IslandSlicePlacementState | null = null;
+let sliceCameraLocked = false;
+
+function syncSmithModal() {
+  if (!smithModalRoot) return;
+  const open = Boolean(currentPlacement?.serviceTableOpen);
+  if (open && currentPlacement) {
+    canvas.style.filter = 'blur(5px) brightness(0.42) saturate(0.22)';
+    hud.style.display = 'none';
+    help.style.display = 'none';
+    const placement = currentPlacement;
+    smithModalRoot.render(
+      React.createElement(SmithServiceModal, {
+        isOpen: true,
+        location: placement.truckState.location,
+        anvilState: placement.anvilState,
+        activeCamp: placement.activeCamp,
+        truckState: placement.truckState,
+        playerPosition: placement.playerPos,
+        onChangeLocation: (nextLoc: SmithLocationKind) => {
+          if (nextLoc === 'town') {
+            applySlicePlacement('town', { keepServiceTableOpen: true });
+          } else if (nextLoc === 'route-truck') {
+            applySlicePlacement('night-midway', { keepServiceTableOpen: true });
+          } else {
+            applySlicePlacement('service-table');
+          }
+        },
+        onSummonAnvil: () => {
+          applySlicePlacement('service-table');
+        },
+        onClose: () => {
+          applySlicePlacement('summoned');
+        },
+      }),
+    );
+  } else {
+    canvas.style.filter = '';
+    if (!capture) {
+      hud.style.display = 'block';
+      help.style.display = 'block';
+    }
+    smithModalRoot.render(null);
+  }
+}
+
+function applySlicePlacement(
+  mode: IslandSliceMode,
+  opts: IslandSlicePlacementOptions & { keepServiceTableOpen?: boolean } = {},
+): IslandSlicePlacementState {
+  const resolved = resolveIslandSlicePlacement(mode, opts);
+  const serviceTableOpen = opts.keepServiceTableOpen ? true : resolved.serviceTableOpen;
+  currentPlacement = Object.freeze({
+    ...resolved,
+    serviceTableOpen,
+  });
+  renderer.setWorldDayPhase(currentPlacement.worldPhase);
+  renderer.setArmorTruckState(currentPlacement.truckState);
+  fox.pos = [...currentPlacement.playerPos] as Vec3;
+  fox.yaw = currentPlacement.playerYaw;
+  fox.speed = 0;
+  fox.vy = 0;
+  fox.grounded = true;
+  camState.eye = [...currentPlacement.cameraEye] as Vec3;
+  camState.target = [...currentPlacement.cameraTarget] as Vec3;
+  sliceCameraLocked = true;
+  syncSmithModal();
+  if (!capture && !currentPlacement.serviceTableOpen) {
+    const label =
+      mode === 'town'
+        ? `Town Smith (${currentPlacement.activeSmithNpc.npcId}) · Haven Town Landing`
+        : mode === 'night-midway'
+          ? `Fable's Armor Truck + Pop-Up Camper · Night Route Midway`
+          : `Fable's Anvil Summoned Truck + Pop-Up Camper · Beside Player (${currentPlacement.anvilState.charges}/${currentPlacement.anvilState.maxCharges} charges)`;
+    hud.textContent = `${label} · Press F for Service Table`;
+  }
+  return currentPlacement;
+}
 
 function setTier(t: TierName) {
   tierName = t;
@@ -199,19 +297,43 @@ function readInput() {
 
 function step(dt: number, input = readInput()) {
   worldTime += dt;
+  const hasManualMove =
+    input.fwd !== 0 ||
+    input.side !== 0 ||
+    input.jump ||
+    keys.has('ArrowLeft') ||
+    keys.has('ArrowRight');
+  if (hasManualMove) {
+    sliceCameraLocked = false;
+  }
   if (keys.has('ArrowLeft')) camState.yaw += dt * 1.8;
   if (keys.has('ArrowRight')) camState.yaw -= dt * 1.8;
-  updateFox(dt, input);
-  updateCamera(dt);
+  if (!sliceCameraLocked) {
+    updateFox(dt, input);
+    updateCamera(dt);
+  } else {
+    fox.phase += dt * 2.4;
+  }
 }
 
 function updateHud(dt: number) {
   fps.frames++; fps.acc += dt;
   if (fps.acc >= 0.5) {
     fps.value = fps.frames / fps.acc; fps.frames = 0; fps.acc = 0;
-    if (!capture) {
-      const g = renderer.gpuMs !== null ? `${renderer.gpuMs.toFixed(2)} ms GPU` : 'GPU timer n/a';
-      hud.textContent = `${TIERS[tierName].label} · ${fps.value.toFixed(0)} fps · ${g} · element: ${ELEMENTS[element]}`;
+    if (!capture && !currentPlacement?.serviceTableOpen) {
+      if (currentPlacement) {
+        const mode = currentPlacement.mode;
+        const label =
+          mode === 'town'
+            ? `Town Smith (${currentPlacement.activeSmithNpc.npcId}) · Haven Town Landing`
+            : mode === 'night-midway'
+              ? `Fable's Armor Truck + Pop-Up Camper · Night Route Midway`
+              : `Summoned Armor Truck + Pop-Up Camper · Beside Player (${currentPlacement.anvilState.charges}/${currentPlacement.anvilState.maxCharges} charges)`;
+        hud.textContent = `${label} · ${fps.value.toFixed(0)} fps · Press F for Service Table`;
+      } else {
+        const g = renderer.gpuMs !== null ? `${renderer.gpuMs.toFixed(2)} ms GPU` : 'GPU timer n/a';
+        hud.textContent = `${TIERS[tierName].label} · ${fps.value.toFixed(0)} fps · ${g} · element: ${ELEMENTS[element]}`;
+      }
     }
   }
 }
@@ -259,13 +381,38 @@ async function main() {
     fail.style.display = 'flex';
     return;
   }
-  updateCamera(0, true);
+  if (initialSliceMode) {
+    applySlicePlacement(initialSliceMode);
+  } else {
+    updateCamera(0, true);
+  }
   const api = {
     renderer, fox, camState, ripples,
     setTier: (t: TierName) => setTier(t),
     place: (x: number, z: number, yaw: number, camYaw = yaw, pitch = 0.16, dist = 3.6) => {
+      sliceCameraLocked = false;
       fox.pos = [x, groundHeight(x, z), z]; fox.yaw = yaw; camState.yaw = camYaw; camState.pitch = pitch; camState.dist = dist;
       fox.speed = 0; updateCamera(0, true);
+    },
+    setSliceMode: (mode: IslandSliceMode, opts?: IslandSlicePlacementOptions) => {
+      const res = applySlicePlacement(mode, opts);
+      renderer.render(frameState());
+      return res;
+    },
+    getSlicePlacement: () => currentPlacement,
+    summonAnvil: () => {
+      const res = applySlicePlacement('summoned', {
+        playerPosition: [fox.pos[0], fox.pos[1], fox.pos[2]],
+        playerYaw: fox.yaw,
+        nowSec: Math.round(worldTime),
+      });
+      renderer.render(frameState());
+      return res;
+    },
+    openServiceTable: () => {
+      const res = applySlicePlacement('service-table');
+      renderer.render(frameState());
+      return res;
     },
     cast: (el: number) => castElement(el),
     step: (dt: number, fwd = 0, side = 0, frames = 1) => {
@@ -315,6 +462,22 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyE') castElement();
   if (e.code === 'KeyT') renderer.tonemap = renderer.tonemap ? 0 : 1;
   if (e.code === 'KeyH') help.style.display = help.style.display === 'none' ? 'block' : 'none';
+  if (e.code === 'KeyF') {
+    if (currentPlacement?.serviceTableOpen) {
+      applySlicePlacement('summoned');
+    } else {
+      applySlicePlacement('service-table');
+    }
+  }
+  if (e.code === 'KeyV') {
+    applySlicePlacement('summoned', {
+      playerPosition: [fox.pos[0], fox.pos[1], fox.pos[2]],
+      playerYaw: fox.yaw,
+      nowSec: Math.round(worldTime),
+    });
+  }
+  if (e.code === 'KeyN') applySlicePlacement('night-midway');
+  if (e.code === 'KeyM') applySlicePlacement('town');
   if (['Space', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
 });
 window.addEventListener('keyup', (e) => keys.delete(e.code));
@@ -323,6 +486,7 @@ canvas.addEventListener('pointerdown', (e) => { dragging = true; canvas.setPoint
 canvas.addEventListener('pointerup', (e) => { dragging = false; canvas.releasePointerCapture(e.pointerId); });
 canvas.addEventListener('pointermove', (e) => {
   if (!dragging) return;
+  sliceCameraLocked = false;
   camState.yaw -= e.movementX * 0.005;
   camState.pitch = clamp(camState.pitch + e.movementY * 0.003, -0.05, 0.6);
 });

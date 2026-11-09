@@ -133,3 +133,5 @@ To give the player-driven Marketplace real economic purpose and in-game currency
 ## Wardrobe
 
 The wardrobe economy (bought is owned, skins never expire, every skin reaches the in-game currency store except the founder pet) is in `docs/gdd/12-wardrobe-needs-shop.md`.
+
+Town smith, Fable's Anvil, and Fable's Armor Truck live in `src/game/economy/smith` under the `docs/house` rulings (`docs/house/THE-HOUSE.md`, `docs/house/HOUSE-MOTION-RULE.md`, `docs/house/PAYMENT-ACCOUNTS-RULE.md`).
