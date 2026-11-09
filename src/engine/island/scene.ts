@@ -449,6 +449,8 @@ export function buildTownSmithForge(
   b.box([0, 2.48, 1.4], [1.85, 0.08, 0.08], TIMBER, MAT.WOOD, { aux: 0, transform: base });
   b.box([0, 2.48, -1.4], [1.85, 0.08, 0.08], TIMBER, MAT.WOOD, { aux: 0, transform: base });
   b.gableRoof([0, 2.55, 0], 1.85, 1.5, 0.78, 0.28, ROOF, MAT.ROOF, { transform: base });
+  b.gableEnd(1.85, 2.55, 0, 1.5, 0.78, 1, TIMBER, MAT.WOOD, { transform: base });
+  b.gableEnd(-1.85, 2.55, 0, 1.5, 0.78, -1, TIMBER, MAT.WOOD, { transform: base });
 
   // Stone brick forge hearth & chimney hood on the back-left (-X, -Z).
   b.box([-0.95, 0.55, -0.68], [0.68, 0.52, 0.56], [0.42, 0.4, 0.37], MAT.ROCK, { transform: base });
@@ -484,7 +486,7 @@ export function computeArmorTruckYaw(
   route: NightArmorTruckRoute = NIGHT_ARMOR_TRUCK_ROUTE,
 ): number {
   if (truckState.mode === 'summoned-to-player') {
-    return -0.55;
+    return -2.55;
   }
   const dx = route.destinationPosition[0] - route.originPosition[0];
   const dz = route.destinationPosition[2] - route.originPosition[2];
@@ -592,7 +594,10 @@ export function buildArmorTruckWithPopupCamper(
         b.cylinder([jx, 0.02, jz], [jx, 0.38, jz], 0.035, 0.035, 6, IRON_STEEL, MAT.METAL, { transform: base });
       }
     }
-    b.gableRoof([0, roofY, -3.0], 0.94, 1.22, truckState.camperDeployed ? 0.58 : 0.24, 0.16, ROOF, MAT.ROOF, { transform: base });
+    const roofH = truckState.camperDeployed ? 0.62 : 0.24;
+    b.gableRoof([0, roofY, -3.0], 0.94, 1.22, roofH, 0.16, ROOF, MAT.ROOF, { transform: base });
+    b.gableEnd(0.94, roofY, -3.0, 1.22, roofH, 1, CAMPER_CANVAS, MAT.PLASTER, { transform: base });
+    b.gableEnd(-0.94, roofY, -3.0, 1.22, roofH, -1, CAMPER_CANVAS, MAT.PLASTER, { transform: base });
   }
 
   // Warm forge lantern light on the truck.
@@ -603,6 +608,18 @@ export function buildArmorTruckWithPopupCamper(
 
   // When parked midway or summoned beside the player, deploy portable anvil & `fable-smith` NPC!
   if (truckState.camperDeployed) {
+    if (truckState.mode === 'night-route-parked-midway') {
+      // Weathered timber midway turnout platform so the night-route truck, pop-up camper, smith, and player stand on solid planks.
+      b.box([0.95, -0.05, -0.65], [2.85, 0.05, 4.45], WOOD_BASE, MAT.WOOD, { aux: 0, transform: base });
+      for (const [px, pz] of [
+        [-1.6, 3.3],
+        [3.4, 3.3],
+        [-1.6, -4.6],
+        [3.4, -4.6],
+      ] as [number, number][]) {
+        b.cylinder([px, -2.6, pz], [px, 0.95, pz], 0.14, 0.12, 8, TIMBER, MAT.WOOD, { aux: 1, transform: base });
+      }
+    }
     buildSmithAnvil(b, multiply(base, translation(1.75, 0.0, 0.55)));
     buildFableSmithFigure(b, multiply(multiply(base, translation(1.62, 0.0, -0.22)), rotationY(0.35)));
   }
@@ -689,8 +706,8 @@ export function resolveIslandSlicePlacement(
     const routeProgress = options.routeProgress ?? 0.5;
     const truckState = resolveArmorTruckState('night', routeProgress, null);
     const [mx, my, mz] = truckState.position;
-    const playerPos: Vec3 = options.playerPosition ?? [mx + 2.5, groundHeight(mx + 2.5, mz + 1.4), mz + 1.4];
-    const playerYaw = options.playerYaw ?? -1.1;
+    const playerPos: Vec3 = options.playerPosition ?? [mx - 2.35, my, mz + 0.95];
+    const playerYaw = options.playerYaw ?? 1.85;
     return Object.freeze({
       mode,
       worldPhase: 'night',
@@ -705,8 +722,8 @@ export function resolveIslandSlicePlacement(
       activeServiceTable: truckState.serviceTable,
       playerPos,
       playerYaw,
-      cameraEye: [mx + 5.4, my + 2.15, mz + 4.2] as Vec3,
-      cameraTarget: [mx + 0.35, my + 0.95, mz - 0.75] as Vec3,
+      cameraEye: [mx - 5.9, my + 2.25, mz + 4.35] as Vec3,
+      cameraTarget: [mx + 0.65, my + 1.0, mz + 0.45] as Vec3,
     });
   }
 
@@ -735,8 +752,8 @@ export function resolveIslandSlicePlacement(
     activeServiceTable: truckState.serviceTable,
     playerPos,
     playerYaw,
-    cameraEye: [playerPos[0] - 3.6, cy + 2.15, playerPos[2] + 3.8] as Vec3,
-    cameraTarget: [cx - 0.25, cy + 0.95, cz - 0.55] as Vec3,
+    cameraEye: [playerPos[0] - 4.2, cy + 2.2, playerPos[2] + 4.2] as Vec3,
+    cameraTarget: [cx + 0.45, cy + 1.0, cz + 0.35] as Vec3,
   });
 }
 
