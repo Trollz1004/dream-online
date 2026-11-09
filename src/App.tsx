@@ -45,6 +45,7 @@ import { OpenUiGameDevStudioModal } from './ui/OpenUiGameDevStudioModal.tsx';
 import { AaaVisualWorldCanvas } from './ui/AaaVisualWorldCanvas.tsx';
 import { CharacterCreatorModal } from './ui/CharacterCreatorModal.tsx';
 import { NeedsShopModal } from './ui/NeedsShopModal.tsx';
+import { SmithServiceModal } from './ui/SmithServiceModal.tsx';
 import {
   createInitialCreatorState,
   type CharacterCreatorState,
@@ -56,11 +57,15 @@ export default function App() {
   const isNeedsShopRequested =
     typeof window !== 'undefined' &&
     (window.location.search.includes('wardrobe=1') || window.location.search.includes('needs=1'));
+  const isSmithRequested =
+    typeof window !== 'undefined' &&
+    (window.location.search.includes('smith=1') || window.location.search.includes('anvil=1'));
   const isLegacyWebgpuRequested =
     typeof window !== 'undefined' &&
     (window.location.search.includes('legacyWebgpu=1') ||
       isCreatorRequested ||
-      isNeedsShopRequested);
+      isNeedsShopRequested ||
+      isSmithRequested);
 
   const [useAaaVisualMode, setUseAaaVisualMode] = useState(!isLegacyWebgpuRequested);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -107,6 +112,7 @@ export default function App() {
   const [isPitchOpen, setIsPitchOpen] = useState(false);
   const [isCreatorOpen, setIsCreatorOpen] = useState(isCreatorRequested);
   const [isNeedsShopOpen, setIsNeedsShopOpen] = useState(isNeedsShopRequested);
+  const [isSmithOpen, setIsSmithOpen] = useState(isSmithRequested);
   const [creatorState, setCreatorState] = useState<CharacterCreatorState>(() =>
     createInitialCreatorState(),
   );
@@ -293,7 +299,7 @@ export default function App() {
     };
   }, []);
 
-  const isGameMenuModalOpen = isCreatorOpen || isNeedsShopOpen;
+  const isGameMenuModalOpen = isCreatorOpen || isNeedsShopOpen || isSmithOpen;
 
   const isAnyModalOpen =
     isSettingsOpen ||
@@ -857,6 +863,10 @@ export default function App() {
       <NeedsShopModal
         isOpen={isNeedsShopOpen}
         onClose={() => setIsNeedsShopOpen(false)}
+      />
+      <SmithServiceModal
+        isOpen={isSmithOpen}
+        onClose={() => setIsSmithOpen(false)}
       />
       <SettingsModal
         isOpen={isSettingsOpen}

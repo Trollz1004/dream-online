@@ -4,7 +4,7 @@
  * Rulings (Josh, 2026-11-07 & 2026-11-08):
  *  - Fable's Anvil is a cash convenience item (`saves: 'walking'`). Nothing here buys power.
  *  - Uses are capped at 3 to 5 by the player's level and the size of the HP, mana or energy pool.
- *  - Using it calls Fable's Armor Truck + tow-behind triangle tent campsite next to the player
+ *  - Using it calls Fable's Armor Truck + pop-up camper next to the player
  *    and spawns the same smith NPC (`fable-smith`) with the same service table (`SMITH_SERVICE_TABLE`).
  *  - The camp despawns when the player walks away or after a timeout.
  */
@@ -137,8 +137,8 @@ export type UseAnvilResult =
     };
 
 /**
- * Consumes 1 charge of Fable's Anvil to summon Fable's Armor Truck and its tow-behind
- * triangle tent campsite next to the player, with the same smith NPC (`FABLE_SMITH_NPC`)
+ * Consumes 1 charge of Fable's Anvil to summon Fable's Armor Truck and its pop-up camper
+ * next to the player, with the same smith NPC (`FABLE_SMITH_NPC`)
  * and the same service table (`SMITH_SERVICE_TABLE`).
  * Refuses when `state.charges <= 0`.
  */
