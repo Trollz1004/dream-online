@@ -902,7 +902,7 @@ function makePrAdapter(tmpRoot: string, seen: DispatchJobInput[]): DispatchAdapt
 
 test('Repo map (ops/router/repos.json): dream-online is the runner root and ANTIGRAVITY comes from ANTIGRAVITY_REPO_ROOT', () => {
   const map = loadRepoMap();
-  assert.deepEqual(Object.keys(map.repos).sort(), ['ANTIGRAVITY', 'dream-online']);
+  assert.deepEqual(Object.keys(map.repos).sort(), ['ANTIGRAVITY', 'dream-intake', 'dream-online']);
   const selfRoot = path.join(os.tmpdir(), 'jev-self-root');
   const fakeHome = path.join(os.tmpdir(), 'jev-fake-home');
   const siblingRoot = path.join(os.tmpdir(), 'jev-antigravity-sibling');
@@ -948,7 +948,7 @@ test('Repo map: an unknown repo is refused with a clear message', () => {
     const res = resolveRepoTarget(name, { map, env: {} });
     assert.equal(res.ok, false, `${name} must be refused`);
     assert.ok(!res.ok && res.reason.includes(`unknown repo "${name}"`));
-    assert.ok(!res.ok && res.reason.includes('Known repos: ANTIGRAVITY, dream-online'));
+    assert.ok(!res.ok && res.reason.includes('Known repos: ANTIGRAVITY, dream-intake, dream-online'));
   }
 });
 
@@ -1036,7 +1036,7 @@ test('Repo selector: an unknown repo is refused, never dispatched, and lands in 
     const res = await inboxRunner.tick();
     assert.equal(res.status, 'refused-unknown-repo');
     assert.ok(res.reason.includes('unknown repo "dream-offline"'));
-    assert.ok(res.reason.includes('Known repos: ANTIGRAVITY, dream-online'));
+    assert.ok(res.reason.includes('Known repos: ANTIGRAVITY, dream-intake, dream-online'));
     assert.equal(seen.length, 0, 'adapter must never be called');
     assert.equal(
       commands.filter((c) => c.command === 'git').length,
@@ -1048,6 +1048,79 @@ test('Repo selector: an unknown repo is refused, never dispatched, and lands in 
     assert.ok(log.includes('unknown repo "dream-offline"'));
     assert.ok(!fs.existsSync(path.join(folders.running, 'typo-task.md')));
     assert.deepEqual(res.transitions, ['queued -> running', 'running -> failed']);
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('Repo selector: a task with repo: dream-intake resolves to that folder', async () => {
+  const map = loadRepoMap();
+  const fakeHome = path.join(os.tmpdir(), 'jev-fake-home-intake');
+  const customIntake = path.join(os.tmpdir(), 'jev-intake-custom');
+
+  // 1. Task file repo line parsing
+  assert.equal(parseInboxTaskFile('# Intake\nrepo: dream-intake\n\nTask body.', 'b.md').repo, 'dream-intake');
+
+  // 2. Default root from %USERPROFILE%\\antigravity\\dream-intake
+  const resolvedDefault = resolveRepoTarget('dream-intake', {
+    map,
+    env: { USERPROFILE: fakeHome },
+  });
+  assert.ok(resolvedDefault.ok);
+  assert.equal(
+    resolvedDefault.ok && resolvedDefault.target.root,
+    path.resolve(path.join(fakeHome, 'antigravity', 'dream-intake'))
+  );
+  assert.equal(resolvedDefault.ok && resolvedDefault.target.name, 'dream-intake');
+  assert.equal(resolvedDefault.ok && resolvedDefault.target.worktreePrefix, 'dream-intake-wt-inbox-');
+
+  // 3. Env variable DREAM_INTAKE_REPO_ROOT override
+  const resolvedEnv = resolveRepoTarget('dream-intake', {
+    map,
+    env: { DREAM_INTAKE_REPO_ROOT: customIntake, USERPROFILE: fakeHome },
+  });
+  assert.ok(resolvedEnv.ok);
+  assert.equal(resolvedEnv.ok && resolvedEnv.target.root, path.resolve(customIntake));
+  assert.equal(resolvedEnv.ok && resolvedEnv.target.name, 'dream-intake');
+
+  // 4. Inbox runner tick execution resolving repo: dream-intake to that folder
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-inbox-repo-intake-'));
+  try {
+    const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+    const worktreeParentDir = path.join(tmpRoot, 'antigravity');
+    const intakeRoot = path.join(tmpRoot, 'antigravity', 'dream-intake');
+    fs.mkdirSync(intakeRoot, { recursive: true });
+    const folders = ensureInboxFolders(inboxDir);
+    fs.writeFileSync(
+      path.join(folders.queued, 'intake-task.md'),
+      ['# Sync intake drop', 'repo: dream-intake', '', 'Copy drop into dream-intake.'].join('\n'),
+      'utf8'
+    );
+
+    const seen: DispatchJobInput[] = [];
+    const { runner: cmdRunner, commands } = createMockInboxCommandRunner({ ghSignedIn: true });
+    const inboxRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir,
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      adapter: makePrAdapter(tmpRoot, seen),
+      commandRunner: cmdRunner,
+      env: { DREAM_INTAKE_REPO_ROOT: intakeRoot },
+      now: () => new Date('2026-11-07T03:00:00Z'),
+    });
+
+    const res = await inboxRunner.tick();
+    assert.equal(res.status, 'done');
+    assert.equal(res.repo, 'dream-intake');
+    assert.equal(res.repoRoot, path.resolve(intakeRoot));
+    assert.equal(res.branchName, 'ai/inbox/intake-task');
+    assert.equal(res.worktreePath, path.join(worktreeParentDir, 'dream-intake-wt-inbox-intake-task'));
+
+    // Verify git worktree and commands ran in dream-intake root
+    const add = commands.find((c) => c.command === 'git' && c.args[0] === 'worktree' && c.args[1] === 'add');
+    assert.ok(add);
+    assert.deepEqual(add!.args, ['worktree', 'add', '-B', 'ai/inbox/intake-task', res.worktreePath, 'origin/main']);
+    assert.equal(add!.cwd, path.resolve(intakeRoot));
   } finally {
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
