@@ -429,10 +429,10 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
         onMouseEnter={() => setSelectedGearId(item.id)}
         onClick={() => setSelectedGearId(item.id)}
         style={{
-          backgroundColor: isChosen ? 'rgba(22, 22, 26, 0.92)' : 'rgba(10, 10, 12, 0.88)',
+          backgroundColor: isChosen ? 'rgba(18, 18, 22, 0.94)' : 'rgba(10, 10, 12, 0.9)',
           border: isChosen
-            ? '1px solid rgba(255, 255, 255, 0.42)'
-            : '1px solid rgba(255, 255, 255, 0.18)',
+            ? '1px solid rgba(255, 255, 255, 0.48)'
+            : '1px solid rgba(255, 255, 255, 0.22)',
           padding: isCompactViewport ? '5px 8px' : '12px 16px',
           display: 'flex',
           flexDirection: 'column',
@@ -466,10 +466,10 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
               fontWeight: 400,
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
-              color: '#E5E5EA',
+              color: '#F5F5F7',
               padding: isCompactViewport ? '1px 6px' : '2px 8px',
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              border: '1px solid rgba(255, 255, 255, 0.18)',
+              backgroundColor: 'rgba(10, 10, 12, 0.92)',
+              border: '1px solid rgba(255, 255, 255, 0.28)',
             }}
           >
             {costLabel}
@@ -488,14 +488,12 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
           <span
             style={{
               fontSize: isCompactViewport ? '11px' : '13px',
-              fontWeight: 300,
-              color: '#D1D1D6',
+              fontWeight: 400,
+              color: '#F5F5F7',
               lineHeight: 1.25,
             }}
           >
-            Tier Step: {item.tierStep} (+{item.statPercent}% {item.statChoice}) · Enhancement:{' '}
-            {item.enhancement} (+{item.enhancementBonusPercent}%) · Durability: {item.durability}/
-            {item.maxDurability}
+            {`Tier Step: ${item.tierStep} (+${item.statPercent}% ${item.statChoice}) · Enhancement: ${item.enhancement} (+${item.enhancementBonusPercent}%) · Durability: ${item.durability}/${item.maxDurability}`}
           </span>
 
           {quote.canApply ? (
@@ -509,8 +507,8 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
               style={{
                 height: isCompactViewport ? '22px' : '28px',
                 padding: isCompactViewport ? '0 8px' : '0 12px',
-                backgroundColor: 'rgba(255, 255, 255, 0.14)',
-                border: '1px solid rgba(255, 255, 255, 0.38)',
+                backgroundColor: 'rgba(18, 18, 22, 0.94)',
+                border: '1px solid rgba(255, 255, 255, 0.45)',
                 color: '#F5F5F7',
                 fontSize: isCompactViewport ? '11px' : '13px',
                 fontWeight: 400,
@@ -527,13 +525,13 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
               data-testid={`smith-disabled-${item.id}`}
               style={{
                 fontSize: '13px',
-                fontWeight: 300,
+                fontWeight: 400,
                 letterSpacing: '0.05em',
                 textTransform: 'uppercase',
-                color: '#C7C7CC',
+                color: '#F5F5F7',
                 padding: '2px 8px',
-                border: '1px solid rgba(255, 255, 255, 0.14)',
-                backgroundColor: 'rgba(10, 10, 12, 0.65)',
+                border: '1px solid rgba(255, 255, 255, 0.24)',
+                backgroundColor: 'rgba(10, 10, 12, 0.9)',
               }}
             >
               {actionLabel}
@@ -554,7 +552,7 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
         position: 'fixed',
         inset: 0,
         zIndex: 65,
-        backgroundColor: 'rgba(10, 10, 12, 0.68)',
+        backgroundColor: 'rgba(10, 10, 12, 0.72)',
         backdropFilter: 'blur(7px)',
         WebkitBackdropFilter: 'blur(7px)',
         color: '#F5F5F7',
@@ -568,49 +566,63 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
         overflow: 'hidden',
       }}
     >
-      {/* Top Header: Large, thin, light title at top left with a fine horizontal rule */}
-      <header style={{ flexShrink: 0 }}>
-        <div
+      {/* Top Header: Large, thin, light title at top left with one fine horizontal rule directly under it */}
+      <header
+        style={{
+          flexShrink: 0,
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <h1
           style={{
-            display: 'flex',
-            flexDirection: isCompactViewport ? 'column' : 'row',
-            alignItems: isCompactViewport ? 'flex-start' : 'baseline',
-            justifyContent: 'space-between',
-            gap: isCompactViewport ? '2px' : '16px',
-            paddingBottom: isCompactViewport ? '4px' : '12px',
+            margin: 0,
+            paddingRight: isCompactViewport ? '0' : '340px',
+            fontSize: isCompactViewport ? '18px' : '44px',
+            fontWeight: 200,
+            letterSpacing: '0.18em',
+            textTransform: 'uppercase',
+            color: '#F5F5F7',
+            lineHeight: 1.08,
           }}
         >
-          <h1
-            style={{
-              margin: 0,
-              fontSize: isCompactViewport ? '18px' : '44px',
-              fontWeight: 200,
-              letterSpacing: '0.18em',
-              textTransform: 'uppercase',
-              color: '#F5F5F7',
-              lineHeight: 1.08,
-            }}
-          >
-            FABLE&apos;S FORGE · SMITH SERVICE TABLE
-          </h1>
-          <div
-            style={{
-              fontSize: isCompactViewport ? '11px' : '14px',
-              fontWeight: 300,
-              letterSpacing: '0.06em',
-              color: '#D1D1D6',
-            }}
-          >
-            CLAUDE&apos;s N Joshua&apos;s · #TeamClaudeForLife
-          </div>
-        </div>
+          FABLE&apos;S FORGE · SMITH SERVICE TABLE
+        </h1>
         <div
+          role="separator"
+          aria-orientation="horizontal"
+          data-testid="smith-title-rule"
           style={{
             width: '100%',
             height: '1px',
-            backgroundColor: 'rgba(255, 255, 255, 0.22)',
+            marginTop: isCompactViewport ? '4px' : '8px',
+            backgroundColor: 'rgba(255, 255, 255, 0.5)',
           }}
         />
+        <div
+          style={
+            isCompactViewport
+              ? {
+                  marginTop: '3px',
+                  fontSize: '11px',
+                  fontWeight: 400,
+                  letterSpacing: '0.06em',
+                  color: '#F5F5F7',
+                }
+              : {
+                  position: 'absolute',
+                  right: 0,
+                  bottom: '9px',
+                  fontSize: '14px',
+                  fontWeight: 400,
+                  letterSpacing: '0.06em',
+                  color: '#F5F5F7',
+                }
+          }
+        >
+          CLAUDE&apos;s N Joshua&apos;s · #TeamClaudeForLife
+        </div>
       </header>
 
       {/* Main Content Area: Three columns per docs/gdd/09-interface-style.md */}
@@ -666,17 +678,17 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
                     padding: isCompactViewport ? '0 8px' : '0 14px',
                     cursor: 'pointer',
                     backgroundColor: isChosen
-                      ? 'rgba(255, 255, 255, 0.16)'
-                      : 'rgba(10, 10, 12, 0.62)',
-                    borderTop: 'none',
-                    borderRight: 'none',
-                    borderBottom: 'none',
+                      ? 'rgba(22, 22, 26, 0.94)'
+                      : 'rgba(10, 10, 12, 0.86)',
+                    borderTop: isChosen ? '1px solid rgba(255, 255, 255, 0.34)' : 'none',
+                    borderRight: isChosen ? '1px solid rgba(255, 255, 255, 0.34)' : 'none',
+                    borderBottom: isChosen ? '1px solid rgba(255, 255, 255, 0.34)' : 'none',
                     borderLeft: isChosen
-                      ? '2px solid rgba(255, 255, 255, 0.9)'
+                      ? '2px solid rgba(255, 255, 255, 0.95)'
                       : '2px solid transparent',
-                    color: isChosen ? '#F5F5F7' : '#D1D1D6',
+                    color: '#F5F5F7',
                     fontSize: isCompactViewport ? '12px' : '15px',
-                    fontWeight: isChosen ? 400 : 300,
+                    fontWeight: 400,
                     letterSpacing: '0.03em',
                     fontFamily: FONT_STACK,
                     textAlign: 'left',
@@ -692,8 +704,8 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
           <div
             data-testid="smith-anvil-panel"
             style={{
-              backgroundColor: 'rgba(10, 10, 12, 0.82)',
-              border: '1px solid rgba(255, 255, 255, 0.18)',
+              backgroundColor: 'rgba(10, 10, 12, 0.88)',
+              border: '1px solid rgba(255, 255, 255, 0.22)',
               padding: isCompactViewport ? '5px 8px' : '12px 14px',
               display: 'flex',
               flexDirection: 'column',
@@ -706,21 +718,21 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
                 fontWeight: 400,
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
-                color: '#D1D1D6',
+                color: '#F5F5F7',
               }}
             >
-              NPC: {FABLE_SMITH_NPC.name} ({FABLE_SMITH_NPC.npcId})
+              {`NPC: ${FABLE_SMITH_NPC.name} (${FABLE_SMITH_NPC.npcId})`}
             </div>
             <div
               data-testid="smith-active-location"
               style={{
                 fontSize: isCompactViewport ? '11px' : '13px',
-                fontWeight: 300,
+                fontWeight: 400,
                 color: '#F5F5F7',
                 lineHeight: 1.25,
               }}
             >
-              Location: {SMITH_LOCATION_LABELS[activeLocation]}
+              {`Location: ${SMITH_LOCATION_LABELS[activeLocation]}`}
             </div>
             <div
               style={{
@@ -741,14 +753,14 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
                       height: isCompactViewport ? '22px' : '26px',
                       padding: '0 8px',
                       backgroundColor: chosenLoc
-                        ? 'rgba(255, 255, 255, 0.18)'
-                        : 'rgba(10, 10, 12, 0.65)',
+                        ? 'rgba(22, 22, 26, 0.94)'
+                        : 'rgba(10, 10, 12, 0.88)',
                       border: chosenLoc
-                        ? '1px solid rgba(255, 255, 255, 0.45)'
-                        : '1px solid rgba(255, 255, 255, 0.16)',
+                        ? '1px solid rgba(255, 255, 255, 0.55)'
+                        : '1px solid rgba(255, 255, 255, 0.22)',
                       color: '#F5F5F7',
                       fontSize: isCompactViewport ? '11px' : '12px',
-                      fontWeight: chosenLoc ? 400 : 300,
+                      fontWeight: 400,
                       letterSpacing: '0.04em',
                       fontFamily: FONT_STACK,
                       cursor: 'pointer',
@@ -763,12 +775,11 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
               data-testid="smith-anvil-charges"
               style={{
                 fontSize: isCompactViewport ? '11px' : '13px',
-                fontWeight: 300,
-                color: '#E5E5EA',
+                fontWeight: 400,
+                color: '#F5F5F7',
               }}
             >
-              {FABLES_ANVIL_ITEM.name}: {activeAnvil.charges} / {activeAnvil.maxCharges} charges (Lv.
-              {activeAnvil.level}, Pool {activeAnvil.effectivePoolSize})
+              {`${FABLES_ANVIL_ITEM.name}: ${activeAnvil.charges} / ${activeAnvil.maxCharges} charges (Lv.${activeAnvil.level}, Pool ${activeAnvil.effectivePoolSize})`}
             </div>
             <button
               type="button"
@@ -777,8 +788,8 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
               style={{
                 height: isCompactViewport ? '24px' : '30px',
                 padding: '0 10px',
-                backgroundColor: 'rgba(255, 255, 255, 0.14)',
-                border: '1px solid rgba(255, 255, 255, 0.36)',
+                backgroundColor: 'rgba(18, 18, 22, 0.94)',
+                border: '1px solid rgba(255, 255, 255, 0.45)',
                 color: '#F5F5F7',
                 fontSize: isCompactViewport ? '11px' : '12px',
                 fontWeight: 400,
@@ -807,8 +818,8 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
           <div
             data-testid="smith-wallet-summary"
             style={{
-              backgroundColor: 'rgba(10, 10, 12, 0.88)',
-              border: '1px solid rgba(255, 255, 255, 0.18)',
+              backgroundColor: 'rgba(10, 10, 12, 0.9)',
+              border: '1px solid rgba(255, 255, 255, 0.22)',
               padding: isCompactViewport ? '4px 8px' : '10px 16px',
               display: 'flex',
               alignItems: 'center',
@@ -816,14 +827,14 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
               flexWrap: 'wrap',
               gap: '6px',
               fontSize: isCompactViewport ? '11px' : '13px',
+              fontWeight: 400,
               letterSpacing: '0.05em',
-              color: '#E5E5EA',
+              color: '#F5F5F7',
             }}
           >
-            <span>SERVICE: {activeServiceDef.label.toUpperCase()}</span>
+            <span>{`SERVICE: ${activeServiceDef.label.toUpperCase()}`}</span>
             <span>
-              WALLET: {activeWallet.sols} SOLS · {activeWallet.tierMaterials ?? 0} MAT ·{' '}
-              {activeWallet.forgeCatalysts ?? 0} CAT
+              {`WALLET: ${activeWallet.sols} SOLS · ${activeWallet.tierMaterials ?? 0} MAT · ${activeWallet.forgeCatalysts ?? 0} CAT`}
             </span>
           </div>
 
@@ -835,9 +846,10 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
               data-testid="smith-status-notice"
               style={{
                 padding: '6px 10px',
-                backgroundColor: 'rgba(10, 10, 12, 0.88)',
-                border: '1px solid rgba(255, 255, 255, 0.24)',
+                backgroundColor: 'rgba(10, 10, 12, 0.9)',
+                border: '1px solid rgba(255, 255, 255, 0.28)',
                 fontSize: '12px',
+                fontWeight: 400,
                 color: '#F5F5F7',
                 lineHeight: 1.35,
               }}
@@ -851,8 +863,8 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
         <aside
           aria-label="Smith Rules and Help"
           style={{
-            backgroundColor: 'rgba(10, 10, 12, 0.68)',
-            borderLeft: '1px solid rgba(255, 255, 255, 0.18)',
+            backgroundColor: 'rgba(10, 10, 12, 0.84)',
+            borderLeft: '1px solid rgba(255, 255, 255, 0.22)',
             padding: isCompactViewport ? '6px 8px' : '20px 24px',
             display: 'flex',
             flexDirection: 'column',
@@ -864,7 +876,7 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
               style={{
                 margin: isCompactViewport ? '0 0 2px 0' : '0 0 6px 0',
                 fontSize: isCompactViewport ? '12px' : '18px',
-                fontWeight: 300,
+                fontWeight: 400,
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
                 color: '#F5F5F7',
@@ -876,7 +888,7 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
               style={{
                 width: '100%',
                 height: '1px',
-                backgroundColor: 'rgba(255, 255, 255, 0.14)',
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
                 marginBottom: isCompactViewport ? '3px' : '8px',
               }}
             />
@@ -885,8 +897,8 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
                 margin: 0,
                 fontSize: isCompactViewport ? '11px' : '14px',
                 lineHeight: isCompactViewport ? 1.25 : 1.45,
-                fontWeight: 300,
-                color: '#E5E5EA',
+                fontWeight: 400,
+                color: '#F5F5F7',
               }}
             >
               {activeCategoryMeta.summary}
@@ -895,7 +907,7 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
 
           <div
             style={{
-              borderTop: '1px solid rgba(255, 255, 255, 0.14)',
+              borderTop: '1px solid rgba(255, 255, 255, 0.2)',
               paddingTop: isCompactViewport ? '4px' : '10px',
               display: 'flex',
               flexDirection: 'column',
@@ -905,6 +917,7 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
             <div
               style={{
                 fontSize: isCompactViewport ? '11px' : '13px',
+                fontWeight: 400,
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
                 color: '#F5F5F7',
@@ -920,8 +933,8 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
                     margin: 0,
                     fontSize: isCompactViewport ? '11px' : '14px',
                     lineHeight: isCompactViewport ? 1.22 : 1.45,
-                    fontWeight: 300,
-                    color: '#E5E5EA',
+                    fontWeight: 400,
+                    color: '#F5F5F7',
                   }}
                 >
                   {sentence}
@@ -933,8 +946,8 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
                 margin: 0,
                 fontSize: isCompactViewport ? '11px' : '14px',
                 lineHeight: isCompactViewport ? 1.25 : 1.45,
-                fontWeight: 300,
-                color: '#E5E5EA',
+                fontWeight: 400,
+                color: '#F5F5F7',
               }}
             >
               {SMITH_MODAL_PAYMENTS_LINE}
@@ -949,7 +962,7 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
           style={{
             width: '100%',
             height: '1px',
-            backgroundColor: 'rgba(255, 255, 255, 0.22)',
+            backgroundColor: 'rgba(255, 255, 255, 0.28)',
             marginBottom: isCompactViewport ? '6px' : '14px',
           }}
         />
@@ -967,11 +980,11 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
             style={{
               height: isCompactViewport ? '32px' : '36px',
               padding: '0 28px',
-              backgroundColor: 'rgba(10, 10, 12, 0.88)',
-              border: '1px solid rgba(255, 255, 255, 0.24)',
+              backgroundColor: 'rgba(10, 10, 12, 0.9)',
+              border: '1px solid rgba(255, 255, 255, 0.32)',
               color: '#F5F5F7',
               fontSize: isCompactViewport ? '13px' : '15px',
-              fontWeight: 300,
+              fontWeight: 400,
               letterSpacing: '0.12em',
               textTransform: 'uppercase',
               fontFamily: FONT_STACK,
@@ -985,8 +998,8 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
               style={{
                 fontSize: '13px',
                 padding: '1px 6px',
-                border: '1px solid rgba(255, 255, 255, 0.28)',
-                color: '#D1D1D6',
+                border: '1px solid rgba(255, 255, 255, 0.36)',
+                color: '#F5F5F7',
               }}
             >
               ESC

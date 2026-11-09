@@ -154,6 +154,12 @@ test('SmithServiceModal renders calm dark see-through UI per docs/gdd/09-interfa
     }),
   );
   assert.match(html, /FABLE&#x27;S FORGE · SMITH SERVICE TABLE/);
+  assert.match(
+    html,
+    /<h1[^>]*>FABLE&#x27;S FORGE · SMITH SERVICE TABLE<\/h1><div[^>]*data-testid="smith-title-rule"/,
+    'one thin fine rule sits directly under the FABLE\'S FORGE · SMITH SERVICE TABLE title',
+  );
+  assert.doesNotMatch(html, /#C7C7CC|#D1D1D6/i, 'low-contrast grey text tokens are lifted to white on dark');
   assert.match(html, /CLAUDE&#x27;s N Joshua&#x27;s/);
   assert.match(html, /#TeamClaudeForLife/);
   assert.match(html, /fable-smith/);
