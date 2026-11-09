@@ -602,9 +602,14 @@ test('Inbox Item 3 & 4: Safety gates (refuses OneDrive inbox, refuses when gh is
 });
 
 function resolvePowerShell(): string | null {
+  const probeEnv: NodeJS.ProcessEnv = {
+    ...process.env,
+    XDG_CACHE_HOME: path.join(os.tmpdir(), 'dream-pwsh-probe-cache'),
+  };
   for (const exe of ['pwsh', 'powershell.exe', 'powershell']) {
     try {
       const probe = spawnSync(exe, ['-NoProfile', '-Command', 'exit 0'], {
+        env: probeEnv,
         stdio: 'ignore',
         windowsHide: true,
       });
@@ -649,6 +654,7 @@ test('Inbox runner registration scripts dry-run by default without -Apply under 
       ...process.env,
       HOME: tmpHome,
       USERPROFILE: tmpHome,
+      XDG_CACHE_HOME: path.join(tmpHome, '.cache'),
       LOCALAPPDATA: path.join(tmpHome, 'AppData', 'Local'),
       APPDATA: path.join(tmpHome, 'AppData', 'Roaming'),
     };
