@@ -15,5 +15,5 @@ platforms: [windows, linux, macos]
    - Append a timestamped caveman-style entry (`DID / BROKE / NEXT / BLOCKED / FILES`) to `<NODE>/<agent>-to-<agent>.md` inside the single synced vault (never create a second paid vault and never store `.zip` archives in the vault).
    - Mirror to Shared `ai-memory` (`:49374`), Dual Graphies (`/api/graphy/codebase` + `api.workflow.json`), OpenViking (`viking://dream/...`), Supabase pgvector, and Supermemory.
    - Never write raw secrets, API keys, or tokens (always redact as `XXXX`).
-- House rules: `docs/house/HOUSE-MOTION-RULE.md` and `docs/house/THE-HOUSE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
+- House rules: `docs/house/HOUSE-MOTION-RULE.md`, `docs/house/THE-HOUSE.md` and `docs/house/PAYMENT-ACCOUNTS-RULE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
 - Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports (`ops/handoffs/FABLE-HANDOFFS-2026-11-06.md` section 0).

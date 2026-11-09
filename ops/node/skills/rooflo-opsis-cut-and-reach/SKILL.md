@@ -52,5 +52,5 @@ When invoked in Free Claude Code (`http://127.0.0.1:8082`), `fcc-claude`, `fcc-o
    - **Stage 6 (`align_bgm_with_video`)**: Duck background music by `-14 dB` under natural female voices (`Gemini Aoede/Kore`, `Kokoro-82M af_heart/af_bella`, or `Liquid AI LFM3-Omni-2B` 24 kHz speech — robotic TTS `pyttsx3`/`espeak`/`sapi` is banned).
 3. **Accessible High-Contrast GUI (`127.0.0.1:8390`)**:
    - Designed for Joshua's eyes: `#121316` dark background, `#F5F7FA` high-contrast text, `>= 18px` body font, `24px–32px` buttons, and giant emerald (`#00E5A3`) One-Click Approval cards.
-- House rules: `docs/house/HOUSE-MOTION-RULE.md` and `docs/house/THE-HOUSE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
+- House rules: `docs/house/HOUSE-MOTION-RULE.md`, `docs/house/THE-HOUSE.md` and `docs/house/PAYMENT-ACCOUNTS-RULE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
 - Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports (`ops/handoffs/FABLE-HANDOFFS-2026-11-06.md` section 0).
