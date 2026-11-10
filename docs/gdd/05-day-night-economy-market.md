@@ -278,10 +278,17 @@ Core marketplace needs:
 
 Risk rules:
 
-- No player-to-player direct real-money trading.
+- All trading happens on the Marketplace only, with no direct player-to-player trades and no player-to-player direct real-money trading.
 - No uncontrolled item duplication.
 - No unlimited remote trading without cost.
 - No paid item that guarantees market dominance.
+
+### Founder ruling 2026-11-10: Marketplace-only trading and potion drops
+
+- All trading happens on the Marketplace only, with no direct player-to-player trades.
+- Weapons and armor are wearable from level 0 to 60 and can be traded through the Marketplace.
+- Potions are the only thing a player can drop for another player, as a friendly gesture.
+- Cash never buys in-game currency, crystals, or materials.
 
 ## Prototype Acceptance
 
