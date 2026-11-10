@@ -57,16 +57,16 @@
 
 ## Orchestration
 - **Paperclip** — parked. Nothing answers on port 3100. Mission Control is JARVIS
-  on the Sabretooth node, `http://192.168.0.8:9150/` (LAN). Work tracking is Spec
+  on the Sabretooth node, `:9150` (LAN). Work tracking is Spec
   Kit specs under `specs/` plus the judge lanes.
 - **OmniRoute** — `:20128` / `:20129`, the authenticated model route for
   harnesses. Judges use their own official CLIs and never route through it.
 - **Ollama** — `:11434`, fail-safe path only, never the default route.
 
 ## Node names
-- **Sabretooth** — `192.168.0.8`. Design, dispatch, and review. `C:\ANTIGRAVITY`
+- **Sabretooth** — Design, dispatch, and review. `C:\ANTIGRAVITY`
   is its repo root.
-- **Alienware** — `192.168.0.40`. The game box; the game runs here and never on
+- **Alienware** — The game box; the game runs here and never on
   Sabretooth. Repo root `C:\DREAM\dream-online`. Reached through `drift`.
 
 ## Retired / superseded terms
