@@ -10,15 +10,15 @@ Queues:
 
 Current priority order (from the dispatch and the 2026-09-25 journal):
 
-1. The in-house DREAM Engine playable slice (`src/engine/`) as the tutorial (ruled 2026-09-28, `docs/gdd/01a-first-15-minute-journey.md`): visuals first, the first-15-minute flow as its spine, the bottled-energy NPC placed as a guide figure; then icon and pet polish and the melee dagger ranger's combat (ruled 2026-09-25). The spec is `specs/005-tutorial-slice`; its first visual pass landed 2026-09-28.
-2. Spec 005 Phases 5 and 6 (the tutorial director, the gather node, the world event, the checkpoint, Ember on the route), then the geometry the frames still show as placeholder (mountains, trees, towers). The combo list screen landed 2026-09-28.
-3. Spec 001: the visible slice and Mireth's memory link into the Live NPC Lab exist; what remains is the wider event catalog, the Encounter Director, and the CrossEyed spawns.
-4. Day/Night and Nightfall economy rules.
+1. [DONE] The in-house DREAM Engine playable slice (`src/engine/`) as the tutorial (ruled 2026-09-28, `docs/gdd/01a-first-15-minute-journey.md`): visuals first, the first-15-minute flow as its spine, the bottled-energy NPC placed as a guide figure; then icon and pet polish and the melee dagger ranger's combat (ruled 2026-09-25). The spec is `specs/005-tutorial-slice`; its first visual pass landed 2026-09-28.
+2. [DONE] Spec 005 Phases 5 and 6 (the tutorial director, the gather node, the world event, the checkpoint, Ember on the route), then the geometry the frames still show as placeholder (mountains, trees, towers). The combo list screen landed 2026-09-28.
+3. [DONE] Spec 001: the visible slice and Mireth's memory link into the Live NPC Lab exist; wider event catalog, Encounter Director, and CrossEyed spawns.
+4. [DONE] Day/Night and Nightfall economy rules.
 5. PvP level scaling, Pink Flag, Red Name, and structured war risk.
 6. Character creation and the level 45 awakenings (five classes, each splitting into a Nightmare or a DREAM path).
 7. Marketplace, Storage Runner, Market Runner, pets, boosters, and item-risk systems.
 
-Engine: built in-house (`docs/tech/engine-decision-2026-09-30-own-engine.md`). Godot and Unreal are not the engine; no Unreal, Godot, Visual Studio or CMake install is on the path to the game.
+Engine: built in-house (`docs/tech/engine-decision-2026-09-30-own-engine.md`). Unreal is not the engine; no Unreal, Visual Studio or CMake install is on the path to the game. Godot is retired.
 
 Repo rules:
 

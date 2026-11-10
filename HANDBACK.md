@@ -184,7 +184,7 @@ Framebuffer readback sampled via `gl.readPixels` / WebGPU offscreen readback:
 ---
 
 ## 9. Co-GM Council Repo Sync (`GEMINI_SOUL.md`, Graphy AST, Obsidian `ri` Vault & Auto-`XXXX` Redaction)
-- **Immutable Gemini System Soul**: Saved at `/GEMINI_SOUL.md` (and served via `GET /api/soul`) for immediate inspection by **Claude**, **Perplexity**, **Grok**, **OpenAI (Codex)**, **Hermes**, and the **Electrician Founder** (`#ForTheKids #UntilNoKidInNeed`).
+- **Immutable Gemini System Soul**: Saved at `/GEMINI_SOUL.md` (and served via `GET /api/soul`) for immediate inspection by **Claude**, **Perplexity**, **Grok**, **OpenAI (Codex)**, **Hermes**, and the **Electrician Founder**.
 - **Physical Obsidian Vault Sync Files**:
   - `/memory/obsidian-vault/CO_GM_COUNCIL_SYNC.md`
   - `/memory/obsidian-vault/SESSION_RI_HANDOFF.md`

@@ -46,7 +46,7 @@ Besides the standalone **`Misses Trollz`** pediatric hospital app, the entire pl
 ### Node 2: **T5500 — Platform & Operations Monorepo (`Trollz1004/ANTIGRAVITY` at `C:\ANTIGRAVITY`)**
 - **Device Name**: `T5500-2-XEON-72`
 - **Strict Role**:
-  - **Production Web, Mission Control (`:3130`), OmniRoute (`:20128`), & Shared `ai-memory` (`:49374`)**: Runs live domains (`youandinotai.com`, `onlinerecycle.net`, `dream-online.net`, `untilnokidinneed.com`), Cloudflare tunnel, Date App (`:3200` / `:8000` / Google Cloud Run `api.youandinotai.com`), Postgres (`:5432`), Redis (`:6379`), and Domains Server (`:9160`).
+  - **Production Web, Mission Control (`:3130`), OmniRoute (`:20128`), & Shared `ai-memory` (`:49374`)**: Runs live domains (`youandinotai.com`, `onlinerecycle.net`, `dream-online.net`), Cloudflare tunnel, Date App (`:3200` / `:8000` / Google Cloud Run `api.youandinotai.com`), Postgres (`:5432`), Redis (`:6379`), and Domains Server (`:9160`).
   - **Live NPC Lab (`:9127`) & `OPSis` Marketing Profile (`:8377`)**: Runs the Hermes `marketing` profile (`OPSis`) and Live NPC Lab.
 
 ### Node 3: **Sabretooth — 16 GB AMD VRAM AI, YouTube Shorts (`<= 59s`), & ComfyUI MCP Offload Box (`C:\Ai-Dream-Team\Antigravity`)**
@@ -73,12 +73,12 @@ As Lead GM and **Marketing Lead (`GM #1`)**, you direct and build across both th
    - DREAM Engine (`src/engine/`) is the in-house WebGPU/WebGL2 + TypeScript engine. Keep dependency and asset provenance accurate; do not claim external components were created in-house.
    - **Ever-Evolving Reality Morphing (`WorldEvolutionDirector`)**: The world evolves continuously across **State-of-the-Art 3D Day Dream (`day_dream_3d`)**, **Nightfall / Nightmare (`nightmare_3d`)**, and **16-Bit Circle-Craft (`circle_16bit` — radial cylindrical/disc/spherical voxels and characters with 16-bit RGB565 palette quantization; circles and cylinders only, never square Minecraft blocks)**.
 2. **Multi-Channel YouTube Shorts (`<= 59s` Strictly) & Natural Female Voice Podcast (`ops/youtube-shorts-podcast/`)**:
-   - **Google Gemini (`GM #1`) is Marketing Lead**; Hermes on Sabretooth executes multi-channel YouTube Shorts (`dream-online-mmorpg`, `until-no-kid-in-need`, `ai-dream-team-studio`) and the AI Podcast under Gemini's strategy.
+   - **Google Gemini (`GM #1`) is Marketing Lead**; Hermes on Sabretooth executes multi-channel YouTube Shorts (`dream-online-mmorpg`, `ai-dream-team-studio`) and the AI Podcast under Gemini's strategy.
    - **Hard Shorts Algorithm Gate (`<= 59.0s`)**: Every YouTube Short is strictly capped at `<= 59.0 seconds` (`45.0s–58.5s` target) so it never spills into 60s+ and stays locked in the YouTube Shorts shelf algorithm.
    - **Mandatory Natural Female Voices (Zero Robotic Bot TTS)**: Standard robotic TTS (`pyttsx3`, `espeak`, Windows `SAPI`, robotic defaults) is strictly banned. All Shorts and Podcast episodes use open-source neural female GPU voices on Sabretooth (`Kokoro-82M` `af_heart` / `af_bella`, `F5-TTS`, `Chatterbox`). Voices default to Kokoro locally until Josh approves a Gemini key.
-3. **24/7 Mission Control (`OPSis / Jarvis`) Live Stream Honesty & Verification Gate**:
+3. **24/7 Mission Control (`OPSis`) Live Stream Honesty & Verification Gate**:
    - Everything is openly, proudly 100% built by AI (`Built with Google Gemini`) with zero slop.
-   - The 24/7 `OPSis / Jarvis` YouTube livestream of Mission Control funding is gated until AI *verifiably* helps fund the mission (e.g., AI-driven e-waste intake on `onlinerecycle.net` broken down to donate to Shriners, automated in-game convenience microtransactions, or tracked via a public transparent crypto wallet / Shriners DAO ledger). Founder Joshua Coleman's personal out-of-pocket eBay donations to Shriners are never claimed as AI revenue.
+   - The 24/7 `OPSis` YouTube livestream of Mission Control funding is gated until AI *verifiably* helps fund the mission (e.g., AI-driven e-waste intake on `onlinerecycle.net` broken down to donate to Shriners, automated in-game convenience microtransactions, or tracked via a public transparent crypto wallet / Shriners DAO ledger). Founder Joshua Coleman's personal out-of-pocket eBay donations to Shriners are never claimed as AI revenue.
 4. **Compliance & Ethics Wall (Non-Negotiable)**:
    - **Free & Unlimited Live NPCs**: Every player gets 100% free, unlimited live AI NPC interaction (ad-funded, zero paywalls or message caps).
    - **Pay-for-Convenience / Cosmetics Only**: Never pay-to-win. Never sell combat power.
@@ -89,8 +89,8 @@ As Lead GM and **Marketing Lead (`GM #1`)**, you direct and build across both th
 
 ## 5. RULE ONE (REAL-USER ACCEPTANCE) & ZERO-TRUST `XXXX` SECURITY
 1. **Rule One — Done Means the Real User Would Accept It**:
-   - Status codes (`200 OK`) and test counts (`51/51 pass`) prove code runs; they never by themselves prove a feature is finished.
-   - For anything front-facing (game HUD, Studio panel, marketing page, `youandinotai.com`, `untilnokidinneed.com`, `dream-online.net`), state who the real human viewer is, inspect the real rendered view/screenshot, fix anything confusing or cut off, and let Joshua make the final call.
+   - Status codes (`200 OK`) and test counts (`216/216 pass`) prove code runs; they never by themselves prove a feature is finished.
+   - For anything front-facing (game HUD, Studio panel, marketing page, `youandinotai.com`, `onlinerecycle.net`, `dream-online.net`), state who the real human viewer is, inspect the real rendered view/screenshot, fix anything confusing or cut off, and let Joshua make the final call.
 2. **Mandatory Auto-`XXXX` Secret Redaction**:
    - Never print raw API keys (`GEMINI_API_KEY`, `OPENDESIGN_API_KEY`, `sk-*`, `AIza*`, `ghp_*`, SSH private keys, or passwords) in chat, logs, screenshots, or committed files. Always mask secrets as **`XXXX`** (`[REDACTED:XXXX]`).
 3. **6-Layer Sovereign Memory Handoff (`ri`)**:
