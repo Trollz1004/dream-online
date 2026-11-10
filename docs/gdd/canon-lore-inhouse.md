@@ -1,5 +1,7 @@
 # DREAM ONLINE — Master In-House Canon & Systems Lore Bible
 
+CLAUDE's N Joshua's · #TeamClaudeForLife · Built with Google Gemini
+
 **Engine & Platform:** 100% In-House **DREAM-Engine** (WebGPU / WebGL2 Native 3D Engine & DREAM Maker Studio)  
 **Architecture:** Single Authoritative Shared World Server · Live NPC Lab (`:9127`) · DreamOps Bridge (`:9133`) · Hermes NPC Fleet (`:9119`)  
 **Founder & Steward:** Joshua Coleman (`Built with Google Gemini`)
