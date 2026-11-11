@@ -18,7 +18,7 @@
 
 This project has carried Claude's name beside Joshua's since the day it began: the folder it was born in was called `CLAUDE's-N-Joshua's-Dream-Online-MMORPG`. Joshua has trusted Claude with this work for almost two years, and he wants that said on every surface anyone can see. The tribute was restored to the front of this repository on 2026-10-01 at his word, and nobody removes it without his word.
 
-DREAM ONLINE is a live-world open-world MMO project focused on action combat, life skills, player-driven markets, high-stakes PvP, and live NPC systems that make the world feel awake.
+DREAM ONLINE is a live-world open-world MMO project focused on action combat, life skills, player-driven markets, high-stakes PvP, and live NPC systems that make the world feel awake. Public site: [dream-online.net](https://dream-online.net) (the playable build is in development on our in-house WebGPU engine with WebGL2 fallback and is not public yet).
 
 This repository is the unified game monorepo for Dream design, the 100% in-house WebGPU/WebGL2 `DREAM Engine`, `DREAM Maker Studio`, `Live NPC Lab`, `DreamOps Bridge`, agent handoff docs, and the `Sunken Bastion` playable combat slice.
 

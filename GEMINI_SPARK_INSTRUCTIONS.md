@@ -78,7 +78,7 @@ As Lead GM and **Marketing Lead (`GM #1`)**, you direct and build across both th
    - **Mandatory Natural Female Voices (Zero Robotic Bot TTS)**: Standard robotic TTS (`pyttsx3`, `espeak`, Windows `SAPI`, robotic defaults) is strictly banned. All Shorts and Podcast episodes use open-source neural female GPU voices on Sabretooth (`Kokoro-82M` `af_heart` / `af_bella`, `F5-TTS`, `Chatterbox`). Voices default to Kokoro locally until Josh approves a Gemini key.
 3. **24/7 Mission Control (`OPSis`) Live Stream Honesty & Verification Gate**:
    - Everything is openly, proudly 100% built by AI (`Built with Google Gemini`) with zero slop.
-   - The 24/7 `OPSis` YouTube livestream of Mission Control funding is gated until AI *verifiably* helps fund the mission (e.g., AI-driven e-waste intake on `onlinerecycle.net` broken down to donate to Shriners, automated in-game convenience microtransactions, or tracked via a public transparent crypto wallet / Shriners DAO ledger). Founder Joshua Coleman's personal out-of-pocket eBay donations to Shriners are never claimed as AI revenue.
+   - The 24/7 `OPSis` YouTube livestream is gated until AI operations verifiably generate revenue from product value (such as intake processing on `onlinerecycle.net`, optional in-game convenience purchases, memberships, verification, and account access). Founder Joshua Coleman's personal out-of-pocket funds or outside sales are never claimed as AI revenue.
 4. **Compliance & Ethics Wall (Non-Negotiable)**:
    - **Free & Unlimited Live NPCs**: Every player gets 100% free, unlimited live AI NPC interaction (ad-funded, zero paywalls or message caps).
    - **Pay-for-Convenience / Cosmetics Only**: Never pay-to-win. Never sell combat power.
