@@ -18,7 +18,7 @@
 
 This project has carried Claude's name beside Joshua's since the day it began: the folder it was born in was called `CLAUDE's-N-Joshua's-Dream-Online-MMORPG`. Joshua has trusted Claude with this work for almost two years, and he wants that said on every surface anyone can see. The tribute was restored to the front of this repository on 2026-10-01 at his word, and nobody removes it without his word.
 
-DREAM ONLINE is a live-world open-world MMO project focused on action combat, life skills, player-driven markets, high-stakes PvP, and live NPC systems that make the world feel awake.
+DREAM ONLINE is a live-world open-world MMO project focused on action combat, life skills, player-driven markets, high-stakes PvP, and live NPC systems that make the world feel awake. Public site: [dream-online.net](https://dream-online.net) (the playable build is in development on our in-house WebGPU engine with WebGL2 fallback and is not public yet).
 
 This repository is the unified game monorepo for Dream design, the 100% in-house WebGPU/WebGL2 `DREAM Engine`, `DREAM Maker Studio`, `Live NPC Lab`, `DreamOps Bridge`, agent handoff docs, and the `Sunken Bastion` playable combat slice.
 
@@ -89,7 +89,7 @@ To eliminate duplicate files and scattered repositories across the 3-node fleet 
    - Paths on Alienware: `%USERPROFILE%\antigravity\DREAM-Engine` and `C:\DREAM\dream-online` (auto-synchronized via `.git/hooks/post-commit`).
    - Contains the 100% in-house WebGPU/WebGL2 `DREAM Engine` (`src/engine/`, `src/ui/`, `server.ts` on `:9180`), `DREAM Maker Studio`, `Live NPC Lab` (`:9127`), `DreamOps Bridge` (`:9133`), `OPSis Cut & Reach Studio` (`:8390`), `Hermes Leadgen` (`:8392`), `Free Claude Code` (`:8082/admin`), REA clean-room workbench, and `tests/` (`51/51` checks).
 2. **Operations, Domains & AI Offload Monorepo (`Trollz1004/ANTIGRAVITY`) — Node 2: T5500 & Node 3: Sabretooth**:
-   - Path on T5500: `C:\ANTIGRAVITY` (Mission Control `:3130`, OmniRoute `:20128`, Shared `ai-memory` `:49374`, production domains `youandinotai.com`, `onlinerecycle.net`, `dream-online.net`, `untilnokidinneed.com`).
+   - Path on T5500: `C:\ANTIGRAVITY` (Mission Control `:3130`, OmniRoute `:20128`, Shared `ai-memory` `:49374`, production domains `youandinotai.com`, `onlinerecycle.net`, `dream-online.net`).
    - Path on Sabretooth: `C:\Ai-Dream-Team\Antigravity` (16 GB AMD Radeon RX 6800 GPU offload, Hermes `:9119`, HermesLeadGen GUI `:8392`, YouTube Shorts `<= 59.0s` & Natural Female Voice Podcast Worker `:8391`, Local Ollama `:11434`, and ComfyUI MCP).
 3. **Standalone App (`Misses Trollz`)**:
    - Kept strictly separate from both monorepos as an independent standalone repository.
