@@ -197,7 +197,7 @@ Joshua gave the pet design in one message on 2026-09-28. Recorded here in his sh
 
 **What every pet does.** Three things, the same for every pet in the roster:
 
-- **Looter.** Picks up drops for the player (the GeminEYE pet in the slice already does this).
+- **Looter.** Picks up drops for the player (the OpenAeYe pet in the slice already does this).
 - **Weight boost.** More carry weight before the player slows.
 - **A class-branded boost.** One number, identical for every pet and every class, wearing the label of the owner's class: melee attack for a melee class, magic attack for a caster, health for a defender, and so on. The label is branding; the size is the same.
 

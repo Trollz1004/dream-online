@@ -707,9 +707,9 @@ export const GOOGLE_FLOW_VISION_ZONES: readonly GoogleFlowVisionZone[] = [
     signatureVisuals: [
       'Wet reflective flagstones with gothic cathedral spires and vertical cyan/magenta/gold neon signs',
       'Dual-Soul Founder/Hero in glowing-sigil trenchcoat & cyan visor with #UntilNoKidInNeed child-spirit link',
-      'Floating GeminEYE water/plasma orb and Goblin Storage/Market Runner on a motorized treasure-chest trike',
+      'Floating OpenAeYe water/plasma orb and Goblin Storage/Market Runner on a motorized treasure-chest trike',
     ],
-    gameplayFeatures: ['GeminEYE Companion Orb', 'Storage Runner & Market Runner Treasure-Chest Trike Logistics'],
+    gameplayFeatures: ['OpenAeYe Companion Orb', 'Storage Runner & Market Runner Treasure-Chest Trike Logistics'],
   },
 ];
 

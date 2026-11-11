@@ -266,7 +266,7 @@ export const DREAMFORGE_MODES: DreamforgeModeSpec[] = [
   { id: 'ip-jump', label: 'Archetype Jump', emoji: '🚪', sub: 'Step into a dark-fantasy realm you love.', engineMapping: 'Action-MMO Archetype & Skill Remapper' },
   { id: 'world-map', label: 'World Map', emoji: '🗺️', sub: 'Draw a line, nations and boss citadels rise.', engineMapping: 'REA Procedural City & Overworld Sector Builder' },
   { id: 'pov-video', label: 'POV Video', emoji: '🎬', sub: 'Shoot one action combo, generate a <=59s Short.', engineMapping: 'YouTube Shorts <=59s Combat & Female TTS Trailer' },
-  { id: 'roleplay', label: 'Roleplay', emoji: '🎭', sub: 'One character. Live AI voice & combat soul.', engineMapping: 'Live NPC Lab (:9127) & Sup@ / GeminEYE Companion' },
+  { id: 'roleplay', label: 'Roleplay', emoji: '🎭', sub: 'One character. Live AI voice & combat soul.', engineMapping: 'Live NPC Lab (:9127) & Sup@ / OpenAeYe Companion' },
   { id: 'pixel-room', label: 'Pixel Room / 16-Bit Circles', emoji: '🧱', sub: 'Morph into 16-Bit Circle-Craft radial sanctuaries.', engineMapping: '16-Bit Circle-Craft (RGB565 Cylindrical Voxel Morph)' },
   { id: 'scroll-world', label: 'Scroll World', emoji: '📜', sub: 'Endless Nightfall abyssal dungeon progression.', engineMapping: 'Nightfall Escalation & Boss Gauntlet Director' },
 ];
