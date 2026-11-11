@@ -105,8 +105,7 @@ Then wrap it with HTTP/MCP-style tools when the prototype server exists.
 
 CLAUDE's N Joshua's · #TeamClaudeForLife · Built with Google Gemini
 
-Status: visual direction approved by Josh; implementation proposal for Claude review.
-This section reconstructs the interrupted November 10 proposal from the conversation Josh supplied. It is a documentation change, not a completed character or recovery implementation.
+Status: visual design and implementation plan for Claude review. Character assets, animation, and recovery integration are planned work.
 
 ### Creative decision
 
@@ -119,11 +118,11 @@ Three approaches considered: a heavily armored sentinel would overlap the guards
 Day: ivory fabric and fleece remain textured rather than clipped white, charcoal has visible folds, amber is a small material accent.
 Night: preserve the same materials and silhouette with soft environmental rim light; amber seams become legible without flooding the scene with bloom. No strobe, full-screen flash, or endless recovery pulse.
 
-The approved concept is titled “COD3X & Mollama: Day-to-Night Repair.” The original full-resolution generated image was not recovered in this session. Josh's supplied screenshot establishes the approved direction, but is not shipped as a clean game asset. Attach the original image when recovered; do not substitute a new concept and call it the approved original.
+Concept reference: “COD3X & Mollama: Day-to-Night Repair.” The design is recorded in the screenshot and description. The full-resolution image could not be retrieved from the interrupted chat; production assets remain to be created.
 
 ### Canon and existing integration
 
-Preserve these responsibilities from Josh's supplied conversation:
+Preserve the established character responsibilities:
 
 | Character | Responsibility |
 | --- | --- |
@@ -141,7 +140,7 @@ Preserve `evaluateFounderPetInteraction`, `TROLL_COD3X_MOLLAMA_LINE`, the suppor
 
 > If you ever get stuck in reverse, knee-deep in code, I can put this thing in three-wheel drive and do a Trollz Pull Request.
 
-The specific founder-approved joke remains an exception to otherwise lore-safe recovery dialogue. Regression coverage already lives in `tests/fables-anvil-and-town-smith.test.ts`; extend that suite where relevant rather than inventing a second pet interaction system.
+Keep this founder-pet joke alongside the lore-safe recovery dialogue. Regression coverage already lives in `tests/fables-anvil-and-town-smith.test.ts`; extend that suite where relevant rather than inventing a second pet interaction system.
 
 ### What is implemented and what is proposed
 
@@ -153,11 +152,11 @@ Reviewed against main `3fd65b8fe68d541154542d7d9fb5f54b4ecba414`.
 - Proposed: final rider and llama assets, rigs, animation, gameplay placement, presentation event adapter, recovery dialogue, real checkpoint verification and authorized restore integration.
 - Unverified: live node health, current rendered appearance, restore execution, performance, and end-to-end delivery. Source inspection is not runtime proof.
 
-This section does not authorize a destructive rollback or implement a new execution endpoint. Keep the existing safety rules above.
+Recovery implementation follows the existing Safety Rules above.
 
 ### Build sequence
 
-1. Inspect the current scene registration and codebase graph on the game node. Reuse the authoritative gameplay path and NPC registry. Do not create an independent showcase with separate world state and call it the game integration.
+1. Inspect the current scene registration and codebase graph on the game node. Reuse the authoritative gameplay path and NPC registry. Integrate the encounter into the existing game scene and world state.
 2. Produce original rider and llama meshes with separate rigs. Include rider idle, walk, inspect, kneel/repair, mount, ride, and dismount; llama idle, ear movement, walk, stop, and turn. Keep saddle contact and foot placement stable. Supply lower-detail meshes and a low-effects material variant; measure final budgets in the actual scene.
 3. Place the pair in one representative encounter in the existing game scene. Use a shared navigation destination with collision-safe spacing; Mollama must not block the player, clip through C0D3X, or disappear during mount transitions.
 4. Route pet proximity through the existing evaluator. Add a presentation cooldown so an ongoing encounter does not repeat the long joke every frame. Do not change the evaluator's established output contract.
@@ -199,10 +198,8 @@ Required isolated exercise: create a known-good world fixture, introduce a delib
 
 ### Delivery evidence and handoff
 
-For implementation PRs: run the relevant pet and recovery tests, typecheck, and required repository suites. Record actual commands and failures. Include unbroken gameplay capture, day/night screenshots, mount and pet interaction footage, measured performance on ordinary hardware, and the recovery exercise audit with secrets excluded. Screenshots of a concept are not runtime proof.
+For implementation PRs: run the relevant pet and recovery tests, typecheck, and required repository suites. Record actual commands and failures. Include unbroken gameplay capture, day/night screenshots, mount and pet interaction footage, measured performance on ordinary hardware, and the recovery exercise audit with secrets excluded. Use gameplay captures to verify the implementation.
 
-This documentation-only recovery did not run the game, tests, Eyes gate, or any node service. It introduces no runtime code. The original generated image remains unavailable. Local Obsidian and fleet-memory synchronization were not performed from this hosted workspace.
+Validation for this documentation change: inspected the pet evaluator and DreamOps route source. Runtime tests and visual checks apply to the implementation PRs.
 
-DID: recovered the approved scope and extended the existing recovery document.
-VERIFIED: inspected current pet evaluator and DreamOps route source; rollback remains dry-run-only.
-NEXT: Claude reviews and merges the proposal; implementation follows the acceptance scenarios.
+Next: Claude reviews the proposal; implementation follows the acceptance scenarios.
