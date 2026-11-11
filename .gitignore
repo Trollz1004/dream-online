@@ -12,6 +12,7 @@ JOSHUAS.ENV
 .codex/
 .aistudio/
 .antigravity/
+memory/obsidian-vault/
 bun.lock
 # .claude is local state, except the Spec Kit skills, which travel with the repo
 .claude/*
