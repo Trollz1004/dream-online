@@ -1199,7 +1199,7 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
         <div className="fixed inset-0 z-50">
           <UnifiedAntigravityWorkspaceShell
             initialView={initialWorkspaceView}
-            initialModelPickerOpen={params.get('picker') !== '0'}
+            initialModelPickerOpen={params.get('picker') === '1'}
             onReturnToFull3dViewport={() => setIsUnifiedWorkspaceOpen(false)}
           />
         </div>
