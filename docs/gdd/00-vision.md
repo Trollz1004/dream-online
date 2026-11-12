@@ -33,6 +33,12 @@ The player is not only a fighter. The player is a worker, fisher, cook, hunter, 
 - NEEDs are in-game currency/product only.
 - Monetization remains pay-for-convenience and cosmetics, never pay-to-win.
 
+## End Game Rule (founder ruling, 2026-11-12)
+
+1. No player can beat the end game solo (no solo win).
+2. A group barely wins (a group can barely beat it).
+3. A group with no healer has no chance (no healer means no chance).
+
 ## Secrecy Boundary
 
 Founder-only end-game material stays in the private OneDrive do-not-commit vault. Public docs and repo docs may only point to the internal design vault at a high level. Do not reproduce the reveal, quotes, encounter mechanics, or hidden plot material here.

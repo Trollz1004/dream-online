@@ -24,6 +24,12 @@ The rows in the picture: load recommended settings, window mode, screen resoluti
 
 The picture is from a Blueprint interface template on Fab that the founder saved to his library. It is a layout reference only: the look is rebuilt in the in-house engine's own UI layer (`src/ui/`) from this description, and the template never enters this public repository. Like every Fab asset, read its licence line before use.
 
+## Equipment window layout (study-only reference, 2026-11-12)
+
+- **Reference:** `%USERPROFILE%\OneDrive\claude-to-claude\images\game-look\STUDY-ONLY-bdo-equipment-window-2026-11-12.jpg`
+- **Study-only rule:** It is a screenshot of Black Desert's equipment window for study only. It illustrates the general spatial concept: gear slots in an outer ring, appearance/costume slots in an inner ring, extra accessory slots in a row below, followed by attack and defense totals and tabs.
+- Our window is designed completely new in our own layout, icons, and art. Nothing from that screenshot is copied.
+
 ## Same menu, both dreams
 
 The menu is the same by day and by night. Because it is see-through, it takes its mood from the world behind it: warm ruins in a Day Dream, city light in a Night Dream.
