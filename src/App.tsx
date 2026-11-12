@@ -47,6 +47,10 @@ import { CharacterCreatorModal } from './ui/CharacterCreatorModal.tsx';
 import { NeedsShopModal } from './ui/NeedsShopModal.tsx';
 import { SmithServiceModal } from './ui/SmithServiceModal.tsx';
 import {
+  EquipmentAndCostumeModal,
+  type EquipmentPresetId,
+} from './ui/EquipmentAndCostumeModal.tsx';
+import {
   createInitialCreatorState,
   type CharacterCreatorState,
 } from './ui/characterCreatorConfig.ts';
@@ -60,12 +64,29 @@ export default function App() {
   const isSmithRequested =
     typeof window !== 'undefined' &&
     (window.location.search.includes('smith=1') || window.location.search.includes('anvil=1'));
+  const isEquipmentRequested =
+    typeof window !== 'undefined' &&
+    (window.location.search.includes('equipment=1') || window.location.search.includes('costume=1'));
+  const requestedEquipmentPreset: EquipmentPresetId = (() => {
+    if (typeof window === 'undefined') return 'full-combat';
+    const p = new URLSearchParams(window.location.search).get('preset');
+    if (
+      p === 'empty' ||
+      p === 'full-combat' ||
+      p === 'mixed-fish-swimsuit' ||
+      p === 'lifeskill-angler'
+    ) {
+      return p;
+    }
+    return 'full-combat';
+  })();
   const isLegacyWebgpuRequested =
     typeof window !== 'undefined' &&
     (window.location.search.includes('legacyWebgpu=1') ||
       isCreatorRequested ||
       isNeedsShopRequested ||
-      isSmithRequested);
+      isSmithRequested ||
+      isEquipmentRequested);
 
   const [useAaaVisualMode, setUseAaaVisualMode] = useState(!isLegacyWebgpuRequested);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -113,6 +134,7 @@ export default function App() {
   const [isCreatorOpen, setIsCreatorOpen] = useState(isCreatorRequested);
   const [isNeedsShopOpen, setIsNeedsShopOpen] = useState(isNeedsShopRequested);
   const [isSmithOpen, setIsSmithOpen] = useState(isSmithRequested);
+  const [isEquipmentOpen, setIsEquipmentOpen] = useState(isEquipmentRequested);
   const [creatorState, setCreatorState] = useState<CharacterCreatorState>(() =>
     createInitialCreatorState(),
   );
@@ -299,7 +321,7 @@ export default function App() {
     };
   }, []);
 
-  const isGameMenuModalOpen = isCreatorOpen || isNeedsShopOpen || isSmithOpen;
+  const isGameMenuModalOpen = isCreatorOpen || isNeedsShopOpen || isSmithOpen || isEquipmentOpen;
 
   const isAnyModalOpen =
     isSettingsOpen ||
@@ -867,6 +889,11 @@ export default function App() {
       <SmithServiceModal
         isOpen={isSmithOpen}
         onClose={() => setIsSmithOpen(false)}
+      />
+      <EquipmentAndCostumeModal
+        isOpen={isEquipmentOpen}
+        initialPreset={requestedEquipmentPreset}
+        onClose={() => setIsEquipmentOpen(false)}
       />
       <SettingsModal
         isOpen={isSettingsOpen}
