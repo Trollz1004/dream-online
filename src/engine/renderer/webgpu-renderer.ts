@@ -298,7 +298,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
   let G = g1V * g1L;
 
   let specRaw = (D * G) / max(4.0 * NdotV * NdotL, 0.001);
-  let specBrdf = (F * specRaw) / (1.0 + 0.35 * specRaw);
+  let specBrdf = (F * specRaw) / (1.0 + 0.85 * specRaw);
   let diffuseBrdf = kD * albedo / 3.14159265;
 
   let keyColor = select(vec3<f32>(1.0, 0.94, 0.84), vec3<f32>(0.42, 0.56, 0.92), isNight) * scene.fogAndEnergy.y;

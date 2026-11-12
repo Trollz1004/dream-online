@@ -659,7 +659,7 @@ export function parseGlb(input: ArrayBuffer | Uint8Array): ParsedGlbAsset {
   const totalLength = dv.getUint32(8, true);
   let offset = 12;
   let jsonText = '';
-  let binChunk = new Uint8Array(0);
+  let binChunk: Uint8Array = new Uint8Array(0);
 
   while (offset + 8 <= Math.min(totalLength, bytes.byteLength)) {
     const chunkLength = dv.getUint32(offset, true);

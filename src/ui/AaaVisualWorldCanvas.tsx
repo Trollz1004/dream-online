@@ -10,6 +10,9 @@ import {
   updateCharacterRigAnimation,
   type BuiltCharacterRig,
 } from '../engine/characters/hero-and-boss-builder.ts';
+import { loadGlbFromUrl } from '../engine/assets/glb-loader.ts';
+import { SkeletonAnimationMixer } from '../engine/animation/skeleton-mixer.ts';
+import { PbrTextureData } from '../engine/scene/mesh.ts';
 import {
   UnifiedAntigravityWorkspaceShell,
   type WorkspaceCenterView,
@@ -59,9 +62,14 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
 
   const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
   const isCaptureMode = params.get('capture') === '1';
+  const isCrowd30Mode = params.get('crowd') === '30';
   const initialWorkspaceMode = params.get('workspace') === '1';
   const initialWorkspaceView = (params.get('view') as WorkspaceCenterView) || 'repos-models';
   const [isUnifiedWorkspaceOpen, setIsUnifiedWorkspaceOpen] = useState<boolean>(initialWorkspaceMode);
+  const [skinnedCopyCount, setSkinnedCopyCount] = useState<number>(isCrowd30Mode ? 30 : 1);
+  const [measuredFps, setMeasuredFps] = useState<number>(60);
+  const skinnedCopyCountRef = useRef<number>(isCrowd30Mode ? 30 : 1);
+  skinnedCopyCountRef.current = skinnedCopyCount;
   const pinnedTimeParam = params.get('t') ? parseFloat(params.get('t')!) : null;
   const initialYawParam = params.get('yaw') ? parseFloat(params.get('yaw')!) : null;
   const initialPitchParam = params.get('pitch') ? parseFloat(params.get('pitch')!) : null;
@@ -567,6 +575,144 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
     const heroWeaponTipObj: THREE.Object3D = knightRig.parts.weaponTip;
 
     // ---------------------------------------------------------------------------
+    // 5B. IN-HOUSE GLB SKINNED HUMANOID TEST MODEL (test-rigged-humanoid-walk-not-game-art.glb)
+    //     Loaded via src/engine/assets/glb-loader.ts, animated via SkeletonAnimationMixer,
+    //     deformed with 4-bone Linear Blend Skinning (JOINTS_0 + WEIGHTS_0), tangent-space
+    //     normal mapping, and packed ORM PBR textures (1 copy default, 30 copies with ?crowd=30).
+    // ---------------------------------------------------------------------------
+    interface SkinnedHumanoidInstance {
+      mesh: THREE.Mesh;
+      mixer: SkeletonAnimationMixer;
+      skinUniform: { value: THREE.Matrix4[] };
+      baseX: number;
+      baseZ: number;
+    }
+    const skinnedHumanoidInstances: SkinnedHumanoidInstance[] = [];
+
+    const pbrDataToThreeTexture = (texData: PbrTextureData | undefined, isSrgb: boolean): THREE.DataTexture | null => {
+      if (!texData) return null;
+      const dt = new THREE.DataTexture(
+        texData.data,
+        texData.width,
+        texData.height,
+        THREE.RGBAFormat,
+        THREE.UnsignedByteType
+      );
+      dt.flipY = false;
+      dt.wrapS = THREE.RepeatWrapping;
+      dt.wrapT = THREE.RepeatWrapping;
+      dt.colorSpace = isSrgb ? THREE.SRGBColorSpace : THREE.LinearSRGBColorSpace;
+      dt.needsUpdate = true;
+      return dt;
+    };
+
+    loadGlbFromUrl('/assets/models/test-rigged-humanoid-walk-not-game-art.glb')
+      .then((asset) => {
+        if (!asset.meshes.length) return;
+        const prim = asset.meshes[0];
+        const g = prim.geometry;
+
+        const glbGeo = new THREE.BufferGeometry();
+        glbGeo.setAttribute('position', new THREE.BufferAttribute(g.positions, 3));
+        glbGeo.setAttribute('normal', new THREE.BufferAttribute(g.normals, 3));
+        glbGeo.setAttribute('uv', new THREE.BufferAttribute(g.uvs, 2));
+        glbGeo.setAttribute('uv2', new THREE.BufferAttribute(g.uvs, 2));
+        glbGeo.setAttribute('tangent', new THREE.BufferAttribute(g.tangents, 4));
+
+        const jointsFloat = new Float32Array(g.joints0.length);
+        for (let i = 0; i < g.joints0.length; i++) {
+          jointsFloat[i] = g.joints0[i];
+        }
+        glbGeo.setAttribute('aJoints0', new THREE.BufferAttribute(jointsFloat, 4));
+        glbGeo.setAttribute('aWeights0', new THREE.BufferAttribute(g.weights0, 4));
+        glbGeo.setIndex(new THREE.BufferAttribute(g.indices, 1));
+
+        const baseMap = pbrDataToThreeTexture(prim.material.baseColorTexture, true);
+        const normMap = pbrDataToThreeTexture(prim.material.normalTexture, false);
+        const ormMap = pbrDataToThreeTexture(prim.material.ormTexture, false);
+
+        for (let idx = 0; idx < 30; idx++) {
+          const mixer = new SkeletonAnimationMixer(asset, 0);
+          const skinUniform = {
+            value: Array.from({ length: 16 }, () => new THREE.Matrix4()),
+          };
+
+          const mat = new THREE.MeshStandardMaterial({
+            map: baseMap,
+            normalMap: normMap,
+            normalScale: new THREE.Vector2(1.15, 1.15),
+            aoMap: ormMap,
+            aoMapIntensity: 0.9,
+            roughnessMap: ormMap,
+            metalnessMap: ormMap,
+            roughness: 0.42,
+            metalness: 0.72,
+            color: new THREE.Color(0xdce3ed),
+          });
+          mat.customProgramCacheKey = () => `dream-inhouse-4bone-lbs-${idx}`;
+          mat.onBeforeCompile = (shader) => {
+            shader.uniforms.uSkinJoints = skinUniform;
+            shader.vertexShader = shader.vertexShader
+              .replace(
+                '#include <common>',
+                `#include <common>
+                attribute vec4 aJoints0;
+                attribute vec4 aWeights0;
+                uniform mat4 uSkinJoints[16];
+                mat4 getDreamLbsMatrix() {
+                  int j0 = min(15, int(aJoints0.x + 0.5));
+                  int j1 = min(15, int(aJoints0.y + 0.5));
+                  int j2 = min(15, int(aJoints0.z + 0.5));
+                  int j3 = min(15, int(aJoints0.w + 0.5));
+                  return aWeights0.x * uSkinJoints[j0]
+                       + aWeights0.y * uSkinJoints[j1]
+                       + aWeights0.z * uSkinJoints[j2]
+                       + aWeights0.w * uSkinJoints[j3];
+                }`
+              )
+              .replace(
+                '#include <beginnormal_vertex>',
+                `#include <beginnormal_vertex>
+                mat3 dreamSkinRot = mat3(getDreamLbsMatrix());
+                objectNormal = normalize(dreamSkinRot * objectNormal);
+                #ifdef USE_TANGENT
+                objectTangent = normalize(dreamSkinRot * objectTangent);
+                #endif`
+              )
+              .replace(
+                '#include <begin_vertex>',
+                `vec3 transformed = (getDreamLbsMatrix() * vec4(position, 1.0)).xyz;`
+              );
+          };
+
+          const mesh = new THREE.Mesh(glbGeo, mat);
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          mesh.frustumCulled = false;
+
+          const col = idx % 6;
+          const row = Math.floor(idx / 6);
+          const baseX = idx === 0 ? 0.0 : (col - 2.5) * 1.45;
+          const baseZ = idx === 0 ? 0.38 : 2.15 - row * 1.15;
+
+          mesh.position.set(baseX, 0.26, baseZ);
+          mesh.visible = idx < skinnedCopyCountRef.current;
+          scene.add(mesh);
+
+          skinnedHumanoidInstances.push({
+            mesh,
+            mixer,
+            skinUniform,
+            baseX,
+            baseZ,
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn('[DREAM] Failed to load test-rigged-humanoid-walk-not-game-art.glb:', err);
+      });
+
+    // ---------------------------------------------------------------------------
     // 6. SOFT-TEXTURED PARTICLE SPRITES, RIBBON SLASH TRAILS & IMPACT FLASHES
     // ---------------------------------------------------------------------------
     const emberTex = createSoftParticleTexture(
@@ -896,10 +1042,31 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
     // ---------------------------------------------------------------------------
     const clock = new THREE.Clock();
     let animId = 0;
+    let fpsFrames = 0;
+    let fpsAccumSec = 0;
+    let currentRollingFps = 60.0;
 
     const animate = () => {
       animId = requestAnimationFrame(animate);
       const rawDt = Math.min(clock.getDelta(), 0.05);
+      if (rawDt > 0.0001) {
+        fpsFrames++;
+        fpsAccumSec += rawDt;
+        if (fpsAccumSec >= 0.4) {
+          currentRollingFps = Number((fpsFrames / fpsAccumSec).toFixed(1));
+          setMeasuredFps(currentRollingFps);
+          fpsFrames = 0;
+          fpsAccumSec = 0;
+        }
+      }
+      (window as unknown as Record<string, unknown>).__dreamRealModelMetrics = {
+        fps: currentRollingFps,
+        frameTimeMs: Number((rawDt * 1000).toFixed(2)),
+        skinnedCopies: skinnedCopyCountRef.current,
+        loadedInstances: skinnedHumanoidInstances.length,
+        trianglesPerCopy: 2688,
+        bonesPerCopy: 16,
+      };
       const simTime = pinnedTimeParam !== null ? pinnedTimeParam : clock.getElapsedTime();
       const dt = pinnedTimeParam !== null ? 0.016 : rawDt;
 
@@ -937,6 +1104,36 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
         updateCharacterRigAnimation(rig, simTime, dt, swingAngleRad);
       }
       updateCharacterRigAnimation(bossRig, simTime, dt, swingAngleRad * 0.4);
+
+      // Drive In-House GLB Skinned Humanoid (Walk + Idle clip blend & 4-bone Linear Blend Skinning)
+      const activeCopies = skinnedCopyCountRef.current;
+      for (let idx = 0; idx < skinnedHumanoidInstances.length; idx++) {
+        const inst = skinnedHumanoidInstances[idx];
+        const isVisible = idx < activeCopies;
+        inst.mesh.visible = isVisible;
+        if (!isVisible) continue;
+
+        const blendWeight = 0.16 * (0.5 + 0.5 * Math.sin(simTime * 1.35 + idx * 0.42));
+        inst.mixer.setBlendClips('Walk', 'Idle', blendWeight);
+        const flatJoints = inst.mixer.evaluateAtTime(simTime * 1.35 + idx * 0.19);
+        for (let b = 0; b < 16; b++) {
+          inst.skinUniform.value[b].fromArray(flatJoints, b * 16);
+        }
+
+        if (activeCopies === 1 && idx === 0) {
+          // Walk patrol stride in the Sunken Bastion courtyard right next to the 4 code-built heroes
+          const stridePhase = simTime * 1.05;
+          const walkZ = 0.35 + Math.sin(stridePhase) * 0.65;
+          const walkX = Math.cos(stridePhase * 0.5) * 0.32;
+          inst.mesh.position.set(walkX, 0.26, walkZ);
+          inst.mesh.rotation.y = Math.sin(stridePhase * 0.5) * 0.35;
+        } else {
+          // 30-character crowd walking formation across the Sunken Bastion courtyard
+          const walkZ = inst.baseZ + Math.sin(simTime * 1.2 + idx * 0.35) * 0.32;
+          inst.mesh.position.set(inst.baseX, 0.26, walkZ);
+          inst.mesh.rotation.y = Math.sin(simTime * 0.7 + idx * 0.25) * 0.22;
+        }
+      }
 
       // Resolve Real Hit Detection on Active Swing Frame
       if (activeStrike) {
@@ -1177,6 +1374,12 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
           </div>
 
           <div className="flex items-center gap-2 pointer-events-auto">
+            <button
+              onClick={() => setSkinnedCopyCount((prev) => (prev === 30 ? 1 : 30))}
+              className="px-3 py-1.5 rounded-xl bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-400/60 text-emerald-100 text-xs font-bold cursor-pointer shadow-lg"
+            >
+              🦴 Skinned GLB: {skinnedCopyCount}x ({measuredFps} FPS)
+            </button>
             <button
               onClick={() => setIsUnifiedWorkspaceOpen(true)}
               className="px-3 py-1.5 rounded-xl bg-sky-950/90 hover:bg-sky-900 border border-sky-400/60 text-sky-100 text-xs font-bold cursor-pointer shadow-lg"

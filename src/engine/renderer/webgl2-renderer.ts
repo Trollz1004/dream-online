@@ -283,7 +283,7 @@ void main() {
   float G = g1V * g1L;
 
   float specRaw = (D * G) / max(4.0 * NdotV * NdotL, 0.001);
-  vec3 specBrdf = (F * specRaw) / (1.0 + 0.35 * specRaw);
+  vec3 specBrdf = (F * specRaw) / (1.0 + 0.85 * specRaw);
   vec3 diffuseBrdf = kD * albedo / 3.14159265;
 
   vec3 keyColor = (isNight ? vec3(0.42, 0.56, 0.92) : vec3(1.0, 0.94, 0.84)) * uFogAndEnergy.y;

@@ -119,7 +119,7 @@ export function evaluateEnergyConservingPbr(input: PbrShadingInput): PbrShadingR
   for (let c = 0; c < 3; c++) {
     const diffuseBrdf = (kD[c] * input.albedo[c]) / Math.PI;
     // Softly compress ultra-sharp GGX peaks so grazing specular stays energy-conserving
-    const specBrdf = (fresnel[c] * specScale) / (1.0 + 0.35 * specScale);
+    const specBrdf = (fresnel[c] * specScale) / (1.0 + 0.85 * specScale);
     const direct = (diffuseBrdf + specBrdf) * input.lightColor[c] * NdotL;
 
     const envF = f0[c] + (Math.max(1.0 - roughness, f0[c]) - f0[c]) * Math.pow(1.0 - NdotV, 5.0);

@@ -43,6 +43,8 @@ import { computeCreatorBody3dParams } from '../ui/characterCreatorConfig.ts';
 import { WorldEvolutionDirector, quantizeColor16Bit, EvolutionPhase } from './world/world-evolution.ts';
 import { OathcallTownshipServer, OathcallDemoState } from './combat/oathcall-system.ts';
 import { PvpTacticalCoordinator } from './combat/pvp-tactical-ping.ts';
+import { loadGlbFromUrl, ParsedGlbAsset } from './assets/glb-loader.ts';
+import { SkeletonAnimationMixer } from './animation/skeleton-mixer.ts';
 
 declare global {
   interface Window {
@@ -115,6 +117,9 @@ export class DreamEngine {
   isOathcallDemoMode = false;
   isCaptureMode = false;
   isManualStepping = false;
+  isCrowd30Mode = false;
+  testHumanoidAsset: ParsedGlbAsset | null = null;
+  testHumanoidMixers: SkeletonAnimationMixer[] = [];
   scriptedTimeSec = 0;
   isEndCardVisible = false;
   isChampionRegaliaEquipped = false;
@@ -163,6 +168,7 @@ export class DreamEngine {
     this.isOathcallDemoMode = search.includes('oathcallDemo=1');
     this.isAutopilotMode = search.includes('autopilot=1') || this.isCaptureMode || this.isOathcallDemoMode;
     this.isManualStepping = search.includes('manualStep=1');
+    this.isCrowd30Mode = search.includes('crowd=30');
 
     this.oathcallDemoState = {
       active: this.isOathcallDemoMode,
@@ -321,6 +327,21 @@ export class DreamEngine {
 
   async start(): Promise<void> {
     await this.renderer.init();
+
+    if (typeof fetch !== 'undefined') {
+      loadGlbFromUrl('/assets/models/test-rigged-humanoid-walk-not-game-art.glb')
+        .then((asset) => {
+          this.testHumanoidAsset = asset;
+          const count = this.isCrowd30Mode ? 30 : 1;
+          this.testHumanoidMixers = Array.from(
+            { length: count },
+            () => new SkeletonAnimationMixer(asset, 0)
+          );
+        })
+        .catch(() => {
+          // Non-fatal in headless Node environments without HTTP static server
+        });
+    }
 
     this.input.attach(this.canvas);
     this.input.onDayNightToggle = () => {
@@ -1928,6 +1949,40 @@ export class DreamEngine {
         modelMatrix: tempNode.worldMatrix,
         material: entMat,
       });
+    }
+
+    // 8b. Skinned GLB Test Humanoid (1 or 30 copies with 4-bone LBS, Tangent Normal Map & Packed ORM)
+    if (this.testHumanoidAsset && this.testHumanoidAsset.meshes.length > 0) {
+      const prim = this.testHumanoidAsset.meshes[0];
+      const count = this.testHumanoidMixers.length;
+      for (let c = 0; c < count; c++) {
+        const mixer = this.testHumanoidMixers[c];
+        const blendW = 0.15 * (0.5 + 0.5 * Math.sin(this.animClock * 1.4 + c * 0.4));
+        mixer.setBlendClips('Walk', 'Idle', blendW);
+        const joints = mixer.evaluateAtTime(this.animClock * 1.15 + c * 0.19);
+
+        const hNode = new SceneNode(`TestRiggedHumanoid_${c}`);
+        if (count === 1) {
+          const walkZ = -4.8 + Math.sin(this.animClock * 0.9) * 1.2;
+          hNode.position.set(1.65, 0.0, walkZ);
+          hNode.rotation.setFromEuler(0, Math.cos(this.animClock * 0.9) >= 0 ? 0 : Math.PI, 0);
+        } else {
+          const col = c % 6;
+          const row = Math.floor(c / 6);
+          const gx = (col - 2.5) * 1.45;
+          const gz = -2.2 - row * 1.55 + Math.sin(this.animClock * 1.2 + c * 0.3) * 0.35;
+          hNode.position.set(gx, 0.0, gz);
+          hNode.rotation.setFromEuler(0, 0, 0);
+        }
+        hNode.updateWorldMatrix(this.sceneRoot.worldMatrix);
+
+        items.push({
+          geometry: prim.geometry,
+          modelMatrix: hNode.worldMatrix,
+          material: prim.material,
+          skinJointMatrices: joints,
+        });
+      }
     }
 
     // 9. Draw Frame
