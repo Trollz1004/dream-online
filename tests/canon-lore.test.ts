@@ -26,6 +26,8 @@ const CANON_LORE_PATH = path.join(REPO_ROOT, 'docs', 'gdd', 'canon-lore-inhouse.
 const LIFE_SKILLS_PATH = path.join(REPO_ROOT, 'docs', 'gdd', '03-life-skills-economy.md');
 const PVP_DURABILITY_PATH = path.join(REPO_ROOT, 'docs', 'gdd', '04-pvp-flagging-durability.md');
 const MARKETPLACE_PATH = path.join(REPO_ROOT, 'docs', 'gdd', '05-day-night-economy-market.md');
+const WARDROBE_CATALOGUE_PATH = path.join(REPO_ROOT, 'docs', 'gdd', '10-wardrobe-catalogue.md');
+const WARDROBE_SHOP_PATH = path.join(REPO_ROOT, 'docs', 'gdd', '12-wardrobe-needs-shop.md');
 
 test('canon lore: file exists and has clean header with product value only', () => {
   assert.equal(fs.existsSync(CANON_LORE_PATH), true, 'canon-lore-inhouse.md must exist');
@@ -82,7 +84,7 @@ test('canon ruling 2026-11-10: life skills section in 03-life-skills-economy.md 
   assert.match(content, /no server-side AFK sessions/i);
 });
 
-test('canon ruling 2026-11-10: 04-pvp-flagging-durability.md pins upgrade protection, red names, Muse Guards, and pending Josh items', () => {
+test('canon ruling 2026-11-10 & 2026-11-11 addendum: 04-pvp-flagging-durability.md pins upgrade protection, red names, Muse Guards, and pending Josh items', () => {
   const content = fs.readFileSync(PVP_DURABILITY_PATH, 'utf8');
 
   assert.equal(
@@ -95,15 +97,31 @@ test('canon ruling 2026-11-10: 04-pvp-flagging-durability.md pins upgrade protec
     /Gear is never lost to an upgrade: no downgrade, no breaking, no disappearing, jewels and accessories included\./,
   );
   assert.match(content, /Killing 3 players outside township battles turns a player red/i);
-  assert.match(content, /area attack to wipe low-level players turns.*red at once/i);
+  // 2026-11-11 addendum: area-attack multi-kill turns red at once at any level; level has nothing to do with it
+  assert.equal(
+    content.includes('area attack to wipe low-level players'),
+    false,
+    'Old low-level wiping phrasing must be replaced',
+  );
+  assert.match(
+    content,
+    /area-attack multi-kill turns red at once at any level|killing hit on more than one player turns red at once/i,
+  );
+  assert.match(content, /level has nothing to do with it/i);
+  assert.match(content, /area attacks pull mob aggro|hit and anger nearby mobs/i);
+  assert.match(content, /death while red drops gear|dies while red.*drops gear/i);
   assert.match(content, /Red status lasts 1 hour for each player kill/i);
   assert.match(content, /red-named player who is killed drops half of their gear/i);
   assert.match(content, /Muse Guards/);
   assert.match(content, /one-shot red-named players/i);
   assert.match(content, /speed-burst dash/i);
 
-  // All 4 readings from Section 5 must be marked as pending Josh
-  assert.match(content, /10 or more levels below the attacker.*pending Josh|pending Josh.*10 or more levels below the attacker/i);
+  // The 3 remaining readings from Section 5 marked as pending Josh (low-level reading resolved by addendum)
+  assert.equal(
+    content.includes('10 or more levels below the attacker'),
+    false,
+    'Low-level threshold reading is resolved by 2026-11-11 addendum and no longer pending',
+  );
   assert.match(content, /logged in.*pending Josh|pending Josh.*logged in/i);
   assert.match(content, /Musa\*.*Muse.*pending Josh|pending Josh.*Musa\*.*Muse/i);
   assert.match(content, /half of the equipped pieces, rounded down.*pending Josh|pending Josh.*half of the equipped pieces, rounded down/i);
@@ -125,6 +143,43 @@ test('canon ruling 2026-11-10: unapproved proposals, mission wording, and Window
     assert.equal(content.includes('#ForTheKids'), false, `${path.basename(filePath)} must not contain mission tags`);
     assert.equal(content.includes('#UntilNoKidInNeed'), false, `${path.basename(filePath)} must not contain mission tags`);
     assert.equal(/C:\\Users\\[A-Za-z0-9_-]+/i.test(content), false, `${path.basename(filePath)} must not contain Windows user folder paths`);
+  }
+});
+
+test('canon addendum 2026-11-11: wardrobe store timing is 3 months at most, founder pet stays never, and pending note removed from 03', () => {
+  const shopContent = fs.readFileSync(WARDROBE_SHOP_PATH, 'utf8');
+  const catContent = fs.readFileSync(WARDROBE_CATALOGUE_PATH, 'utf8');
+  const lifeContent = fs.readFileSync(LIFE_SKILLS_PATH, 'utf8');
+  const canonContent = fs.readFileSync(CANON_LORE_PATH, 'utf8');
+  const marketContent = fs.readFileSync(MARKETPLACE_PATH, 'utf8');
+
+  // 12-wardrobe-needs-shop.md
+  assert.match(shopContent, /3 months at most/i);
+  assert.match(shopContent, /TrollinlootNScoot.*never/i);
+
+  // 10-wardrobe-catalogue.md
+  assert.match(catContent, /Currency Store Release \(3 months at most\)/i);
+  assert.match(catContent, /February 2027/i);
+  assert.match(catContent, /founder pet stays never/i);
+
+  // 03-life-skills-economy.md: pending Josh note about wardrobe timing removed
+  assert.equal(
+    lifeContent.includes('three months or six months'),
+    false,
+    '03-life-skills-economy.md must not contain pending note about three or six months',
+  );
+
+  // Looter pet renamed to OpenAeYe
+  assert.match(canonContent, /starter \*\*OpenAeYe\*\* looter companion pet/);
+  assert.match(canonContent, /Auto-Looter.*picks up drops automatically, like the OpenAeYe pet/);
+  assert.match(marketContent, /the OpenAeYe pet in the slice already does this/);
+
+  // Jewls and crystal proposals not written into canon
+  for (const fp of [LIFE_SKILLS_PATH, PVP_DURABILITY_PATH, MARKETPLACE_PATH, WARDROBE_SHOP_PATH, WARDROBE_CATALOGUE_PATH, CANON_LORE_PATH]) {
+    const text = fs.readFileSync(fp, 'utf8');
+    assert.equal(text.includes('FORGE-CRYSTALS-PROPOSAL'), false, `${path.basename(fp)} must not cite FORGE-CRYSTALS-PROPOSAL`);
+    assert.equal(text.includes('GEMINI-JEWLS-ACCESSORIES-PROPOSAL'), false, `${path.basename(fp)} must not cite GEMINI-JEWLS-ACCESSORIES-PROPOSAL`);
+    assert.equal(/C:\\Users\\[A-Za-z0-9_-]+/i.test(text), false, `${path.basename(fp)} must not contain Windows user folder paths`);
   }
 });
 

@@ -65,7 +65,7 @@ DREAM ONLINE takes place in a single geography that transforms across the Day/Ni
 - **Signature Voice:** *"This road forgot itself. I'm stitching it back — stand at the Moon Gate while it remembers. I promise nothing permanent."*
 
 ### GeminEYE & OpenAEye — Arena of Lenses Duo Bosses
-- **GeminEYE:** Robotic ocular boss in the Arena of Lenses that splits into a mirrored twin at 50% HP. (Also lends its form language to the starter **GeminEYE** looter companion pet.)
+- **GeminEYE:** Robotic ocular boss in the Arena of Lenses that splits into a mirrored twin at 50% HP. (Also lends its form language to the starter **OpenAeYe** looter companion pet.)
 - **OpenAEye:** Paired ocular boss whose periodic gaze inflicts the **Cross-Eyed** status effect, doubling the player's render-layer vision for 6 seconds.
 - **Orange Sherbet KRAKEN:** Canon boss-tier encounter that drops rare orange sherbet trophies and NEED shards.
 
@@ -134,7 +134,7 @@ At **Level 45** (working cap target: Level 50), Dreamers unlock a transformative
 
 ### Pets & `TrollinlootNScoot`
 - **Free Baseline Pet:** Every player earns or receives a pet without paying. Every pet provides the exact same three baseline functions:
-  1. **Auto-Looter** (picks up drops automatically, like the GeminEYE pet).
+  1. **Auto-Looter** (picks up drops automatically, like the OpenAeYe pet).
   2. **Carry Weight Boost** (delays encirclement/encumbrance slowdown).
   3. **Class-Branded Boost** (identical numerical value across all pets, labeled for the owner's class—giving a 10% edge only if an opponent fails to summon their own free pet).
 - **Pet Leveling, Feeding & Revival:** Pets level slowly (steps at 5, 10, 15) unlocking new idle animations and pet-to-pet interactions. Hand-feeding on an attentive cycle outperforms the paid convenience auto-feeder. Pets have two near-free revival tickets; a third death is permanent for that pet's levels unless restored with a Raise-the-Dead convenience item (skins are never lost and transfer freely).

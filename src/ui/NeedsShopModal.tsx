@@ -337,7 +337,7 @@ export const NEEDS_SHOP_CATALOG: readonly NeedsShopCatalogEntry[] = Object.freez
     category: 'pets',
     item: defineSkin({
       id: 'gemineye-lantern-owl',
-      name: 'GeminEYE Lantern Owl',
+      name: 'OpenAeYe Lantern Owl',
       slot: 'pet',
       firstSaleDate: '2026-02-10',
     }),
@@ -374,7 +374,7 @@ export const NEEDS_SHOP_CATALOG: readonly NeedsShopCatalogEntry[] = Object.freez
     category: 'convenience',
     item: defineConvenienceItem({
       id: 'gemineye-auto-loot-lens',
-      name: 'GeminEYE Auto-Gather Cadence',
+      name: 'OpenAeYe Auto-Gather Cadence',
       saves: 'attention',
     }),
     firstSaleDate: '2026-03-15',
