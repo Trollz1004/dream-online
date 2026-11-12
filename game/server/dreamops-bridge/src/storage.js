@@ -39,7 +39,7 @@ const defaults = {
       state: "day",
       nextShiftHint: "manual prototype trigger later"
     },
-    lastGreenCheckpoint: "checkpoint-0001",
+    lastGreenCheckpoint: null,
     updatedAt: null
   },
   "events.json": {
@@ -103,11 +103,12 @@ export async function ensureStorage() {
   } catch {
     await writeFile(checkpointPath, JSON.stringify({
       id: "checkpoint-0001",
-      label: "Initial all-green prototype checkpoint",
+      label: "Initial unverified prototype seed",
       createdAt: nowIso(),
       worldStateFile: "world_state.json",
       schemaVersion: "prototype-0.1",
-      verified: true,
+      verified: false,
+      prototypeOnly: true,
       notes: "Seed checkpoint only. Not a production rollback artifact."
     }, null, 2), "utf8");
   }
@@ -130,7 +131,17 @@ export async function listCheckpoints() {
   const checkpoints = [];
   for (const name of names.filter((x) => x.endsWith(".json"))) {
     const raw = await readFile(join(checkpointDir(), name), "utf8");
-    checkpoints.push(JSON.parse(raw));
+    const checkpoint = JSON.parse(raw);
+    // Older installs labelled this metadata-only seed verified. Correct the
+    // inspection view without rewriting an operator's checkpoint files.
+    if (checkpoint.prototypeOnly === true || (
+      checkpoint.id === "checkpoint-0001" &&
+      checkpoint.notes === "Seed checkpoint only. Not a production rollback artifact."
+    )) {
+      checkpoint.verified = false;
+      checkpoint.prototypeOnly = true;
+    }
+    checkpoints.push(checkpoint);
   }
   return checkpoints.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 }

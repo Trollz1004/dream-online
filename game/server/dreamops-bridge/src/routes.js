@@ -100,8 +100,15 @@ export async function route(req, res) {
     const checkpoints = await listCheckpoints();
     const target = body.checkpointId
       ? checkpoints.find((checkpoint) => checkpoint.id === body.checkpointId)
-      : checkpoints[0];
-    if (!target) return ok(res, { error: "checkpoint_not_found" }, 404);
+      : checkpoints.find((checkpoint) => checkpoint.verified === true);
+    if (!target) {
+      return body.checkpointId
+        ? ok(res, { error: "checkpoint_not_found" }, 404)
+        : ok(res, { error: "no_verified_checkpoint" }, 409);
+    }
+    if (target.verified !== true) {
+      return ok(res, { error: "checkpoint_not_verified", checkpointId: target.id }, 409);
+    }
     const plan = {
       mode: "dry-run-only",
       targetCheckpoint: target,
