@@ -45,7 +45,7 @@ export class GeminEyePetShop {
   static readonly DEFAULT_BALANCE = 500;
   static readonly EXTEND_ITEM = 'extend_1_hour';
   static readonly EXTEND_COST = 50;
-  static readonly EXTEND_LABEL = 'Extend GeminEYE 1 hour';
+  static readonly EXTEND_LABEL = 'Extend OpenAeYe 1 hour';
 
   static readonly SKIN_COSTS: Record<Exclude<GeminEyeSkin, 'default'>, number> = {
     ember: 40,
@@ -54,9 +54,9 @@ export class GeminEyePetShop {
   };
 
   static readonly SKIN_LABELS: Record<Exclude<GeminEyeSkin, 'default'>, string> = {
-    ember: 'GeminEYE skin: Ember',
-    frost: 'GeminEYE skin: Frost',
-    void: 'GeminEYE skin: Void',
+    ember: 'OpenAeYe skin: Ember',
+    frost: 'OpenAeYe skin: Frost',
+    void: 'OpenAeYe skin: Void',
   };
 
   needsBalance: number;

@@ -75,3 +75,11 @@ export {
   ShellDemo,
   type ShellDemoProps,
 } from './ShellDemo.tsx';
+export {
+  FIVE_HOUR_CAP_MODELS,
+  GOOGLE_FLOW_VISION_ZONES,
+  redactWorkspaceSecrets,
+  swapModelOnFiveHourCap,
+  type GoogleFlowVisionZone,
+  type WorkspaceModelOption,
+} from './workspaceConfig.ts';

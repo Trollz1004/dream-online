@@ -1,14 +1,19 @@
 /**
  * DREAM Engine — Primary WebGPU Renderer
- * Pure WebGPU implementation with WGSL shaders, PBR metallic/roughness shading,
- * procedural Ancient Sanctuary stone/moss terrain, thresholded bloom, and ACES tonemapping.
+ * Pure WebGPU implementation with WGSL shaders:
+ *   - 4-Bone Linear Blend Skinning (JOINTS_0 + WEIGHTS_0, 64-bone palette)
+ *   - Tangent-Space Normal Mapping (TBN orthonormal basis)
+ *   - Textured PBR (baseColorTexture, normalTexture, packed ORM: R=Occlusion, G=Roughness, B=Metallic)
+ *   - Energy-Conserving Cook-Torrance GGX Microfacet BRDF (F0 = mix(0.04, albedo, metallic), kD = (1 - F)*(1 - metallic))
+ *   - Ancient Sanctuary stone/moss terrain, thresholded bloom, and ACES tonemapping.
  */
 
 import { Mat4 } from '../math/mat4.ts';
 import { Vec3 } from '../math/vec3.ts';
-import { MeshGeometry } from '../scene/mesh.ts';
+import { MeshGeometry, PbrTextureData } from '../scene/mesh.ts';
 import { IRenderer, RenderItem } from './types.ts';
 import { RenderProfileData, WorldMode } from './render-profile.ts';
+import { MAX_SKIN_JOINTS } from '../animation/skeleton-mixer.ts';
 
 interface GpuMeshCache {
   vertexBuffer: GPUBuffer;
@@ -17,28 +22,48 @@ interface GpuMeshCache {
   indexCount: number;
 }
 
+interface GpuObjectSlot {
+  uniformBuffer: GPUBuffer;
+  skinBuffer: GPUBuffer;
+}
+
 const WGSL_SHADER = /* wgsl */ `
 struct SceneUniforms {
   viewProj: mat4x4<f32>,
-  cameraPos: vec4<f32>,      // xyz = pos, w = worldMode (0=day, 1=night)
+  cameraPos: vec4<f32>,         // xyz = pos, w = worldMode (0=day, 1=night)
   sunDirAndExposure: vec4<f32>, // xyz = sunDir, w = exposure
-  fogAndEnergy: vec4<f32>,   // x = fogDensity, y = keyEnergy, z = ambientEnergy, w = time
+  fogAndEnergy: vec4<f32>,      // x = fogDensity, y = keyEnergy, z = ambientEnergy, w = time
 };
 
 struct ObjectUniforms {
   modelMatrix: mat4x4<f32>,
   baseColor: vec4<f32>,
-  emissive: vec4<f32>,       // xyz = emissive color, w = emissiveIntensity
-  flags: vec4<f32>,          // x = isSky, y = isGround, z = rimIntensity, w = packed(roughness, metallic)
+  emissive: vec4<f32>,          // xyz = emissive color, w = emissiveIntensity
+  flags: vec4<f32>,             // x = isSky, y = isGround, z = rimIntensity, w = packed(roughness, metallic)
+  skinAndTexFlags: vec4<f32>,   // x = isSkinned, y = hasBaseColorTex, z = hasNormalTex, w = hasOrmTex
+  normalAndOccScale: vec4<f32>, // x = normalScale, y = occlusionStrength, z = 0, w = 0
+};
+
+struct SkinPalette {
+  joints: array<mat4x4<f32>, 64>,
 };
 
 @group(0) @binding(0) var<uniform> scene: SceneUniforms;
+@group(0) @binding(1) var pbrSampler: sampler;
+
 @group(1) @binding(0) var<uniform> obj: ObjectUniforms;
+@group(1) @binding(1) var<uniform> skin: SkinPalette;
+@group(1) @binding(2) var baseColorTex: texture_2d<f32>;
+@group(1) @binding(3) var normalTex: texture_2d<f32>;
+@group(1) @binding(4) var ormTex: texture_2d<f32>;
 
 struct VertexInput {
   @location(0) position: vec3<f32>,
   @location(1) normal: vec3<f32>,
   @location(2) uv: vec2<f32>,
+  @location(3) tangent: vec4<f32>,
+  @location(4) joints0: vec4<f32>,
+  @location(5) weights0: vec4<f32>,
 };
 
 struct VertexOutput {
@@ -46,6 +71,7 @@ struct VertexOutput {
   @location(0) worldPos: vec3<f32>,
   @location(1) worldNormal: vec3<f32>,
   @location(2) uv: vec2<f32>,
+  @location(3) worldTangent: vec4<f32>,
 };
 
 fn hash21(p: vec2<f32>) -> f32 {
@@ -89,15 +115,40 @@ fn acesFilm(x: vec3<f32>) -> vec3<f32> {
 @vertex
 fn vs_main(in: VertexInput) -> VertexOutput {
   var out: VertexOutput;
-  let worldPos4 = obj.modelMatrix * vec4<f32>(in.position, 1.0);
+  var localPos = vec4<f32>(in.position, 1.0);
+  var localNormal = in.normal;
+  var localTan = in.tangent.xyz;
+
+  // 4-Bone Linear Blend Skinning (JOINTS_0 + WEIGHTS_0)
+  if (obj.skinAndTexFlags.x > 0.5) {
+    let j0 = min(63u, u32(in.joints0.x + 0.5));
+    let j1 = min(63u, u32(in.joints0.y + 0.5));
+    let j2 = min(63u, u32(in.joints0.z + 0.5));
+    let j3 = min(63u, u32(in.joints0.w + 0.5));
+
+    let w = in.weights0;
+    let skinMat = w.x * skin.joints[j0]
+                + w.y * skin.joints[j1]
+                + w.z * skin.joints[j2]
+                + w.w * skin.joints[j3];
+
+    localPos = skinMat * vec4<f32>(in.position, 1.0);
+    let skinRot = mat3x3<f32>(skinMat[0].xyz, skinMat[1].xyz, skinMat[2].xyz);
+    localNormal = normalize(skinRot * in.normal);
+    localTan = normalize(skinRot * in.tangent.xyz);
+  }
+
+  let worldPos4 = obj.modelMatrix * localPos;
   out.worldPos = worldPos4.xyz;
   out.clipPos = scene.viewProj * worldPos4;
+
   let nMat = mat3x3<f32>(
     obj.modelMatrix[0].xyz,
     obj.modelMatrix[1].xyz,
     obj.modelMatrix[2].xyz
   );
-  out.worldNormal = normalize(nMat * in.normal);
+  out.worldNormal = normalize(nMat * localNormal);
+  out.worldTangent = vec4<f32>(normalize(nMat * localTan), in.tangent.w);
   out.uv = in.uv;
   return out;
 }
@@ -107,6 +158,10 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
   let isNight = scene.cameraPos.w > 0.5;
   let sunDir = normalize(scene.sunDirAndExposure.xyz);
   let viewDir = normalize(scene.cameraPos.xyz - in.worldPos);
+
+  let sampleBaseCol = textureSample(baseColorTex, pbrSampler, in.uv);
+  let sampleNormal = textureSample(normalTex, pbrSampler, in.uv);
+  let sampleOrm = textureSample(ormTex, pbrSampler, in.uv);
 
   // 1. Sky Dome Atmosphere Gradient + Sun/Moon Disk + Horizon Cloud Haze
   if (obj.flags.x > 0.5) {
@@ -132,15 +187,36 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
   var N = normalize(in.worldNormal);
   let packedRM = obj.flags.w;
-  let roughness = clamp(floor(packedRM) / 255.0, 0.08, 0.98);
+  let roughness = clamp(floor(packedRM) / 255.0, 0.05, 0.98);
   let metallic = clamp(fract(packedRM), 0.0, 0.98);
 
   var albedo = obj.baseColor.rgb;
   var effRoughness = roughness;
   var effMetallic = metallic;
+  var effOcclusion = 1.0;
   var groundRuneEmissive = vec3<f32>(0.0);
 
-  // 2. Varied Ancient Basalt Sanctuary Arena & Weathered Stone/Moss Terrain (Replaces flat brown grid)
+  // Sample 2D PBR textures when bound
+  if (obj.skinAndTexFlags.y > 0.5) {
+    let srgbDecoded = pow(sampleBaseCol.rgb, vec3<f32>(2.2));
+    albedo *= srgbDecoded;
+  }
+  if (obj.skinAndTexFlags.w > 0.5) {
+    effOcclusion = mix(1.0, sampleOrm.r, clamp(obj.normalAndOccScale.y, 0.0, 1.0));
+    effRoughness = clamp(sampleOrm.g * roughness, 0.05, 0.98);
+    effMetallic = clamp(sampleOrm.b * metallic, 0.0, 0.98);
+  }
+  if (obj.skinAndTexFlags.z > 0.5) {
+    let N_geom = N;
+    let T_orth = normalize(in.worldTangent.xyz - N_geom * dot(N_geom, in.worldTangent.xyz));
+    let B_orth = cross(N_geom, T_orth) * in.worldTangent.w;
+    let tNorm = sampleNormal.xyz * 2.0 - vec3<f32>(1.0);
+    let nScale = obj.normalAndOccScale.x;
+    let tsN = normalize(vec3<f32>(tNorm.xy * nScale, max(0.01, tNorm.z)));
+    N = normalize(T_orth * tsN.x + B_orth * tsN.y + N_geom * tsN.z);
+  }
+
+  // 2. Varied Ancient Basalt Sanctuary Arena & Weathered Stone/Moss Terrain
   if (obj.flags.y > 0.5) {
     let arenaCenter = vec2<f32>(0.0, -8.5);
     let relP = in.worldPos.xz - arenaCenter;
@@ -151,7 +227,6 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let microNoise = fbm(in.worldPos.xz * 1.35);
     let fineGrain = valueNoise(in.worldPos.xz * 6.5);
 
-    // Polar sanctuary stone flagstone blocks inside the arena (r < 14.5m)
     let ringStep = floor(r * 0.85);
     let radialDivs = max(8.0, ringStep * 6.0);
     let radialCell = fract((angle / 6.2831853) * radialDivs + ringStep * 0.37);
@@ -169,12 +244,10 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     stoneColor *= (0.88 + 0.22 * fineGrain);
     stoneColor = mix(groutColor, stoneColor, stoneJoint);
 
-    // Outer terrain blends from carved flagstones into weathered mossy rock & earth
     let arenaMask = 1.0 - smoothstep(11.5, 16.5, r);
     let outerTerrain = mix(warmSandstone * 0.85, mossyEarth, smoothstep(0.35, 0.72, macroNoise));
     albedo = mix(outerTerrain * (0.85 + 0.3 * microNoise), stoneColor, arenaMask);
 
-    // Carved sanctuary rings at r = 4.6m, 9.2m, and 13.5m
     let ring1 = 1.0 - smoothstep(0.04, 0.18, abs(r - 4.6));
     let ring2 = 1.0 - smoothstep(0.05, 0.22, abs(r - 9.2));
     let ring3 = 1.0 - smoothstep(0.06, 0.25, abs(r - 13.5));
@@ -183,68 +256,79 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     albedo = mix(albedo, bronzeInlay, (ring1 + ring2 + ring3) * 0.45);
     groundRuneEmissive = bronzeInlay * runeGlowMask * 0.22;
 
-    // Perturb ground normal from flagstone joints & micro-relief for real directional shadow depth
     let bumpX = (valueNoise(in.worldPos.xz * 3.5 + vec2<f32>(0.2, 0.0)) - valueNoise(in.worldPos.xz * 3.5 - vec2<f32>(0.2, 0.0))) * 0.35;
     let bumpZ = (valueNoise(in.worldPos.xz * 3.5 + vec2<f32>(0.0, 0.2)) - valueNoise(in.worldPos.xz * 3.5 - vec2<f32>(0.0, 0.2))) * 0.35;
     N = normalize(vec3<f32>(bumpX + (1.0 - stoneJoint) * 0.18, 1.0, bumpZ));
     effRoughness = mix(0.78, 0.48, arenaMask * stoneJoint);
     effMetallic = mix(0.04, 0.22, (ring1 + ring2));
 
-    // Dual Contact Shadows / Ambient Occlusion under Boss (0, -10) and Hero combat zone
     let distBoss = length(in.worldPos.xz - vec2<f32>(0.0, -10.0));
     let bossContactAO = smoothstep(0.35, 2.25, distBoss);
     let distHeroLine = length(vec2<f32>(in.worldPos.x, max(0.0, abs(in.worldPos.z + 5.5) - 2.2)));
     let heroContactAO = smoothstep(0.25, 1.35, distHeroLine);
     let combinedGroundAO = (0.35 + 0.65 * bossContactAO) * (0.55 + 0.45 * heroContactAO);
     albedo *= combinedGroundAO;
-  } else {
-    // 3. Procedural Armor / Stone Micro-Texture & Bevel Cavity Shading on 3D Meshes
+  } else if (obj.skinAndTexFlags.y < 0.5) {
     let microTex = valueNoise(in.worldPos.xy * 18.0 + in.worldPos.zy * 14.0);
-    albedo *= (0.90 + 0.20 * microTex);
+    albedo *= (0.92 + 0.14 * microTex);
   }
 
-  // 4. Shadowed Key Light, Sky/Ground Hemisphere Ambient, PBR Specular & Rim Light
-  let NdotL = dot(N, sunDir);
-  let shadowTerm = smoothstep(-0.15, 0.45, NdotL);
-  let diff = max(NdotL, 0.0) * shadowTerm;
-
+  // 4. Energy-Conserving Cook-Torrance GGX PBR Shading (Never clips bright metal to white!)
+  let NdotL_raw = dot(N, sunDir);
+  let shadowTerm = smoothstep(-0.12, 0.42, NdotL_raw);
+  let NdotL = max(NdotL_raw, 0.0);
+  let NdotV = max(dot(N, viewDir), 0.001);
   let H = normalize(sunDir + viewDir);
   let NdotH = max(dot(N, H), 0.0);
-  let shininess = mix(14.0, 96.0, 1.0 - effRoughness);
-  let specStrength = mix(0.18, 1.15, effMetallic) * (1.0 - effRoughness * 0.65);
-  let spec = pow(NdotH, shininess) * specStrength * shadowTerm;
+  let VdotH = max(dot(viewDir, H), 0.0);
+
+  let F0 = mix(vec3<f32>(0.04), albedo, effMetallic);
+  let F = F0 + (vec3<f32>(1.0) - F0) * pow(clamp(1.0 - VdotH, 0.0, 1.0), 5.0);
+  let kD = (vec3<f32>(1.0) - F) * (1.0 - effMetallic);
+
+  let alpha = effRoughness * effRoughness;
+  let alpha2 = alpha * alpha;
+  let denomD = NdotH * NdotH * (alpha2 - 1.0) + 1.0;
+  let D = alpha2 / max(3.14159265 * denomD * denomD, 0.0001);
+
+  let rPlus1 = effRoughness + 1.0;
+  let k = (rPlus1 * rPlus1) * 0.125;
+  let g1V = NdotV / (NdotV * (1.0 - k) + k);
+  let g1L = NdotL / (NdotL * (1.0 - k) + k);
+  let G = g1V * g1L;
+
+  let specRaw = (D * G) / max(4.0 * NdotV * NdotL, 0.001);
+  let specBrdf = (F * specRaw) / (1.0 + 0.85 * specRaw);
+  let diffuseBrdf = kD * albedo / 3.14159265;
 
   let keyColor = select(vec3<f32>(1.0, 0.94, 0.84), vec3<f32>(0.42, 0.56, 0.92), isNight) * scene.fogAndEnergy.y;
   let skyAmbient = select(vec3<f32>(0.36, 0.46, 0.62), vec3<f32>(0.09, 0.13, 0.24), isNight);
   let groundBounce = select(vec3<f32>(0.24, 0.19, 0.15), vec3<f32>(0.04, 0.05, 0.08), isNight);
   let hemiAmbient = mix(groundBounce, skyAmbient, clamp(N.y * 0.5 + 0.5, 0.0, 1.0)) * scene.fogAndEnergy.z;
 
-  // Vertical & normal cavity AO so armor plates, greaves, and obelisks have strong 3D relief
-  let cavityAO = clamp(0.42 + 0.58 * (N.y * 0.45 + 0.55), 0.30, 1.0);
-  let diffuseColor = albedo * (1.0 - effMetallic * 0.55);
-  let specColor = mix(vec3<f32>(0.96, 0.94, 0.90), albedo * 1.25 + vec3<f32>(0.12), effMetallic);
+  let cavityAO = clamp(0.45 + 0.55 * (N.y * 0.45 + 0.55), 0.32, 1.0) * effOcclusion;
 
-  // Environment reflection for metallic armor
   let reflDir = reflect(-viewDir, N);
-  let envReflect = mix(groundBounce, skyAmbient * 1.35, clamp(reflDir.y * 0.5 + 0.5, 0.0, 1.0));
-  let metalEnvContribution = envReflect * specColor * effMetallic * (1.0 - effRoughness * 0.55) * 0.55;
+  let envReflect = mix(groundBounce, skyAmbient * 1.25, clamp(reflDir.y * 0.5 + 0.5, 0.0, 1.0));
+  let envF = F0 + (max(vec3<f32>(1.0 - effRoughness), F0) - F0) * pow(1.0 - NdotV, 5.0);
+  let ambientDiffuse = kD * albedo * hemiAmbient * cavityAO;
+  let ambientSpec = envReflect * envF * (1.0 - effRoughness * 0.55) * 0.48 * cavityAO;
 
-  let rim = pow(1.0 - max(dot(N, viewDir), 0.0), 3.0) * obj.flags.z;
+  let rim = pow(1.0 - NdotV, 3.0) * obj.flags.z * (1.0 - effMetallic * 0.45);
   let rimColor = select(vec3<f32>(1.0, 0.84, 0.58), vec3<f32>(0.38, 0.72, 1.0), isNight);
 
-  // Clamp raw emissive intensity so stone obelisks never blow out, while thresholded bloom boosts true VFX
   let rawEmissive = obj.emissive.rgb * min(obj.emissive.w, 2.6) + groundRuneEmissive;
 
-  var color = (hemiAmbient * diffuseColor * cavityAO) +
-              (keyColor * (diffuseColor * diff + specColor * spec)) +
-              (metalEnvContribution * cavityAO) +
-              (rimColor * rim * 0.38) +
+  var color = ambientDiffuse +
+              ambientSpec +
+              (keyColor * (diffuseBrdf * 2.4 + specBrdf) * NdotL * shadowTerm) +
+              (rimColor * rim * 0.32) +
               rawEmissive;
 
   // Thresholded Bloom Knee (only luminance > 0.85 blooms softly)
   let luma = dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
   let bloomExcess = max(0.0, luma - 0.85);
-  color += color * (bloomExcess / (1.0 + bloomExcess)) * 0.28;
+  color += color * (bloomExcess / (1.0 + bloomExcess)) * 0.25;
 
   // Atmospheric Distance Fog
   let dist = length(in.worldPos - scene.cameraPos.xyz);
@@ -281,9 +365,16 @@ export class WebGPURenderer implements IRenderer {
   private sceneUniformBuffer!: GPUBuffer;
   private sceneBindGroup!: GPUBindGroup;
   private objectBindGroupLayout!: GPUBindGroupLayout;
+  private pbrSampler!: GPUSampler;
 
-  private objectPool: { buffer: GPUBuffer; bindGroup: GPUBindGroup }[] = [];
+  private defaultWhiteTex!: GPUTextureView;
+  private defaultNormalTex!: GPUTextureView;
+  private defaultOrmTex!: GPUTextureView;
+  private defaultIdentitySkinBuffer!: GPUBuffer;
+
+  private objectPool: GpuObjectSlot[] = [];
   private meshCache = new WeakMap<MeshGeometry, GpuMeshCache>();
+  private textureCache = new WeakMap<PbrTextureData, GPUTextureView>();
 
   private viewProjMat = new Mat4();
   private startTime = performance.now();
@@ -333,12 +424,41 @@ export class WebGPURenderer implements IRenderer {
       code: WGSL_SHADER,
     });
 
+    this.pbrSampler = this.device.createSampler({
+      magFilter: 'linear',
+      minFilter: 'linear',
+      addressModeU: 'repeat',
+      addressModeV: 'repeat',
+    });
+
+    this.defaultWhiteTex = this.create1x1TextureView([255, 255, 255, 255]);
+    this.defaultNormalTex = this.create1x1TextureView([128, 128, 255, 255]);
+    this.defaultOrmTex = this.create1x1TextureView([255, 255, 255, 255]);
+
+    const identityPalette = new Float32Array(MAX_SKIN_JOINTS * 16);
+    for (let j = 0; j < MAX_SKIN_JOINTS; j++) {
+      identityPalette[j * 16 + 0] = 1;
+      identityPalette[j * 16 + 5] = 1;
+      identityPalette[j * 16 + 10] = 1;
+      identityPalette[j * 16 + 15] = 1;
+    }
+    this.defaultIdentitySkinBuffer = this.device.createBuffer({
+      size: identityPalette.byteLength,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+    this.device.queue.writeBuffer(this.defaultIdentitySkinBuffer, 0, identityPalette);
+
     const sceneBindGroupLayout = this.device.createBindGroupLayout({
       entries: [
         {
           binding: 0,
           visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
           buffer: { type: 'uniform' },
+        },
+        {
+          binding: 1,
+          visibility: GPUShaderStage.FRAGMENT,
+          sampler: { type: 'filtering' },
         },
       ],
     });
@@ -349,6 +469,26 @@ export class WebGPURenderer implements IRenderer {
           binding: 0,
           visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
           buffer: { type: 'uniform' },
+        },
+        {
+          binding: 1,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: 'uniform' },
+        },
+        {
+          binding: 2,
+          visibility: GPUShaderStage.FRAGMENT,
+          texture: { sampleType: 'float' },
+        },
+        {
+          binding: 3,
+          visibility: GPUShaderStage.FRAGMENT,
+          texture: { sampleType: 'float' },
+        },
+        {
+          binding: 4,
+          visibility: GPUShaderStage.FRAGMENT,
+          texture: { sampleType: 'float' },
         },
       ],
     });
@@ -364,11 +504,14 @@ export class WebGPURenderer implements IRenderer {
         entryPoint: 'vs_main',
         buffers: [
           {
-            arrayStride: 32,
+            arrayStride: 80, // 20 floats * 4 bytes
             attributes: [
-              { shaderLocation: 0, offset: 0, format: 'float32x3' },
-              { shaderLocation: 1, offset: 12, format: 'float32x3' },
-              { shaderLocation: 2, offset: 24, format: 'float32x2' },
+              { shaderLocation: 0, offset: 0, format: 'float32x3' },  // position
+              { shaderLocation: 1, offset: 12, format: 'float32x3' }, // normal
+              { shaderLocation: 2, offset: 24, format: 'float32x2' }, // uv
+              { shaderLocation: 3, offset: 32, format: 'float32x4' }, // tangent
+              { shaderLocation: 4, offset: 48, format: 'float32x4' }, // joints0
+              { shaderLocation: 5, offset: 64, format: 'float32x4' }, // weights0
             ],
           },
         ],
@@ -395,12 +538,53 @@ export class WebGPURenderer implements IRenderer {
     });
 
     this.sceneBindGroup = this.device.createBindGroup({
-      layout: sceneBindGroupLayout,
-      entries: [{ binding: 0, resource: { buffer: this.sceneUniformBuffer } }],
+      layout: this.pipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: this.sceneUniformBuffer } },
+        { binding: 1, resource: this.pbrSampler },
+      ],
     });
 
     this.createDepthTexture();
     return true;
+  }
+
+  private create1x1TextureView(rgba: [number, number, number, number]): GPUTextureView {
+    const tex = this.device.createTexture({
+      size: [1, 1],
+      format: 'rgba8unorm',
+      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+    });
+    this.device.queue.writeTexture(
+      { texture: tex },
+      new Uint8Array(rgba),
+      { bytesPerRow: 4 },
+      [1, 1]
+    );
+    return tex.createView();
+  }
+
+  private getOrCreateTextureView(texData: PbrTextureData | undefined, fallback: GPUTextureView): GPUTextureView {
+    if (!texData) return fallback;
+    let cached = this.textureCache.get(texData);
+    if (cached) return cached;
+
+    const w = Math.max(1, texData.width);
+    const h = Math.max(1, texData.height);
+    const tex = this.device.createTexture({
+      size: [w, h],
+      format: 'rgba8unorm',
+      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+    });
+    this.device.queue.writeTexture(
+      { texture: tex },
+      texData.data.buffer,
+      { offset: texData.data.byteOffset, bytesPerRow: w * 4, rowsPerImage: h },
+      [w, h]
+    );
+    cached = tex.createView();
+    this.textureCache.set(texData, cached);
+    return cached;
   }
 
   private createDepthTexture(): void {
@@ -434,17 +618,34 @@ export class WebGPURenderer implements IRenderer {
     if (cached) return cached;
 
     const vCount = geom.vertexCount;
-    const interleaved = new Float32Array(vCount * 8);
+    const interleaved = new Float32Array(vCount * 20);
     for (let i = 0; i < vCount; i++) {
-      const base = i * 8;
+      const base = i * 20;
       interleaved[base + 0] = geom.positions[i * 3 + 0];
       interleaved[base + 1] = geom.positions[i * 3 + 1];
       interleaved[base + 2] = geom.positions[i * 3 + 2];
+
       interleaved[base + 3] = geom.normals[i * 3 + 0];
       interleaved[base + 4] = geom.normals[i * 3 + 1];
       interleaved[base + 5] = geom.normals[i * 3 + 2];
+
       interleaved[base + 6] = geom.uvs[i * 2 + 0];
       interleaved[base + 7] = geom.uvs[i * 2 + 1];
+
+      interleaved[base + 8] = geom.tangents[i * 4 + 0];
+      interleaved[base + 9] = geom.tangents[i * 4 + 1];
+      interleaved[base + 10] = geom.tangents[i * 4 + 2];
+      interleaved[base + 11] = geom.tangents[i * 4 + 3];
+
+      interleaved[base + 12] = geom.joints0[i * 4 + 0];
+      interleaved[base + 13] = geom.joints0[i * 4 + 1];
+      interleaved[base + 14] = geom.joints0[i * 4 + 2];
+      interleaved[base + 15] = geom.joints0[i * 4 + 3];
+
+      interleaved[base + 16] = geom.weights0[i * 4 + 0];
+      interleaved[base + 17] = geom.weights0[i * 4 + 1];
+      interleaved[base + 18] = geom.weights0[i * 4 + 2];
+      interleaved[base + 19] = geom.weights0[i * 4 + 3];
     }
 
     const vertexBuffer = this.device.createBuffer({
@@ -484,17 +685,17 @@ export class WebGPURenderer implements IRenderer {
     return cached;
   }
 
-  private getObjectSlot(index: number): { buffer: GPUBuffer; bindGroup: GPUBindGroup } {
+  private getObjectSlot(index: number): GpuObjectSlot {
     while (this.objectPool.length <= index) {
-      const buffer = this.device.createBuffer({
-        size: 112,
+      const uniformBuffer = this.device.createBuffer({
+        size: 144, // 36 floats * 4 bytes
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
       });
-      const bindGroup = this.device.createBindGroup({
-        layout: this.objectBindGroupLayout,
-        entries: [{ binding: 0, resource: { buffer } }],
+      const skinBuffer = this.device.createBuffer({
+        size: MAX_SKIN_JOINTS * 16 * 4,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
       });
-      this.objectPool.push({ buffer, bindGroup });
+      this.objectPool.push({ uniformBuffer, skinBuffer });
     }
     return this.objectPool[index];
   }
@@ -563,7 +764,7 @@ export class WebGPURenderer implements IRenderer {
     pass.setPipeline(this.pipeline);
     pass.setBindGroup(0, this.sceneBindGroup);
 
-    const objData = new Float32Array(28);
+    const objData = new Float32Array(36);
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const slot = this.getObjectSlot(i);
@@ -573,6 +774,11 @@ export class WebGPURenderer implements IRenderer {
       const roughByte = Math.round(Math.max(0.05, Math.min(0.98, mat.roughness ?? 0.4)) * 255);
       const metalFrac = Math.max(0.0, Math.min(0.98, mat.metallic ?? 0.5));
       const packedRM = roughByte + metalFrac;
+
+      const isSkinned = item.skinJointMatrices ? 1.0 : 0.0;
+      const hasBaseTex = mat.baseColorTexture ? 1.0 : 0.0;
+      const hasNormalTex = mat.normalTexture ? 1.0 : 0.0;
+      const hasOrmTex = mat.ormTexture ? 1.0 : 0.0;
 
       objData.set(item.modelMatrix.elements, 0);
       objData[16] = mat.baseColor[0];
@@ -587,10 +793,46 @@ export class WebGPURenderer implements IRenderer {
       objData[25] = mat.isGround ? 1.0 : 0.0;
       objData[26] = mat.rimIntensity ?? 0.45;
       objData[27] = packedRM;
+      objData[28] = isSkinned;
+      objData[29] = hasBaseTex;
+      objData[30] = hasNormalTex;
+      objData[31] = hasOrmTex;
+      objData[32] = mat.normalScale ?? 1.0;
+      objData[33] = mat.occlusionStrength ?? 1.0;
+      objData[34] = 0.0;
+      objData[35] = 0.0;
 
-      this.device.queue.writeBuffer(slot.buffer, 0, objData);
+      this.device.queue.writeBuffer(slot.uniformBuffer, 0, objData);
 
-      pass.setBindGroup(1, slot.bindGroup);
+      let skinBuf = this.defaultIdentitySkinBuffer;
+      if (item.skinJointMatrices) {
+        const len = Math.min(item.skinJointMatrices.byteLength, MAX_SKIN_JOINTS * 16 * 4);
+        this.device.queue.writeBuffer(
+          slot.skinBuffer,
+          0,
+          item.skinJointMatrices.buffer,
+          item.skinJointMatrices.byteOffset,
+          len
+        );
+        skinBuf = slot.skinBuffer;
+      }
+
+      const baseTexView = this.getOrCreateTextureView(mat.baseColorTexture, this.defaultWhiteTex);
+      const normTexView = this.getOrCreateTextureView(mat.normalTexture, this.defaultNormalTex);
+      const ormTexView = this.getOrCreateTextureView(mat.ormTexture, this.defaultOrmTex);
+
+      const bindGroup = this.device.createBindGroup({
+        layout: this.objectBindGroupLayout,
+        entries: [
+          { binding: 0, resource: { buffer: slot.uniformBuffer } },
+          { binding: 1, resource: { buffer: skinBuf } },
+          { binding: 2, resource: baseTexView },
+          { binding: 3, resource: normTexView },
+          { binding: 4, resource: ormTexView },
+        ],
+      });
+
+      pass.setBindGroup(1, bindGroup);
       pass.setVertexBuffer(0, mesh.vertexBuffer);
       pass.setIndexBuffer(mesh.indexBuffer, mesh.indexFormat);
       pass.drawIndexed(mesh.indexCount);
@@ -609,7 +851,8 @@ export class WebGPURenderer implements IRenderer {
       this.depthTexture.destroy();
     }
     for (const slot of this.objectPool) {
-      slot.buffer.destroy();
+      slot.uniformBuffer.destroy();
+      slot.skinBuffer.destroy();
     }
     if (this.sceneUniformBuffer) {
       this.sceneUniformBuffer.destroy();

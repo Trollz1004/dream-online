@@ -5,10 +5,21 @@
  * 3D skill VFX meshes, weathered arena crag rocks, and GPU particle diamonds.
  */
 
+export interface PbrTextureData {
+  width: number;
+  height: number;
+  data: Uint8Array; // RGBA8 linear or sRGB bytes (width * height * 4)
+  srgb?: boolean;
+  name?: string;
+}
+
 export interface GeometryData {
   positions: Float32Array; // 3 floats per vertex
   normals: Float32Array;   // 3 floats per vertex
   uvs: Float32Array;       // 2 floats per vertex
+  tangents?: Float32Array; // 4 floats per vertex (tx, ty, tz, handedness w)
+  joints0?: Uint16Array;   // 4 uint16 joint indices per vertex (JOINTS_0)
+  weights0?: Float32Array; // 4 normalized float weights per vertex (WEIGHTS_0)
   colors?: Float32Array;   // 4 floats per vertex (RGBA)
   indices: Uint16Array | Uint32Array;
 }
@@ -22,12 +33,125 @@ export interface MaterialProperties {
   rimIntensity?: number;
   isSky?: boolean;
   isGround?: boolean;
+  baseColorTexture?: PbrTextureData;
+  normalTexture?: PbrTextureData;
+  normalScale?: number;
+  ormTexture?: PbrTextureData; // Packed R = Occlusion, G = Roughness, B = Metallic
+  occlusionStrength?: number;
+}
+
+/**
+ * Computes Lengyel/MikkTSpace-compatible orthogonal vertex tangents (vec4: tx, ty, tz, handedness w)
+ * from indexed triangle positions, normals, and UVs.
+ */
+export function computeVertexTangents(
+  positions: Float32Array,
+  normals: Float32Array,
+  uvs: Float32Array,
+  indices: Uint16Array | Uint32Array
+): Float32Array {
+  const vCount = Math.floor(positions.length / 3);
+  const tan1 = new Float32Array(vCount * 3);
+  const tan2 = new Float32Array(vCount * 3);
+  const tangents = new Float32Array(vCount * 4);
+
+  const iCount = indices.length;
+  for (let i = 0; i + 2 < iCount; i += 3) {
+    const i1 = indices[i];
+    const i2 = indices[i + 1];
+    const i3 = indices[i + 2];
+
+    const x1 = positions[i1 * 3], y1 = positions[i1 * 3 + 1], z1 = positions[i1 * 3 + 2];
+    const x2 = positions[i2 * 3], y2 = positions[i2 * 3 + 1], z2 = positions[i2 * 3 + 2];
+    const x3 = positions[i3 * 3], y3 = positions[i3 * 3 + 1], z3 = positions[i3 * 3 + 2];
+
+    const u1 = uvs[i1 * 2] ?? 0, v1 = uvs[i1 * 2 + 1] ?? 0;
+    const u2 = uvs[i2 * 2] ?? 0, v2 = uvs[i2 * 2 + 1] ?? 0;
+    const u3 = uvs[i3 * 2] ?? 0, v3 = uvs[i3 * 2 + 1] ?? 0;
+
+    const dx1 = x2 - x1, dy1 = y2 - y1, dz1 = z2 - z1;
+    const dx2 = x3 - x1, dy2 = y3 - y1, dz2 = z3 - z1;
+    const du1 = u2 - u1, dv1 = v2 - v1;
+    const du2 = u3 - u1, dv2 = v3 - v1;
+
+    const det = du1 * dv2 - du2 * dv1;
+    if (Math.abs(det) < 1e-8) continue;
+    const r = 1.0 / det;
+
+    const sx = (dv2 * dx1 - dv1 * dx2) * r;
+    const sy = (dv2 * dy1 - dv1 * dy2) * r;
+    const sz = (dv2 * dz1 - dv1 * dz2) * r;
+
+    const tx = (du1 * dx2 - du2 * dx1) * r;
+    const ty = (du1 * dy2 - du2 * dy1) * r;
+    const tz = (du1 * dz2 - du2 * dz1) * r;
+
+    for (const vIdx of [i1, i2, i3]) {
+      tan1[vIdx * 3] += sx;
+      tan1[vIdx * 3 + 1] += sy;
+      tan1[vIdx * 3 + 2] += sz;
+      tan2[vIdx * 3] += tx;
+      tan2[vIdx * 3 + 1] += ty;
+      tan2[vIdx * 3 + 2] += tz;
+    }
+  }
+
+  for (let i = 0; i < vCount; i++) {
+    const nx = normals[i * 3] ?? 0;
+    const ny = normals[i * 3 + 1] ?? 1;
+    const nz = normals[i * 3 + 2] ?? 0;
+
+    const tx = tan1[i * 3];
+    const ty = tan1[i * 3 + 1];
+    const tz = tan1[i * 3 + 2];
+
+    // Gram-Schmidt orthogonalize T against N
+    const nDotT = nx * tx + ny * ty + nz * tz;
+    let ox = tx - nx * nDotT;
+    let oy = ty - ny * nDotT;
+    let oz = tz - nz * nDotT;
+    const len = Math.hypot(ox, oy, oz);
+
+    if (len > 1e-6) {
+      ox /= len;
+      oy /= len;
+      oz /= len;
+    } else {
+      // Fallback tangent orthogonal to N
+      if (Math.abs(ny) < 0.99) {
+        const fl = Math.hypot(-nz, 0, nx) || 1;
+        ox = -nz / fl;
+        oy = 0;
+        oz = nx / fl;
+      } else {
+        ox = 1;
+        oy = 0;
+        oz = 0;
+      }
+    }
+
+    // Handedness w = sign(dot(cross(N, T), tan2))
+    const cx = ny * tz - nz * ty;
+    const cy = nz * tx - nx * tz;
+    const cz = nx * ty - ny * tx;
+    const handedness = cx * tan2[i * 3] + cy * tan2[i * 3 + 1] + cz * tan2[i * 3 + 2] < 0.0 ? -1.0 : 1.0;
+
+    tangents[i * 4] = ox;
+    tangents[i * 4 + 1] = oy;
+    tangents[i * 4 + 2] = oz;
+    tangents[i * 4 + 3] = handedness;
+  }
+
+  return tangents;
 }
 
 export class MeshGeometry {
   positions: Float32Array;
   normals: Float32Array;
   uvs: Float32Array;
+  tangents: Float32Array;
+  joints0: Uint16Array;
+  weights0: Float32Array;
   colors?: Float32Array;
   indices: Uint16Array | Uint32Array;
   vertexCount: number;
@@ -41,6 +165,27 @@ export class MeshGeometry {
     this.indices = data.indices;
     this.vertexCount = this.positions.length / 3;
     this.indexCount = this.indices.length;
+
+    if (data.tangents && data.tangents.length === this.vertexCount * 4) {
+      this.tangents = data.tangents;
+    } else {
+      this.tangents = computeVertexTangents(this.positions, this.normals, this.uvs, this.indices);
+    }
+
+    if (data.joints0 && data.joints0.length === this.vertexCount * 4) {
+      this.joints0 = data.joints0;
+    } else {
+      this.joints0 = new Uint16Array(this.vertexCount * 4);
+    }
+
+    if (data.weights0 && data.weights0.length === this.vertexCount * 4) {
+      this.weights0 = data.weights0;
+    } else {
+      this.weights0 = new Float32Array(this.vertexCount * 4);
+      for (let i = 0; i < this.vertexCount; i++) {
+        this.weights0[i * 4] = 1.0;
+      }
+    }
   }
 }
 

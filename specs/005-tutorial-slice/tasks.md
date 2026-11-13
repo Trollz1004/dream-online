@@ -8,7 +8,7 @@ description: "Task list for the tutorial slice, worthy of the judge lane's name"
 
 **Input**: `specs/005-tutorial-slice/spec.md` and `plan.md`
 
-**Tests**: every code task lands with its headless checks in the same change, and `MINIMUM_CHECKS` in `game/godot/DreamSlice/tests/run_tests.gd` rises by the number added (never below 789). Frames are graded against the spec's Screenshot bar (SB-01 to SB-15).
+**Tests**: every code task lands with its headless checks in the same change in the in-house DREAM Engine suite (`npm run lint` and `npm test` via `.github/workflows/engine-suite.yml`). Frames are graded against the spec's Screenshot bar (SB-01 to SB-15).
 
 **Lanes**: **[Opus]** is a code worker (Claude Opus) on a branch; **[Judge]** is the Claude judge lane, which captures and opens frames, grades them, runs the gates, merges with `--no-ff` and writes the journal. A worker never grades its own frames. [P] marks tasks that touch different files and can run in parallel.
 

@@ -7,8 +7,27 @@ import { MAT, MeshBuilder } from './geometry.ts';
 import { type Mat4, type Vec3, multiply, rotationY, rotationX, rotationZ, scaling, translation, trs, v3, lerp, clamp } from './math.ts';
 import { mulberry32, valueNoise2 } from './noise.ts';
 import {
-  DECKS, DECK_Y, TERRAIN, TURTLE, WATER_Y, coastX, shellSurfaceLocal, terrainHeight, turtleShoalMask,
+  DECKS, DECK_Y, TERRAIN, TURTLE, WATER_Y, coastX, groundHeight, shellSurfaceLocal, terrainHeight, turtleShoalMask,
 } from './world.ts';
+import {
+  FABLE_SMITH_NPC,
+  NIGHT_ARMOR_TRUCK_ROUTE,
+  SMITH_SERVICE_TABLE,
+  TOWN_SMITH_PLACEMENT,
+  createAnvilState,
+  resolveArmorTruckState,
+  useFablesAnvil,
+  type ActiveAnvilCamp,
+  type AnvilCapInput,
+  type ArmorTruckState,
+  type FablesAnvilState,
+  type NightArmorTruckRoute,
+  type SmithNpcDefinition,
+  type SmithServiceTable,
+  type TownSmithPlacement,
+} from '../../game/economy/smith/index.ts';
+
+export type WorldDayPhase = 'day' | 'night';
 
 export interface WindmillRig { bone: number; hub: Vec3; axis: Vec3; speed: number }
 export interface PointLightDef { pos: Vec3; color: Vec3; radius: number }
@@ -17,6 +36,8 @@ export interface StaticScene {
   world: MeshBuilder;
   windmills: WindmillRig[];
   lanterns: PointLightDef[];
+  townSmith: TownSmithPlacement;
+  nightTruckRoute: NightArmorTruckRoute;
 }
 
 // ---------------------------------------------------------------------------
@@ -338,6 +359,405 @@ function shellPoint(place: Mat4, lx: number, lz: number, sink = 0.5): Mat4 {
 }
 
 // ---------------------------------------------------------------------------
+// Fable's Forge Smith (`fable-smith`) & Fable's Armor Truck + Pop-Up Camper
+// ---------------------------------------------------------------------------
+const IRON_DARK: Vec3 = [0.16, 0.17, 0.19];
+const IRON_STEEL: Vec3 = [0.34, 0.36, 0.4];
+const BRASS_WARM: Vec3 = [0.68, 0.52, 0.26];
+const LEATHER_APRON: Vec3 = [0.36, 0.22, 0.13];
+const TUNIC_SLATE: Vec3 = [0.22, 0.26, 0.32];
+const SKIN_WARM: Vec3 = [0.78, 0.62, 0.5];
+const EMBER_GLOW: Vec3 = [1.0, 0.48, 0.16];
+const CAMPER_CANVAS: Vec3 = [0.86, 0.78, 0.64];
+const TRUCK_SLATE: Vec3 = [0.2, 0.23, 0.27];
+
+/** Sculpted horned blacksmith anvil on an oak timber block. */
+function buildSmithAnvil(b: MeshBuilder, base: Mat4) {
+  // Heavy oak stump base with iron bands.
+  b.cylinder([0, 0, 0], [0, 0.54, 0], 0.34, 0.31, 12, [0.38, 0.25, 0.15], MAT.WOOD, { aux: 1, transform: base });
+  b.cylinder([0, 0.12, 0], [0, 0.16, 0], 0.345, 0.345, 12, IRON_DARK, MAT.METAL, { caps: false, transform: base });
+  b.cylinder([0, 0.42, 0], [0, 0.46, 0], 0.32, 0.32, 12, IRON_DARK, MAT.METAL, { caps: false, transform: base });
+  // Cast-iron anvil foot, waist, and working face.
+  b.box([0, 0.6, 0], [0.28, 0.06, 0.18], IRON_DARK, MAT.METAL, { transform: base });
+  b.box([0, 0.72, 0], [0.18, 0.08, 0.12], IRON_DARK, MAT.METAL, { transform: base });
+  b.box([0, 0.85, 0], [0.34, 0.07, 0.15], IRON_STEEL, MAT.METAL, { transform: base });
+  // Tapered bick/horn pointing +X and heel step pointing -X.
+  b.cylinder([0.3, 0.85, 0], [0.64, 0.86, 0], 0.11, 0.025, 10, IRON_STEEL, MAT.METAL, { transform: base });
+  b.box([-0.38, 0.83, 0], [0.08, 0.045, 0.13], IRON_STEEL, MAT.METAL, { transform: base });
+  // Glowing hot ingot resting on the anvil face.
+  b.box([0.04, 0.94, 0], [0.11, 0.025, 0.045], EMBER_GLOW, MAT.EMISSIVE, { transform: base });
+}
+
+/**
+ * Sculpted figure for Fable's town/camp/truck smith NPC (`fable-smith`).
+ * Positioned at local origin facing +Z (or towards the anvil).
+ */
+export function buildFableSmithFigure(b: MeshBuilder, base: Mat4) {
+  // Boots & sturdy stance legs.
+  for (const sx of [-0.14, 0.14]) {
+    b.cylinder([sx, 0, 0], [sx, 0.42, 0], 0.095, 0.085, 10, [0.18, 0.13, 0.1], MAT.WOOD, { transform: base });
+    b.cylinder([sx, 0.42, 0], [sx, 0.88, 0], 0.105, 0.095, 10, TUNIC_SLATE, MAT.PLASTER, { transform: base });
+  }
+  // Broad blacksmith torso + heavy leather smithing apron.
+  b.ellipsoid([0, 1.18, 0], [0.27, 0.34, 0.19], 12, 16, TUNIC_SLATE, MAT.PLASTER, { transform: base });
+  b.box([0, 1.02, 0.12], [0.23, 0.36, 0.08], LEATHER_APRON, MAT.WOOD, { aux: 1, transform: base });
+  // Tool belt + brass buckle.
+  b.box([0, 0.9, 0.02], [0.27, 0.045, 0.2], [0.22, 0.14, 0.09], MAT.WOOD, { transform: base });
+  b.box([0, 0.9, 0.22], [0.055, 0.05, 0.02], BRASS_WARM, MAT.METAL, { transform: base });
+  // Shoulders & arms (right arm raised with forging hammer, left arm holding tongs).
+  b.ellipsoid([-0.31, 1.34, 0.02], [0.11, 0.11, 0.11], 8, 12, TUNIC_SLATE, MAT.PLASTER, { transform: base });
+  b.ellipsoid([0.31, 1.36, 0.04], [0.11, 0.11, 0.11], 8, 12, TUNIC_SLATE, MAT.PLASTER, { transform: base });
+  // Left arm reaching forward with tongs.
+  b.cylinder([-0.31, 1.32, 0.04], [-0.22, 1.06, 0.36], 0.075, 0.065, 8, SKIN_WARM, MAT.SKIN, { transform: base });
+  b.cylinder([-0.22, 1.06, 0.36], [-0.06, 0.96, 0.58], 0.022, 0.018, 6, IRON_DARK, MAT.METAL, { transform: base });
+  // Right arm poised with blacksmith cross-peen hammer.
+  b.cylinder([0.31, 1.36, 0.04], [0.26, 1.54, 0.32], 0.08, 0.068, 8, SKIN_WARM, MAT.SKIN, { transform: base });
+  b.cylinder([0.26, 1.5, 0.26], [0.14, 1.82, 0.44], 0.026, 0.024, 8, [0.46, 0.31, 0.18], MAT.WOOD, { transform: base });
+  b.box([0.13, 1.84, 0.45], [0.065, 0.065, 0.14], IRON_STEEL, MAT.METAL, { transform: base });
+  // Neck, head, beard, and brass smith goggles on forehead.
+  b.cylinder([0, 1.46, 0], [0, 1.58, 0], 0.09, 0.085, 8, SKIN_WARM, MAT.SKIN, { transform: base });
+  b.ellipsoid([0, 1.71, 0.02], [0.155, 0.175, 0.16], 12, 16, SKIN_WARM, MAT.SKIN, { transform: base });
+  b.ellipsoid([0, 1.63, 0.1], [0.13, 0.11, 0.11], 10, 12, [0.24, 0.17, 0.12], MAT.FUR, { transform: base });
+  b.ellipsoid([0, 1.78, -0.02], [0.165, 0.12, 0.165], 10, 14, [0.24, 0.17, 0.12], MAT.FUR, { transform: base });
+  b.box([0, 1.79, 0.14], [0.13, 0.035, 0.04], BRASS_WARM, MAT.METAL, { transform: base });
+}
+
+/**
+ * Places the daytime town smith (`fable-smith`) and open-air forge on Haven Town Landing
+ * using `TOWN_SMITH_PLACEMENT` from `src/game/economy/smith/truck.ts`.
+ */
+export function buildTownSmithForge(
+  b: MeshBuilder,
+  lights: PointLightDef[],
+  placement: TownSmithPlacement = TOWN_SMITH_PLACEMENT,
+) {
+  const [px, py, pz] = placement.position;
+  const base = multiply(translation(px, py, pz), rotationY(placement.yaw));
+  const toWorld = (lp: Vec3): Vec3 => [
+    base[0] * lp[0] + base[4] * lp[1] + base[8] * lp[2] + base[12],
+    base[1] * lp[0] + base[5] * lp[1] + base[9] * lp[2] + base[13],
+    base[2] * lp[0] + base[6] * lp[1] + base[10] * lp[2] + base[14],
+  ];
+
+  // Stone hearth pad under the forge so hot coals never scorch the boardwalk planks.
+  b.box([0, 0.04, 0], [1.95, 0.04, 1.65], [0.38, 0.36, 0.34], MAT.ROCK, { transform: base });
+
+  // Open-air timber forge pavilion posts + shingled gable canopy.
+  for (const [cx, cz] of [[-1.75, -1.4], [1.75, -1.4], [-1.75, 1.4], [1.75, 1.4]] as [number, number][]) {
+    b.cylinder([cx, 0, cz], [cx, 2.55, cz], 0.11, 0.095, 8, TIMBER, MAT.WOOD, { aux: 1, transform: base });
+  }
+  b.box([0, 2.48, 1.4], [1.85, 0.08, 0.08], TIMBER, MAT.WOOD, { aux: 0, transform: base });
+  b.box([0, 2.48, -1.4], [1.85, 0.08, 0.08], TIMBER, MAT.WOOD, { aux: 0, transform: base });
+  b.gableRoof([0, 2.55, 0], 1.85, 1.5, 0.78, 0.28, ROOF, MAT.ROOF, { transform: base });
+  b.gableEnd(1.85, 2.55, 0, 1.5, 0.78, 1, TIMBER, MAT.WOOD, { transform: base });
+  b.gableEnd(-1.85, 2.55, 0, 1.5, 0.78, -1, TIMBER, MAT.WOOD, { transform: base });
+
+  // Stone brick forge hearth & chimney hood on the back-left (-X, -Z).
+  b.box([-0.95, 0.55, -0.68], [0.68, 0.52, 0.56], [0.42, 0.4, 0.37], MAT.ROCK, { transform: base });
+  b.box([-0.95, 1.12, -0.68], [0.74, 0.08, 0.62], IRON_DARK, MAT.METAL, { transform: base });
+  b.cylinder([-0.95, 1.65, -0.68], [-0.95, 3.55, -0.68], 0.44, 0.24, 10, IRON_DARK, MAT.METAL, { transform: base });
+  // Glowing forge coal bed + warm point light.
+  b.ellipsoid([-0.95, 1.18, -0.58], [0.42, 0.12, 0.34], 8, 12, EMBER_GLOW, MAT.EMISSIVE, { transform: base });
+  lights.push({ pos: toWorld([-0.85, 1.45, -0.45]), color: [1.0, 0.58, 0.24], radius: 9.5 });
+
+  // Centerpiece horned anvil in front of the smith.
+  buildSmithAnvil(b, multiply(base, translation(0.22, 0.06, 0.38)));
+
+  // Quench barrel and weapon/armor service rack on +X.
+  b.cylinder([1.18, 0.06, -0.45], [1.18, 0.82, -0.45], 0.3, 0.33, 12, WOOD_BASE, MAT.WOOD, { aux: 1, transform: base });
+  b.box([1.32, 0.72, 0.42], [0.22, 0.66, 0.62], TIMBER, MAT.WOOD, { aux: 1, transform: base });
+  for (const sz of [-0.32, 0, 0.32]) {
+    b.cylinder([1.28, 0.35, 0.42 + sz], [1.22, 1.38, 0.42 + sz], 0.032, 0.015, 6, IRON_STEEL, MAT.METAL, { transform: base });
+  }
+
+  // Hanging forge sign lantern at the front post.
+  const signWorld = toWorld([1.75, 2.15, 1.45]);
+  lantern(b, lights, signWorld[0], signWorld[1], signWorld[2]);
+
+  // Fable's Forge Smith NPC (`fable-smith`) standing behind the anvil facing the player walkway.
+  buildFableSmithFigure(b, multiply(base, translation(0.18, 0.06, -0.32)));
+}
+
+/**
+ * Computes the heading yaw for Fable's Armor Truck from its active state and route.
+ */
+export function computeArmorTruckYaw(
+  truckState: ArmorTruckState,
+  route: NightArmorTruckRoute = NIGHT_ARMOR_TRUCK_ROUTE,
+): number {
+  if (truckState.mode === 'summoned-to-player') {
+    return -2.55;
+  }
+  const dx = route.destinationPosition[0] - route.originPosition[0];
+  const dz = route.destinationPosition[2] - route.originPosition[2];
+  return Math.atan2(dx, dz);
+}
+
+/**
+ * Builds Fable's Armor Truck (`fables-armor-truck`) and its tow-behind pop-up camper
+ * (`towsPopupCamper: true`) at `truckState.position`.
+ * When `truckState.camperDeployed` is true (parked midway at night
+ * or summoned beside the player via Fable's Anvil), the pop-up camper roof and awning deploy
+ * and the same smith NPC (`fable-smith`) stands at the portable anvil counter.
+ */
+export function buildArmorTruckWithPopupCamper(
+  b: MeshBuilder,
+  lights: PointLightDef[],
+  truckState: ArmorTruckState,
+  yawOverride?: number,
+) {
+  const [tx, ty, tz] = truckState.position;
+  const yaw = yawOverride ?? computeArmorTruckYaw(truckState);
+  const base = multiply(translation(tx, ty, tz), rotationY(yaw));
+  const toWorld = (lp: Vec3): Vec3 => [
+    base[0] * lp[0] + base[4] * lp[1] + base[8] * lp[2] + base[12],
+    base[1] * lp[0] + base[5] * lp[1] + base[9] * lp[2] + base[13],
+    base[2] * lp[0] + base[6] * lp[1] + base[10] * lp[2] + base[14],
+  ];
+
+  // -------------------------------------------------------------------------
+  // 1. Fable's Armor Truck (`fables-armor-truck`) — centered at local z = +1.15
+  // -------------------------------------------------------------------------
+  // Heavy armored chassis frame & bumpers.
+  b.box([0, 0.44, 1.15], [1.08, 0.14, 2.05], IRON_DARK, MAT.METAL, { transform: base });
+  b.box([0, 0.42, 3.26], [1.14, 0.16, 0.12], BRASS_WARM, MAT.METAL, { transform: base });
+  b.box([0, 0.42, -0.92], [1.12, 0.14, 0.1], IRON_DARK, MAT.METAL, { transform: base });
+
+  // 4 heavy off-road wheels with brass hubs.
+  for (const [wx, wz] of [
+    [-1.08, 2.45],
+    [1.08, 2.45],
+    [-1.08, 0.05],
+    [1.08, 0.05],
+  ] as [number, number][]) {
+    const side = wx < 0 ? -1 : 1;
+    b.cylinder([wx - side * 0.14, 0.44, wz], [wx + side * 0.14, 0.44, wz], 0.44, 0.44, 14, [0.1, 0.1, 0.11], MAT.METAL, { transform: base });
+    b.cylinder([wx - side * 0.16, 0.44, wz], [wx + side * 0.16, 0.44, wz], 0.2, 0.2, 10, BRASS_WARM, MAT.METAL, { transform: base });
+  }
+
+  // Forward armored cab (local z = 2.05..3.15).
+  b.box([0, 1.18, 2.55], [0.98, 0.62, 0.58], TRUCK_SLATE, MAT.METAL, { transform: base });
+  b.box([0, 0.92, 3.02], [0.94, 0.36, 0.24], [0.24, 0.27, 0.32], MAT.METAL, { transform: base });
+  // Windshield visor & warm headlights.
+  b.box([0, 1.42, 3.14], [0.82, 0.22, 0.04], [0.12, 0.18, 0.24], MAT.METAL, { transform: base });
+  for (const hx of [-0.68, 0.68]) {
+    b.box([hx, 0.78, 3.28], [0.14, 0.11, 0.05], [1.0, 0.82, 0.46], MAT.EMISSIVE, { transform: base });
+  }
+
+  // Rear mobile forge workshop box body (local z = -0.85..2.0).
+  b.box([0, 1.42, 0.58], [1.04, 0.86, 1.42], [0.34, 0.24, 0.16], MAT.WOOD, { aux: 2, transform: base });
+  // Brass & riveted iron corner trim + roof rack + forge chimney stack.
+  b.box([0, 2.32, 0.58], [1.08, 0.07, 1.46], IRON_DARK, MAT.METAL, { transform: base });
+  b.box([0, 2.38, 0.58], [0.92, 0.05, 1.28], BRASS_WARM, MAT.METAL, { transform: base });
+  b.cylinder([-0.55, 2.35, 0.2], [-0.55, 3.15, 0.2], 0.16, 0.12, 10, IRON_DARK, MAT.METAL, { transform: base });
+  b.ellipsoid([-0.55, 3.18, 0.2], [0.14, 0.06, 0.14], 6, 10, EMBER_GLOW, MAT.EMISSIVE, { transform: base });
+
+  // Side service window bay on +X with glowing forge interior & service counter.
+  b.box([1.05, 1.38, 0.58], [0.05, 0.46, 0.96], EMBER_GLOW, MAT.EMISSIVE, { transform: base });
+  b.box([1.14, 0.92, 0.58], [0.16, 0.06, 1.04], WOOD_BASE, MAT.WOOD, { aux: 2, transform: base });
+  // Propped awning over the truck service window.
+  const awningLift = truckState.camperDeployed ? 0.55 : 0.12;
+  b.box([1.42, 1.88, 0.58], [0.46, 0.04, 1.06], ROOF, MAT.ROOF, {
+    transform: multiply(base, rotationZ(-0.22 * awningLift)),
+  });
+
+  // -------------------------------------------------------------------------
+  // 2. Tow Hitch & Tow-Behind Pop-Up Camper (`towsPopupCamper: true`)
+  // -------------------------------------------------------------------------
+  if (truckState.towsPopupCamper) {
+    // Steel A-frame tow hitch connecting truck rear (z = -0.92) to camper front (z = -1.75).
+    b.cylinder([-0.32, 0.42, -1.78], [0, 0.42, -0.92], 0.045, 0.045, 6, IRON_STEEL, MAT.METAL, { transform: base });
+    b.cylinder([0.32, 0.42, -1.78], [0, 0.42, -0.92], 0.045, 0.045, 6, IRON_STEEL, MAT.METAL, { transform: base });
+    b.ellipsoid([0, 0.46, -1.32], [0.08, 0.08, 0.08], 6, 8, BRASS_WARM, MAT.METAL, { transform: base });
+
+    // Camper trailer chassis & lower tub (local z = -1.75..-4.25, centered at z = -3.0).
+    b.box([0, 0.42, -3.0], [0.96, 0.12, 1.25], IRON_DARK, MAT.METAL, { transform: base });
+    b.box([0, 0.78, -3.0], [0.94, 0.28, 1.22], [0.4, 0.28, 0.18], MAT.WOOD, { aux: 2, transform: base });
+
+    // Camper wheels.
+    for (const wx of [-0.98, 0.98]) {
+      const side = wx < 0 ? -1 : 1;
+      b.cylinder([wx - side * 0.12, 0.38, -3.0], [wx + side * 0.12, 0.38, -3.0], 0.38, 0.38, 12, [0.1, 0.1, 0.11], MAT.METAL, { transform: base });
+      b.cylinder([wx - side * 0.14, 0.38, -3.0], [wx + side * 0.14, 0.38, -3.0], 0.17, 0.17, 8, BRASS_WARM, MAT.METAL, { transform: base });
+    }
+
+    // Pop-up camper upper canvas walls & pitched pop-up roof (expanded when deployed).
+    const popHeight = truckState.camperDeployed ? 0.56 : 0.18;
+    const roofY = 1.06 + popHeight * 2;
+    b.box([0, 1.06 + popHeight, -3.0], [0.88, popHeight, 1.14], CAMPER_CANVAS, MAT.PLASTER, { transform: base });
+    // Warm glowing camper windows on the canvas walls when deployed.
+    if (truckState.camperDeployed) {
+      b.box([0.9, 1.38, -3.0], [0.03, 0.24, 0.58], [1.0, 0.72, 0.34], MAT.EMISSIVE, { transform: base });
+      b.box([-0.9, 1.38, -3.0], [0.03, 0.24, 0.58], [1.0, 0.72, 0.34], MAT.EMISSIVE, { transform: base });
+      // Stabilizer corner jacks lowered to ground.
+      for (const [jx, jz] of [[-0.86, -1.88], [0.86, -1.88], [-0.86, -4.12], [0.86, -4.12]] as [number, number][]) {
+        b.cylinder([jx, 0.02, jz], [jx, 0.38, jz], 0.035, 0.035, 6, IRON_STEEL, MAT.METAL, { transform: base });
+      }
+    }
+    const roofH = truckState.camperDeployed ? 0.62 : 0.24;
+    b.gableRoof([0, roofY, -3.0], 0.94, 1.22, roofH, 0.16, ROOF, MAT.ROOF, { transform: base });
+    b.gableEnd(0.94, roofY, -3.0, 1.22, roofH, 1, CAMPER_CANVAS, MAT.PLASTER, { transform: base });
+    b.gableEnd(-0.94, roofY, -3.0, 1.22, roofH, -1, CAMPER_CANVAS, MAT.PLASTER, { transform: base });
+  }
+
+  // Warm forge lantern light on the truck.
+  lights.push({ pos: toWorld([1.35, 1.75, 0.58]), color: [1.0, 0.62, 0.28], radius: 10.0 });
+  if (truckState.towsPopupCamper) {
+    lights.push({ pos: toWorld([0.95, 1.55, -3.0]), color: [1.0, 0.68, 0.32], radius: 8.0 });
+  }
+
+  // When parked midway or summoned beside the player, deploy portable anvil & `fable-smith` NPC!
+  if (truckState.camperDeployed) {
+    if (truckState.mode === 'night-route-parked-midway') {
+      // Weathered timber midway turnout platform so the night-route truck, pop-up camper, smith, and player stand on solid planks.
+      b.box([0.95, -0.05, -0.65], [2.85, 0.05, 4.45], WOOD_BASE, MAT.WOOD, { aux: 0, transform: base });
+      for (const [px, pz] of [
+        [-1.6, 3.3],
+        [3.4, 3.3],
+        [-1.6, -4.6],
+        [3.4, -4.6],
+      ] as [number, number][]) {
+        b.cylinder([px, -2.6, pz], [px, 0.95, pz], 0.14, 0.12, 8, TIMBER, MAT.WOOD, { aux: 1, transform: base });
+      }
+    }
+    buildSmithAnvil(b, multiply(base, translation(1.75, 0.0, 0.55)));
+    buildFableSmithFigure(b, multiply(multiply(base, translation(1.62, 0.0, -0.22)), rotationY(0.35)));
+  }
+}
+
+/**
+ * Builds a standalone `MeshBuilder` and `PointLightDef[]` for Fable's Armor Truck
+ * and its tow-behind pop-up camper for a given `ArmorTruckState`.
+ */
+export function buildArmorTruckMesh(
+  truckState: ArmorTruckState,
+  yawOverride?: number,
+): { mesh: MeshBuilder; lanterns: PointLightDef[] } {
+  const mesh = new MeshBuilder();
+  const lanterns: PointLightDef[] = [];
+  buildArmorTruckWithPopupCamper(mesh, lanterns, truckState, yawOverride);
+  return { mesh, lanterns };
+}
+
+export type IslandSliceMode = 'town' | 'night-midway' | 'summoned' | 'service-table';
+
+export interface IslandSlicePlacementOptions {
+  readonly anvilInput?: AnvilCapInput;
+  readonly playerPosition?: Vec3;
+  readonly playerYaw?: number;
+  readonly routeProgress?: number;
+  readonly nowSec?: number;
+}
+
+export interface IslandSlicePlacementState {
+  readonly mode: IslandSliceMode;
+  readonly worldPhase: WorldDayPhase;
+  readonly routeProgress: number;
+  readonly townSmith: TownSmithPlacement;
+  readonly nightRoute: NightArmorTruckRoute;
+  readonly anvilState: FablesAnvilState;
+  readonly activeCamp: ActiveAnvilCamp | null;
+  readonly truckState: ArmorTruckState;
+  readonly serviceTableOpen: boolean;
+  readonly activeSmithNpc: SmithNpcDefinition;
+  readonly activeServiceTable: SmithServiceTable;
+  readonly playerPos: Vec3;
+  readonly playerYaw: number;
+  readonly cameraEye: Vec3;
+  readonly cameraTarget: Vec3;
+}
+
+/**
+ * Resolves the complete in-house slice placement for Fable's town smith (`fable-smith`),
+ * Fable's Armor Truck on its night route (including its midway parking spot), and Fable's Anvil
+ * summoning that same truck + pop-up camper beside the player with the same smith and service table.
+ */
+export function resolveIslandSlicePlacement(
+  mode: IslandSliceMode,
+  options: IslandSlicePlacementOptions = {},
+): IslandSlicePlacementState {
+  const baseAnvil = createAnvilState(options.anvilInput ?? { level: 25, hpPool: 640, manaPool: 320 });
+
+  if (mode === 'town') {
+    const [sx, sy, sz] = TOWN_SMITH_PLACEMENT.position;
+    const playerPos: Vec3 = options.playerPosition ?? [sx - 2.2, sy, sz + 1.9];
+    const playerYaw = options.playerYaw ?? 2.35;
+    const truckState = resolveArmorTruckState('day', options.routeProgress ?? 0, null);
+    return Object.freeze({
+      mode,
+      worldPhase: 'day',
+      routeProgress: options.routeProgress ?? 0,
+      townSmith: TOWN_SMITH_PLACEMENT,
+      nightRoute: NIGHT_ARMOR_TRUCK_ROUTE,
+      anvilState: baseAnvil,
+      activeCamp: null,
+      truckState,
+      serviceTableOpen: false,
+      activeSmithNpc: TOWN_SMITH_PLACEMENT.smithNpc,
+      activeServiceTable: TOWN_SMITH_PLACEMENT.serviceTable,
+      playerPos,
+      playerYaw,
+      cameraEye: [sx - 4.4, sy + 1.85, sz + 4.1] as Vec3,
+      cameraTarget: [sx + 0.15, sy + 0.85, sz - 0.15] as Vec3,
+    });
+  }
+
+  if (mode === 'night-midway') {
+    const routeProgress = options.routeProgress ?? 0.5;
+    const truckState = resolveArmorTruckState('night', routeProgress, null);
+    const [mx, my, mz] = truckState.position;
+    const playerPos: Vec3 = options.playerPosition ?? [mx - 2.35, my, mz + 0.95];
+    const playerYaw = options.playerYaw ?? 1.85;
+    return Object.freeze({
+      mode,
+      worldPhase: 'night',
+      routeProgress,
+      townSmith: TOWN_SMITH_PLACEMENT,
+      nightRoute: NIGHT_ARMOR_TRUCK_ROUTE,
+      anvilState: baseAnvil,
+      activeCamp: null,
+      truckState,
+      serviceTableOpen: false,
+      activeSmithNpc: truckState.smithNpc,
+      activeServiceTable: truckState.serviceTable,
+      playerPos,
+      playerYaw,
+      cameraEye: [mx - 5.9, my + 2.25, mz + 4.35] as Vec3,
+      cameraTarget: [mx + 0.65, my + 1.0, mz + 0.45] as Vec3,
+    });
+  }
+
+  // 'summoned' or 'service-table': Using Fable's Anvil summons the same Armor Truck beside the player.
+  const playerPos: Vec3 = options.playerPosition ?? [-8.5, DECK_Y, -35.2];
+  const playerYaw = options.playerYaw ?? 1.65;
+  const used = useFablesAnvil(baseAnvil, playerPos, {
+    nowSec: options.nowSec ?? 12,
+    spawnOffset: [2.4, 0, -1.6],
+  });
+  const activeCamp = used.ok ? used.camp : null;
+  const truckState = resolveArmorTruckState('day', options.routeProgress ?? 0, activeCamp);
+  const [cx, cy, cz] = truckState.position;
+
+  return Object.freeze({
+    mode,
+    worldPhase: 'day',
+    routeProgress: options.routeProgress ?? 0,
+    townSmith: TOWN_SMITH_PLACEMENT,
+    nightRoute: NIGHT_ARMOR_TRUCK_ROUTE,
+    anvilState: used.state,
+    activeCamp,
+    truckState,
+    serviceTableOpen: mode === 'service-table',
+    activeSmithNpc: truckState.smithNpc,
+    activeServiceTable: truckState.serviceTable,
+    playerPos,
+    playerYaw,
+    cameraEye: [playerPos[0] - 3.6, cy + 2.15, playerPos[2] + 3.8] as Vec3,
+    cameraTarget: [cx + 0.55, cy + 0.95, cz + 0.35] as Vec3,
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Static world assembly.
 // ---------------------------------------------------------------------------
 export function buildStaticScene(detail: number): StaticScene {
@@ -380,8 +800,9 @@ export function buildStaticScene(detail: number): StaticScene {
   crate(b, 19.5, DECK_Y + 0.85, -18.3, 0.6, 0.7, rnd);
   crate(b, 4.6, DECK_Y, -37.0, 0.7, -0.2, rnd);
 
-  // Stilt houses on the shore landing.
+  // Stilt houses on the shore landing + Fable's town smith (`fable-smith`) forge at TOWN_SMITH_PLACEMENT.
   house(b, multiply(translation(24.5, DECK_Y + 0.05, -24.5), rotationY(0.08)), 6.2, 4.8, 3, rnd);
+  buildTownSmithForge(b, lanterns, TOWN_SMITH_PLACEMENT);
   {
     const hx = 21, hz = -44;
     for (const [px, pz] of [[-3, -2.5], [3, -2.5], [-3, 2.5], [3, 2.5], [0, 0]] as [number, number][]) {
@@ -433,7 +854,13 @@ export function buildStaticScene(detail: number): StaticScene {
     }
   }
 
-  return { world: b, windmills, lanterns };
+  return {
+    world: b,
+    windmills,
+    lanterns,
+    townSmith: TOWN_SMITH_PLACEMENT,
+    nightTruckRoute: NIGHT_ARMOR_TRUCK_ROUTE,
+  };
 }
 
 // ---------------------------------------------------------------------------

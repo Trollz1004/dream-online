@@ -7,7 +7,7 @@ import path from "node:path";
 // witness for this player": eventScopeMatches only ever filtered a world
 // event by zone or eventType, never by who posted it or who witnessed it.
 // The crowdfunding demo needs exactly that question answered for Mireth's
-// memory to be real (game/godot/DreamSlice/scripts/npc_memory.gd posts a
+// memory to be real (the in-house DREAM Engine posts a
 // world event per witnessed moment and reads it back at night), so this
 // checks the new world_event scope does what it was added for.
 

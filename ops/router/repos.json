@@ -9,6 +9,11 @@
       "rootEnv": "ANTIGRAVITY_REPO_ROOT",
       "defaultRoot": "%USERPROFILE%\\antigravity\\ANTIGRAVITY-wt-pr335",
       "worktreePrefix": "ANTIGRAVITY-wt-inbox-"
+    },
+    "dream-intake": {
+      "rootEnv": "DREAM_INTAKE_REPO_ROOT",
+      "defaultRoot": "%USERPROFILE%\\antigravity\\dream-intake",
+      "worktreePrefix": "dream-intake-wt-inbox-"
     }
   }
 }

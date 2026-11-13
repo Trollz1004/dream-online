@@ -6,7 +6,7 @@ Joshua sets the rules. He is losing his sight: write plain, short sentences, out
 
 - Looking into anything (research, "find out", "what is the state of", a technical choice): `dream-research`. For deep web work, `anthropic-skills:deep-research`; for what people say lately, `last30days:last30days`; for library docs, the Context7 tools.
 - A missing capability ("is there a skill for", "how do I"): `find-skills`. Making or fixing a skill: `anthropic-skills:skill-creator`, with `superpowers:writing-skills`.
-- Running, seeing or debugging the game: `game-development`. Godot work can go to the Godot agents (Godot Gameplay Scripter, Godot Shader Developer); design goes to Game Designer, Level Designer or Narrative Designer.
+- Running, seeing or debugging the game: `game-development`. Engine work runs on the in-house DREAM Engine (`src/engine/`); design goes to Game Designer, Level Designer or Narrative Designer.
 - Process: `superpowers:brainstorming` before new design; `superpowers:test-driven-development` for code (failing test first); `superpowers:systematic-debugging` for bugs; `superpowers:verification-before-completion` before saying "done".
 - Knowledge and the graph: `claude-obsidian:wiki` routes everything; `wiki-ingest` files sources, `wiki-query` answers from the vault, `save` keeps one answer, `wiki-lint` checks health. Vault writes run in WSL (`wsl -d OpenClawGateway`); see the auto-memory note on the Obsidian memory graph.
 - Images and video: the `comfyui` MCP tools (ComfyUI Desktop on 127.0.0.1:8188, started at logon; the RX 6800 renders). Work from generic words (mood, palette, level of detail). Never give it another game's pictures or a named style, and never an asset marked no-AI.

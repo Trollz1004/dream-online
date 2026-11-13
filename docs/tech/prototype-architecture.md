@@ -4,7 +4,7 @@
 
 ## Current Reality
 
-The repo root is `C:\DREAM\dream-online`, and the Godot slice at `game/godot/DreamSlice` now exists alongside the prototype servers described below.
+The repo root is `C:\DREAM\dream-online`, and the in-house DREAM Engine at `src/engine/` runs alongside the prototype servers described below.
 
 Primary design source of truth is the canon document kept local and git-ignored at
 `paperclip-tro/projects/PROJECT-2-DREAM-ONLINE.md` under the repo root.

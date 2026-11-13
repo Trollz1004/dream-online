@@ -14,11 +14,9 @@
   clean-room naming rule. Track mechanics generically instead: gathering, processing,
   cooking, fishing, worker nodes, repair, durability, storage pressure, and XP modifiers.
 
-## Godot 4 sources
+## In-House DREAM Engine sources
 
-- Godot manual: https://docs.godotengine.org/en/stable/
-- GDScript reference: https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/index.html
-- Exporting for web: https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_web.html
+- The engine and editor are built in-house (`src/engine/`, `docs/tech/engine-decision-2026-09-30-own-engine.md`) on WebGPU with a WebGL2 fallback and zero third-party engine dependencies; the earlier Godot 4 reference links are retired.
 
 ## Visual and System References (2026-11-12)
 

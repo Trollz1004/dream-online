@@ -1,10 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import {
+  buildHeroCharacterRig,
+  buildMythosBossRig,
+  updateCharacterRigAnimation,
+  type BuiltCharacterRig,
+} from '../engine/characters/hero-and-boss-builder.ts';
+import { loadGlbFromUrl } from '../engine/assets/glb-loader.ts';
+import { SkeletonAnimationMixer } from '../engine/animation/skeleton-mixer.ts';
+import { PbrTextureData } from '../engine/scene/mesh.ts';
 import {
   UnifiedAntigravityWorkspaceShell,
   type WorkspaceCenterView,
@@ -54,9 +62,14 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
 
   const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
   const isCaptureMode = params.get('capture') === '1';
+  const isCrowd30Mode = params.get('crowd') === '30';
   const initialWorkspaceMode = params.get('workspace') === '1';
   const initialWorkspaceView = (params.get('view') as WorkspaceCenterView) || 'repos-models';
   const [isUnifiedWorkspaceOpen, setIsUnifiedWorkspaceOpen] = useState<boolean>(initialWorkspaceMode);
+  const [skinnedCopyCount, setSkinnedCopyCount] = useState<number>(isCrowd30Mode ? 30 : 1);
+  const [measuredFps, setMeasuredFps] = useState<number>(60);
+  const skinnedCopyCountRef = useRef<number>(isCrowd30Mode ? 30 : 1);
+  skinnedCopyCountRef.current = skinnedCopyCount;
   const pinnedTimeParam = params.get('t') ? parseFloat(params.get('t')!) : null;
   const initialYawParam = params.get('yaw') ? parseFloat(params.get('yaw')!) : null;
   const initialPitchParam = params.get('pitch') ? parseFloat(params.get('pitch')!) : null;
@@ -517,536 +530,187 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
     }
 
     // ---------------------------------------------------------------------------
-    // 5. ANIMATED HERO ("Dreamwarden Vanguard"), POLYGONAL BOSS ("Veynar, the Hollow
-    //    Sovereign"), AND DISTINCT ANIMATED MINIONS ("Ashbound Sentinels")
+    // 5. FOUR IN-HOUSE SCULPTED HEROES (Knight, Elf Archer, Mage, Dark Knight)
+    //    AND TOWERING BOSS ("Myth@s, the Crimson Sovereign") — Look Pass 1
     // ---------------------------------------------------------------------------
-    const mixers: THREE.AnimationMixer[] = [];
     const heroRoot = new THREE.Group();
-    heroRoot.position.set(0, 0.26, 3.8);
+    heroRoot.position.set(0.328, 0.26, -1.25);
     scene.add(heroRoot);
 
     const bossRoot = new THREE.Group();
-    bossRoot.position.set(0, 0.26, -3.6);
-    bossRoot.rotation.y = Math.PI; // Rig natively faces -Z; Math.PI faces +Z directly toward Hero!
+    bossRoot.position.set(0, 0.22, -1.62);
+    bossRoot.rotation.y = 0.04; // Faces +Z directly toward the party & camera
     scene.add(bossRoot);
 
-    // A) Load Animated Human Shadowblade Assassin Hero (1H Main-Hand Blade + Off-Hand Dagger
-    //    with Non-Gambling MYTHOS Forge Growing Blue Flame & 4 Orbiting Orbs, tracked at 1.0 root scale
-    //    to UniversalBaseCharacter.glb bones so weapons never float or glitch!)
-    const heroBones: Record<string, { bone: THREE.Bone; restQuat: THREE.Quaternion }> = {};
-    const heroSwordHolder = new THREE.Group();
-    heroRoot.add(heroSwordHolder);
-    const heroDaggerHolder = new THREE.Group();
-    heroRoot.add(heroDaggerHolder);
-    let heroWeaponTipObj: THREE.Object3D = heroSwordHolder;
+    const bossRig: BuiltCharacterRig = buildMythosBossRig();
+    bossRoot.add(bossRig.root);
 
-    let heroTrackRefs: {
-      headBone?: THREE.Object3D;
-      chestBone?: THREE.Object3D;
-      handRBone?: THREE.Object3D;
-      handLBone?: THREE.Object3D;
-      hoodMesh?: THREE.Object3D;
-      cuirassMesh?: THREE.Object3D;
-    } = {};
-    let heroActions: {
-      run?: THREE.AnimationAction;
-      attack?: THREE.AnimationAction;
-      idle?: THREE.AnimationAction;
-    } = {};
+    // Build all 4 Hero Classes with distinct silhouettes, layered armor/cloth, capes & weapons
+    const knightRig = buildHeroCharacterRig('knight');
+    knightRig.root.position.set(-2.72, 0.26, 0.42);
+    knightRig.root.rotation.y = 0.56; // 3/4 inward angle showing winged helm, lion shield, sword & blue cape
+    scene.add(knightRig.root);
 
-    // Soft Blue Flame Texture for Non-Gambling Legend/Mythos Weapon Forge Visuals
-    const blueFlameTex = createSoftParticleTexture(
-      'rgba(224, 242, 254, 1.0)',
-      'rgba(56, 189, 248, 0.85)',
-      'rgba(14, 116, 144, 0.0)'
-    );
-    const blueFlameSprites: THREE.Sprite[] = [];
-    const mythosOrbitOrbs: THREE.Mesh[] = [];
+    const archerRig = buildHeroCharacterRig('elf-archer');
+    archerRig.root.position.set(-1.55, 0.26, -0.58);
+    archerRig.root.rotation.y = 0.52; // 3/4 inward angle showing drawn longbow, glowing string/arrow, elf face & green cloak
+    scene.add(archerRig.root);
 
-    // Off-Hand Assassin Dagger (Human 1H + Off-Hand Dagger Rule)
-    const daggerBladeGeo = new THREE.ConeGeometry(0.055, 0.62, 4);
-    daggerBladeGeo.rotateX(Math.PI / 2);
-    daggerBladeGeo.translate(0, 0, 0.32);
-    const daggerBladeMat = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(0x0f172a),
-      emissive: new THREE.Color(0x0284c7),
-      emissiveIntensity: 0.9,
-      roughness: 0.18,
-      metalness: 0.94,
-    });
-    const daggerMesh = new THREE.Mesh(daggerBladeGeo, daggerBladeMat);
-    daggerMesh.castShadow = true;
-    heroDaggerHolder.add(daggerMesh);
+    const mageRig = buildHeroCharacterRig('mage');
+    mageRig.root.position.set(1.55, 0.26, -0.58);
+    mageRig.root.rotation.y = -0.52; // 3/4 inward angle showing purple robes, glowing runes, orb staff & blue spell rings
+    scene.add(mageRig.root);
 
-    const daggerFlameSprite = new THREE.Sprite(
-      new THREE.SpriteMaterial({
-        map: blueFlameTex,
-        blending: THREE.AdditiveBlending,
-        transparent: true,
-        opacity: 0.88,
-        depthWrite: false,
-      })
-    );
-    daggerFlameSprite.position.set(0, 0.04, 0.36);
-    daggerFlameSprite.scale.set(0.42, 0.58, 1.0);
-    heroDaggerHolder.add(daggerFlameSprite);
-    blueFlameSprites.push(daggerFlameSprite);
+    const darkKnightRig = buildHeroCharacterRig('dark-knight');
+    darkKnightRig.root.position.set(2.72, 0.26, 0.42);
+    darkKnightRig.root.rotation.y = -0.58; // 3/4 inward angle showing horned helm, spiked crimson/black plate, torn red cape & halberd
+    scene.add(darkKnightRig.root);
 
-    // Load 1H Shadowblade + Growing Blue Flame + 4 Orbiting Mythos Forge Orbs into Right Hand Holder
-    gltfLoader.load('/assets/models/sovereign-greatsword.glb', (swordGltf) => {
-      const blade = swordGltf.scene.clone(true);
-      blade.scale.set(0.72, 0.72, 0.72); // Sleek 1-handed Assassin Shadowblade proportion
-      blade.traverse((sc) => {
-        if ((sc as THREE.Mesh).isMesh) {
-          sc.castShadow = true;
-          const mat = (sc as THREE.Mesh).material as THREE.MeshStandardMaterial;
-          if (mat) {
-            mat.color = new THREE.Color(0x1e293b);
-            mat.emissive = new THREE.Color(0x0ea5e9);
-            mat.emissiveIntensity = 0.95;
-          }
-        }
-      });
-      heroSwordHolder.add(blade);
-
-      // Growing Blue Flame sprites surging along the 1H Shadowblade (Non-Gambling Forge Visual)
-      for (let i = 0; i < 4; i++) {
-        const bf = new THREE.Sprite(
-          new THREE.SpriteMaterial({
-            map: blueFlameTex,
-            blending: THREE.AdditiveBlending,
-            transparent: true,
-            opacity: 0.86,
-            depthWrite: false,
-          })
-        );
-        bf.position.set(0, 0.05, 0.28 + i * 0.24);
-        bf.scale.set(0.45 + i * 0.06, 0.62 + i * 0.08, 1.0);
-        heroSwordHolder.add(bf);
-        blueFlameSprites.push(bf);
-      }
-
-      // 4 Orbiting Mythos Forge Orbs circling the weapon
-      const orbGeo = new THREE.SphereGeometry(0.055, 12, 12);
-      const orbMat = new THREE.MeshBasicMaterial({
-        color: 0x38bdf8,
-      });
-      for (let i = 0; i < 4; i++) {
-        const orb = new THREE.Mesh(orbGeo, orbMat);
-        const orbGlow = new THREE.Sprite(
-          new THREE.SpriteMaterial({
-            map: blueFlameTex,
-            blending: THREE.AdditiveBlending,
-            transparent: true,
-            opacity: 0.9,
-            depthWrite: false,
-          })
-        );
-        orbGlow.scale.set(0.32, 0.32, 1.0);
-        orb.add(orbGlow);
-        heroSwordHolder.add(orb);
-        mythosOrbitOrbs.push(orb);
-      }
-
-      const tip = new THREE.Object3D();
-      tip.position.set(0, 0, 1.08);
-      blade.add(tip);
-      heroWeaponTipObj = tip;
-    });
-
-    // Keep flanking Ranged Scout (`Male_Ranger.gltf` with Bow_Shoot posture on the Bastion West Ledge)
-    gltfLoader.load('/assets/third_party/quaternius_outfits/Male_Ranger.gltf', (gltf) => {
-      const rangerScout = gltf.scene;
-      rangerScout.scale.set(1.12, 1.12, 1.12);
-      rangerScout.position.set(-5.8, 0.26, 1.8);
-      rangerScout.rotation.y = -0.45;
-      rangerScout.traverse((c) => {
-        if ((c as THREE.Bone).isBone) {
-          heroBones[c.name] = {
-            bone: c as THREE.Bone,
-            restQuat: c.quaternion.clone(),
-          };
-        }
-        if ((c as THREE.Mesh).isMesh) {
-          c.castShadow = true;
-          c.receiveShadow = true;
-        }
-      });
-      scene.add(rangerScout);
-    });
-
-    // 3D Marketplace Random-Stat Loot Drops & Non-Gambling Forge Catalysts on Arena Floor
-    const lootDrops = [
-      { x: -2.1, z: 0.4, color: 0x38bdf8, label: 'MYTHOS FORGE CATALYST' },
-      { x: 2.3, z: 0.2, color: 0xf59e0b, label: 'LEGEND DEFENDER PLATE (+28% HP)' },
-      { x: -1.4, z: -2.1, color: 0xa855f7, label: 'AWAKENED 1H SANCTUM MACE (INT)' },
+    const partyHeroRigs: BuiltCharacterRig[] = [
+      knightRig,
+      archerRig,
+      mageRig,
+      darkKnightRig,
     ];
-    for (const ld of lootDrops) {
-      const lootGroup = new THREE.Group();
-      lootGroup.position.set(ld.x, 0.34, ld.z);
-      const crystal = new THREE.Mesh(
-        new THREE.OctahedronGeometry(0.18, 0),
-        new THREE.MeshStandardMaterial({
-          color: ld.color,
-          emissive: ld.color,
-          emissiveIntensity: 1.1,
-          roughness: 0.15,
-          metalness: 0.9,
-        })
-      );
-      lootGroup.add(crystal);
-      const beamSp = new THREE.Sprite(
-        new THREE.SpriteMaterial({
-          map: blueFlameTex,
-          color: ld.color,
-          blending: THREE.AdditiveBlending,
-          transparent: true,
-          opacity: 0.55,
-          depthWrite: false,
-        })
-      );
-      beamSp.position.set(0, 0.65, 0);
-      beamSp.scale.set(0.45, 1.55, 1.0);
-      lootGroup.add(beamSp);
-      scene.add(lootGroup);
+    const heroWeaponTipObj: THREE.Object3D = knightRig.parts.weaponTip;
+
+    // ---------------------------------------------------------------------------
+    // 5B. IN-HOUSE GLB SKINNED HUMANOID TEST MODEL (test-rigged-humanoid-walk-not-game-art.glb)
+    //     Loaded via src/engine/assets/glb-loader.ts, animated via SkeletonAnimationMixer,
+    //     deformed with 4-bone Linear Blend Skinning (JOINTS_0 + WEIGHTS_0), tangent-space
+    //     normal mapping, and packed ORM PBR textures (1 copy default, 30 copies with ?crowd=30).
+    // ---------------------------------------------------------------------------
+    interface SkinnedHumanoidInstance {
+      mesh: THREE.Mesh;
+      mixer: SkeletonAnimationMixer;
+      skinUniform: { value: THREE.Matrix4[] };
+      baseX: number;
+      baseZ: number;
     }
+    const skinnedHumanoidInstances: SkinnedHumanoidInstance[] = [];
 
-    // B) Load Animated Boss ("Veynar, the Hollow Sovereign") + 4 Distinct Animated Minions
-    //    Note: UniversalBaseCharacter.glb has an internal 100x FBX scale on its bones,
-    //    so all armor/weapons are either placed in bossRoot (scale 1.0) or scaled by 0.01!
-    interface MinionActor {
-      group: THREE.Group;
-      hp: number;
-      headBone?: THREE.Object3D;
-      chestBone?: THREE.Object3D;
-      handRBone?: THREE.Object3D;
-      crestMesh?: THREE.Object3D;
-      breastplateMesh?: THREE.Object3D;
-      spearMesh?: THREE.Object3D;
-    }
-    const minions: MinionActor[] = [];
-    let bossActions: {
-      idle?: THREE.AnimationAction;
-      attack?: THREE.AnimationAction;
-      hit?: THREE.AnimationAction;
-    } = {};
-    let bossTrackRefs: {
-      chestBone?: THREE.Object3D;
-      headBone?: THREE.Object3D;
-      shoulderLBone?: THREE.Object3D;
-      shoulderRBone?: THREE.Object3D;
-      handRBone?: THREE.Object3D;
-      cuirass?: THREE.Object3D;
-      greathelm?: THREE.Object3D;
-      pauldronL?: THREE.Object3D;
-      pauldronR?: THREE.Object3D;
-      polearm?: THREE.Group;
-    } = {};
-
-    gltfLoader.load('/assets/third_party/quaternius/UniversalBaseCharacter.glb', (gltf) => {
-      const findClip = (namePart: string) =>
-        gltf.animations.find((a) => a.name.toLowerCase().includes(namePart.toLowerCase()));
-
-      const runClip = findClip('Run') || findClip('Sprint') || gltf.animations[0];
-      const idleClip = findClip('Sword_Idle') || findClip('Idle_Loop') || gltf.animations[0];
-      const attack1Clip = findClip('Sword_Attack') || idleClip;
-      const hitClip = findClip('Hit_Chest') || idleClip;
-
-      // ---- B0) HERO: HUMAN SHADOWBLADE ASSASSIN (1H Sword + Off-Hand Dagger + Mythos Blue Flame & Orbs) ----
-      const assassinModel = SkeletonUtils.clone(gltf.scene);
-      assassinModel.scale.set(1.24, 1.24, 1.24);
-      assassinModel.rotation.y = 0; // Rig natively faces -Z (toward Myth@s!)
-
-      const assassinBodyMat = new THREE.MeshStandardMaterial({
-        color: new THREE.Color(0x111827),
-        roughness: 0.32,
-        metalness: 0.78,
-      });
-      const assassinTrimMat = new THREE.MeshStandardMaterial({
-        map: armorMetalDiff,
-        normalMap: armorMetalNor,
-        color: new THREE.Color(0x0ea5e9),
-        emissive: new THREE.Color(0x0369a1),
-        emissiveIntensity: 0.42,
-        roughness: 0.22,
-        metalness: 0.9,
-      });
-
-      assassinModel.traverse((c) => {
-        const n = c.name.toLowerCase();
-        if (n.includes('def-spine003') || n.includes('def-spine.003') || n.includes('spine_03')) {
-          heroTrackRefs.chestBone = c;
-        } else if (n === 'def-head' || n.endsWith('head')) {
-          heroTrackRefs.headBone = c;
-        } else if (n.includes('def-handr') || n.includes('def-hand.r')) {
-          heroTrackRefs.handRBone = c;
-        } else if (n.includes('def-handl') || n.includes('def-hand.l')) {
-          heroTrackRefs.handLBone = c;
-        }
-        if ((c as THREE.Mesh).isMesh) {
-          (c as THREE.Mesh).material = assassinBodyMat;
-          c.castShadow = true;
-          c.receiveShadow = true;
-        }
-      });
-      heroRoot.add(assassinModel);
-
-      // Assassin Night-Cowl & Chest Cuirass placed at 1.0 scale in heroRoot
-      const hoodMesh = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.34, 6), assassinTrimMat);
-      hoodMesh.castShadow = true;
-      heroRoot.add(hoodMesh);
-      heroTrackRefs.hoodMesh = hoodMesh;
-
-      const assassinCuirass = new THREE.Mesh(
-        new THREE.BoxGeometry(0.38, 0.42, 0.26),
-        assassinTrimMat
+    const pbrDataToThreeTexture = (texData: PbrTextureData | undefined, isSrgb: boolean): THREE.DataTexture | null => {
+      if (!texData) return null;
+      const dt = new THREE.DataTexture(
+        texData.data,
+        texData.width,
+        texData.height,
+        THREE.RGBAFormat,
+        THREE.UnsignedByteType
       );
-      assassinCuirass.castShadow = true;
-      heroRoot.add(assassinCuirass);
-      heroTrackRefs.cuirassMesh = assassinCuirass;
+      dt.flipY = false;
+      dt.wrapS = THREE.RepeatWrapping;
+      dt.wrapT = THREE.RepeatWrapping;
+      dt.colorSpace = isSrgb ? THREE.SRGBColorSpace : THREE.LinearSRGBColorSpace;
+      dt.needsUpdate = true;
+      return dt;
+    };
 
-      const heroMixer = new THREE.AnimationMixer(assassinModel);
-      mixers.push(heroMixer);
-      heroActions = {
-        run: runClip ? heroMixer.clipAction(runClip) : undefined,
-        attack: attack1Clip ? heroMixer.clipAction(attack1Clip) : undefined,
-        idle: idleClip ? heroMixer.clipAction(idleClip) : undefined,
-      };
-      if (heroActions.attack) {
-        heroActions.attack.timeScale = 1.05;
-        heroActions.attack.play();
-      }
+    loadGlbFromUrl('/assets/models/test-rigged-humanoid-walk-not-game-art.glb')
+      .then((asset) => {
+        if (!asset.meshes.length) return;
+        const prim = asset.meshes[0];
+        const g = prim.geometry;
 
-      // ---- B1) BOSS: MYTH@S (Spiked Black & Crimson Plate + Glowing Red Polearm-Axe per memory-graph) ----
-      const bossModel = SkeletonUtils.clone(gltf.scene);
-      bossModel.scale.set(2.15, 2.15, 2.15);
-      bossModel.rotation.y = 0;
+        const glbGeo = new THREE.BufferGeometry();
+        glbGeo.setAttribute('position', new THREE.BufferAttribute(g.positions, 3));
+        glbGeo.setAttribute('normal', new THREE.BufferAttribute(g.normals, 3));
+        glbGeo.setAttribute('uv', new THREE.BufferAttribute(g.uvs, 2));
+        glbGeo.setAttribute('uv2', new THREE.BufferAttribute(g.uvs, 2));
+        glbGeo.setAttribute('tangent', new THREE.BufferAttribute(g.tangents, 4));
 
-      const bossBodyMat = new THREE.MeshStandardMaterial({
-        color: new THREE.Color(0x1e1822),
-        roughness: 0.28,
-        metalness: 0.88,
-      });
-
-      // No UV map on procedural bmesh armor kit so every beveled facet receives full PBR specular lighting!
-      const bossPlateMat = new THREE.MeshStandardMaterial({
-        color: new THREE.Color(0x3d1c24),
-        emissive: new THREE.Color(0x24070b),
-        emissiveIntensity: 0.35,
-        roughness: 0.24,
-        metalness: 0.88,
-      });
-
-      const bossCrimsonBladeMat = new THREE.MeshStandardMaterial({
-        color: new THREE.Color(0xef4444),
-        emissive: new THREE.Color(0xdc2626),
-        emissiveIntensity: 0.85,
-        roughness: 0.18,
-        metalness: 0.92,
-      });
-
-      // Match sanitized Three.js GLTF bone names (dots stripped by PropertyBinding)
-      bossModel.traverse((c) => {
-        const n = c.name.toLowerCase();
-        if (n.includes('def-spine003') || n.includes('def-spine.003') || n.includes('spine_03')) {
-          bossTrackRefs.chestBone = c;
-        } else if (n === 'def-head' || n.endsWith('head')) {
-          bossTrackRefs.headBone = c;
-        } else if (n.includes('def-upper_arml') || n.includes('def-upper_arm.l')) {
-          bossTrackRefs.shoulderLBone = c;
-        } else if (n.includes('def-upper_armr') || n.includes('def-upper_arm.r')) {
-          bossTrackRefs.shoulderRBone = c;
-        } else if (n.includes('def-handr') || n.includes('def-hand.r')) {
-          bossTrackRefs.handRBone = c;
+        const jointsFloat = new Float32Array(g.joints0.length);
+        for (let i = 0; i < g.joints0.length; i++) {
+          jointsFloat[i] = g.joints0[i];
         }
-        if ((c as THREE.Mesh).isMesh) {
-          (c as THREE.Mesh).material = bossBodyMat;
-          c.castShadow = true;
-          c.receiveShadow = true;
-        }
-      });
-      bossRoot.add(bossModel);
+        glbGeo.setAttribute('aJoints0', new THREE.BufferAttribute(jointsFloat, 4));
+        glbGeo.setAttribute('aWeights0', new THREE.BufferAttribute(g.weights0, 4));
+        glbGeo.setIndex(new THREE.BufferAttribute(g.indices, 1));
 
-      // Place armor & polearm-axe in bossRoot (scale 1.0, immune to 100x bone scale)
-      // and track world bone positions every frame!
-      const polearmGroup = new THREE.Group();
-      polearmGroup.position.set(-0.95, 2.25, 0.55);
-      bossRoot.add(polearmGroup);
-      bossTrackRefs.polearm = polearmGroup;
+        const baseMap = pbrDataToThreeTexture(prim.material.baseColorTexture, true);
+        const normMap = pbrDataToThreeTexture(prim.material.normalTexture, false);
+        const ormMap = pbrDataToThreeTexture(prim.material.ormTexture, false);
 
-      gltfLoader.load('/assets/models/veynar-boss-armor-kit.glb', (kitGltf) => {
-        const spawnKitMesh = (
-          partName: string,
-          parent: THREE.Object3D,
-          pos: [number, number, number],
-          rot: [number, number, number],
-          scale: [number, number, number],
-          overrideMat: THREE.Material
-        ): THREE.Object3D | undefined => {
-          const part = kitGltf.scene.getObjectByName(partName);
-          if (!part) return undefined;
-          const clone = part.clone(true);
-          clone.position.set(...pos);
-          clone.rotation.set(...rot);
-          clone.scale.set(...scale);
-          clone.traverse((pc) => {
-            if ((pc as THREE.Mesh).isMesh) {
-              (pc as THREE.Mesh).material = overrideMat;
-              pc.castShadow = true;
-              pc.receiveShadow = true;
-            }
+        for (let idx = 0; idx < 30; idx++) {
+          const mixer = new SkeletonAnimationMixer(asset, 0);
+          const skinUniform = {
+            value: Array.from({ length: 16 }, () => new THREE.Matrix4()),
+          };
+
+          const mat = new THREE.MeshStandardMaterial({
+            map: baseMap,
+            normalMap: normMap,
+            normalScale: new THREE.Vector2(1.15, 1.15),
+            aoMap: ormMap,
+            aoMapIntensity: 0.9,
+            roughnessMap: ormMap,
+            metalnessMap: ormMap,
+            roughness: 0.42,
+            metalness: 0.72,
+            color: new THREE.Color(0xdce3ed),
           });
-          parent.add(clone);
-          return clone;
-        };
+          mat.customProgramCacheKey = () => `dream-inhouse-4bone-lbs-${idx}`;
+          mat.onBeforeCompile = (shader) => {
+            shader.uniforms.uSkinJoints = skinUniform;
+            shader.vertexShader = shader.vertexShader
+              .replace(
+                '#include <common>',
+                `#include <common>
+                attribute vec4 aJoints0;
+                attribute vec4 aWeights0;
+                uniform mat4 uSkinJoints[16];
+                mat4 getDreamLbsMatrix() {
+                  int j0 = min(15, int(aJoints0.x + 0.5));
+                  int j1 = min(15, int(aJoints0.y + 0.5));
+                  int j2 = min(15, int(aJoints0.z + 0.5));
+                  int j3 = min(15, int(aJoints0.w + 0.5));
+                  return aWeights0.x * uSkinJoints[j0]
+                       + aWeights0.y * uSkinJoints[j1]
+                       + aWeights0.z * uSkinJoints[j2]
+                       + aWeights0.w * uSkinJoints[j3];
+                }`
+              )
+              .replace(
+                '#include <beginnormal_vertex>',
+                `#include <beginnormal_vertex>
+                mat3 dreamSkinRot = mat3(getDreamLbsMatrix());
+                objectNormal = normalize(dreamSkinRot * objectNormal);
+                #ifdef USE_TANGENT
+                objectTangent = normalize(dreamSkinRot * objectTangent);
+                #endif`
+              )
+              .replace(
+                '#include <begin_vertex>',
+                `vec3 transformed = (getDreamLbsMatrix() * vec4(position, 1.0)).xyz;`
+              );
+          };
 
-        // Blender GLTF exporter already converts +Z up to +Y up, so rotation is [0, 0, 0]!
-        bossTrackRefs.cuirass = spawnKitMesh(
-          'BossCuirass',
-          bossRoot,
-          [0, 2.55, 0.04],
-          [0, 0, 0],
-          [0.92, 0.92, 0.92],
-          bossPlateMat
-        );
-        bossTrackRefs.greathelm = spawnKitMesh(
-          'BossGreathelm',
-          bossRoot,
-          [0, 3.55, 0.04],
-          [0, 0, 0],
-          [0.96, 0.96, 0.96],
-          bossPlateMat
-        );
-        bossTrackRefs.pauldronL = spawnKitMesh(
-          'BossPauldronL',
-          bossRoot,
-          [0.72, 3.02, 0.0],
-          [0, 0, -0.18],
-          [0.92, 0.92, 0.92],
-          bossPlateMat
-        );
-        bossTrackRefs.pauldronR = spawnKitMesh(
-          'BossPauldronR',
-          bossRoot,
-          [-0.72, 3.02, 0.0],
-          [0, 0, 0.18],
-          [0.92, 0.92, 0.92],
-          bossPlateMat
-        );
-        spawnKitMesh(
-          'BossHalberdShaft',
-          polearmGroup,
-          [0, 0, 0],
-          [0.35, 0.1, -0.15],
-          [0.88, 0.88, 0.88],
-          bossPlateMat
-        );
-        spawnKitMesh(
-          'BossHalberdBlade',
-          polearmGroup,
-          [0, 0, 0],
-          [0.35, 0.1, -0.15],
-          [0.88, 0.88, 0.88],
-          bossCrimsonBladeMat
-        );
-      });
+          const mesh = new THREE.Mesh(glbGeo, mat);
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          mesh.frustumCulled = false;
 
-      const bossMixer = new THREE.AnimationMixer(bossModel);
-      mixers.push(bossMixer);
-      bossActions = {
-        idle: idleClip ? bossMixer.clipAction(idleClip) : undefined,
-        attack: attack1Clip ? bossMixer.clipAction(attack1Clip) : undefined,
-        hit: hitClip ? bossMixer.clipAction(hitClip) : undefined,
-      };
-      if (bossActions.attack) {
-        bossActions.attack.timeScale = 0.68;
-        bossActions.attack.play();
-      }
+          const col = idx % 6;
+          const row = Math.floor(idx / 6);
+          const baseX = idx === 0 ? 0.0 : (col - 2.5) * 1.45;
+          const baseZ = idx === 0 ? 0.38 : 2.15 - row * 1.15;
 
-      // ---- B2) 4 DISTINCT ANIMATED MINIONS ("Ashbound Sentinels") ----
-      const minionSpecs = [
-        { x: -2.9, z: -1.2, bodyColor: 0x7c3f2c, trimColor: 0xf59e0b },
-        { x: 3.0, z: -1.3, bodyColor: 0x334e68, trimColor: 0x38bdf8 },
-        { x: -3.9, z: -3.2, bodyColor: 0x4c355c, trimColor: 0xc084fc },
-        { x: 3.8, z: -3.1, bodyColor: 0x3f5232, trimColor: 0xa3e635 },
-      ];
+          mesh.position.set(baseX, 0.26, baseZ);
+          mesh.visible = idx < skinnedCopyCountRef.current;
+          scene.add(mesh);
 
-      minionSpecs.forEach((spec, idx) => {
-        const mGroup = new THREE.Group();
-        mGroup.position.set(spec.x, 0.26, spec.z);
-        mGroup.lookAt(0, 0.26, 2.2);
-        scene.add(mGroup);
-
-        const mClone = SkeletonUtils.clone(gltf.scene);
-        mClone.scale.set(1.08, 1.08, 1.08);
-
-        const mBodyMat = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(spec.bodyColor),
-          roughness: 0.38,
-          metalness: 0.72,
-        });
-        const mTrimMat = new THREE.MeshStandardMaterial({
-          map: armorMetalDiff,
-          normalMap: armorMetalNor,
-          roughness: 0.25,
-          metalness: 0.88,
-          color: new THREE.Color(spec.trimColor),
-        });
-
-        let headBone: THREE.Object3D | undefined;
-        let chestBone: THREE.Object3D | undefined;
-        let handRBone: THREE.Object3D | undefined;
-
-        mClone.traverse((c) => {
-          const n = c.name.toLowerCase();
-          if (n === 'def-head' || n.endsWith('head')) headBone = c;
-          else if (n.includes('def-spine002') || n.includes('def-spine003')) chestBone = c;
-          else if (n.includes('def-handr') || n.includes('def-hand.r')) handRBone = c;
-
-          if ((c as THREE.Mesh).isMesh) {
-            (c as THREE.Mesh).material = mBodyMat;
-            c.castShadow = true;
-            c.receiveShadow = true;
-          }
-        });
-        mGroup.add(mClone);
-
-        const crest = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.28, 5), mTrimMat);
-        crest.position.set(0, 1.82, 0.02);
-        crest.castShadow = true;
-        mGroup.add(crest);
-
-        const breastplate = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.36, 0.24), mTrimMat);
-        breastplate.position.set(0, 1.25, 0.0);
-        breastplate.castShadow = true;
-        mGroup.add(breastplate);
-
-        const spear = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.026, 1.65, 8), mTrimMat);
-        spear.position.set(0.35, 1.15, 0.32);
-        spear.rotation.x = Math.PI * 0.38;
-        spear.castShadow = true;
-        mGroup.add(spear);
-
-        const mMixer = new THREE.AnimationMixer(mClone);
-        mixers.push(mMixer);
-        if (attack1Clip) {
-          const action = mMixer.clipAction(attack1Clip);
-          action.time = idx * 0.45;
-          action.timeScale = 0.88;
-          action.play();
+          skinnedHumanoidInstances.push({
+            mesh,
+            mixer,
+            skinUniform,
+            baseX,
+            baseZ,
+          });
         }
-        minions.push({
-          group: mGroup,
-          hp: 400,
-          headBone,
-          chestBone,
-          handRBone,
-          crestMesh: crest,
-          breastplateMesh: breastplate,
-          spearMesh: spear,
-        });
+      })
+      .catch((err) => {
+        console.warn('[DREAM] Failed to load test-rigged-humanoid-walk-not-game-art.glb:', err);
       });
-    });
 
     // ---------------------------------------------------------------------------
     // 6. SOFT-TEXTURED PARTICLE SPRITES, RIBBON SLASH TRAILS & IMPACT FLASHES
@@ -1065,9 +729,12 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
     const emberCount = 180;
     const emberPositions = new Float32Array(emberCount * 3);
     for (let i = 0; i < emberCount; i++) {
-      emberPositions[i * 3] = (Math.random() - 0.5) * 22;
-      emberPositions[i * 3 + 1] = Math.random() * 8.5;
-      emberPositions[i * 3 + 2] = (Math.random() - 0.5) * 22 - 1.5;
+      // Deterministic ring distribution outside the central character viewing corridor so embers never photobomb faces/shields
+      const ang = (i * 2.39996) % (Math.PI * 2);
+      const rad = 5.4 + ((i * 7) % 15) * 0.55;
+      emberPositions[i * 3] = Math.cos(ang) * rad;
+      emberPositions[i * 3 + 1] = 0.6 + ((i * 13) % 75) * 0.1;
+      emberPositions[i * 3 + 2] = Math.sin(ang) * rad - 2.2;
     }
     const emberGeo = new THREE.BufferGeometry();
     emberGeo.setAttribute('position', new THREE.BufferAttribute(emberPositions, 3));
@@ -1371,58 +1038,48 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
     window.addEventListener('keyup', onKeyUp);
 
     // ---------------------------------------------------------------------------
-    // 9. MAIN ANIMATION LOOP & BLENDER-VERIFIED QUATERNION SKELETAL POSE DRIVER
+    // 9. MAIN ANIMATION LOOP & IN-HOUSE ARTICULATED RIG POSE DRIVER
     // ---------------------------------------------------------------------------
     const clock = new THREE.Clock();
     let animId = 0;
-    let lastAutoStrikeKey = '';
-
-    // Helper that post-multiplies a local Euler delta onto the bone's rest quaternion
-    // (Verified in Blender 5.2.3 LTS: l_sign = -1, r_sign = +1 lowers arms from T-pose!)
-    const applyBoneDelta = (boneName: string, rxDeg: number, ryDeg: number, rzDeg: number) => {
-      const entry = heroBones[boneName];
-      if (!entry) return;
-      const d2r = Math.PI / 180;
-      const deltaQ = new THREE.Quaternion().setFromEuler(
-        new THREE.Euler(rxDeg * d2r, ryDeg * d2r, rzDeg * d2r, 'XYZ')
-      );
-      entry.bone.quaternion.copy(entry.restQuat).multiply(deltaQ);
-    };
+    let fpsFrames = 0;
+    let fpsAccumSec = 0;
+    let currentRollingFps = 60.0;
 
     const animate = () => {
       animId = requestAnimationFrame(animate);
       const rawDt = Math.min(clock.getDelta(), 0.05);
+      if (rawDt > 0.0001) {
+        fpsFrames++;
+        fpsAccumSec += rawDt;
+        if (fpsAccumSec >= 0.4) {
+          currentRollingFps = Number((fpsFrames / fpsAccumSec).toFixed(1));
+          setMeasuredFps(currentRollingFps);
+          fpsFrames = 0;
+          fpsAccumSec = 0;
+        }
+      }
+      (window as unknown as Record<string, unknown>).__dreamRealModelMetrics = {
+        fps: currentRollingFps,
+        frameTimeMs: Number((rawDt * 1000).toFixed(2)),
+        skinnedCopies: skinnedCopyCountRef.current,
+        loadedInstances: skinnedHumanoidInstances.length,
+        trianglesPerCopy: 2688,
+        bonesPerCopy: 16,
+      };
       const simTime = pinnedTimeParam !== null ? pinnedTimeParam : clock.getElapsedTime();
       const dt = pinnedTimeParam !== null ? 0.016 : rawDt;
 
-      let isMoving = false;
-
-      // Per memory-graph/DREAM pipeline facts 2026-09-24.md:
-      // "The rig natively faces -Z, so no PI flip."
       if (isCaptureMode || pinnedTimeParam !== null) {
         const cycleT = pinnedTimeParam !== null ? pinnedTimeParam : simTime % 7.0;
         if (cycleT < 1.8) {
           const alpha = Math.min(1, cycleT / 1.8);
           heroRoot.position.set(0, 0.26, 4.2 - alpha * 5.2);
-          isMoving = true;
-          setActiveMoveLabel('SHADOWBLADE SPRINT');
         } else if (cycleT < 4.2) {
           heroRoot.position.set(Math.sin((cycleT - 1.8) * 1.6) * 0.55, 0.26, -1.25);
-          const strikeWindowKey = `combo_${Math.floor(cycleT * 1.4)}`;
-          if (strikeWindowKey !== lastAutoStrikeKey) {
-            lastAutoStrikeKey = strikeWindowKey;
-            startHeroAttack('TWIN VIPER CUT (1H + DAGGER)', 365, true);
-          }
         } else {
           heroRoot.position.set(0, 0.26, -1.15);
-          const ultKey = `ult_${Math.floor(cycleT)}`;
-          if (ultKey !== lastAutoStrikeKey) {
-            lastAutoStrikeKey = ultKey;
-            startHeroAttack('MYTHOS BLUE-FLAME RECKONING', 610, true);
-          }
         }
-        const dirHeroToBoss = bossRoot.position.clone().sub(heroRoot.position);
-        heroRoot.rotation.y = Math.atan2(-dirHeroToBoss.x, -dirHeroToBoss.z);
       } else {
         let moveX = 0;
         let moveZ = 0;
@@ -1432,117 +1089,51 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
         if (keys['KeyD'] || keys['ArrowRight']) moveX += 1;
 
         if (moveX !== 0 || moveZ !== 0) {
-          isMoving = true;
           const moveAngle = Math.atan2(moveX, moveZ) + camYaw;
           const speed = 5.8;
           heroRoot.position.x = Math.max(-9.5, Math.min(9.5, heroRoot.position.x + Math.sin(moveAngle) * speed * dt));
           heroRoot.position.z = Math.max(-8.5, Math.min(8.5, heroRoot.position.z + Math.cos(moveAngle) * speed * dt));
-          heroRoot.rotation.y = moveAngle + Math.PI;
-        } else if (!activeStrike) {
-          const distToBoss = heroRoot.position.distanceTo(bossRoot.position);
-          if (distToBoss > 3.1) {
-            isMoving = true;
-            const dirToBoss = bossRoot.position.clone().sub(heroRoot.position).normalize();
-            heroRoot.position.addScaledVector(dirToBoss, 3.2 * dt);
-            heroRoot.rotation.y = Math.atan2(-dirToBoss.x, -dirToBoss.z);
-          } else {
-            const dirToBoss = bossRoot.position.clone().sub(heroRoot.position);
-            heroRoot.rotation.y = Math.atan2(-dirToBoss.x, -dirToBoss.z);
-            const autoSlot = `live_${Math.floor(simTime * 1.0)}`;
-            if (autoSlot !== lastAutoStrikeKey) {
-              lastAutoStrikeKey = autoSlot;
-              startHeroAttack(
-                Math.floor(simTime) % 2 === 0 ? 'SHADOW FANG (1H + DAGGER)' : 'MYTHOS BLUE-FLAME CLEAVE',
-                Math.floor(simTime) % 2 === 0 ? 265 : 410,
-                Math.floor(simTime) % 2 !== 0
-              );
-            }
-          }
         }
       }
 
-      // Fix Boss Facing Direction: Myth@s ALWAYS faces the Assassin Hero face-to-face (never hit in the back!)
-      const dirBossToHero = heroRoot.position.clone().sub(bossRoot.position);
-      bossRoot.rotation.y = Math.atan2(-dirBossToHero.x, -dirBossToHero.z);
-
-      // Drive Assassin Hero mocap skeletal animations (Run while moving, Sword_Attack while fighting)
-      if (heroActions.run && heroActions.attack) {
-        if (isMoving) {
-          if (!heroActions.run.isRunning()) {
-            heroActions.attack.stop();
-            heroActions.run.play();
-          }
-        } else {
-          if (!heroActions.attack.isRunning()) {
-            heroActions.run.stop();
-            heroActions.attack.play();
-          }
-        }
-      }
-
-      // Animate flanking Ranger Scout (`Male_Ranger.gltf`) in Bow_Shoot stance on West Ledge
-      const cyclePhase = simTime * 4.2;
       const swingProgress = activeStrike ? activeStrike.elapsed / activeStrike.duration : 0;
-      const swingArcDeg = activeStrike ? Math.sin(swingProgress * Math.PI) * 68 : 0;
-      applyBoneDelta('upperarm_l', 55, 18, -42);
-      applyBoneDelta('lowerarm_l', 25, 0, -10);
-      applyBoneDelta('upperarm_r', 52 + Math.sin(cyclePhase) * 8, -14, 48);
-      applyBoneDelta('lowerarm_r', 68, 0, 20);
+      const swingAngleRad = activeStrike ? Math.sin(swingProgress * Math.PI) * 1.15 : 0;
 
-      // Advance all skeletal animation mixers first so world bone positions are current
-      mixers.forEach((m) => m.update(dt));
-
-      // Sync Human Shadowblade Assassin 1H Blade (Right Hand), Off-Hand Dagger (Left Hand),
-      // Night-Cowl & Cuirass to animated UniversalBaseCharacter bones at 1.0 root scale (zero floating glitch!)
-      heroRoot.updateMatrixWorld(true);
-      const syncToHeroBone = (
-        bone: THREE.Object3D | undefined,
-        mesh: THREE.Object3D | undefined,
-        offsetY = 0,
-        offsetZ = 0
-      ) => {
-        if (!bone || !mesh) return;
-        const wp = new THREE.Vector3();
-        bone.getWorldPosition(wp);
-        heroRoot.worldToLocal(wp);
-        wp.y += offsetY;
-        wp.z += offsetZ;
-        mesh.position.copy(wp);
-      };
-      syncToHeroBone(heroTrackRefs.headBone, heroTrackRefs.hoodMesh, 0.22, 0.02);
-      syncToHeroBone(heroTrackRefs.chestBone, heroTrackRefs.cuirassMesh, 0.06, 0.02);
-      if (heroTrackRefs.handRBone) {
-        syncToHeroBone(heroTrackRefs.handRBone, heroSwordHolder, 0.04, -0.08);
-      } else {
-        heroSwordHolder.position.set(0.32, 1.12, -0.38);
+      // Drive procedural breathing, cape billowing, spell rings, bow draw & halberd poise on all 4 Heroes + Myth@s
+      for (const rig of partyHeroRigs) {
+        updateCharacterRigAnimation(rig, simTime, dt, swingAngleRad);
       }
-      if (heroTrackRefs.handLBone) {
-        syncToHeroBone(heroTrackRefs.handLBone, heroDaggerHolder, 0.04, -0.06);
-      } else {
-        heroDaggerHolder.position.set(-0.32, 1.08, -0.34);
+      updateCharacterRigAnimation(bossRig, simTime, dt, swingAngleRad * 0.4);
+
+      // Drive In-House GLB Skinned Humanoid (Walk + Idle clip blend & 4-bone Linear Blend Skinning)
+      const activeCopies = skinnedCopyCountRef.current;
+      for (let idx = 0; idx < skinnedHumanoidInstances.length; idx++) {
+        const inst = skinnedHumanoidInstances[idx];
+        const isVisible = idx < activeCopies;
+        inst.mesh.visible = isVisible;
+        if (!isVisible) continue;
+
+        const blendWeight = 0.16 * (0.5 + 0.5 * Math.sin(simTime * 1.35 + idx * 0.42));
+        inst.mixer.setBlendClips('Walk', 'Idle', blendWeight);
+        const flatJoints = inst.mixer.evaluateAtTime(simTime * 1.35 + idx * 0.19);
+        for (let b = 0; b < 16; b++) {
+          inst.skinUniform.value[b].fromArray(flatJoints, b * 16);
+        }
+
+        if (activeCopies === 1 && idx === 0) {
+          // Walk patrol stride in the Sunken Bastion courtyard right next to the 4 code-built heroes
+          const stridePhase = simTime * 1.05;
+          const walkZ = 0.35 + Math.sin(stridePhase) * 0.65;
+          const walkX = Math.cos(stridePhase * 0.5) * 0.32;
+          inst.mesh.position.set(walkX, 0.26, walkZ);
+          inst.mesh.rotation.y = Math.sin(stridePhase * 0.5) * 0.35;
+        } else {
+          // 30-character crowd walking formation across the Sunken Bastion courtyard
+          const walkZ = inst.baseZ + Math.sin(simTime * 1.2 + idx * 0.35) * 0.32;
+          inst.mesh.position.set(inst.baseX, 0.26, walkZ);
+          inst.mesh.rotation.y = Math.sin(simTime * 0.7 + idx * 0.25) * 0.22;
+        }
       }
-
-      heroSwordHolder.rotation.set(
-        Math.PI * 0.82 - (swingArcDeg * Math.PI) / 180 * 0.45,
-        Math.PI + (swingArcDeg * Math.PI) / 180 * 0.75,
-        0.25
-      );
-      heroDaggerHolder.rotation.set(
-        Math.PI * 0.85 + (swingArcDeg * Math.PI) / 180 * 0.35,
-        Math.PI - (swingArcDeg * Math.PI) / 180 * 0.55,
-        -0.28
-      );
-
-      // Animate Non-Gambling MYTHOS Forge Growing Blue Flame & 4 Orbiting Orbs on Weapon
-      blueFlameSprites.forEach((bf, idx) => {
-        const pulse = 0.52 + Math.sin(simTime * 14 + idx * 1.9) * 0.11;
-        bf.scale.set(pulse * 0.78, pulse * 1.15, 1.0);
-      });
-      mythosOrbitOrbs.forEach((orb, idx) => {
-        const ang = simTime * 4.6 + (idx * Math.PI) / 2;
-        const zTravel = 0.32 + idx * 0.22 + Math.sin(simTime * 3.2 + idx) * 0.08;
-        orb.position.set(Math.cos(ang) * 0.22, Math.sin(ang) * 0.22, zTravel);
-      });
 
       // Resolve Real Hit Detection on Active Swing Frame
       if (activeStrike) {
@@ -1554,11 +1145,10 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
           const distBoss = tipWorld.distanceTo(
             bossRoot.position.clone().add(new THREE.Vector3(0, 1.6, 0))
           );
-          if (distBoss <= 4.8) {
+          if (distBoss <= 5.6) {
             activeStrike.hasConnected = true;
             const hitPos = bossRoot.position
               .clone()
-              .lerp(heroRoot.position, 0.38)
               .add(new THREE.Vector3(0, 1.75, 0));
             spawnRealHitImpact(
               hitPos,
@@ -1566,19 +1156,6 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
               activeStrike.baseDmg,
               activeStrike.isHeavy
             );
-          } else {
-            for (const m of minions) {
-              if (tipWorld.distanceTo(m.group.position) <= 3.4) {
-                activeStrike.hasConnected = true;
-                spawnRealHitImpact(
-                  m.group.position.clone().add(new THREE.Vector3(0, 1.3, 0)),
-                  activeStrike.moveName,
-                  activeStrike.baseDmg,
-                  activeStrike.isHeavy
-                );
-                break;
-              }
-            }
           }
         }
         if (activeStrike.elapsed >= activeStrike.duration) {
@@ -1590,7 +1167,7 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
       // Update Tapered Weapon Slash Ribbon Trail
       const tipPos = new THREE.Vector3();
       heroWeaponTipObj.getWorldPosition(tipPos);
-      const basePos = heroRoot.position.clone().add(new THREE.Vector3(0, 1.25, 0));
+      const basePos = knightRig.root.position.clone().add(new THREE.Vector3(0, 1.25, 0));
       const ribbonBase = basePos.clone().lerp(tipPos, 0.45);
 
       trailHistory.unshift({ tip: tipPos.clone(), base: ribbonBase });
@@ -1651,50 +1228,6 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
         const flicker = 1.2 + Math.sin(simTime * 11 + idx * 2.3) * 0.14;
         sp.scale.set(flicker, flicker * 1.32, 1);
       });
-
-      // Sync Myth@s's polygonal armor & crimson polearm-axe to his animated bones (at 1.0 root scale!)
-      bossRoot.updateMatrixWorld(true);
-      const syncToBossBone = (
-        bone: THREE.Object3D | undefined,
-        mesh: THREE.Object3D | undefined,
-        offsetY = 0,
-        offsetZ = 0
-      ) => {
-        if (!bone || !mesh) return;
-        const wp = new THREE.Vector3();
-        bone.getWorldPosition(wp);
-        bossRoot.worldToLocal(wp);
-        wp.y += offsetY;
-        wp.z += offsetZ;
-        mesh.position.copy(wp);
-      };
-      syncToBossBone(bossTrackRefs.chestBone, bossTrackRefs.cuirass, 0.08, 0.04);
-      syncToBossBone(bossTrackRefs.headBone, bossTrackRefs.greathelm, 0.22, 0.04);
-      syncToBossBone(bossTrackRefs.shoulderLBone, bossTrackRefs.pauldronL, 0.08, 0.0);
-      syncToBossBone(bossTrackRefs.shoulderRBone, bossTrackRefs.pauldronR, 0.08, 0.0);
-      syncToBossBone(bossTrackRefs.handRBone, bossTrackRefs.polearm, 0.15, 0.12);
-
-      // Sync each minion's helm, breastplate, and war-spear to its animated bones
-      for (const m of minions) {
-        m.group.updateMatrixWorld(true);
-        const syncMinionPart = (
-          bone: THREE.Object3D | undefined,
-          mesh: THREE.Object3D | undefined,
-          oy = 0,
-          oz = 0
-        ) => {
-          if (!bone || !mesh) return;
-          const wp = new THREE.Vector3();
-          bone.getWorldPosition(wp);
-          m.group.worldToLocal(wp);
-          wp.y += oy;
-          wp.z += oz;
-          mesh.position.copy(wp);
-        };
-        syncMinionPart(m.headBone, m.crestMesh, 0.18, 0.02);
-        syncMinionPart(m.chestBone, m.breastplateMesh, 0.05, 0.02);
-        syncMinionPart(m.handRBone, m.spearMesh, 0.1, 0.15);
-      }
 
       // Update Camera Position with Smooth Follow & Raycast Wall/Ground Collision
       const desiredFocus = new THREE.Vector3(
@@ -1842,6 +1375,12 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
 
           <div className="flex items-center gap-2 pointer-events-auto">
             <button
+              onClick={() => setSkinnedCopyCount((prev) => (prev === 30 ? 1 : 30))}
+              className="px-3 py-1.5 rounded-xl bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-400/60 text-emerald-100 text-xs font-bold cursor-pointer shadow-lg"
+            >
+              🦴 Skinned GLB: {skinnedCopyCount}x ({measuredFps} FPS)
+            </button>
+            <button
               onClick={() => setIsUnifiedWorkspaceOpen(true)}
               className="px-3 py-1.5 rounded-xl bg-sky-950/90 hover:bg-sky-900 border border-sky-400/60 text-sky-100 text-xs font-bold cursor-pointer shadow-lg"
             >
@@ -1863,7 +1402,7 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
         <div className="fixed inset-0 z-50">
           <UnifiedAntigravityWorkspaceShell
             initialView={initialWorkspaceView}
-            initialModelPickerOpen={params.get('picker') !== '0'}
+            initialModelPickerOpen={params.get('picker') === '1'}
             onReturnToFull3dViewport={() => setIsUnifiedWorkspaceOpen(false)}
           />
         </div>

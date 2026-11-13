@@ -1,6 +1,6 @@
 /**
  * DREAM Engine — Authoritative Combat Timing Windows & Constants
- * Exact conformance to docs/gdd/02-action-combat.md and godot slice scripts
+ * Exact conformance to docs/gdd/02-action-combat.md and in-house DREAM Engine combat rules
  * Schema Version: 0.1.0
  */
 

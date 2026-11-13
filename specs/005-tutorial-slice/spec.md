@@ -153,7 +153,7 @@ One 1920x1080 frame of the real build, captured from the browser export under so
 
 ## Assumptions
 
-- The web export (preset "Web", `variant/thread_support=false`) runs on Godot's Compatibility renderer over WebGL 2: `project.godot` sets no web rendering method and the web platform cannot run Forward+, which the desktop uses (`config/features` "Forward Plus"). Which Compatibility features 4.7.2 actually draws is confirmed by capture in task T003, not assumed.
+- The browser build runs on the in-house DREAM Engine's WebGPU renderer with its WebGL 2 fallback (`src/engine/renderer/`). Which fallback features draw on a target browser is confirmed by capture in task T003, not assumed.
 - The headless suite cannot see pixels; it checks settings, nodes, text lengths and layout rectangles. Pixels are graded by the judge lane from captured frames.
 - Playwright 1.56 with its Chromium is available to the judge lane in the cloud container, as used for spec 004's boot check.
 - The ranger outfit on the rigged CC0 character stays the hero's look; no new class look is needed for this feature.

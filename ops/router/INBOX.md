@@ -23,7 +23,7 @@ The runner reads the base branch from the `base:` configuration line below (or f
 base: origin/main
 ```
 
-Each task creates an isolated worktree at `%USERPROFILE%\antigravity\<prefix><id>` (prefix from `ops/router/repos.json`: `DREAM-Engine-wt-inbox-` for `dream-online`, `ANTIGRAVITY-wt-inbox-` for `ANTIGRAVITY`) on branch `ai/inbox/<id>` starting from the configured base, inside the repo the task selected. The runner removes the worktree when the run finishes only if `ai/inbox/<id>` was pushed to `origin`.
+Each task creates an isolated worktree at `%USERPROFILE%\antigravity\<prefix><id>` (prefix from `ops/router/repos.json`: `DREAM-Engine-wt-inbox-` for `dream-online`, `ANTIGRAVITY-wt-inbox-` for `ANTIGRAVITY`, `dream-intake-wt-inbox-` for `dream-intake`) on branch `ai/inbox/<id>` starting from the configured base, inside the repo the task selected. The runner removes the worktree when the run finishes only if `ai/inbox/<id>` was pushed to `origin`.
 
 ## 3. Task File Format
 
@@ -33,7 +33,7 @@ Format rules:
 
 1. **Title line** (required): The first non-empty line, written as a Markdown heading (`# <Title>`) or plain sentence.
 2. **Optional `lane:` line**: If a task has an explicit `lane:` header naming an executor lane (`engine`, `mechanical`, `code-bulk`, `code-hard`, `design-visual`, `research`) or a known executor model in `ops/router/lanes.json`, that lane is used and body profiling cannot reclassify the job as the Fable class. Only `lane: fable` parks a forced-lane task in `for-judge\`; an unknown `lane:` value falls back to profiling the task with the Jev router core.
-3. **Optional `repo:` line**: `repo: <repo-name>` selects the target repository through the repo map in `ops/router/repos.json` (defaults to `dream-online`). `dream-online` is the runner's own repo root. `ANTIGRAVITY` is the sibling folder named in the `ANTIGRAVITY_REPO_ROOT` environment variable (default `%USERPROFILE%\antigravity\ANTIGRAVITY-wt-pr335`); that task gets its worktree, branch and PR in that repo. An unknown repo name is refused: the task moves to `failed\` with a log naming the known repos. The one-run-per-repo rule still holds.
+3. **Optional `repo:` line**: `repo: <repo-name>` selects the target repository through the repo map in `ops/router/repos.json` (defaults to `dream-online`). `dream-online` is the runner's own repo root. `ANTIGRAVITY` is the sibling folder named in the `ANTIGRAVITY_REPO_ROOT` environment variable (default `%USERPROFILE%\antigravity\ANTIGRAVITY-wt-pr335`); that task gets its worktree, branch and PR in that repo. `dream-intake` is the private intake repo named in the `DREAM_INTAKE_REPO_ROOT` environment variable (default `%USERPROFILE%\antigravity\dream-intake`); that task gets its worktree, branch and PR in that repo. An unknown repo name is refused: the task moves to `failed\` with a log naming the known repos. The one-run-per-repo rule still holds.
 4. **Task text**: Everything after the header lines is the task body sent to the selected lane with the cookbook's common rules prepended (`PR only`, `no user folder names`, `no secrets`, `proof pasted`, `Obsidian note`).
 
 ### Example Task File (`%USERPROFILE%\antigravity\.fable-kitchen\inbox\queued\fix-hud-spacing.md`)
