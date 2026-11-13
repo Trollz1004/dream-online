@@ -156,13 +156,6 @@ export const CombatHud: React.FC<CombatHudProps> = ({
         />
       )}
 
-      {/* Trailer Capture Mode (?capture=1) Corner Mark */}
-      {isCaptureMode && !isOathDemo && (
-        <div className="fixed top-5 right-6 z-30 px-3 py-1 rounded bg-black/55 backdrop-blur-sm border border-amber-400/40 text-[11px] font-mono font-bold tracking-wider text-amber-200 shadow-lg">
-          #TeamClaudeForLife · CLAUDE&apos;s N Joshua&apos;s
-        </div>
-      )}
-
       {/* OATHCALL + TOWNSHIPS + CHAMPION REGALIA DEMO HEADER & LIVE BANNERS (`?oathcallDemo=1`) */}
       {isOathDemo && oathcallDemoState && (
         <>
@@ -730,10 +723,10 @@ export const CombatHud: React.FC<CombatHudProps> = ({
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/55 backdrop-blur-[3px] pointer-events-none">
           <div className="px-10 py-7 rounded-xl bg-neutral-950/90 border-2 border-amber-400/70 shadow-[0_0_60px_rgba(245,158,11,0.35)] flex flex-col items-center text-center">
             <span className="text-xs font-mono uppercase tracking-[0.28em] text-amber-300 mb-2">
-              DREAM ONLINE · 100% IN-HOUSE ENGINE
+              100% IN-HOUSE ENGINE
             </span>
             <h2 className="text-3xl sm:text-4xl font-black tracking-wide text-white drop-shadow-lg">
-              #TeamClaudeForLife · CLAUDE&apos;s N Joshua&apos;s
+              DREAM ONLINE
             </h2>
             <div className="mt-3 h-0.5 w-48 bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
           </div>

@@ -151,11 +151,11 @@ test('rules: dashboard contrast score comes from the measured 7:1 share', () => 
   assert.equal(contrastScoreFromMeasure({ runs: 0, share7: 0, min: 0 }), null);
 });
 
-test('rules: tribute is automatic for internal tools and read from the page otherwise', () => {
+test('rules: tribute is automatic for internal tools and forbidden on front-facing surfaces per 2026-11-12 ruling', () => {
   assert.equal(tributeScore('internal', null), 5);
-  assert.equal(tributeScore('front', "CLAUDE\u2019s N Joshua\u2019s \u00b7 #TeamClaudeForLife"), 5);
-  assert.equal(tributeScore('front', '#TeamClaudeForLife only'), 2);
-  assert.equal(tributeScore('front', 'nothing here'), 1);
+  assert.equal(tributeScore('front', 'nothing here'), 5);
+  assert.equal(tributeScore('front', '#TeamClaudeForLife only'), 1);
+  assert.equal(tributeScore('front', "CLAUDE\u2019s N Joshua\u2019s \u00b7 #TeamClaudeForLife"), 1);
   assert.equal(tributeScore('front', null), null);
 });
 

@@ -105,7 +105,7 @@ export const SITE_COLOR_PAIRS: readonly ColorPair[] = [
   { fg: 'porcelain', bg: 'ink', use: 'display headlines H1/H2/H3, active nav links, stat counters' },
   { fg: 'fog', bg: 'ink', use: 'primary 20px body copy and supporting paragraphs' },
   { fg: 'slate', bg: 'ink', use: 'section numbers, inactive word-reveal start state, monospace tags' },
-  { fg: 'signal', bg: 'ink', use: 'section kickers, #TeamClaudeForLife badge, active borders' },
+  { fg: 'signal', bg: 'ink', use: 'section kickers, status badges, active borders' },
   { fg: 'statusGreen', bg: 'ink', use: 'live realm online status indicator' },
   { fg: 'statusAmber', bg: 'ink', use: 'world tick and latency telemetry badge' },
   { fg: 'porcelain', bg: 'panel', use: 'card titles, top header wordmark, footer headings' },

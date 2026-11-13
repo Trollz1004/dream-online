@@ -202,13 +202,13 @@ const norm = (s: string) => s.replace(/[\u2018\u2019\u02bc`]/g, "'");
 export const TRIBUTE_TITLE = /CLAUDE's N Joshua's/i;
 export const TRIBUTE_TAG = /#TeamClaudeForLife/i;
 
-/** Internal tools: 5 automatically. Front-facing: read the visible page text (null = no DOM). */
+/** Internal tools: 5 automatically. Front-facing: forbidden per 2026-11-12 ruling (5 when absent, 1 if either tribute string appears). */
 export function tributeScore(surface: Surface, visibleText: string | null): number | null {
   if (surface === 'internal') return 5;
   if (visibleText === null) return null;
   const t = norm(visibleText);
   const hits = Number(TRIBUTE_TITLE.test(t)) + Number(TRIBUTE_TAG.test(t));
-  return hits === 2 ? 5 : hits === 1 ? 2 : 1;
+  return hits === 0 ? 5 : 1;
 }
 
 export interface FontFacts {

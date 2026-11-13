@@ -603,7 +603,7 @@ export class DreamEngine {
    * - 1.5-3.5s: 3-hit slash combo + heavy cleave with hit-stop (60-90ms), boss flashes/staggers and loses HP (120 -> 36).
    * - 3.5-5.0s: Boss telegraphs and fires Focus Beam, hero dash-dodges through it (PERFECT DODGE, 0 dmg).
    * - 5.0-7.0s: Ultimate (R): camera pulls back, shockwave + 8 pillars + blade hurricanes, boss knocked down (0/120 HP),
-   *             followed by the 1-second #TeamClaudeForLife · CLAUDE's N Joshua's end card (6.0-7.0s).
+   *             followed by the 1-second DREAM ONLINE end card (6.0-7.0s).
    */
   private updateScripted7sDirector(dt: number): void {
     this.scriptedTimeSec += dt;
@@ -712,7 +712,7 @@ export class DreamEngine {
       this.skillVfx.spawnNightveilBurstVfx(pos.x, pos.y, pos.z, 0);
     }
 
-    // 5. 6.0 - 7.0s: 1-second #TeamClaudeForLife · CLAUDE's N Joshua's end card
+    // 5. 6.0 - 7.0s: 1-second DREAM ONLINE end card
     this.isEndCardVisible = t >= 6.00;
   }
 

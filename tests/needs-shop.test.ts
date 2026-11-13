@@ -71,12 +71,12 @@ test('categories and layout: defines the 6 required categories and plain-sentenc
     }),
   );
 
-  // Title, three columns, and one Back control at bottom centre
+  // Title, three columns, and one Back control at bottom centre; no tribute on player-facing surface per 2026-11-12 ruling
   assert.match(html, /WARDROBE/i);
   assert.match(html, /NEEDS SHOP/i);
   assert.match(html, /Back/);
-  assert.match(html, /CLAUDE&#x27;s N Joshua&#x27;s|CLAUDE's N Joshua's/);
-  assert.match(html, /#TeamClaudeForLife/);
+  assert.doesNotMatch(html, /CLAUDE(?:'|&#x27;|&apos;)s N Joshua(?:'|&#x27;|&apos;)s/i);
+  assert.doesNotMatch(html, /#?TeamClaudeForLife/i);
 
   // Plain-sentence rules in the right-hand help panel
   const combinedRules = NEEDS_SHOP_HELP_RULES.join(' ');
@@ -349,4 +349,10 @@ test('rule 5 (no real money & creator link): no real-money path exists and Chara
   );
   assert.match(creatorHtml, /href="#wardrobe"/);
   assert.match(creatorHtml, /Wardrobe/);
+  assert.doesNotMatch(creatorHtml, /CLAUDE(?:'|&#x27;|&apos;)s N Joshua(?:'|&#x27;|&apos;)s/i);
+  assert.doesNotMatch(creatorHtml, /#?TeamClaudeForLife/i);
+
+  const hudSource = readFileSync(path.resolve(__dirname, '../src/ui/CombatHud.tsx'), 'utf8');
+  assert.doesNotMatch(hudSource, /CLAUDE(?:'|&#x27;|&apos;)s N Joshua(?:'|&#x27;|&apos;)s/i);
+  assert.doesNotMatch(hudSource, /#?TeamClaudeForLife/i);
 });

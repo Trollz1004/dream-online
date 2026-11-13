@@ -3,7 +3,7 @@
  *
  * Matches docs/house/SITE-BRIEF-dream-online-net.md §3 Row 0A and docs/house/DESIGN-SYSTEM.md:
  * - Sticky glass over Ink, 1px solid #3A3F45 Hull border.
- * - Left: CLAUDE's N Joshua's wordmark + #TeamClaudeForLife pill.
+ * - Left: DREAM ONLINE wordmark.
  * - Center: World, Combat, Life Skills, Living NPCs, First 15 Minutes (active section underlined in Signal yellow).
  * - Right: live server badge (REALM ONLINE · 23:06 ET), Playable Promise outlined button, Enter DREAM primary Signal button.
  */
@@ -62,7 +62,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           flexWrap: 'wrap',
         }}
       >
-        {/* Left: Brand Wordmark + #TeamClaudeForLife Dedication Pill */}
+        {/* Left: Brand Wordmark */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <a
             href="#section-1-hero"
@@ -86,26 +86,6 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             <SupEmblem size={32} />
             <span>{BRAND_META.title}</span>
           </a>
-
-          <span
-            className="tribute-pill"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              minHeight: 34,
-              padding: '4px 12px',
-              borderRadius: radius.pill,
-              border: `1px solid ${color.signal}`,
-              background: color.ink,
-              color: color.signal,
-              fontFamily: font.mono,
-              fontSize: 16,
-              fontWeight: 600,
-              letterSpacing: '0.02em',
-            }}
-          >
-            {BRAND_META.dedication}
-          </span>
         </div>
 
         {/* Center: Pillar Navigation Links (Active Section Underlined in Signal Yellow) */}
