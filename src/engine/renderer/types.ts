@@ -12,6 +12,12 @@ export interface RenderItem {
   geometry: MeshGeometry;
   modelMatrix: Mat4;
   material: MaterialProperties;
+  /**
+   * Optional 4-bone Linear Blend Skinning joint palette (up to 64 mat4x4 column-major matrices = 1024 floats).
+   * When present and skinningEnabled is true, each vertex transforms by:
+   *   skinMat = w.x * joints[j.x] + w.y * joints[j.y] + w.z * joints[j.z] + w.w * joints[j.w]
+   */
+  skinJointMatrices?: Float32Array;
 }
 
 export interface RenderMetrics {

@@ -1,14 +1,19 @@
 /**
  * DREAM Engine — WebGL2 Fallback Renderer
- * Full visual parity with WebGPU: PBR metallic/roughness shading, procedural Ancient Sanctuary
- * stone/moss terrain, dual contact shadows, thresholded bloom, and ACES Filmic Tonemapping.
+ * Full visual parity with WebGPU:
+ *   - 4-Bone Linear Blend Skinning (JOINTS_0 + WEIGHTS_0, 64-bone palette)
+ *   - Tangent-Space Normal Mapping (TBN orthonormal basis)
+ *   - Textured PBR (baseColorTexture, normalTexture, packed ORM: R=Occlusion, G=Roughness, B=Metallic)
+ *   - Energy-Conserving Cook-Torrance GGX Microfacet BRDF (F0 = mix(0.04, albedo, metallic), kD = (1 - F)*(1 - metallic))
+ *   - Ancient Sanctuary stone/moss terrain, dual contact shadows, thresholded bloom, and ACES Filmic Tonemapping.
  */
 
 import { Mat4 } from '../math/mat4.ts';
 import { Vec3 } from '../math/vec3.ts';
-import { MeshGeometry } from '../scene/mesh.ts';
+import { MeshGeometry, PbrTextureData } from '../scene/mesh.ts';
 import { IRenderer, RenderItem } from './types.ts';
 import { RenderProfileData, WorldMode } from './render-profile.ts';
+import { MAX_SKIN_JOINTS } from '../animation/skeleton-mixer.ts';
 
 interface GlMeshCache {
   vao: WebGLVertexArrayObject;
@@ -24,19 +29,49 @@ precision highp float;
 layout(location = 0) in vec3 aPosition;
 layout(location = 1) in vec3 aNormal;
 layout(location = 2) in vec2 aUv;
+layout(location = 3) in vec4 aTangent;
+layout(location = 4) in vec4 aJoints0;
+layout(location = 5) in vec4 aWeights0;
 
 uniform mat4 uViewProj;
 uniform mat4 uModel;
+uniform vec4 uSkinAndTexFlags; // x = isSkinned, y = hasBaseColorTex, z = hasNormalTex, w = hasOrmTex
+uniform mat4 uJointMatrices[64];
 
 out vec3 vWorldPos;
 out vec3 vWorldNormal;
 out vec2 vUv;
+out vec4 vWorldTangent;
 
 void main() {
-  vec4 worldPos4 = uModel * vec4(aPosition, 1.0);
+  vec4 localPos = vec4(aPosition, 1.0);
+  vec3 localNormal = aNormal;
+  vec3 localTangent = aTangent.xyz;
+
+  // 4-Bone Linear Blend Skinning (JOINTS_0 + WEIGHTS_0)
+  if (uSkinAndTexFlags.x > 0.5) {
+    int j0 = min(63, int(aJoints0.x + 0.5));
+    int j1 = min(63, int(aJoints0.y + 0.5));
+    int j2 = min(63, int(aJoints0.z + 0.5));
+    int j3 = min(63, int(aJoints0.w + 0.5));
+
+    mat4 skinMat = aWeights0.x * uJointMatrices[j0]
+                 + aWeights0.y * uJointMatrices[j1]
+                 + aWeights0.z * uJointMatrices[j2]
+                 + aWeights0.w * uJointMatrices[j3];
+
+    localPos = skinMat * vec4(aPosition, 1.0);
+    mat3 skinRot = mat3(skinMat);
+    localNormal = normalize(skinRot * aNormal);
+    localTangent = normalize(skinRot * aTangent.xyz);
+  }
+
+  vec4 worldPos4 = uModel * localPos;
   vWorldPos = worldPos4.xyz;
   gl_Position = uViewProj * worldPos4;
-  vWorldNormal = normalize(mat3(uModel) * aNormal);
+  mat3 m3 = mat3(uModel);
+  vWorldNormal = normalize(m3 * localNormal);
+  vWorldTangent = vec4(normalize(m3 * localTangent), aTangent.w);
   vUv = aUv;
 }
 `;
@@ -47,6 +82,7 @@ precision highp float;
 in vec3 vWorldPos;
 in vec3 vWorldNormal;
 in vec2 vUv;
+in vec4 vWorldTangent;
 
 uniform vec4 uCameraPos;         // xyz = pos, w = worldMode (0=day, 1=night)
 uniform vec4 uSunDirAndExposure; // xyz = sunDir, w = exposure
@@ -55,6 +91,12 @@ uniform vec4 uFogAndEnergy;      // x = fogDensity, y = keyEnergy, z = ambientEn
 uniform vec4 uBaseColor;
 uniform vec4 uEmissive;          // xyz = color, w = intensity
 uniform vec4 uFlags;             // x = isSky, y = isGround, z = rimIntensity, w = packed(roughness, metallic)
+uniform vec4 uSkinAndTexFlags;   // x = isSkinned, y = hasBaseColorTex, z = hasNormalTex, w = hasOrmTex
+uniform vec4 uNormalAndOccScale; // x = normalScale, y = occlusionStrength
+
+uniform sampler2D uBaseColorTex;
+uniform sampler2D uNormalTex;
+uniform sampler2D uOrmTex;
 
 out vec4 outColor;
 
@@ -101,6 +143,10 @@ void main() {
   vec3 sunDir = normalize(uSunDirAndExposure.xyz);
   vec3 viewDir = normalize(uCameraPos.xyz - vWorldPos);
 
+  vec4 sampleBaseCol = texture(uBaseColorTex, vUv);
+  vec4 sampleNormal = texture(uNormalTex, vUv);
+  vec4 sampleOrm = texture(uOrmTex, vUv);
+
   // 1. Sky Dome Atmosphere Gradient + Sun/Moon Disk
   if (uFlags.x > 0.5) {
     vec3 rayDir = normalize(vWorldPos - uCameraPos.xyz);
@@ -126,13 +172,34 @@ void main() {
 
   vec3 N = normalize(vWorldNormal);
   float packedRM = uFlags.w;
-  float roughness = clamp(floor(packedRM) / 255.0, 0.08, 0.98);
+  float roughness = clamp(floor(packedRM) / 255.0, 0.05, 0.98);
   float metallic = clamp(fract(packedRM), 0.0, 0.98);
 
   vec3 albedo = uBaseColor.rgb;
   float effRoughness = roughness;
   float effMetallic = metallic;
+  float effOcclusion = 1.0;
   vec3 groundRuneEmissive = vec3(0.0);
+
+  // Sample 2D PBR textures when bound
+  if (uSkinAndTexFlags.y > 0.5) {
+    vec3 srgbDecoded = pow(sampleBaseCol.rgb, vec3(2.2));
+    albedo *= srgbDecoded;
+  }
+  if (uSkinAndTexFlags.w > 0.5) {
+    effOcclusion = mix(1.0, sampleOrm.r, clamp(uNormalAndOccScale.y, 0.0, 1.0));
+    effRoughness = clamp(sampleOrm.g * roughness, 0.05, 0.98);
+    effMetallic = clamp(sampleOrm.b * metallic, 0.0, 0.98);
+  }
+  if (uSkinAndTexFlags.z > 0.5) {
+    vec3 N_geom = N;
+    vec3 T_orth = normalize(vWorldTangent.xyz - N_geom * dot(N_geom, vWorldTangent.xyz));
+    vec3 B_orth = cross(N_geom, T_orth) * vWorldTangent.w;
+    vec3 tNorm = sampleNormal.xyz * 2.0 - vec3(1.0);
+    float nScale = uNormalAndOccScale.x;
+    vec3 tsN = normalize(vec3(tNorm.xy * nScale, max(0.01, tNorm.z)));
+    N = normalize(T_orth * tsN.x + B_orth * tsN.y + N_geom * tsN.z);
+  }
 
   // 2. Varied Ancient Basalt Sanctuary Arena & Weathered Stone/Moss Terrain
   if (uFlags.y > 0.5) {
@@ -186,49 +253,66 @@ void main() {
     float heroContactAO = smoothstep(0.25, 1.35, distHeroLine);
     float combinedGroundAO = (0.35 + 0.65 * bossContactAO) * (0.55 + 0.45 * heroContactAO);
     albedo *= combinedGroundAO;
-  } else {
+  } else if (uSkinAndTexFlags.y < 0.5) {
     float microTex = valueNoise(vWorldPos.xy * 18.0 + vWorldPos.zy * 14.0);
-    albedo *= (0.90 + 0.20 * microTex);
+    albedo *= (0.92 + 0.14 * microTex);
   }
 
-  // 4. Shadowed Key Light, Sky/Ground Hemisphere Ambient, PBR Specular & Rim Light
-  float NdotL = dot(N, sunDir);
-  float shadowTerm = smoothstep(-0.15, 0.45, NdotL);
-  float diff = max(NdotL, 0.0) * shadowTerm;
-
+  // 4. Energy-Conserving Cook-Torrance GGX PBR Shading (Never clips bright metal to white!)
+  float NdotL_raw = dot(N, sunDir);
+  float shadowTerm = smoothstep(-0.12, 0.42, NdotL_raw);
+  float NdotL = max(NdotL_raw, 0.0);
+  float NdotV = max(dot(N, viewDir), 0.001);
   vec3 H = normalize(sunDir + viewDir);
   float NdotH = max(dot(N, H), 0.0);
-  float shininess = mix(14.0, 96.0, 1.0 - effRoughness);
-  float specStrength = mix(0.18, 1.15, effMetallic) * (1.0 - effRoughness * 0.65);
-  float spec = pow(NdotH, shininess) * specStrength * shadowTerm;
+  float VdotH = max(dot(viewDir, H), 0.0);
+
+  vec3 F0 = mix(vec3(0.04), albedo, effMetallic);
+  vec3 F = F0 + (vec3(1.0) - F0) * pow(clamp(1.0 - VdotH, 0.0, 1.0), 5.0);
+  vec3 kD = (vec3(1.0) - F) * (1.0 - effMetallic);
+
+  float alpha = effRoughness * effRoughness;
+  float alpha2 = alpha * alpha;
+  float denomD = NdotH * NdotH * (alpha2 - 1.0) + 1.0;
+  float D = alpha2 / max(3.14159265 * denomD * denomD, 0.0001);
+
+  float rPlus1 = effRoughness + 1.0;
+  float k = (rPlus1 * rPlus1) * 0.125;
+  float g1V = NdotV / (NdotV * (1.0 - k) + k);
+  float g1L = NdotL / (NdotL * (1.0 - k) + k);
+  float G = g1V * g1L;
+
+  float specRaw = (D * G) / max(4.0 * NdotV * NdotL, 0.001);
+  vec3 specBrdf = (F * specRaw) / (1.0 + 0.85 * specRaw);
+  vec3 diffuseBrdf = kD * albedo / 3.14159265;
 
   vec3 keyColor = (isNight ? vec3(0.42, 0.56, 0.92) : vec3(1.0, 0.94, 0.84)) * uFogAndEnergy.y;
   vec3 skyAmbient = isNight ? vec3(0.09, 0.13, 0.24) : vec3(0.36, 0.46, 0.62);
   vec3 groundBounce = isNight ? vec3(0.04, 0.05, 0.08) : vec3(0.24, 0.19, 0.15);
   vec3 hemiAmbient = mix(groundBounce, skyAmbient, clamp(N.y * 0.5 + 0.5, 0.0, 1.0)) * uFogAndEnergy.z;
 
-  float cavityAO = clamp(0.42 + 0.58 * (N.y * 0.45 + 0.55), 0.30, 1.0);
-  vec3 diffuseColor = albedo * (1.0 - effMetallic * 0.55);
-  vec3 specColor = mix(vec3(0.96, 0.94, 0.90), albedo * 1.25 + vec3(0.12), effMetallic);
+  float cavityAO = clamp(0.45 + 0.55 * (N.y * 0.45 + 0.55), 0.32, 1.0) * effOcclusion;
 
   vec3 reflDir = reflect(-viewDir, N);
-  vec3 envReflect = mix(groundBounce, skyAmbient * 1.35, clamp(reflDir.y * 0.5 + 0.5, 0.0, 1.0));
-  vec3 metalEnvContribution = envReflect * specColor * effMetallic * (1.0 - effRoughness * 0.55) * 0.55;
+  vec3 envReflect = mix(groundBounce, skyAmbient * 1.25, clamp(reflDir.y * 0.5 + 0.5, 0.0, 1.0));
+  vec3 envF = F0 + (max(vec3(1.0 - effRoughness), F0) - F0) * pow(1.0 - NdotV, 5.0);
+  vec3 ambientDiffuse = kD * albedo * hemiAmbient * cavityAO;
+  vec3 ambientSpec = envReflect * envF * (1.0 - effRoughness * 0.55) * 0.48 * cavityAO;
 
-  float rim = pow(1.0 - max(dot(N, viewDir), 0.0), 3.0) * uFlags.z;
+  float rim = pow(1.0 - NdotV, 3.0) * uFlags.z * (1.0 - effMetallic * 0.45);
   vec3 rimColor = isNight ? vec3(0.38, 0.72, 1.0) : vec3(1.0, 0.84, 0.58);
 
   vec3 rawEmissive = uEmissive.rgb * min(uEmissive.w, 2.6) + groundRuneEmissive;
 
-  vec3 color = (hemiAmbient * diffuseColor * cavityAO) +
-               (keyColor * (diffuseColor * diff + specColor * spec)) +
-               (metalEnvContribution * cavityAO) +
-               (rimColor * rim * 0.38) +
+  vec3 color = ambientDiffuse +
+               ambientSpec +
+               (keyColor * (diffuseBrdf * 2.4 + specBrdf) * NdotL * shadowTerm) +
+               (rimColor * rim * 0.32) +
                rawEmissive;
 
   float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
   float bloomExcess = max(0.0, luma - 0.85);
-  color += color * (bloomExcess / (1.0 + bloomExcess)) * 0.28;
+  color += color * (bloomExcess / (1.0 + bloomExcess)) * 0.25;
 
   float dist = length(vWorldPos - uCameraPos.xyz);
   float fogDensity = (isNight ? 0.0068 : 0.0042) * uFogAndEnergy.x;
@@ -264,8 +348,20 @@ export class WebGL2Renderer implements IRenderer {
   private uBaseColor!: WebGLUniformLocation | null;
   private uEmissive!: WebGLUniformLocation | null;
   private uFlags!: WebGLUniformLocation | null;
+  private uSkinAndTexFlags!: WebGLUniformLocation | null;
+  private uNormalAndOccScale!: WebGLUniformLocation | null;
+  private uJointMatrices!: WebGLUniformLocation | null;
+  private uBaseColorTex!: WebGLUniformLocation | null;
+  private uNormalTex!: WebGLUniformLocation | null;
+  private uOrmTex!: WebGLUniformLocation | null;
+
+  private defaultWhiteTex!: WebGLTexture;
+  private defaultNormalTex!: WebGLTexture;
+  private defaultOrmTex!: WebGLTexture;
+  private identityJoints = new Float32Array(MAX_SKIN_JOINTS * 16);
 
   private meshCache = new WeakMap<MeshGeometry, GlMeshCache>();
+  private textureCache = new WeakMap<PbrTextureData, WebGLTexture>();
   private viewProjMat = new Mat4();
   private startTime = performance.now();
 
@@ -274,6 +370,12 @@ export class WebGL2Renderer implements IRenderer {
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
+    for (let j = 0; j < MAX_SKIN_JOINTS; j++) {
+      this.identityJoints[j * 16 + 0] = 1;
+      this.identityJoints[j * 16 + 5] = 1;
+      this.identityJoints[j * 16 + 10] = 1;
+      this.identityJoints[j * 16 + 15] = 1;
+    }
   }
 
   async init(): Promise<boolean> {
@@ -311,11 +413,67 @@ export class WebGL2Renderer implements IRenderer {
     this.uBaseColor = gl.getUniformLocation(prog, 'uBaseColor');
     this.uEmissive = gl.getUniformLocation(prog, 'uEmissive');
     this.uFlags = gl.getUniformLocation(prog, 'uFlags');
+    this.uSkinAndTexFlags = gl.getUniformLocation(prog, 'uSkinAndTexFlags');
+    this.uNormalAndOccScale = gl.getUniformLocation(prog, 'uNormalAndOccScale');
+    this.uJointMatrices = gl.getUniformLocation(prog, 'uJointMatrices[0]');
+    this.uBaseColorTex = gl.getUniformLocation(prog, 'uBaseColorTex');
+    this.uNormalTex = gl.getUniformLocation(prog, 'uNormalTex');
+    this.uOrmTex = gl.getUniformLocation(prog, 'uOrmTex');
+
+    this.defaultWhiteTex = this.create1x1GlTexture([255, 255, 255, 255]);
+    this.defaultNormalTex = this.create1x1GlTexture([128, 128, 255, 255]);
+    this.defaultOrmTex = this.create1x1GlTexture([255, 255, 255, 255]);
+
+    gl.useProgram(this.program);
+    gl.uniform1i(this.uBaseColorTex, 0);
+    gl.uniform1i(this.uNormalTex, 1);
+    gl.uniform1i(this.uOrmTex, 2);
 
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LEQUAL);
     gl.disable(gl.CULL_FACE);
     return true;
+  }
+
+  private create1x1GlTexture(rgba: [number, number, number, number]): WebGLTexture {
+    const gl = this.gl;
+    const tex = gl.createTexture()!;
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(rgba));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+    return tex;
+  }
+
+  private getOrCreateGlTexture(texData: PbrTextureData | undefined, fallback: WebGLTexture): WebGLTexture {
+    if (!texData) return fallback;
+    let cached = this.textureCache.get(texData);
+    if (cached) return cached;
+
+    const gl = this.gl;
+    const tex = gl.createTexture()!;
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      Math.max(1, texData.width),
+      Math.max(1, texData.height),
+      0,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      texData.data
+    );
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+    cached = tex;
+    this.textureCache.set(texData, cached);
+    return cached;
   }
 
   private compileShader(type: number, source: string): WebGLShader {
@@ -354,29 +512,53 @@ export class WebGL2Renderer implements IRenderer {
     gl.bindVertexArray(vao);
 
     const vCount = geom.vertexCount;
-    const interleaved = new Float32Array(vCount * 8);
+    const interleaved = new Float32Array(vCount * 20);
     for (let i = 0; i < vCount; i++) {
-      const base = i * 8;
+      const base = i * 20;
       interleaved[base + 0] = geom.positions[i * 3 + 0];
       interleaved[base + 1] = geom.positions[i * 3 + 1];
       interleaved[base + 2] = geom.positions[i * 3 + 2];
+
       interleaved[base + 3] = geom.normals[i * 3 + 0];
       interleaved[base + 4] = geom.normals[i * 3 + 1];
       interleaved[base + 5] = geom.normals[i * 3 + 2];
+
       interleaved[base + 6] = geom.uvs[i * 2 + 0];
       interleaved[base + 7] = geom.uvs[i * 2 + 1];
+
+      interleaved[base + 8] = geom.tangents[i * 4 + 0];
+      interleaved[base + 9] = geom.tangents[i * 4 + 1];
+      interleaved[base + 10] = geom.tangents[i * 4 + 2];
+      interleaved[base + 11] = geom.tangents[i * 4 + 3];
+
+      interleaved[base + 12] = geom.joints0[i * 4 + 0];
+      interleaved[base + 13] = geom.joints0[i * 4 + 1];
+      interleaved[base + 14] = geom.joints0[i * 4 + 2];
+      interleaved[base + 15] = geom.joints0[i * 4 + 3];
+
+      interleaved[base + 16] = geom.weights0[i * 4 + 0];
+      interleaved[base + 17] = geom.weights0[i * 4 + 1];
+      interleaved[base + 18] = geom.weights0[i * 4 + 2];
+      interleaved[base + 19] = geom.weights0[i * 4 + 3];
     }
 
     const vbo = gl.createBuffer()!;
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
     gl.bufferData(gl.ARRAY_BUFFER, interleaved, gl.STATIC_DRAW);
 
+    const stride = 80; // 20 floats * 4 bytes
     gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 32, 0);
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, stride, 0);
     gl.enableVertexAttribArray(1);
-    gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 32, 12);
+    gl.vertexAttribPointer(1, 3, gl.FLOAT, false, stride, 12);
     gl.enableVertexAttribArray(2);
-    gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 32, 24);
+    gl.vertexAttribPointer(2, 2, gl.FLOAT, false, stride, 24);
+    gl.enableVertexAttribArray(3);
+    gl.vertexAttribPointer(3, 4, gl.FLOAT, false, stride, 32);
+    gl.enableVertexAttribArray(4);
+    gl.vertexAttribPointer(4, 4, gl.FLOAT, false, stride, 48);
+    gl.enableVertexAttribArray(5);
+    gl.vertexAttribPointer(5, 4, gl.FLOAT, false, stride, 64);
 
     const ibo = gl.createBuffer()!;
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
@@ -444,6 +626,11 @@ export class WebGL2Renderer implements IRenderer {
       const metalFrac = Math.max(0.0, Math.min(0.98, mat.metallic ?? 0.5));
       const packedRM = roughByte + metalFrac;
 
+      const isSkinned = item.skinJointMatrices ? 1.0 : 0.0;
+      const hasBaseTex = mat.baseColorTexture ? 1.0 : 0.0;
+      const hasNormalTex = mat.normalTexture ? 1.0 : 0.0;
+      const hasOrmTex = mat.ormTexture ? 1.0 : 0.0;
+
       gl.uniformMatrix4fv(this.uModel, false, item.modelMatrix.elements);
       gl.uniform4f(
         this.uBaseColor,
@@ -466,6 +653,19 @@ export class WebGL2Renderer implements IRenderer {
         mat.rimIntensity ?? 0.45,
         packedRM
       );
+      gl.uniform4f(this.uSkinAndTexFlags, isSkinned, hasBaseTex, hasNormalTex, hasOrmTex);
+      gl.uniform4f(this.uNormalAndOccScale, mat.normalScale ?? 1.0, mat.occlusionStrength ?? 1.0, 0.0, 0.0);
+
+      if (item.skinJointMatrices) {
+        gl.uniformMatrix4fv(this.uJointMatrices, false, item.skinJointMatrices);
+      }
+
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, this.getOrCreateGlTexture(mat.baseColorTexture, this.defaultWhiteTex));
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, this.getOrCreateGlTexture(mat.normalTexture, this.defaultNormalTex));
+      gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, this.getOrCreateGlTexture(mat.ormTexture, this.defaultOrmTex));
 
       gl.bindVertexArray(mesh.vao);
       gl.drawElements(gl.TRIANGLES, mesh.indexCount, mesh.indexType, 0);
