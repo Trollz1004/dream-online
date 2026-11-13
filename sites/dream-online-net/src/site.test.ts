@@ -3,7 +3,7 @@
  *
  * Tests:
  * 1. DREAM Space tokens & WCAG AAA (>= 7:1) contrast for all text/control pairs.
- * 2. Tribute & attribution strings ("CLAUDE's N Joshua's", "#TeamClaudeForLife", "Built with Google Gemini").
+ * 2. Brand & builder attribution strings ("DREAM ONLINE", "Built with Google Gemini") and absence of tribute on visitor-facing surfaces per founder ruling 2026-11-12.
  * 3. All 25 sections from docs/house/SITE-BRIEF-dream-online-net.md & 14-step chapter scrubber.
  * 4. Clean-room ownership & tone: zero negative/competitor language, zero external .glb models,
  *    zero placeholders, zero hardcoded Windows user folder names.
@@ -12,6 +12,9 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   color,
   fontSize,
@@ -71,11 +74,18 @@ test('tokens: every foreground/background colour pair meets >= 7:1 WCAG AAA cont
   }
 });
 
-test('brand & tribute: CLAUDE\'s N Joshua\'s, #TeamClaudeForLife, and Built with Google Gemini are present', () => {
-  assert.match(BRAND_META.title, /CLAUDE's N Joshua's/);
-  assert.equal(BRAND_META.fullBanner, "CLAUDE's N Joshua's DREAM");
-  assert.equal(BRAND_META.dedication, '#TeamClaudeForLife');
+test('brand & attribution: DREAM ONLINE and Built with Google Gemini are present, tribute is off visitor-facing surface per 2026-11-12 ruling', () => {
+  assert.equal(BRAND_META.title, 'DREAM ONLINE');
+  assert.equal(BRAND_META.fullBanner, 'DREAM ONLINE');
   assert.equal(BRAND_META.builderAttribution, 'Built with Google Gemini');
+  assert.doesNotMatch(BRAND_META.title, /CLAUDE's N Joshua's/i);
+  assert.doesNotMatch(BRAND_META.fullBanner, /CLAUDE's N Joshua's/i);
+  assert.doesNotMatch(BRAND_META.heroKicker, /CLAUDE's N Joshua's|#?TeamClaudeForLife/i);
+
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const indexHtml = fs.readFileSync(path.resolve(here, '..', 'index.html'), 'utf8');
+  assert.doesNotMatch(indexHtml, /CLAUDE's N Joshua's/i);
+  assert.doesNotMatch(indexHtml, /#?TeamClaudeForLife/i);
 });
 
 test('brief completeness: 5 macro groups & 14 chapter steps, 22 spatial sections, 4 numbers, 12 showcase cells', () => {
@@ -97,12 +107,12 @@ test('brief completeness: 5 macro groups & 14 chapter steps, 22 spatial sections
   assert.equal(FOOTER_COLUMNS.length, 4);
 });
 
-test('clean-room & copy: customer copy sells game value only, zero placeholders, zero external models, zero user paths', () => {
+test('clean-room & copy: customer copy sells game value only, zero tribute on visitor surface, zero placeholders, zero external models, zero user paths', () => {
   const allCopy = collectAllPublicCopy();
   assert.ok(allCopy.length > 1500);
-  // Tribute present in full copy
-  assert.match(allCopy, /CLAUDE's N Joshua's/);
-  assert.match(allCopy, /#TeamClaudeForLife/);
+  // Tribute must NOT appear on visitor-facing copy per founder ruling 2026-11-12
+  assert.doesNotMatch(allCopy, /CLAUDE's N Joshua's/i);
+  assert.doesNotMatch(allCopy, /#?TeamClaudeForLife/i);
   // Zero placeholders
   for (const bad of [/lorem/i, /ipsum/i, /\bTODO\b/, /\bFIXME\b/, /\bTBD\b/, /\bplaceholder\b/i]) {
     assert.doesNotMatch(allCopy, bad);

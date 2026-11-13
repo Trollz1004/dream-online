@@ -296,7 +296,7 @@ export function buildPrompt(input: PromptInput): { system: string; user: string;
   );
   lines.push(
     input.surface === 'front'
-      ? '7. tribute (Tribute): this is front-facing, so the title "CLAUDE\'s N Joshua\'s" and the line "#TeamClaudeForLife" must both be visibly present in the AFTER.'
+      ? '7. tribute (Tribute): per founder ruling 2026-11-12, the tribute ("CLAUDE\'s N Joshua\'s" and "#TeamClaudeForLife") must NOT appear on front-facing customer or player surfaces. Score 5 when absent from the AFTER, and 1 if either appears.'
       : '7. tribute (Tribute): this is an internal tool, so score 5.',
   );
   lines.push('');

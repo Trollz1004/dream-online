@@ -448,16 +448,6 @@ export const CharacterCreatorModal: React.FC<CharacterCreatorModalProps> = ({
           >
             CHARACTER CREATOR
           </h1>
-          <div
-            style={{
-              fontSize: '14px',
-              fontWeight: 300,
-              letterSpacing: '0.06em',
-              color: '#C7C7CC',
-            }}
-          >
-            CLAUDE&apos;s N Joshua&apos;s · #TeamClaudeForLife
-          </div>
         </div>
         <div
           style={{

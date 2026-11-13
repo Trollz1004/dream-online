@@ -893,16 +893,6 @@ export const NeedsShopModal: React.FC<NeedsShopModalProps> = ({
           >
             WARDROBE · NEEDS SHOP
           </h1>
-          <div
-            style={{
-              fontSize: '14px',
-              fontWeight: 300,
-              letterSpacing: '0.06em',
-              color: '#D1D1D6',
-            }}
-          >
-            CLAUDE&apos;s N Joshua&apos;s · #TeamClaudeForLife
-          </div>
         </div>
         <div
           style={{

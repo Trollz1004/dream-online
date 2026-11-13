@@ -239,7 +239,7 @@ export const App: React.FC = () => {
                       }}
                     >
                       <p className="section-kicker" style={{ textTransform: 'none' }}>
-                        {BRAND_META.title} · {BRAND_META.dedication}
+                        {BRAND_META.heroKicker}
                       </p>
                     </div>
 
@@ -1237,7 +1237,7 @@ export const App: React.FC = () => {
               gap: 32,
             }}
           >
-            {/* Brand & Tribute Column */}
+            {/* Brand Column */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <SupEmblem size={32} />
@@ -1245,20 +1245,6 @@ export const App: React.FC = () => {
                   {BRAND_META.fullBanner}
                 </span>
               </div>
-              <span
-                style={{
-                  alignSelf: 'flex-start',
-                  padding: '4px 12px',
-                  borderRadius: radius.pill,
-                  border: `1px solid ${color.signal}`,
-                  color: color.signal,
-                  fontFamily: font.mono,
-                  fontSize: 16,
-                  fontWeight: 600,
-                }}
-              >
-                {BRAND_META.dedication}
-              </span>
               <p className="body-copy" style={{ fontSize: 16 }}>
                 One shared 3D action RPG where every road, craft, and conversation is real.
               </p>
@@ -1376,7 +1362,7 @@ export const App: React.FC = () => {
             }}
           >
             <span>
-              © 2026 Joshua Coleman. All rights reserved. · {BRAND_META.title} · {BRAND_META.dedication}
+              © 2026 Joshua Coleman. All rights reserved. · {BRAND_META.title}
             </span>
             <span style={{ color: color.signal }}>{BRAND_META.builderAttribution}</span>
           </div>

@@ -259,7 +259,7 @@ async function main() {
         : 'Fonts: no DOM (PNG target); judge type from the images.',
       `Honesty evidence: page rendered ${rendered ? 'yes' : 'NO'}; placeholder words ${findings.placeholders.join(', ') || 'none'}; broken images ${findings.brokenImages.length}; page errors ${findings.pageErrors.length}${findings.pageErrors[0] ? ` (first: ${findings.pageErrors[0]})` : ''}; console errors ${findings.consoleErrors.length}${findings.consoleErrors[0] ? ` (first: ${findings.consoleErrors[0]})` : ''}; failed requests ${findings.failedRequests.length}; unreached capture steps ${findings.unreachedSteps.length}.`,
       tributeSeen
-        ? `Tribute in the visible page text: title "CLAUDE's N Joshua's" ${tributeSeen.title ? 'present' : 'absent'}; "#TeamClaudeForLife" ${tributeSeen.tag ? 'present' : 'absent'}.`
+        ? `Tribute check in the visible page text (must be absent on front-facing surfaces per 2026-11-12 ruling): title "CLAUDE's N Joshua's" ${tributeSeen.title ? 'present' : 'absent'}; "#TeamClaudeForLife" ${tributeSeen.tag ? 'present' : 'absent'}.`
         : 'Tribute: no DOM (PNG target); read it from the images.',
     ].map(show);
 
@@ -390,7 +390,7 @@ async function main() {
           override =
             surface === 'internal'
               ? 'internal tools score 5 automatically.'
-              : `the visible page text has the title ${tributeSeen?.title ? 'present' : 'absent'} and #TeamClaudeForLife ${tributeSeen?.tag ? 'present' : 'absent'}, which scores ${tributeDet}.`;
+              : `per 2026-11-12 ruling, front-facing surfaces must not show the tribute; the visible page text has the title ${tributeSeen?.title ? 'present' : 'absent'} and #TeamClaudeForLife ${tributeSeen?.tag ? 'present' : 'absent'}, which scores ${tributeDet}.`;
         }
       }
       qualities[q.key] = { score, reason: show(m.reason), modelScore: m.score, override };

@@ -14,11 +14,10 @@
 
 export const BRAND_META = {
   domain: 'dream-online.net',
-  title: "CLAUDE's N Joshua's",
-  fullBanner: "CLAUDE's N Joshua's DREAM",
-  dedication: '#TeamClaudeForLife',
+  title: 'DREAM ONLINE',
+  fullBanner: 'DREAM ONLINE',
   builderAttribution: 'Built with Google Gemini',
-  heroKicker: "CLAUDE's N Joshua's · #TeamClaudeForLife",
+  heroKicker: 'DREAM ONLINE · ONE UNSHARDED REALM',
   heroLines: ['ONE SHARED WORLD.', 'DREAMED TWICE.'],
   heroSubhead:
     'A third-person 3D action RPG where every player walks the same continuous horizon, every NPC remembers your deeds, and nightfall awakens a neon metropolis.',
@@ -144,9 +143,9 @@ export const SPATIAL_SECTIONS: readonly SpatialSection[] = [
     svh: 100,
     align: 'left',
     kind: 'hero',
-    kicker: "CLAUDE's N Joshua's · #TeamClaudeForLife",
+    kicker: 'DREAM ONLINE · ONE UNSHARDED REALM',
     headline: 'ONE SHARED WORLD. DREAMED TWICE.',
-    subtitle: "CLAUDE's N Joshua's DREAM",
+    subtitle: 'DREAM ONLINE',
     body: 'A third-person 3D action RPG where every player walks the same continuous horizon, every NPC remembers your deeds, and nightfall awakens a neon metropolis.',
   },
   {
@@ -397,7 +396,7 @@ export const SPATIAL_SECTIONS: readonly SpatialSection[] = [
     svh: 100,
     align: 'center',
     kind: 'climax-cta',
-    kicker: "CLAUDE's N Joshua's · #TeamClaudeForLife",
+    kicker: 'DREAM ONLINE · ONE UNSHARDED REALM',
     headline: 'STEP INTO THE DREAM',
     body: 'Enter one unbroken 3D world where your skill, your craft, and your name carry across every horizon.',
   },
@@ -696,7 +695,6 @@ export const SHOWCASE_CELLS: readonly ShowcaseCell[] = [
 ];
 
 export const MARQUEE_ITEMS: readonly string[] = [
-  "CLAUDE'S N JOSHUA'S · #TEAMCLAUDEFORLIFE",
   'ONE UNSHARDED WORLD · ZERO FAST TRAVEL',
   'DIRECTIONAL STAMINA ACTION COMBAT',
   'DAY DREAMS OLD WORLD · NIGHTFALL NEON METROPOLIS',
@@ -756,7 +754,6 @@ export function collectAllPublicCopy(): string {
   const chunks: string[] = [
     BRAND_META.title,
     BRAND_META.fullBanner,
-    BRAND_META.dedication,
     BRAND_META.builderAttribution,
     BRAND_META.heroKicker,
     ...BRAND_META.heroLines,

@@ -600,29 +600,6 @@ export const SmithServiceModal: React.FC<SmithServiceModalProps> = ({
             backgroundColor: 'rgba(255, 255, 255, 0.5)',
           }}
         />
-        <div
-          style={
-            isCompactViewport
-              ? {
-                  marginTop: '3px',
-                  fontSize: '11px',
-                  fontWeight: 400,
-                  letterSpacing: '0.06em',
-                  color: '#F5F5F7',
-                }
-              : {
-                  position: 'absolute',
-                  right: 0,
-                  bottom: '9px',
-                  fontSize: '14px',
-                  fontWeight: 400,
-                  letterSpacing: '0.06em',
-                  color: '#F5F5F7',
-                }
-          }
-        >
-          CLAUDE&apos;s N Joshua&apos;s · #TeamClaudeForLife
-        </div>
       </header>
 
       {/* Main Content Area: Three columns per docs/gdd/09-interface-style.md */}
