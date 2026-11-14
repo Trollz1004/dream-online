@@ -1357,7 +1357,7 @@ export class InboxRunner {
       pandaRes.model && this.router.isLaneCold(pandaRes.model, now)
         ? `Panda /route selected cold lane ${pandaRes.model}`
         : pandaRes.reason;
-    const fallbackLogLine = `[panda] fallback to ${fallbackLane}: ${reasonText}`;
+    const pandaFallbackLogLine = `[panda] fallback to ${fallbackLane}: ${reasonText}`;
 
     return {
       decision: { ...routed.decision, lane: fallbackLane },
@@ -1937,6 +1937,10 @@ export class InboxRunner {
         const attempts: InboxAttemptRecord[] = [];
         const combinedLogs: string[] = [];
 
+        if (lastPandaFallbackLogLine) {
+          combinedLogs.push(lastPandaFallbackLogLine);
+        }
+
         if (worktreeAddRes.exitCode !== 0) {
           const wtErr = [worktreeAddRes.stdout, worktreeAddRes.stderr].filter(Boolean).join('\n').trim();
           combinedLogs.push(
@@ -2030,6 +2034,9 @@ export class InboxRunner {
           decision = selectedModel.decision;
           modelPickedBy = selectedModel.pickedBy;
           lastPandaFallbackLogLine = selectedModel.pandaFallbackLogLine;
+          if (lastPandaFallbackLogLine) {
+            combinedLogs.push(lastPandaFallbackLogLine);
+          }
 
           handle = await this.adapter.dispatch({
             jobId: `${parsed.id}-fallback`,
@@ -2139,6 +2146,9 @@ export class InboxRunner {
           decision = selectedModel.decision;
           modelPickedBy = selectedModel.pickedBy;
           lastPandaFallbackLogLine = selectedModel.pandaFallbackLogLine;
+          if (lastPandaFallbackLogLine) {
+            combinedLogs.push(lastPandaFallbackLogLine);
+          }
 
           handle = await this.adapter.dispatch({
             jobId: `${parsed.id}-requeue-1`,
