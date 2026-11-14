@@ -1227,6 +1227,28 @@ export class InboxRunner {
   }
 
   /**
+   * Resolves a warm engine floor model ('gemini-4-argon' or 'claude-opus-5-5').
+   * When the engine floor would pick a model the router marks cold, uses the other floor model;
+   * if both are cold, returns null so the caller behaves exactly as before this PR.
+   */
+  private resolveWarmEngineFloorModel(
+    preferredLane: string | null | undefined,
+    now: Date = this.now()
+  ): string | null {
+    const preferred = preferredLane?.trim() || '';
+    const orderedFloorModels: string[] = isEngineFloorModel(preferred)
+      ? [preferred, ...ENGINE_FLOOR_MODELS.filter((m) => m !== preferred)]
+      : ['gemini-4-argon', 'claude-opus-5-5'];
+
+    for (const candidate of orderedFloorModels) {
+      if (!this.router.isLaneCold(candidate, now)) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  /**
    * Queries Panda Router /route before an agy run and resolves the model to use,
    * honouring a task header model line or the engine lane floor (claude-opus-5-5 or gemini-4-argon).
    */
@@ -1334,12 +1356,17 @@ export class InboxRunner {
     // 2. Valid Panda model answer (unless cold or below the engine floor)
     if (pandaRes.model && !this.router.isLaneCold(pandaRes.model, now)) {
       if (isEngineLane && !isEngineFloorModel(pandaRes.model)) {
-        const floorLane = isEngineFloorModel(routed.decision.lane)
-          ? routed.decision.lane
-          : 'gemini-4-argon';
+        const floorLane = this.resolveWarmEngineFloorModel(routed.decision.lane, now);
+        if (floorLane) {
+          return {
+            decision: { ...routed.decision, lane: floorLane },
+            pickedBy: 'floor',
+            pandaFallbackLogLine: null,
+          };
+        }
         return {
-          decision: { ...routed.decision, lane: floorLane },
-          pickedBy: 'floor',
+          decision: routed.decision,
+          pickedBy: 'fallback',
           pandaFallbackLogLine: null,
         };
       }
@@ -1351,10 +1378,9 @@ export class InboxRunner {
     }
 
     // 3. Fallback when Panda is down, slow, or answers something not in the pool (or cold)
-    const fallbackLane =
-      isEngineLane && !isEngineFloorModel(routed.decision.lane)
-        ? 'gemini-4-argon'
-        : routed.decision.lane;
+    const fallbackLane = isEngineLane
+      ? (this.resolveWarmEngineFloorModel(routed.decision.lane, now) ?? routed.decision.lane)
+      : routed.decision.lane;
     const reasonText =
       pandaRes.model && this.router.isLaneCold(pandaRes.model, now)
         ? `Panda /route selected cold lane ${pandaRes.model}`
