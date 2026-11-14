@@ -1670,8 +1670,8 @@ export class InboxRunner {
         });
 
         // Create worktree under %USERPROFILE%\antigravity\<repo prefix><id> on branch ai/inbox/<id> from base,
-        // inside the target repo (dream-online or ANTIGRAVITY)
-        await this.runCommand({
+        // inside the target repo (dream-online or ANTIGRAVITY).
+        const worktreeAddRes = await this.runCommand({
           command: 'git',
           args: ['worktree', 'add', '-B', branchName, worktreePath, configuredBase],
           cwd: repoTarget.root,
@@ -1692,6 +1692,13 @@ export class InboxRunner {
         let quotaFallbackTriggered = false;
         const attempts: InboxAttemptRecord[] = [];
         const combinedLogs: string[] = [];
+
+        if (worktreeAddRes.exitCode !== 0) {
+          const wtErr = [worktreeAddRes.stdout, worktreeAddRes.stderr].filter(Boolean).join('\n').trim();
+          combinedLogs.push(
+            `[runner] git worktree add exited with code ${worktreeAddRes.exitCode}${wtErr ? `:\n${wtErr}` : ''}`
+          );
+        }
 
         if (isLivenessRequeue) {
           attempts.push({
