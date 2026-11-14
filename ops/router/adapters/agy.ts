@@ -36,27 +36,93 @@ export function getDefaultFableKitchenDir(): string {
   return path.join(os.homedir(), 'antigravity', '.fable-kitchen');
 }
 
+export interface BuildAgyCommandInput {
+  lane: string;
+  prompt: string;
+  effort?: 'low' | 'medium' | 'high' | null;
+  printTimeout?: string;
+  agyExecutable?: string;
+}
+
+export interface BuiltAgyCommand {
+  command: string;
+  args: string[];
+  sanitizedPrompt: string;
+}
+
+/**
+ * Pure command builder for headless agy.exe execution.
+ * Never spawns a process; used by both AgyDispatchAdapter.dispatch and dry-run round-trip tests.
+ */
+export function buildAgyCommand(input: BuildAgyCommandInput): BuiltAgyCommand {
+  const sanitizedPrompt = replaceDoubleQuotesWithSingle(input.prompt).replace(/\0/g, '');
+  const printTimeout = input.printTimeout ?? '20m';
+  const args = [
+    '--model',
+    input.lane,
+    ...(input.effort ? ['--effort', input.effort] : []),
+    '--dangerously-skip-permissions',
+    '--output-format',
+    'text',
+    '--print-timeout',
+    printTimeout,
+    `--print=${sanitizedPrompt}`,
+  ];
+  return {
+    command: input.agyExecutable ?? 'agy.exe',
+    args,
+    sanitizedPrompt,
+  };
+}
+
+/**
+ * Extracts the prompt payload from an agy.exe argument vector built by buildAgyCommand.
+ */
+export function extractPromptFromAgyArgs(args: readonly string[]): string | null {
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg.startsWith('--print=')) {
+      return arg.slice('--print='.length);
+    }
+    if ((arg === '--print' || arg === '-p' || arg === '--prompt') && i + 1 < args.length) {
+      return args[i + 1];
+    }
+  }
+  return null;
+}
+
 export const defaultCommandRunner: CommandRunner = (
   req: CommandExecRequest
 ): Promise<CommandExecResult> => {
   return new Promise((resolve) => {
+    const effectiveArgs =
+      req.command === 'git' && req.args[0] === 'worktree'
+        ? ['-c', 'core.longpaths=true', ...req.args]
+        : req.args;
     execFile(
       req.command,
-      req.args,
+      effectiveArgs,
       {
         cwd: req.cwd,
         env: req.env,
-        timeout: req.timeoutMs ?? 20 * 60 * 1000,
+        timeout: req.timeoutMs ?? 22 * 60 * 1000,
         maxBuffer: 16 * 1024 * 1024,
         windowsHide: true,
       },
       (err, stdout, stderr) => {
         const rawCode = err ? (err as unknown as { code?: unknown }).code : 0;
         const exitCode = typeof rawCode === 'number' ? rawCode : err ? 1 : 0;
+        const stdoutStr = String(stdout ?? '');
+        const rawStderr = String(stderr ?? '');
+        const errMessage = err ? String(err.message || err) : '';
+        const stderrStr =
+          rawStderr.trim().length > 0
+            ? rawStderr
+            : errMessage;
         resolve({
           exitCode,
-          stdout: String(stdout ?? ''),
-          stderr: String(stderr ?? (err ? err.message : '')),
+          stdout: stdoutStr,
+          stderr: stderrStr,
         });
       }
     );
@@ -142,41 +208,41 @@ export class AgyDispatchAdapter implements DispatchAdapter {
     const promptPath = path.join(this.kitchenDir, `${jobId}.txt`);
     const logPath = path.join(this.kitchenDir, `${jobId}.log`);
 
-    // Prompts have their double quotes replaced by single quotes before the call
-    const sanitizedPrompt = replaceDoubleQuotesWithSingle(input.prompt);
+    // agy 1.5.0 rejects --effort for some models, so the flag is passed only for lanes that accept it
+    const effort = this.effortForLane(input.lane);
+    const built = buildAgyCommand({
+      lane: input.lane,
+      prompt: input.prompt,
+      effort,
+      printTimeout: this.printTimeout,
+      agyExecutable: this.agyExecutable,
+    });
+    const { sanitizedPrompt, args } = built;
     fs.writeFileSync(promptPath, sanitizedPrompt, 'utf8');
 
     const startedIso = this.now().toISOString();
     fs.writeFileSync(logPath, `started ${startedIso}\n`, 'utf8');
 
-    // agy 1.5.0 rejects --effort for some models, so the flag is passed only for lanes that accept it
-    const effort = this.effortForLane(input.lane);
-    const args = [
-      '--model',
-      input.lane,
-      ...(effort ? ['--effort', effort] : []),
-      '--dangerously-skip-permissions',
-      '--output-format',
-      'text',
-      '--print-timeout',
-      this.printTimeout,
-      `--print=${sanitizedPrompt}`,
-    ];
-
     let execResult: CommandExecResult | null = null;
+    const targetCwd = input.cwd ?? process.cwd();
     const runPromise = this.runner({
       command: this.agyExecutable,
       args,
-      cwd: input.cwd ?? process.cwd(),
+      cwd: targetCwd,
       // GH_TOKEN, GITHUB_TOKEN and GH_ENTERPRISE_TOKEN never reach a lane, GH_CONFIG_DIR is set to the runner's dedicated folder, and no .env file is loaded for it
       env: scrubLaneEnv(input.env ?? process.env, this.ghConfigDir),
     }).then((res) => {
       execResult = res;
       const combined = [res.stdout, res.stderr].filter(Boolean).join('\n');
+      const fallbackDiagnostic =
+        !combined && res.exitCode !== 0
+          ? `agy exited with code ${res.exitCode} without stdout/stderr output`
+          : '';
+      const bodyToLog = combined || fallbackDiagnostic;
       const finishedIso = this.now().toISOString();
       fs.appendFileSync(
         logPath,
-        `${combined ? `${combined}\n` : ''}agy exit ${res.exitCode} at ${finishedIso}\n`,
+        `${bodyToLog ? `${bodyToLog}\n` : ''}agy exit ${res.exitCode} at ${finishedIso}\n`,
         'utf8'
       );
       return res;
