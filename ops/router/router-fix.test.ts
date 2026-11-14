@@ -25,10 +25,17 @@ import {
   validateLaneTable,
 } from './dream-task-router.ts';
 import {
+  buildAgyCommand,
+  extractPromptFromAgyArgs,
+  replaceDoubleQuotesWithSingle,
+} from './adapters/index.ts';
+import {
   createMockInboxCommandRunner,
   ensureInboxFolders,
   InboxRunner,
   loadRepoMap,
+  parseInboxTaskFile,
+  prependCookbookRulesToTask,
   runInboxRunnerWithRestart,
   toPortablePath,
 } from './inbox-runner.ts';
@@ -984,3 +991,107 @@ test('lane liveness check: if the re-queued task fails again after lane process 
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
 });
+
+const F7_TASK_MARKDOWN = [
+  '# Chore: take a written-out password out of create_db.py and make the dependency check pass again',
+  'lane: mechanical',
+  'repo: ANTIGRAVITY',
+  'base: main',
+  '',
+  'Two small clean-ups in one PR. Fetch and pull main first. Open the PR first; lane runs stop at 20 minutes.',
+  '',
+  '1. domains/youandinotai.com/backend/create_db.py has a database password written out on line 10. It creates a database for Paperclip, which is retired. Search the repo and say in the PR whether anything calls this script. If nothing does, move it to archive/retired-paperclip/create_db.py with git mv, and in the moved file replace the written-out password with os.environ["PGPASSWORD"] with no default. If something does call it, leave it in place and make the same replacement there.',
+  '2. Never print, copy, log or quote the old value anywhere, including the PR body, commit messages and comments. Do not try the password against any database. Do not open any env file.',
+  '3. In the PR body add one line for the owner: the old value remains in git history, so if the local Postgres user "uandinotai" still exists on any node its password should be changed by the owner.',
+  '4. The dependency check has failed on pull requests since 2026-11-13 because the audit installs opentelemetry-api 1.45.1 (CVE-2026-126360, fixed in 1.45.2). No requirements file names that package, so it arrives through another package. Find the workflow step that runs the audit, the requirements file it reads and the package that pulls opentelemetry-api in. Add a minimum of 1.45.2 for it in that requirements file, with any opentelemetry packages that must match, run that package\'s tests, run the same audit command locally and paste the result. If the resolver cannot reach 1.45.2 without a larger upgrade, stop and say so. Do not add an ignore line.',
+  '5. No mission or charity wording. Never touch a tribute block. No --force and no --no-verify.',
+  'PR title: "chore: remove a written-out password and fix the dependency check".',
+].join('\n');
+
+const F4_TASK_MARKDOWN = [
+  '# Clean the Obsidian vault so it fits under its 1 GB sync limit (no PR)',
+  'lane: engine',
+  'repo: ANTIGRAVITY',
+  'base: main',
+  '',
+  'This is not a repo change and it opens no PR. The vault at C:\\DREAM\\Antigravity is over its Obsidian Sync limit because a copy of the ANTIGRAVITY working tree was dropped into it on 2026-11-04. The owner has confirmed the limit is 1 GB and that the vault syncs to his other nodes, so every removal here is a removal there.',
+  '',
+  '1. Your full instructions are in %USERPROFILE%\\OneDrive\\claude-to-claude\\funding-2026-11-13\\VAULT-AUDIT-REPLY-2026-11-13.md. It was written for a different assistant; you are doing the job instead. Follow it exactly, including every "never" and the stop conditions in its step 2.',
+  '2. The audit it answers is a note inside the vault named STALE-DATA-AUDIT-2026-11-12. Find it for the groups it calls A, B, C and D.',
+  '3. Where the instructions say to report to Josh, write to %USERPROFILE%\\antigravity\\.fable-kitchen\\reports\\vault-cleanup-2026-11-13.md instead. Write to that file after every step, because lane runs stop at 20 minutes. If the file already exists, read it and continue from where it stops. Never redo the snapshot or a removal the file says is done.',
+  '4. For its questions 1b and 1c only, you may run a script that loads each plugin\'s data.json and prints the property NAMES, plus the value of a property whose name is exactly repo, repository, owner, branch, remote, uri, url, server or folder, with anything between // and @ removed first. Print no other value from those files. Which plugins are switched on is in .obsidian\\community-plugins.json.',
+  '5. Things a shell cannot see, such as the numbers on Obsidian\'s own Sync settings screen, go in the report under "needs a look inside Obsidian". Do not guess them.',
+  '6. Never open, print, hash, copy or move an .env file. Never type a user folder name; use %USERPROFILE%, %LOCALAPPDATA% and %APPDATA%.',
+].join('\n');
+
+test('dry-run command builder: feeds f7 text and f4 text through buildAgyCommand and checks round trip without calling agy', async () => {
+  const f7Parsed = parseInboxTaskFile(
+    F7_TASK_MARKDOWN,
+    'f7-remove-written-password-and-fix-dependency-check.md'
+  );
+  const f4Parsed = parseInboxTaskFile(
+    F4_TASK_MARKDOWN,
+    'f4-vault-cleanup-under-sync-limit.md'
+  );
+
+  const f7FullPrompt = prependCookbookRulesToTask(f7Parsed, {
+    branchName: `ai/inbox/${f7Parsed.id}`,
+    baseBranch: f7Parsed.baseOverride ?? 'main',
+  });
+  const f4FullPrompt = prependCookbookRulesToTask(f4Parsed, {
+    branchName: `ai/inbox/${f4Parsed.id}`,
+    baseBranch: f4Parsed.baseOverride ?? 'main',
+  });
+
+  const f7Built = buildAgyCommand({
+    lane: 'gemini-3.8-flash',
+    prompt: f7FullPrompt,
+    effort: null,
+  });
+  const f4Built = buildAgyCommand({
+    lane: 'gemini-4-argon',
+    prompt: f4FullPrompt,
+    effort: 'high',
+  });
+
+  const f7RoundTrip = extractPromptFromAgyArgs(f7Built.args);
+  const f4RoundTrip = extractPromptFromAgyArgs(f4Built.args);
+
+  assert.equal(f7RoundTrip, replaceDoubleQuotesWithSingle(f7FullPrompt));
+  assert.equal(f4RoundTrip, replaceDoubleQuotesWithSingle(f4FullPrompt));
+  assert.ok(!f7RoundTrip!.includes('"'), 'f7 sanitized prompt must contain no double quotes');
+  assert.ok(!f4RoundTrip!.includes('"'), 'f4 sanitized prompt must contain no double quotes');
+  assert.ok(f7RoundTrip!.includes("os.environ['PGPASSWORD']"), 'f7 square brackets and single quotes round-trip intact');
+  assert.ok(f7RoundTrip!.includes('--no-verify'), 'f7 double dashes round-trip intact');
+  assert.ok(f4RoundTrip!.includes('%USERPROFILE%'), 'f4 percent placeholders round-trip intact');
+  assert.ok(f4RoundTrip!.includes('%LOCALAPPDATA%'), 'f4 LOCALAPPDATA placeholder round-trip intact');
+
+  // Verify AgyDispatchAdapter writes stderr / fallback diagnostic into the task log on instant exit without calling agy
+  const tmpKitchen = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-agy-instant-exit-log-'));
+  try {
+    const adapter = new AgyDispatchAdapter({
+      kitchenDir: tmpKitchen,
+      lanesPath: path.join(ROUTER_DIR, 'lanes.json'),
+      runner: async () => ({
+        exitCode: 1,
+        stdout: '',
+        stderr: 'spawn agy.exe ENOENT (target cwd does not exist)',
+      }),
+    });
+    const handle = await adapter.dispatch({
+      jobId: 'f7-dry-run-error-capture',
+      prompt: f7FullPrompt,
+      jobClass: 'mechanical',
+      lane: 'gemini-4-argon',
+      harness: 'agy',
+      cwd: tmpKitchen,
+    });
+    const pollRes = await handle.poll();
+    assert.equal(pollRes.exitCode, 1);
+    const logContent = fs.readFileSync(handle.logPath!, 'utf8');
+    assert.match(logContent, /spawn agy\.exe ENOENT \(target cwd does not exist\)/);
+  } finally {
+    fs.rmSync(tmpKitchen, { recursive: true, force: true });
+  }
+});
+
