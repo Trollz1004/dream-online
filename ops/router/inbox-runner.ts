@@ -61,6 +61,7 @@ import {
   DEFAULT_PANDA_TIMEOUT_MS,
   ENGINE_FLOOR_MODELS,
   type EngineFloorModel,
+  formatTaskLogFirstLine,
   isEngineFloorModel,
   loadPandaPool,
   type ModelPickerSource,
@@ -81,6 +82,7 @@ export {
   DEFAULT_PANDA_TIMEOUT_MS,
   ENGINE_FLOOR_MODELS,
   type EngineFloorModel,
+  formatTaskLogFirstLine,
   isEngineFloorModel,
   loadPandaPool,
   type ModelPickerSource,
@@ -2183,8 +2185,10 @@ export class InboxRunner {
         }
 
         void lastPandaFallbackLogLine;
+        const firstLogLine = formatTaskLogFirstLine(decision.lane, modelPickedBy);
+        const bodyLogContent = combinedLogs.filter(Boolean).join('\n--- attempt ---\n');
         const sanitizedLogContent = sanitizeDecisionLogText(
-          combinedLogs.filter(Boolean).join('\n--- attempt ---\n'),
+          bodyLogContent ? `${firstLogLine}\n${bodyLogContent}` : firstLogLine,
           this.extraSecretsToRedact
         );
 

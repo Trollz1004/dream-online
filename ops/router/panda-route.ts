@@ -122,6 +122,14 @@ export function isEngineFloorModel(model: string | null | undefined): boolean {
 }
 
 /**
+ * Formats the mandatory first line of each task log: model picked and who picked it
+ * (header, floor, panda, or fallback).
+ */
+export function formatTaskLogFirstLine(model: string, pickedBy: ModelPickerSource): string {
+  return `model: ${model} (picked by: ${pickedBy})`;
+}
+
+/**
  * POSTs the task text to Panda Router /route with the pool, mode cheapest_above_threshold,
  * minimum success 0.6, and a 2 second limit. Never throws.
  */
