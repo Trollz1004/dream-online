@@ -1,9 +1,9 @@
-# Unified Cross-Harness & Cross-Node Skill, Workflow, and Memory Synchronizer (2026-10-28)
+﻿# Unified Cross-Harness & Cross-Node Skill, Workflow, and Memory Synchronizer (2026-10-28)
 # Eliminates drift across Claude Code, Free Claude Code (:8082), Gemini (Antigravity / CLI / Spark), OpenAI (Codex), OpenCode, and Hermes (OPSis)
 # across Alienware (.40), T5500 (.15), and Sabretooth (.8).
 
 $ErrorActionPreference = "Stop"
-$repoRoot = "C:\Users\joshl\antigravity\DREAM-Engine"
+$repoRoot = "$env:USERPROFILE\antigravity\DREAM-Engine"
 $vaultRoot = "C:\DREAM\Antigravity"
 
 $skills = @(
@@ -198,8 +198,8 @@ $skillRoots = @(
     "$repoRoot\.claude\skills",
     "$repoRoot\agent\skills",
     "$repoRoot\ops\node\skills",
-    "C:\Users\joshl\.claude\skills",
-    "C:\Users\joshl\.gemini\skills"
+    "$env:USERPROFILE\.claude\skills",
+    "$env:USERPROFILE\.gemini\skills"
 )
 
 foreach ($s in $skills) {

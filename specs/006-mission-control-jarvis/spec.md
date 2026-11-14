@@ -1,4 +1,6 @@
-# Feature Specification: Mission Control with JARVIS on the Echo Show
+# Feature Specification: Mission Control with OPSis (formerly JARVIS) on the Echo Show
+
+> History, kept for the record. Not current. The name is OPSis; JARVIS is retired.
 
 **Feature Branch**: `006-mission-control-jarvis`
 

@@ -1,4 +1,6 @@
-# Implementation Plan: Mission Control with JARVIS on the Echo Show
+# Implementation Plan: Mission Control with OPSis (formerly JARVIS) on the Echo Show
+
+> History, kept for the record. Not current. The name is OPSis; JARVIS is retired.
 
 **Branch**: `006-mission-control-jarvis` | **Date**: 2026-09-30 | **Spec**: `spec.md`
 

@@ -1,5 +1,7 @@
 # DREAM Adapter Mirror
 
+> History, kept for the record. Not current. Paperclip is retired forever.
+
 This folder mirrors the current ANTIGRAVITY adapter manifests for DREAM ONLINE.
 The copied manifests point `paperclip_adapter_config.cwd` at the fixed root
 `C:\DREAM\dream-online` instead of `C:\antigravity`.

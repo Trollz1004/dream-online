@@ -1,5 +1,7 @@
 # Pi Adapter
 
+> History, kept for the record. Not current. Paperclip is retired forever.
+
 Paperclip alias: `pi`
 
 CLI: `pi`

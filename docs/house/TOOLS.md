@@ -35,7 +35,7 @@ An index for any Claude or any builder reading this repository. Paths are relati
 - `ops/t5500/`: the josh-proofed bootstrap for a fresh Windows marketing node (step-gated, resumable, sign-in gates, a Hermes profile as OPSis, a self-healing health task), with Pester tests.
 - `game/server/live-npc-lab/`: the Live NPC Lab (Node, zero dependencies, `npm test`).
 - `game/server/dreamops-bridge/`: the DreamOps Bridge, the only path from a proposal into the running world.
-- `game/godot/DreamSlice/`: the earlier playable combat slice (a Godot reference prototype, not the engine), with its headless suite and its check floor.
+- `game/godot/DreamSlice/`: the earlier playable combat slice (a retired reference prototype; Godot is retired), with its headless suite and its check floor.
 - `.github/workflows/`: the in-house DREAM Engine headless suite (`.github/workflows/engine-suite.yml`) and the Live NPC Lab checks. The public slice will be the in-house engine on dream-online.net.
 
 ## The connector

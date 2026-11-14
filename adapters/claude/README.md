@@ -1,5 +1,7 @@
 # Claude Adapter (Paperclip `claude_local`)
 
+> History, kept for the record. Not current. Paperclip is retired forever.
+
 Purpose: run Claude Code as a DREAM lane through Paperclip.
 
 CLI: `claude`
