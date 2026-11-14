@@ -114,7 +114,9 @@ export const defaultCommandRunner: CommandRunner = (
         const exitCode = typeof rawCode === 'number' ? rawCode : err ? 1 : 0;
         const stdoutStr = String(stdout ?? '');
         const rawStderr = String(stderr ?? '');
-        const errMessage = err ? String(err.message || err) : '';
+        const cwdMissingNote =
+          err && req.cwd && !fs.existsSync(req.cwd) ? ' (target cwd does not exist)' : '';
+        const errMessage = err ? `${String(err.message || err)}${cwdMissingNote}` : '';
         const stderrStr =
           rawStderr.trim().length > 0
             ? rawStderr

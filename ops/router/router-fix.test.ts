@@ -26,7 +26,6 @@ import {
 } from './dream-task-router.ts';
 import {
   buildAgyCommand,
-  defaultCommandRunner,
   extractPromptFromAgyArgs,
   replaceDoubleQuotesWithSingle,
 } from './adapters/index.ts';
@@ -1067,16 +1066,32 @@ test('dry-run command builder: feeds f7 text and f4 text through buildAgyCommand
   assert.ok(f4RoundTrip!.includes('%USERPROFILE%'), 'f4 percent placeholders round-trip intact');
   assert.ok(f4RoundTrip!.includes('%LOCALAPPDATA%'), 'f4 LOCALAPPDATA placeholder round-trip intact');
 
-  // Verify defaultCommandRunner captures spawn errors (such as missing cwd ENOENT) into stderr so instant exits are never silent
-  const missingCwdRes = await defaultCommandRunner({
-    command: 'agy-nonexistent-binary-for-dry-run.exe',
-    args: f7Built.args,
-    cwd: path.join(os.tmpdir(), 'nonexistent-worktree-dir-f7-instant-exit-check'),
-  });
-  assert.notEqual(missingCwdRes.exitCode, 0);
-  assert.ok(
-    missingCwdRes.stderr.length > 0,
-    'defaultCommandRunner must capture spawn error message into stderr when stderr stream is empty'
-  );
+  // Verify AgyDispatchAdapter writes stderr / fallback diagnostic into the task log on instant exit without calling agy
+  const tmpKitchen = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-agy-instant-exit-log-'));
+  try {
+    const adapter = new AgyDispatchAdapter({
+      kitchenDir: tmpKitchen,
+      lanesPath: path.join(ROUTER_DIR, 'lanes.json'),
+      runner: async () => ({
+        exitCode: 1,
+        stdout: '',
+        stderr: 'spawn agy.exe ENOENT (target cwd does not exist)',
+      }),
+    });
+    const handle = await adapter.dispatch({
+      jobId: 'f7-dry-run-error-capture',
+      prompt: f7FullPrompt,
+      jobClass: 'mechanical',
+      lane: 'gemini-4-argon',
+      harness: 'agy',
+      cwd: tmpKitchen,
+    });
+    const pollRes = await handle.poll();
+    assert.equal(pollRes.exitCode, 1);
+    const logContent = fs.readFileSync(handle.logPath!, 'utf8');
+    assert.match(logContent, /spawn agy\.exe ENOENT \(target cwd does not exist\)/);
+  } finally {
+    fs.rmSync(tmpKitchen, { recursive: true, force: true });
+  }
 });
 
