@@ -27,16 +27,18 @@ Read the live state first, then the design:
 13. `docs/gdd/10-crowdfunding-readiness.md`
 14. `docs/gdd/03-life-skills-economy.md`
 15. `docs/gdd/04-pvp-flagging-durability.md`
-16. `docs/tech/prototype-architecture.md`
-17. `docs/tech/live-ai-runtime-architecture.md`
-18. `docs/tech/ai-failure-behavior.md`
-19. `docs/tech/local-prototype-ports.md`
-20. `docs/tech/local-command-reference.md`
-21. `docs/tech/c0d3x-world-recovery.md`
-22. `docs/planning/first-playable-risk-register.md`
-23. `docs/testing/test-plan.md`
-24. `docs/testing/first-playable-acceptance-checklist.md`
-25. `docs/testing/live-ai-load-test-plan.md`
+16. `docs/gdd/13-equipment-and-costume-slots.md`
+17. `docs/gdd/14-crystals-and-jewls.md`
+18. `docs/tech/prototype-architecture.md`
+19. `docs/tech/live-ai-runtime-architecture.md`
+20. `docs/tech/ai-failure-behavior.md`
+21. `docs/tech/local-prototype-ports.md`
+22. `docs/tech/local-command-reference.md`
+23. `docs/tech/c0d3x-world-recovery.md`
+24. `docs/planning/first-playable-risk-register.md`
+25. `docs/testing/test-plan.md`
+26. `docs/testing/first-playable-acceptance-checklist.md`
+27. `docs/testing/live-ai-load-test-plan.md`
 
 ## Current Build Strategy
 
