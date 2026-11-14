@@ -50,6 +50,47 @@ import {
   resolveLaneHarness,
   sanitizeDecisionLogText,
 } from './dream-task-router.ts';
+import {
+  askPandaRoute,
+  askPandaRouteDetailed,
+  DEFAULT_PANDA_MIN_SUCCESS,
+  DEFAULT_PANDA_MODE,
+  DEFAULT_PANDA_POOL,
+  DEFAULT_PANDA_POOL_PATH,
+  DEFAULT_PANDA_ROUTE_URL,
+  DEFAULT_PANDA_TIMEOUT_MS,
+  ENGINE_FLOOR_MODELS,
+  type EngineFloorModel,
+  formatTaskLogFirstLine,
+  isEngineFloorModel,
+  loadPandaPool,
+  type ModelPickerSource,
+  PANDA_POOL_PORTABLE_PATH,
+  type PandaRouteOptions,
+  type PandaRouteResult,
+  resolveAgyModelFromPool,
+} from './panda-route.ts';
+
+export {
+  askPandaRoute,
+  askPandaRouteDetailed,
+  DEFAULT_PANDA_MIN_SUCCESS,
+  DEFAULT_PANDA_MODE,
+  DEFAULT_PANDA_POOL,
+  DEFAULT_PANDA_POOL_PATH,
+  DEFAULT_PANDA_ROUTE_URL,
+  DEFAULT_PANDA_TIMEOUT_MS,
+  ENGINE_FLOOR_MODELS,
+  type EngineFloorModel,
+  formatTaskLogFirstLine,
+  isEngineFloorModel,
+  loadPandaPool,
+  type ModelPickerSource,
+  PANDA_POOL_PORTABLE_PATH,
+  type PandaRouteOptions,
+  type PandaRouteResult,
+  resolveAgyModelFromPool,
+};
 
 const ROUTER_DIR = path.dirname(fileURLToPath(import.meta.url));
 export const DEFAULT_REPO_ROOT = path.resolve(ROUTER_DIR, '..', '..');
@@ -89,6 +130,7 @@ export interface ParsedInboxTask {
   fileName: string;
   title: string;
   forcedLane: string | null;
+  forcedModel?: string | null;
   repo: string;
   baseOverride: string | null;
   inboxHeader: string | null;
@@ -99,6 +141,7 @@ export interface ParsedInboxTask {
 export interface InboxAttemptRecord {
   attemptNumber: number;
   lane: string;
+  modelPickedBy?: ModelPickerSource;
   jobClass: JevJobClass;
   decisionHash: string;
   prompt: string;
@@ -131,6 +174,7 @@ export interface InboxTickResult {
   repo: string | null;
   repoRoot: string | null;
   lane: string | null;
+  modelPickedBy?: ModelPickerSource | null;
   jobClass: JevJobClass | null;
   decisionHash: string | null;
   reason: string;
@@ -172,6 +216,20 @@ export interface InboxRunnerOptions {
   extraSecretsToRedact?: string[];
   /** Optional liveness probe returning whether an agy child process is currently alive under the runner. */
   hasAgyChildProcess?: () => Promise<boolean> | boolean;
+  /** Optional custom Panda route function returning the agy model string or null (or PandaRouteResult). */
+  pandaRoute?: (
+    taskText: string
+  ) => Promise<string | null | PandaRouteResult> | string | null | PandaRouteResult;
+  /** Optional custom fetch implementation for Panda /route calls (so tests never touch the network). */
+  pandaFetch?: typeof fetch;
+  /** Optional Panda /route endpoint URL override. */
+  pandaUrl?: string;
+  /** Optional path to panda-pool.json. */
+  pandaPoolPath?: string;
+  /** Optional in-memory Panda pool map (agy model -> panda card id). */
+  pandaPool?: Record<string, string>;
+  /** Optional timeout in ms for Panda /route calls (default: 2000). */
+  pandaTimeoutMs?: number;
 }
 
 /**
@@ -445,6 +503,7 @@ export function parseInboxTaskFile(rawContent: string, fileName: string): Parsed
 
   let title = '';
   let forcedLane: string | null = null;
+  let forcedModel: string | null = null;
   let repo = DEFAULT_REPO_NAME;
   let baseOverride: string | null = null;
   let inboxHeader: string | null = null;
@@ -460,12 +519,13 @@ export function parseInboxTaskFile(rawContent: string, fileName: string): Parsed
         }
         continue;
       }
-      const kvMatch = trimmed.match(/^(title|lane|repo|base|inbox)\s*:\s*(.*)$/i);
+      const kvMatch = trimmed.match(/^(title|lane|model|repo|base|inbox)\s*:\s*(.*)$/i);
       if (kvMatch) {
         const key = kvMatch[1].toLowerCase();
         const val = kvMatch[2].trim();
         if (key === 'title' && val) title = val;
         else if (key === 'lane') forcedLane = val || null;
+        else if (key === 'model') forcedModel = val || null;
         else if (key === 'repo' && val) repo = val;
         else if (key === 'base' && val) baseOverride = val;
         else if (key === 'inbox' && val) inboxHeader = val;
@@ -492,6 +552,7 @@ export function parseInboxTaskFile(rawContent: string, fileName: string): Parsed
     fileName,
     title,
     forcedLane,
+    forcedModel,
     repo,
     baseOverride,
     inboxHeader,
@@ -659,6 +720,12 @@ export class InboxRunner {
   private readonly now: () => Date;
   private readonly extraSecretsToRedact: string[];
   private readonly customHasAgyChildProcess?: () => Promise<boolean> | boolean;
+  private readonly customPandaRoute?: InboxRunnerOptions['pandaRoute'];
+  private readonly pandaFetch: typeof fetch;
+  private readonly pandaUrl: string;
+  private readonly pandaPoolPath?: string;
+  private readonly pandaPool?: Record<string, string>;
+  private readonly pandaTimeoutMs: number;
 
   private isTickActive = false;
   private startupGhChecked = false;
@@ -700,6 +767,27 @@ export class InboxRunner {
     this.now = options?.now ?? (() => new Date());
     this.extraSecretsToRedact = options?.extraSecretsToRedact ?? [];
     this.customHasAgyChildProcess = options?.hasAgyChildProcess;
+    this.customPandaRoute = options?.pandaRoute;
+    const hasExplicitPandaConfig = Boolean(
+      options?.pandaRoute ||
+        options?.pandaFetch ||
+        options?.pandaUrl ||
+        options?.pandaPoolPath ||
+        options?.pandaPool ||
+        options?.pandaTimeoutMs !== undefined
+    );
+    const isMockRunnerTest = Boolean(options?.adapter || options?.commandRunner) && !hasExplicitPandaConfig;
+    this.pandaFetch =
+      options?.pandaFetch ??
+      (isMockRunnerTest
+        ? ((async () => {
+            throw new Error('Panda /route disabled in mock runner test');
+          }) as unknown as typeof fetch)
+        : globalThis.fetch);
+    this.pandaUrl = options?.pandaUrl ?? DEFAULT_PANDA_ROUTE_URL;
+    this.pandaPoolPath = options?.pandaPoolPath;
+    this.pandaPool = options?.pandaPool;
+    this.pandaTimeoutMs = options?.pandaTimeoutMs ?? DEFAULT_PANDA_TIMEOUT_MS;
     this.adapter =
       options?.adapter ??
       new AgyDispatchAdapter({
@@ -1028,10 +1116,12 @@ export class InboxRunner {
   ): {
     decision: DecisionRecord;
     forcedLaneHonoured: boolean;
+    headerModelHonoured: boolean;
   } {
     const now = this.now();
     const table = loadLaneTable(this.lanesPath);
-    const requestedLane = parsed.forcedLane?.trim() || null;
+    const requestedModel = parsed.forcedModel?.trim() || null;
+    const requestedLane = parsed.forcedLane?.trim() || requestedModel || null;
 
     if (requestedLane) {
       const lowerLane = requestedLane.toLowerCase();
@@ -1039,7 +1129,7 @@ export class InboxRunner {
       // 1. Explicit executor lane class name (engine, mechanical, code-bulk, code-hard, design-visual, research)
       if (isExecutorJobClass(lowerLane)) {
         const executorClass = lowerLane as ExecutorJobClass;
-        const decision = this.router.route(parsed.taskText, {
+        let decision = this.router.route(parsed.taskText, {
           now,
           title: parsed.title,
           lane: executorClass,
@@ -1048,7 +1138,17 @@ export class InboxRunner {
           decisionsLogPath: this.decisionsLogPath,
           extraSecretsToRedact: this.extraSecretsToRedact,
         });
-        return { decision, forcedLaneHonoured: true };
+        let headerModelHonoured = false;
+        if (
+          requestedModel &&
+          !isExecutorJobClass(requestedModel.toLowerCase()) &&
+          isKnownLaneInTable(table, requestedModel) &&
+          !this.router.isLaneCold(requestedModel, now)
+        ) {
+          decision = { ...decision, lane: requestedModel };
+          headerModelHonoured = true;
+        }
+        return { decision, forcedLaneHonoured: true, headerModelHonoured };
       }
 
       // 2. Explicit model lane in lanes.json (only 'lane: fable' parks a task)
@@ -1098,7 +1198,7 @@ export class InboxRunner {
           coldLaneState: activeCold,
         };
         appendDecisionRecord(decision, this.decisionsLogPath, this.extraSecretsToRedact);
-        return { decision, forcedLaneHonoured: true };
+        return { decision, forcedLaneHonoured: true, headerModelHonoured: true };
       }
 
       // Forced lane does not exist in lanes.json (or is cold / forbidden): fall back to profiling
@@ -1112,7 +1212,7 @@ export class InboxRunner {
         extraSecretsToRedact: this.extraSecretsToRedact,
       });
 
-      return { decision: fallbackDecision, forcedLaneHonoured: false };
+      return { decision: fallbackDecision, forcedLaneHonoured: false, headerModelHonoured: false };
     }
 
     const decision = this.router.route(parsed.taskText, {
@@ -1123,7 +1223,149 @@ export class InboxRunner {
       decisionsLogPath: this.decisionsLogPath,
       extraSecretsToRedact: this.extraSecretsToRedact,
     });
-    return { decision, forcedLaneHonoured: false };
+    return { decision, forcedLaneHonoured: false, headerModelHonoured: false };
+  }
+
+  /**
+   * Queries Panda Router /route before an agy run and resolves the model to use,
+   * honouring a task header model line or the engine lane floor (claude-opus-5-5 or gemini-4-argon).
+   */
+  private async selectModelBeforeAgyRun(
+    parsed: ParsedInboxTask,
+    routed: {
+      decision: DecisionRecord;
+      forcedLaneHonoured: boolean;
+      headerModelHonoured: boolean;
+    }
+  ): Promise<{
+    decision: DecisionRecord;
+    pickedBy: ModelPickerSource;
+    pandaFallbackLogLine: string | null;
+  }> {
+    const pool = loadPandaPool({ pool: this.pandaPool, poolPath: this.pandaPoolPath });
+    let pandaRes: PandaRouteResult;
+
+    if (this.customPandaRoute) {
+      if (!pool) {
+        pandaRes = {
+          model: null,
+          pandaModelId: null,
+          reason: `Panda pool unavailable at ${PANDA_POOL_PORTABLE_PATH}`,
+        };
+      } else {
+        let timer: NodeJS.Timeout | null = null;
+        try {
+          const timeoutPromise = new Promise<never>((_resolve, reject) => {
+            timer = setTimeout(() => reject(new Error(`timeout after ${this.pandaTimeoutMs}ms`)), this.pandaTimeoutMs);
+            timer.unref?.();
+          });
+          const raw = await Promise.race([
+            Promise.resolve(this.customPandaRoute(parsed.taskText)),
+            timeoutPromise,
+          ]);
+          if (raw && typeof raw === 'object' && 'reason' in raw) {
+            const candidate = raw.model ? resolveAgyModelFromPool(raw.model, pool) : null;
+            pandaRes = candidate
+              ? { model: candidate, pandaModelId: raw.pandaModelId ?? candidate, reason: raw.reason }
+              : {
+                  model: null,
+                  pandaModelId: raw.pandaModelId ?? raw.model,
+                  reason: raw.model
+                    ? `Panda /route model "${raw.model}" is not in pool`
+                    : raw.reason,
+                };
+          } else if (typeof raw === 'string' && raw.trim()) {
+            const resolved = resolveAgyModelFromPool(raw.trim(), pool);
+            pandaRes = resolved
+              ? {
+                  model: resolved,
+                  pandaModelId: raw.trim(),
+                  reason: `Panda /route selected ${resolved}`,
+                }
+              : {
+                  model: null,
+                  pandaModelId: raw.trim(),
+                  reason: `Panda /route model "${raw.trim()}" is not in pool`,
+                };
+          } else {
+            pandaRes = {
+              model: null,
+              pandaModelId: null,
+              reason: 'Panda /route returned no model_id',
+            };
+          }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          pandaRes = {
+            model: null,
+            pandaModelId: null,
+            reason: /timeout|abort/i.test(msg)
+              ? `Panda /route timed out (${this.pandaTimeoutMs}ms limit)`
+              : `Panda /route unreachable (${msg})`,
+          };
+        } finally {
+          if (timer) clearTimeout(timer);
+        }
+      }
+    } else {
+      pandaRes = await askPandaRouteDetailed(parsed.taskText, {
+        url: this.pandaUrl,
+        poolPath: this.pandaPoolPath,
+        pool: this.pandaPool,
+        timeoutMs: this.pandaTimeoutMs,
+        fetchImpl: this.pandaFetch,
+      });
+    }
+
+    const now = this.now();
+    const isEngineLane =
+      routed.decision.job_class === 'engine' ||
+      parsed.forcedLane?.trim().toLowerCase() === 'engine';
+
+    // 1. Task header model line wins over Panda
+    if (routed.headerModelHonoured && !this.router.isLaneCold(routed.decision.lane, now)) {
+      return {
+        decision: routed.decision,
+        pickedBy: 'header',
+        pandaFallbackLogLine: null,
+      };
+    }
+
+    // 2. Valid Panda model answer (unless cold or below the engine floor)
+    if (pandaRes.model && !this.router.isLaneCold(pandaRes.model, now)) {
+      if (isEngineLane && !isEngineFloorModel(pandaRes.model)) {
+        const floorLane = isEngineFloorModel(routed.decision.lane)
+          ? routed.decision.lane
+          : 'gemini-4-argon';
+        return {
+          decision: { ...routed.decision, lane: floorLane },
+          pickedBy: 'floor',
+          pandaFallbackLogLine: null,
+        };
+      }
+      return {
+        decision: { ...routed.decision, lane: pandaRes.model },
+        pickedBy: 'panda',
+        pandaFallbackLogLine: null,
+      };
+    }
+
+    // 3. Fallback when Panda is down, slow, or answers something not in the pool (or cold)
+    const fallbackLane =
+      isEngineLane && !isEngineFloorModel(routed.decision.lane)
+        ? 'gemini-4-argon'
+        : routed.decision.lane;
+    const reasonText =
+      pandaRes.model && this.router.isLaneCold(pandaRes.model, now)
+        ? `Panda /route selected cold lane ${pandaRes.model}`
+        : pandaRes.reason;
+    const pandaFallbackLogLine = `[panda] fallback to ${fallbackLane}: ${reasonText}`;
+
+    return {
+      decision: { ...routed.decision, lane: fallbackLane },
+      pickedBy: 'fallback',
+      pandaFallbackLogLine,
+    };
   }
 
   /**
@@ -1677,7 +1919,11 @@ export class InboxRunner {
           cwd: repoTarget.root,
         });
 
-        let decision = routed.decision;
+        let activeRouted = routed;
+        let selectedModel = await this.selectModelBeforeAgyRun(parsed, activeRouted);
+        let decision = selectedModel.decision;
+        let modelPickedBy: ModelPickerSource = selectedModel.pickedBy;
+        let lastPandaFallbackLogLine: string | null = selectedModel.pandaFallbackLogLine;
         const forcedLaneHonoured = routed.forcedLaneHonoured;
 
         const basePromptWithRules = prependCookbookRulesToTask(parsed, {
@@ -1693,6 +1939,10 @@ export class InboxRunner {
         const attempts: InboxAttemptRecord[] = [];
         const combinedLogs: string[] = [];
 
+        if (lastPandaFallbackLogLine) {
+          combinedLogs.push(lastPandaFallbackLogLine);
+        }
+
         if (worktreeAddRes.exitCode !== 0) {
           const wtErr = [worktreeAddRes.stdout, worktreeAddRes.stderr].filter(Boolean).join('\n').trim();
           combinedLogs.push(
@@ -1704,6 +1954,7 @@ export class InboxRunner {
           attempts.push({
             attemptNumber: 1,
             lane: decision.lane,
+            modelPickedBy,
             jobClass: decision.job_class,
             decisionHash: decision.task_hash,
             prompt: basePromptWithRules,
@@ -1753,6 +2004,7 @@ export class InboxRunner {
           attempts.push({
             attemptNumber: attempts.length + 1,
             lane: decision.lane,
+            modelPickedBy,
             jobClass: decision.job_class,
             decisionHash: decision.task_hash,
             prompt: currentPrompt,
@@ -1779,7 +2031,14 @@ export class InboxRunner {
           fs.renameSync(queuedFilePath, runningFilePath);
           transitions.push('queued -> running (quota fallback)');
 
-          decision = this.routeTaskWithOptionalForcedLane(parsed).decision;
+          activeRouted = this.routeTaskWithOptionalForcedLane(parsed);
+          selectedModel = await this.selectModelBeforeAgyRun(parsed, activeRouted);
+          decision = selectedModel.decision;
+          modelPickedBy = selectedModel.pickedBy;
+          lastPandaFallbackLogLine = selectedModel.pandaFallbackLogLine;
+          if (lastPandaFallbackLogLine) {
+            combinedLogs.push(lastPandaFallbackLogLine);
+          }
 
           handle = await this.adapter.dispatch({
             jobId: `${parsed.id}-fallback`,
@@ -1862,6 +2121,7 @@ export class InboxRunner {
         attempts.push({
           attemptNumber: attempts.length + 1,
           lane: decision.lane,
+          modelPickedBy,
           jobClass: decision.job_class,
           decisionHash: decision.task_hash,
           prompt: currentPrompt,
@@ -1883,8 +2143,14 @@ export class InboxRunner {
           transitions.push('queued -> running (re-queue 1)');
 
           currentPrompt = `${basePromptWithRules}\n\n[Re-queued after failure: ${judgeEval.failureReason}]`;
-          const retryRoute = this.routeTaskWithOptionalForcedLane(parsed);
-          decision = retryRoute.decision;
+          activeRouted = this.routeTaskWithOptionalForcedLane(parsed);
+          selectedModel = await this.selectModelBeforeAgyRun(parsed, activeRouted);
+          decision = selectedModel.decision;
+          modelPickedBy = selectedModel.pickedBy;
+          lastPandaFallbackLogLine = selectedModel.pandaFallbackLogLine;
+          if (lastPandaFallbackLogLine) {
+            combinedLogs.push(lastPandaFallbackLogLine);
+          }
 
           handle = await this.adapter.dispatch({
             jobId: `${parsed.id}-requeue-1`,
@@ -1904,6 +2170,7 @@ export class InboxRunner {
           attempts.push({
             attemptNumber: attempts.length + 1,
             lane: decision.lane,
+            modelPickedBy,
             jobClass: decision.job_class,
             decisionHash: decision.task_hash,
             prompt: currentPrompt,
@@ -1917,8 +2184,11 @@ export class InboxRunner {
           });
         }
 
+        void lastPandaFallbackLogLine;
+        const firstLogLine = formatTaskLogFirstLine(decision.lane, modelPickedBy);
+        const bodyLogContent = combinedLogs.filter(Boolean).join('\n--- attempt ---\n');
         const sanitizedLogContent = sanitizeDecisionLogText(
-          combinedLogs.filter(Boolean).join('\n--- attempt ---\n'),
+          bodyLogContent ? `${firstLogLine}\n${bodyLogContent}` : firstLogLine,
           this.extraSecretsToRedact
         );
 
@@ -2025,6 +2295,7 @@ export class InboxRunner {
           repo: repoTarget.name,
           repoRoot: repoTarget.root,
           lane: decision.lane,
+          modelPickedBy,
           jobClass: decision.job_class,
           decisionHash: decision.task_hash,
           reason: succeeded
@@ -2037,7 +2308,7 @@ export class InboxRunner {
           requeued: requeueCount > 0,
           requeueCount,
           quotaFallbackTriggered,
-          forcedLaneRequested: parsed.forcedLane,
+          forcedLaneRequested: parsed.forcedModel ?? parsed.forcedLane,
           forcedLaneHonoured,
           worktreePath,
           branchName,
