@@ -1121,8 +1121,12 @@ export class InboxRunner {
   } {
     const now = this.now();
     const table = loadLaneTable(this.lanesPath);
+    const forcedLane = parsed.forcedLane?.trim() || null;
     const requestedModel = parsed.forcedModel?.trim() || null;
-    const requestedLane = parsed.forcedLane?.trim() || requestedModel || null;
+    const requestedLane =
+      forcedLane && isExecutorJobClass(forcedLane.toLowerCase())
+        ? forcedLane
+        : requestedModel || forcedLane || null;
 
     if (requestedLane) {
       const lowerLane = requestedLane.toLowerCase();
@@ -1280,6 +1284,42 @@ export class InboxRunner {
     pickedBy: ModelPickerSource;
     pandaFallbackLogLine: string | null;
   }> {
+    const now = this.now();
+    const isEngineLane =
+      routed.decision.job_class === 'engine' ||
+      parsed.forcedLane?.trim().toLowerCase() === 'engine';
+
+    // 1. Task header model line wins over Panda — when a header decides the model, do not call Panda at all
+    if (routed.headerModelClampedByFloor && !this.router.isLaneCold(routed.decision.lane, now)) {
+      return {
+        decision: routed.decision,
+        pickedBy: 'floor',
+        pandaFallbackLogLine: null,
+      };
+    }
+    if (routed.headerModelHonoured && !this.router.isLaneCold(routed.decision.lane, now)) {
+      if (isEngineLane && !isEngineFloorModel(routed.decision.lane)) {
+        const floorLane = this.resolveWarmEngineFloorModel(routed.decision.lane, now);
+        if (floorLane) {
+          return {
+            decision: { ...routed.decision, lane: floorLane },
+            pickedBy: 'floor',
+            pandaFallbackLogLine: null,
+          };
+        }
+        return {
+          decision: routed.decision,
+          pickedBy: 'fallback',
+          pandaFallbackLogLine: null,
+        };
+      }
+      return {
+        decision: routed.decision,
+        pickedBy: 'header',
+        pandaFallbackLogLine: null,
+      };
+    }
+
     const pool = loadPandaPool({ pool: this.pandaPool, poolPath: this.pandaPoolPath });
     let pandaRes: PandaRouteResult;
 
@@ -1353,42 +1393,6 @@ export class InboxRunner {
         timeoutMs: this.pandaTimeoutMs,
         fetchImpl: this.pandaFetch,
       });
-    }
-
-    const now = this.now();
-    const isEngineLane =
-      routed.decision.job_class === 'engine' ||
-      parsed.forcedLane?.trim().toLowerCase() === 'engine';
-
-    // 1. Task header model line wins over Panda (clamped by engine floor when lane is engine)
-    if (routed.headerModelClampedByFloor && !this.router.isLaneCold(routed.decision.lane, now)) {
-      return {
-        decision: routed.decision,
-        pickedBy: 'floor',
-        pandaFallbackLogLine: null,
-      };
-    }
-    if (routed.headerModelHonoured && !this.router.isLaneCold(routed.decision.lane, now)) {
-      if (isEngineLane && !isEngineFloorModel(routed.decision.lane)) {
-        const floorLane = this.resolveWarmEngineFloorModel(routed.decision.lane, now);
-        if (floorLane) {
-          return {
-            decision: { ...routed.decision, lane: floorLane },
-            pickedBy: 'floor',
-            pandaFallbackLogLine: null,
-          };
-        }
-        return {
-          decision: routed.decision,
-          pickedBy: 'fallback',
-          pandaFallbackLogLine: null,
-        };
-      }
-      return {
-        decision: routed.decision,
-        pickedBy: 'header',
-        pandaFallbackLogLine: null,
-      };
     }
 
     // 2. Valid Panda model answer (unless cold or below the engine floor)
