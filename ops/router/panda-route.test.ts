@@ -1,0 +1,606 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {
+  type DispatchAdapter,
+  type DispatchHandle,
+  type DispatchJobInput,
+  parsePrUrlFromOutput,
+} from './dream-task-router.ts';
+import {
+  askPandaRoute,
+  createMockInboxCommandRunner,
+  DEFAULT_PANDA_MIN_SUCCESS,
+  DEFAULT_PANDA_MODE,
+  DEFAULT_PANDA_POOL,
+  DEFAULT_PANDA_ROUTE_URL,
+  DEFAULT_PANDA_TIMEOUT_MS,
+  ensureInboxFolders,
+  formatTaskLogFirstLine,
+  InboxRunner,
+} from './inbox-runner.ts';
+
+const MOCK_PR_URL = 'https://github.com/Trollz1004/dream-online/pull/401';
+
+function createFakeAdapter(
+  tmpRoot: string,
+  seen: DispatchJobInput[],
+  output: string = `Opened pull request ${MOCK_PR_URL}`
+): DispatchAdapter {
+  return {
+    name: 'agy',
+    async dispatch(input: DispatchJobInput): Promise<DispatchHandle> {
+      seen.push(input);
+      return {
+        jobId: input.jobId ?? 'mock-job',
+        adapter: 'agy',
+        lane: input.lane,
+        harness: 'agy',
+        promptPath: path.join(tmpRoot, 'prompt.txt'),
+        sanitizedPrompt: input.prompt,
+        mode: 'headless-cli',
+        httpSessionSupported: false,
+        note: 'mock lane run without agy',
+        poll: async () => ({
+          done: true,
+          prUrl: parsePrUrlFromOutput(output),
+          output,
+          exitCode: 0,
+        }),
+      };
+    },
+  };
+}
+
+test('askPandaRoute: POSTs task text to /route with pool, mode cheapest_above_threshold, min success 0.6, 2s limit, and maps card to agy model', async () => {
+  let seenUrl = '';
+  let seenInit: RequestInit | undefined;
+
+  const fakeFetch: typeof fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    seenUrl = String(input);
+    seenInit = init;
+    return new Response(
+      JSON.stringify({
+        choice: {
+          model_id: 'openrouter-gemini-3.8-flash',
+          confidence: 0.67,
+        },
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  }) as typeof fetch;
+
+  assert.equal(DEFAULT_PANDA_TIMEOUT_MS, 2_000);
+  const picked = await askPandaRoute('Fix typo in README header', {
+    pool: { ...DEFAULT_PANDA_POOL },
+    fetchImpl: fakeFetch,
+  });
+
+  assert.equal(picked, 'gemini-3.8-flash');
+  assert.equal(seenUrl, DEFAULT_PANDA_ROUTE_URL);
+  assert.equal(seenInit?.method, 'POST');
+
+  const parsedBody = JSON.parse(String(seenInit?.body));
+  assert.equal(parsedBody.task.text, 'Fix typo in README header');
+  assert.deepEqual(parsedBody.pool, Object.values(DEFAULT_PANDA_POOL));
+  assert.equal(parsedBody.mode, DEFAULT_PANDA_MODE);
+  assert.equal(parsedBody.min_p_success, DEFAULT_PANDA_MIN_SUCCESS);
+  assert.equal(parsedBody.preferences.mode, DEFAULT_PANDA_MODE);
+  assert.equal(parsedBody.preferences.min_p_success, DEFAULT_PANDA_MIN_SUCCESS);
+});
+
+test('askPandaRoute: returns null when Panda is down, slow, returns malformed JSON or missing model_id, or answers a model not in the pool', async () => {
+  // 1. Down (connection error)
+  const downPick = await askPandaRoute('Fix typo', {
+    pool: { ...DEFAULT_PANDA_POOL },
+    fetchImpl: (async () => {
+      throw new Error('connect ECONNREFUSED 127.0.0.1:8765');
+    }) as unknown as typeof fetch,
+  });
+  assert.equal(downPick, null);
+
+  // 2. Slow (exceeds timeoutMs)
+  const slowPick = await askPandaRoute('Fix typo', {
+    pool: { ...DEFAULT_PANDA_POOL },
+    timeoutMs: 30,
+    fetchImpl: (async () => {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      return new Response(JSON.stringify({ choice: { model_id: 'claude-sonnet-5.5' } }), {
+        status: 200,
+      });
+    }) as typeof fetch,
+  });
+  assert.equal(slowPick, null);
+
+  // 3. Model not in pool
+  const outOfPoolPick = await askPandaRoute('Fix typo', {
+    pool: { ...DEFAULT_PANDA_POOL },
+    fetchImpl: (async () =>
+      new Response(JSON.stringify({ choice: { model_id: 'openrouter-gpt-6.1-sol' } }), {
+        status: 200,
+      })) as typeof fetch,
+  });
+  assert.equal(outOfPoolPick, null);
+
+  // 4. Malformed JSON
+  const malformedJsonPick = await askPandaRoute('Fix typo', {
+    pool: { ...DEFAULT_PANDA_POOL },
+    fetchImpl: (async () =>
+      new Response('{not-valid-json', {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })) as typeof fetch,
+  });
+  assert.equal(malformedJsonPick, null);
+
+  // 5. Missing model_id
+  const missingModelIdPick = await askPandaRoute('Fix typo', {
+    pool: { ...DEFAULT_PANDA_POOL },
+    fetchImpl: (async () =>
+      new Response(JSON.stringify({ choice: {} }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })) as typeof fetch,
+  });
+  assert.equal(missingModelIdPick, null);
+});
+
+test('runner + Panda: uses Panda pick when no model header or engine floor interferes, and logs panda on line 1', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-panda-pick-'));
+  try {
+    const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+    const folders = ensureInboxFolders(inboxDir);
+    fs.writeFileSync(
+      path.join(folders.queued, 'panda-pick.md'),
+      ['# Tidy README links', '', 'Fix broken documentation links in README.md.'].join('\n'),
+      'utf8'
+    );
+
+    const seen: DispatchJobInput[] = [];
+    const { runner } = createMockInboxCommandRunner();
+    const inboxRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir: path.join(tmpRoot, 'antigravity'),
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      adapter: createFakeAdapter(tmpRoot, seen),
+      commandRunner: runner,
+      pandaPool: { ...DEFAULT_PANDA_POOL },
+      pandaFetch: (async () =>
+        new Response(JSON.stringify({ choice: { model_id: 'claude-sonnet-5.5' } }), {
+          status: 200,
+        })) as typeof fetch,
+    });
+
+    const tick = await inboxRunner.tick();
+    assert.equal(tick.status, 'done');
+    assert.equal(tick.lane, 'claude-sonnet-5-5');
+    assert.equal(tick.modelPickedBy, 'panda');
+    assert.equal(seen.length, 1);
+    assert.equal(seen[0].lane, 'claude-sonnet-5-5');
+
+    const logLines = fs
+      .readFileSync(path.join(folders.done, 'panda-pick.log'), 'utf8')
+      .split(/\r?\n/);
+    assert.equal(logLines[0], formatTaskLogFirstLine('claude-sonnet-5-5', 'panda'));
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('header override: task header model line wins over a model named on the lane line, does not call Panda at all, and logs header on first line of task log', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-panda-header-'));
+  try {
+    const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+    const folders = ensureInboxFolders(inboxDir);
+    const t1 = path.join(folders.queued, '01-header-override.md');
+    const t2 = path.join(folders.queued, '02-model-wins-over-lane-model.md');
+    fs.writeFileSync(
+      t1,
+      [
+        '# Add unit test for helper',
+        'model: gemini-3.8-flash',
+        '',
+        'Add a unit test in src/utils/math.test.ts.',
+      ].join('\n'),
+      'utf8'
+    );
+    fs.utimesSync(t1, new Date('2026-11-14T01:00:00Z'), new Date('2026-11-14T01:00:00Z'));
+
+    fs.writeFileSync(
+      t2,
+      [
+        '# Add unit test for parser',
+        'lane: claude-sonnet-5-5',
+        'model: gemini-3.8-flash',
+        '',
+        'Add a unit test in src/utils/parser.test.ts.',
+      ].join('\n'),
+      'utf8'
+    );
+    fs.utimesSync(t2, new Date('2026-11-14T02:00:00Z'), new Date('2026-11-14T02:00:00Z'));
+
+    let pandaCalls = 0;
+    const seen: DispatchJobInput[] = [];
+    const { runner } = createMockInboxCommandRunner();
+    const inboxRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir: path.join(tmpRoot, 'antigravity'),
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      adapter: createFakeAdapter(tmpRoot, seen),
+      commandRunner: runner,
+      pandaPool: { ...DEFAULT_PANDA_POOL },
+      pandaFetch: (async () => {
+        pandaCalls += 1;
+        return new Response(JSON.stringify({ choice: { model_id: 'claude-opus-5.5' } }), {
+          status: 200,
+        });
+      }) as typeof fetch,
+    });
+
+    const tick1 = await inboxRunner.tick();
+    assert.equal(tick1.status, 'done');
+    assert.equal(tick1.lane, 'gemini-3.8-flash');
+    assert.equal(tick1.modelPickedBy, 'header');
+    assert.equal(pandaCalls, 0, 'Panda must not be called when a model header decides the model');
+    assert.equal(seen[0].lane, 'gemini-3.8-flash');
+
+    const log1Lines = fs
+      .readFileSync(path.join(folders.done, '01-header-override.log'), 'utf8')
+      .split(/\r?\n/);
+    assert.equal(log1Lines[0], 'model: gemini-3.8-flash (picked by: header)');
+
+    const tick2 = await inboxRunner.tick();
+    assert.equal(tick2.status, 'done');
+    assert.equal(tick2.lane, 'gemini-3.8-flash', 'model: header must win over model named on lane: line');
+    assert.equal(tick2.modelPickedBy, 'header');
+    assert.equal(pandaCalls, 0, 'Panda must not be called when model: header wins over lane: model');
+    assert.equal(seen[1].lane, 'gemini-3.8-flash');
+
+    const log2Lines = fs
+      .readFileSync(path.join(folders.done, '02-model-wins-over-lane-model.log'), 'utf8')
+      .split(/\r?\n/);
+    assert.equal(log2Lines[0], 'model: gemini-3.8-flash (picked by: header)');
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('engine floor: lane engine never runs below claude-opus-5-5 or gemini-4-argon (including with a lower model header) and logs floor on first line of task log', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-panda-floor-'));
+  try {
+    const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+    const folders = ensureInboxFolders(inboxDir);
+
+    const t1 = path.join(folders.queued, '01-engine-floor-flash.md');
+    const t2 = path.join(folders.queued, '02-engine-floor-opus.md');
+    const t3 = path.join(folders.queued, '03-engine-floor-lower-header.md');
+    fs.writeFileSync(
+      t1,
+      ['# Optimize WebGPU shadow pass', 'lane: engine', '', 'Tune src/shaders/shadow.wgsl.'].join(
+        '\n'
+      ),
+      'utf8'
+    );
+    fs.utimesSync(t1, new Date('2026-11-14T01:00:00Z'), new Date('2026-11-14T01:00:00Z'));
+
+    fs.writeFileSync(
+      t2,
+      ['# Optimize WebGPU water pass', 'lane: engine', '', 'Tune src/shaders/water.wgsl.'].join(
+        '\n'
+      ),
+      'utf8'
+    );
+    fs.utimesSync(t2, new Date('2026-11-14T02:00:00Z'), new Date('2026-11-14T02:00:00Z'));
+
+    fs.writeFileSync(
+      t3,
+      [
+        '# Optimize WebGPU terrain pass',
+        'lane: engine',
+        'model: gemini-3.8-flash',
+        '',
+        'Tune src/shaders/terrain.wgsl.',
+      ].join('\n'),
+      'utf8'
+    );
+    fs.utimesSync(t3, new Date('2026-11-14T03:00:00Z'), new Date('2026-11-14T03:00:00Z'));
+
+    let callIndex = 0;
+    const seen: DispatchJobInput[] = [];
+    const { runner } = createMockInboxCommandRunner();
+    const inboxRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir: path.join(tmpRoot, 'antigravity'),
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      adapter: createFakeAdapter(tmpRoot, seen),
+      commandRunner: runner,
+      pandaPool: { ...DEFAULT_PANDA_POOL },
+      pandaFetch: (async () => {
+        callIndex += 1;
+        // First call returns gemini-3.8-flash (below floor); second call returns claude-opus-5.5 (meets floor)
+        const card = callIndex === 1 ? 'openrouter-gemini-3.8-flash' : 'claude-opus-5.5';
+        return new Response(JSON.stringify({ choice: { model_id: card } }), { status: 200 });
+      }) as typeof fetch,
+    });
+
+    // Tick 1: Panda answered gemini-3.8-flash -> clamped to gemini-4-argon by floor
+    const tick1 = await inboxRunner.tick();
+    assert.equal(tick1.status, 'done');
+    assert.equal(tick1.jobClass, 'engine');
+    assert.equal(tick1.lane, 'gemini-4-argon');
+    assert.equal(tick1.modelPickedBy, 'floor');
+    assert.equal(seen[0].lane, 'gemini-4-argon');
+
+    const log1Lines = fs
+      .readFileSync(path.join(folders.done, '01-engine-floor-flash.log'), 'utf8')
+      .split(/\r?\n/);
+    assert.equal(log1Lines[0], 'model: gemini-4-argon (picked by: floor)');
+
+    // Tick 2: Panda answered claude-opus-5.5 -> meets floor so Panda answer is used
+    const tick2 = await inboxRunner.tick();
+    assert.equal(tick2.status, 'done');
+    assert.equal(tick2.jobClass, 'engine');
+    assert.equal(tick2.lane, 'claude-opus-5-5');
+    assert.equal(tick2.modelPickedBy, 'panda');
+    assert.equal(seen[1].lane, 'claude-opus-5-5');
+
+    const log2Lines = fs
+      .readFileSync(path.join(folders.done, '02-engine-floor-opus.log'), 'utf8')
+      .split(/\r?\n/);
+    assert.equal(log2Lines[0], 'model: claude-opus-5-5 (picked by: panda)');
+
+    // Tick 3: task has lane: engine + model: gemini-3.8-flash -> clamped to gemini-4-argon by floor without calling Panda
+    const tick3 = await inboxRunner.tick();
+    assert.equal(tick3.status, 'done');
+    assert.equal(tick3.jobClass, 'engine');
+    assert.equal(tick3.lane, 'gemini-4-argon');
+    assert.equal(tick3.modelPickedBy, 'floor');
+    assert.equal(callIndex, 2, 'Panda must not be called when header + engine floor decide the model');
+    assert.equal(seen[2].lane, 'gemini-4-argon');
+
+    const log3Lines = fs
+      .readFileSync(path.join(folders.done, '03-engine-floor-lower-header.log'), 'utf8')
+      .split(/\r?\n/);
+    assert.equal(log3Lines[0], 'model: gemini-4-argon (picked by: floor)');
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('cold pick from Panda: never runs a cold model; on lane engine with Argon cold uses Opus 5.5, and if both floor models are cold behaves as before this PR', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-panda-cold-'));
+  try {
+    const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+    const folders = ensureInboxFolders(inboxDir);
+    const now = new Date('2026-11-14T12:00:00Z');
+
+    const t1 = path.join(folders.queued, '01-cold-sonnet-normal.md');
+    const t2 = path.join(folders.queued, '02-engine-argon-cold-panda-argon.md');
+    const t3 = path.join(folders.queued, '03-engine-argon-cold-panda-flash.md');
+    const t4 = path.join(folders.queued, '04-engine-both-floor-cold.md');
+
+    fs.writeFileSync(
+      t1,
+      ['# Fix README typo', '', 'Fix typo in docs/README.md.'].join('\n'),
+      'utf8'
+    );
+    fs.utimesSync(t1, new Date('2026-11-14T01:00:00Z'), new Date('2026-11-14T01:00:00Z'));
+
+    fs.writeFileSync(
+      t2,
+      ['# Optimize WebGPU bloom pass', 'lane: engine', '', 'Tune src/shaders/bloom.wgsl.'].join('\n'),
+      'utf8'
+    );
+    fs.utimesSync(t2, new Date('2026-11-14T02:00:00Z'), new Date('2026-11-14T02:00:00Z'));
+
+    fs.writeFileSync(
+      t3,
+      ['# Optimize WebGPU fog pass', 'lane: engine', '', 'Tune src/shaders/fog.wgsl.'].join('\n'),
+      'utf8'
+    );
+    fs.utimesSync(t3, new Date('2026-11-14T03:00:00Z'), new Date('2026-11-14T03:00:00Z'));
+
+    fs.writeFileSync(
+      t4,
+      ['# Optimize WebGPU postfx pass', 'lane: engine', '', 'Tune src/shaders/postfx.wgsl.'].join(
+        '\n'
+      ),
+      'utf8'
+    );
+    fs.utimesSync(t4, new Date('2026-11-14T04:00:00Z'), new Date('2026-11-14T04:00:00Z'));
+
+    let nextPandaCard = 'claude-sonnet-5.5';
+    const seen: DispatchJobInput[] = [];
+    const { runner } = createMockInboxCommandRunner();
+    const inboxRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir: path.join(tmpRoot, 'antigravity'),
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      adapter: createFakeAdapter(tmpRoot, seen),
+      commandRunner: runner,
+      now: () => now,
+      pandaPool: { ...DEFAULT_PANDA_POOL },
+      pandaFetch: (async () =>
+        new Response(JSON.stringify({ choice: { model_id: nextPandaCard } }), {
+          status: 200,
+        })) as typeof fetch,
+    });
+
+    // 1. Non-engine task: mark claude-sonnet-5-5 cold, Panda picks claude-sonnet-5.5 -> falls back to gemini-3.8-flash
+    inboxRunner.getRouter().reportQuotaError('claude-sonnet-5-5', 'HTTP 429 quota exceeded', now);
+    const tick1 = await inboxRunner.tick();
+    assert.equal(tick1.status, 'done');
+    assert.equal(tick1.lane, 'gemini-3.8-flash');
+    assert.equal(tick1.modelPickedBy, 'fallback');
+    const log1 = fs.readFileSync(path.join(folders.done, '01-cold-sonnet-normal.log'), 'utf8');
+    assert.match(log1, /\[panda\] fallback to gemini-3\.8-flash: Panda \/route selected cold lane claude-sonnet-5-5/);
+
+    // 2. Engine task with gemini-4-argon cold (and claude-opus-5-5 warm):
+    //    Reset router cold state by creating a fresh runner or clearing via a fresh InboxRunner for clean cold state
+    const seenEngine: DispatchJobInput[] = [];
+    const engineRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir: path.join(tmpRoot, 'antigravity'),
+      decisionsLogPath: path.join(tmpRoot, 'decisions-engine.log'),
+      adapter: createFakeAdapter(tmpRoot, seenEngine),
+      commandRunner: runner,
+      now: () => now,
+      pandaPool: { ...DEFAULT_PANDA_POOL },
+      pandaFetch: (async () =>
+        new Response(JSON.stringify({ choice: { model_id: nextPandaCard } }), {
+          status: 200,
+        })) as typeof fetch,
+    });
+    engineRunner.getRouter().reportQuotaError('gemini-4-argon', 'HTTP 429 quota exceeded', now);
+
+    // 2a. Panda picks cold gemini-4-argon -> never runs cold Argon; uses the other floor model claude-opus-5-5
+    nextPandaCard = 'openrouter-gemini-4-argon';
+    const tick2 = await engineRunner.tick();
+    assert.equal(tick2.status, 'done');
+    assert.equal(tick2.jobClass, 'engine');
+    assert.equal(tick2.lane, 'claude-opus-5-5');
+    assert.equal(tick2.modelPickedBy, 'fallback');
+    assert.equal(seenEngine[0].lane, 'claude-opus-5-5');
+    const log2 = fs.readFileSync(
+      path.join(folders.done, '02-engine-argon-cold-panda-argon.log'),
+      'utf8'
+    );
+    assert.equal(log2.split(/\r?\n/)[0], 'model: claude-opus-5-5 (picked by: fallback)');
+    assert.match(
+      log2,
+      /\[panda\] fallback to claude-opus-5-5: Panda \/route selected cold lane gemini-4-argon/
+    );
+
+    // 2b. Panda picks warm below-floor gemini-3.8-flash while gemini-4-argon is cold -> floor uses the other floor model claude-opus-5-5
+    nextPandaCard = 'openrouter-gemini-3.8-flash';
+    const tick3 = await engineRunner.tick();
+    assert.equal(tick3.status, 'done');
+    assert.equal(tick3.jobClass, 'engine');
+    assert.equal(tick3.lane, 'claude-opus-5-5');
+    assert.equal(tick3.modelPickedBy, 'floor');
+    assert.equal(seenEngine[1].lane, 'claude-opus-5-5');
+    const log3 = fs.readFileSync(
+      path.join(folders.done, '03-engine-argon-cold-panda-flash.log'),
+      'utf8'
+    );
+    assert.equal(log3.split(/\r?\n/)[0], 'model: claude-opus-5-5 (picked by: floor)');
+
+    // 2c. Both floor models (gemini-4-argon and claude-opus-5-5) are cold -> behaves exactly as before this PR (gemini-3.8-flash)
+    engineRunner.getRouter().reportQuotaError('claude-opus-5-5', 'HTTP 429 quota exceeded', now);
+    nextPandaCard = 'openrouter-gemini-4-argon';
+    const tick4 = await engineRunner.tick();
+    assert.equal(tick4.status, 'done');
+    assert.equal(tick4.jobClass, 'engine');
+    assert.equal(tick4.lane, 'gemini-3.8-flash');
+    assert.equal(tick4.modelPickedBy, 'fallback');
+    assert.equal(seenEngine[2].lane, 'gemini-3.8-flash');
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('fallback: when Panda is down, slow, returns malformed JSON or missing model_id, or returns a model not in the pool, the runner logs one line, falls back to JevRouter, and logs fallback on line 1', async () => {
+  const scenarios: Array<{
+    name: string;
+    pandaFetch: typeof fetch;
+    timeoutMs?: number;
+    expectedReasonSubstring: string;
+  }> = [
+    {
+      name: 'down',
+      pandaFetch: (async () => {
+        throw new Error('connect ECONNREFUSED 127.0.0.1:8765');
+      }) as unknown as typeof fetch,
+      expectedReasonSubstring: 'Panda /route unreachable',
+    },
+    {
+      name: 'slow',
+      timeoutMs: 25,
+      pandaFetch: (async () => {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        return new Response(JSON.stringify({ choice: { model_id: 'claude-sonnet-5.5' } }), {
+          status: 200,
+        });
+      }) as typeof fetch,
+      expectedReasonSubstring: 'Panda /route timed out',
+    },
+    {
+      name: 'not-in-pool',
+      pandaFetch: (async () =>
+        new Response(JSON.stringify({ choice: { model_id: 'openrouter-gpt-6.1-sol' } }), {
+          status: 200,
+        })) as typeof fetch,
+      expectedReasonSubstring: 'is not in pool',
+    },
+    {
+      name: 'malformed-json',
+      pandaFetch: (async () =>
+        new Response('{malformed-json', {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })) as typeof fetch,
+      expectedReasonSubstring: 'Panda /route unreachable',
+    },
+    {
+      name: 'missing-model-id',
+      pandaFetch: (async () =>
+        new Response(JSON.stringify({ choice: {} }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })) as typeof fetch,
+      expectedReasonSubstring: 'Panda /route returned no model_id',
+    },
+  ];
+
+  for (const scenario of scenarios) {
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), `jev-panda-fb-${scenario.name}-`));
+    try {
+      const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+      const folders = ensureInboxFolders(inboxDir);
+      fs.writeFileSync(
+        path.join(folders.queued, `fb-${scenario.name}.md`),
+        ['# Fix typo in README', '', 'Fix typo in docs/README.md.'].join('\n'),
+        'utf8'
+      );
+
+      const seen: DispatchJobInput[] = [];
+      const { runner } = createMockInboxCommandRunner();
+      const inboxRunner = new InboxRunner({
+        inboxDir,
+        worktreeParentDir: path.join(tmpRoot, 'antigravity'),
+        decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+        adapter: createFakeAdapter(tmpRoot, seen),
+        commandRunner: runner,
+        pandaPool: { ...DEFAULT_PANDA_POOL },
+        pandaTimeoutMs: scenario.timeoutMs ?? 2_000,
+        pandaFetch: scenario.pandaFetch,
+      });
+
+      const tick = await inboxRunner.tick();
+      assert.equal(tick.status, 'done', `${scenario.name}: wheel must never stop`);
+      assert.equal(tick.lane, 'gemini-3.8-flash');
+      assert.equal(tick.modelPickedBy, 'fallback');
+      assert.equal(seen.length, 1);
+      assert.equal(seen[0].lane, 'gemini-3.8-flash');
+
+      const logContent = fs.readFileSync(
+        path.join(folders.done, `fb-${scenario.name}.log`),
+        'utf8'
+      );
+      const logLines = logContent.split(/\r?\n/).filter(Boolean);
+      assert.equal(logLines[0], 'model: gemini-3.8-flash (picked by: fallback)');
+      assert.ok(
+        logLines.some(
+          (line) =>
+            line.startsWith('[panda] fallback to gemini-3.8-flash:') &&
+            line.includes(scenario.expectedReasonSubstring)
+        ),
+        `expected one-line Panda fallback log for ${scenario.name}, got:\n${logContent}`
+      );
+    } finally {
+      fs.rmSync(tmpRoot, { recursive: true, force: true });
+    }
+  }
+});
