@@ -1117,6 +1117,7 @@ export class InboxRunner {
     decision: DecisionRecord;
     forcedLaneHonoured: boolean;
     headerModelHonoured: boolean;
+    headerModelClampedByFloor?: boolean;
   } {
     const now = this.now();
     const table = loadLaneTable(this.lanesPath);
@@ -1139,16 +1140,30 @@ export class InboxRunner {
           extraSecretsToRedact: this.extraSecretsToRedact,
         });
         let headerModelHonoured = false;
+        let headerModelClampedByFloor = false;
         if (
           requestedModel &&
           !isExecutorJobClass(requestedModel.toLowerCase()) &&
           isKnownLaneInTable(table, requestedModel) &&
           !this.router.isLaneCold(requestedModel, now)
         ) {
-          decision = { ...decision, lane: requestedModel };
-          headerModelHonoured = true;
+          if (executorClass === 'engine' && !isEngineFloorModel(requestedModel)) {
+            const warmFloor = this.resolveWarmEngineFloorModel(decision.lane, now);
+            if (warmFloor) {
+              decision = { ...decision, lane: warmFloor };
+              headerModelClampedByFloor = true;
+            }
+          } else {
+            decision = { ...decision, lane: requestedModel };
+            headerModelHonoured = true;
+          }
         }
-        return { decision, forcedLaneHonoured: true, headerModelHonoured };
+        return {
+          decision,
+          forcedLaneHonoured: true,
+          headerModelHonoured,
+          headerModelClampedByFloor,
+        };
       }
 
       // 2. Explicit model lane in lanes.json (only 'lane: fable' parks a task)
@@ -1258,6 +1273,7 @@ export class InboxRunner {
       decision: DecisionRecord;
       forcedLaneHonoured: boolean;
       headerModelHonoured: boolean;
+      headerModelClampedByFloor?: boolean;
     }
   ): Promise<{
     decision: DecisionRecord;
@@ -1344,8 +1360,30 @@ export class InboxRunner {
       routed.decision.job_class === 'engine' ||
       parsed.forcedLane?.trim().toLowerCase() === 'engine';
 
-    // 1. Task header model line wins over Panda
+    // 1. Task header model line wins over Panda (clamped by engine floor when lane is engine)
+    if (routed.headerModelClampedByFloor && !this.router.isLaneCold(routed.decision.lane, now)) {
+      return {
+        decision: routed.decision,
+        pickedBy: 'floor',
+        pandaFallbackLogLine: null,
+      };
+    }
     if (routed.headerModelHonoured && !this.router.isLaneCold(routed.decision.lane, now)) {
+      if (isEngineLane && !isEngineFloorModel(routed.decision.lane)) {
+        const floorLane = this.resolveWarmEngineFloorModel(routed.decision.lane, now);
+        if (floorLane) {
+          return {
+            decision: { ...routed.decision, lane: floorLane },
+            pickedBy: 'floor',
+            pandaFallbackLogLine: null,
+          };
+        }
+        return {
+          decision: routed.decision,
+          pickedBy: 'fallback',
+          pandaFallbackLogLine: null,
+        };
+      }
       return {
         decision: routed.decision,
         pickedBy: 'header',
