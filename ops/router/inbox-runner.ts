@@ -36,8 +36,11 @@ import {
   type DecisionRecord,
   DEFAULT_DECISIONS_LOG_PATH,
   DEFAULT_LANES_PATH,
+  DEFAULT_QUOTA_COOLDOWN_HOURS,
+  DEFAULT_QUOTA_COOLDOWN_MS,
   DEFAULT_RANKINGS_DIR,
   type ExecutorJobClass,
+  formatQuotaColdLogLine,
   hashTaskDescription,
   isExecutorJobClass,
   type JevJobClass,
@@ -46,10 +49,30 @@ import {
   type LaneTable,
   loadLaneTable,
   loadNewestWeeklyRanking,
+  MAX_QUOTA_COOLDOWN_MS,
+  MIN_QUOTA_COOLDOWN_MS,
+  type ParsedQuotaCooldown,
+  parseQuotaCooldown,
+  parseQuotaCooldownHours,
   profileTask,
+  QUOTA_RESET_BUFFER_MS,
+  type QuotaCooldownSource,
   resolveLaneHarness,
   sanitizeDecisionLogText,
 } from './dream-task-router.ts';
+
+export {
+  DEFAULT_QUOTA_COOLDOWN_HOURS,
+  DEFAULT_QUOTA_COOLDOWN_MS,
+  formatQuotaColdLogLine,
+  MAX_QUOTA_COOLDOWN_MS,
+  MIN_QUOTA_COOLDOWN_MS,
+  type ParsedQuotaCooldown,
+  parseQuotaCooldown,
+  parseQuotaCooldownHours,
+  QUOTA_RESET_BUFFER_MS,
+  type QuotaCooldownSource,
+};
 import {
   askPandaRoute,
   askPandaRouteDetailed,
@@ -2253,11 +2276,12 @@ export class InboxRunner {
           });
 
           // Mark the lane cold through the core and re-queue the task once on the fallback lane
-          this.router.reportQuotaError(
+          const quotaReport = this.router.reportQuotaError(
             decision.lane,
-            pollResult.output || pollResult.error || quotaCheck.errorSummary,
+            [pollResult.output, pollResult.error, quotaCheck.errorSummary].filter(Boolean).join('\n'),
             this.now()
           );
+          combinedLogs.push(quotaReport.logLine);
           quotaFallbackTriggered = true;
 
           // Re-queue transition through queued/ -> running/

@@ -876,23 +876,108 @@ export function validateLaneTable(table: LaneTable): { valid: boolean; errors: s
 }
 
 /**
- * Parses the cooldown hours stated in a quota or 429 error (defaulting to 24 hours).
+ * Default quota cooldown in hours when a 429 / quota error carries no reset time.
  */
-export function parseQuotaCooldownHours(
+export const DEFAULT_QUOTA_COOLDOWN_HOURS = 2;
+
+/**
+ * Default quota cooldown in milliseconds (2 hours).
+ */
+export const DEFAULT_QUOTA_COOLDOWN_MS = DEFAULT_QUOTA_COOLDOWN_HOURS * 3_600_000;
+
+/**
+ * Five-minute buffer added to a parsed "Resets in ..." duration on 429.
+ */
+export const QUOTA_RESET_BUFFER_MS = 5 * 60_000;
+
+/**
+ * Minimum allowed quota cooldown duration (5 minutes).
+ */
+export const MIN_QUOTA_COOLDOWN_MS = 5 * 60_000;
+
+/**
+ * Maximum allowed quota cooldown duration (24 hours).
+ */
+export const MAX_QUOTA_COOLDOWN_MS = 24 * 3_600_000;
+
+export type QuotaCooldownSource = 'message' | 'default';
+
+export interface ParsedQuotaCooldown {
+  durationMs: number;
+  hours: number;
+  source: QuotaCooldownSource;
+}
+
+function clampQuotaCooldownMs(durationMs: number): number {
+  return Math.min(MAX_QUOTA_COOLDOWN_MS, Math.max(MIN_QUOTA_COOLDOWN_MS, durationMs));
+}
+
+function parseResetsInTokenMs(token: string): number | null {
+  const cleaned = token.trim().replace(/[.,;:!?)}"'\]]+$/g, '');
+  if (!cleaned) return null;
+  const match = cleaned.match(/^(?:(\d+(?:\.\d+)?)h)?(?:(\d+(?:\.\d+)?)m)?(?:(\d+(?:\.\d+)?)s)?$/i);
+  if (!match) return null;
+  const [, hStr, mStr, sStr] = match;
+  if (hStr === undefined && mStr === undefined && sStr === undefined) {
+    return null;
+  }
+  const hours = hStr !== undefined ? Number(hStr) : 0;
+  const minutes = mStr !== undefined ? Number(mStr) : 0;
+  const seconds = sStr !== undefined ? Number(sStr) : 0;
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes) || !Number.isFinite(seconds)) {
+    return null;
+  }
+  const totalMs = Math.round(hours * 3_600_000 + minutes * 60_000 + seconds * 1_000);
+  if (!Number.isFinite(totalMs) || totalMs < 0) {
+    return null;
+  }
+  return totalMs;
+}
+
+/**
+ * Parses the cooldown duration and source ('message' or 'default') from a quota or 429 error.
+ * - Reads "Resets in 1h20m9s", "Resets in 29m23s", "Resets in 45s" and adds 5 minutes.
+ * - When the text carries no valid time, defaults to DEFAULT_QUOTA_COOLDOWN_HOURS (2 hours).
+ * - Clamps all durations to [MIN_QUOTA_COOLDOWN_MS (5m), MAX_QUOTA_COOLDOWN_MS (24h)].
+ */
+export function parseQuotaCooldown(
   errorInput?: string | Error | { hours?: number; retryAfterHours?: number; message?: string; status?: number },
-  defaultHours = 24
-): number {
-  if (!errorInput) return defaultHours;
+  defaultHours = DEFAULT_QUOTA_COOLDOWN_HOURS
+): ParsedQuotaCooldown {
+  const fallbackHours =
+    typeof defaultHours === 'number' && Number.isFinite(defaultHours) && defaultHours > 0
+      ? defaultHours
+      : DEFAULT_QUOTA_COOLDOWN_HOURS;
+  const defaultDurationMs = clampQuotaCooldownMs(Math.round(fallbackHours * 3_600_000));
+
+  if (!errorInput) {
+    return {
+      durationMs: defaultDurationMs,
+      hours: defaultDurationMs / 3_600_000,
+      source: 'default',
+    };
+  }
+
   if (typeof errorInput === 'object' && !(errorInput instanceof Error)) {
     if (typeof errorInput.hours === 'number' && Number.isFinite(errorInput.hours) && errorInput.hours > 0) {
-      return errorInput.hours;
+      const durationMs = clampQuotaCooldownMs(Math.round(errorInput.hours * 3_600_000));
+      return {
+        durationMs,
+        hours: durationMs / 3_600_000,
+        source: 'message',
+      };
     }
     if (
       typeof errorInput.retryAfterHours === 'number' &&
       Number.isFinite(errorInput.retryAfterHours) &&
       errorInput.retryAfterHours > 0
     ) {
-      return errorInput.retryAfterHours;
+      const durationMs = clampQuotaCooldownMs(Math.round(errorInput.retryAfterHours * 3_600_000));
+      return {
+        durationMs,
+        hours: durationMs / 3_600_000,
+        source: 'message',
+      };
     }
   }
 
@@ -903,14 +988,69 @@ export function parseQuotaCooldownHours(
         ? errorInput.message
         : errorInput.message ?? '';
 
-  const match = rawMessage.match(/\b(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b/i);
+  const resetsMatches = [...rawMessage.matchAll(/\bresets\s+in\s+(\S+)/gi)];
+  if (resetsMatches.length > 0) {
+    for (let i = resetsMatches.length - 1; i >= 0; i -= 1) {
+      const token = resetsMatches[i]?.[1] ?? '';
+      const parsedResetMs = parseResetsInTokenMs(token);
+      if (parsedResetMs !== null) {
+        const durationMs = clampQuotaCooldownMs(parsedResetMs + QUOTA_RESET_BUFFER_MS);
+        return {
+          durationMs,
+          hours: durationMs / 3_600_000,
+          source: 'message',
+        };
+      }
+    }
+    return {
+      durationMs: defaultDurationMs,
+      hours: defaultDurationMs / 3_600_000,
+      source: 'default',
+    };
+  }
+
+  const match = rawMessage.match(/(?:^|[\s(])(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b/i);
   if (match && match[1]) {
     const parsed = Number(match[1]);
     if (Number.isFinite(parsed) && parsed > 0) {
-      return parsed;
+      const durationMs = clampQuotaCooldownMs(Math.round(parsed * 3_600_000));
+      return {
+        durationMs,
+        hours: durationMs / 3_600_000,
+        source: 'message',
+      };
     }
   }
-  return defaultHours;
+
+  return {
+    durationMs: defaultDurationMs,
+    hours: defaultDurationMs / 3_600_000,
+    source: 'default',
+  };
+}
+
+/**
+ * Formats the log line that marks a quota group cold, stating until when and where
+ * the time came from (the message, or the default).
+ */
+export function formatQuotaColdLogLine(params: {
+  quotaGroup: string;
+  affectedLanes: string[];
+  until: string;
+  source: QuotaCooldownSource;
+}): string {
+  const sourcePhrase = params.source === 'message' ? 'from the message (message)' : 'from the default (default)';
+  return `[quota] Marked quota group ${params.quotaGroup} (${params.affectedLanes.join(', ')}) cold until ${params.until} (${sourcePhrase}).`;
+}
+
+/**
+ * Parses the cooldown hours stated in a quota or 429 error (defaulting to DEFAULT_QUOTA_COOLDOWN_HOURS = 2 hours).
+ */
+export function parseQuotaCooldownHours(
+  errorInput?: string | Error | { hours?: number; retryAfterHours?: number; message?: string; status?: number },
+  defaultHours = DEFAULT_QUOTA_COOLDOWN_HOURS
+): number {
+  return parseQuotaCooldown(errorInput, defaultHours).hours;
 }
 
 // ============================================================================
@@ -1171,6 +1311,8 @@ export interface ColdLaneInfo {
   markedAt: string;
   until: string;
   hours: number;
+  source?: QuotaCooldownSource;
+  logLine?: string;
   reason: string;
 }
 
@@ -1304,20 +1446,24 @@ export class JevRouter {
     lane: string,
     errorInput?: string | Error | { hours?: number; retryAfterHours?: number; message?: string; status?: number },
     now: Date = new Date()
-  ): { affectedLanes: string[]; hours: number; until: string; quotaGroup: string } {
+  ): {
+    affectedLanes: string[];
+    hours: number;
+    durationMs: number;
+    until: string;
+    quotaGroup: string;
+    source: QuotaCooldownSource;
+    logLine: string;
+  } {
     const table = loadLaneTable(this.lanesPath);
-    const hours = parseQuotaCooldownHours(errorInput, table.defaultCooldownHours ?? 24);
-    const untilDate = new Date(now.getTime() + hours * 3_600_000);
+    const parsedCooldown = parseQuotaCooldown(
+      errorInput,
+      table.defaultCooldownHours ?? DEFAULT_QUOTA_COOLDOWN_HOURS
+    );
+    const { durationMs, hours, source } = parsedCooldown;
+    const untilDate = new Date(now.getTime() + durationMs);
     const markedAt = now.toISOString();
     const until = untilDate.toISOString();
-
-    const rawReason =
-      typeof errorInput === 'string'
-        ? errorInput
-        : errorInput instanceof Error
-          ? errorInput.message
-          : errorInput?.message ?? `HTTP 429 quota cooldown (${hours}h)`;
-    const cleanReason = sanitizeDecisionLogText(rawReason);
 
     // Determine whether this lane belongs to the shared agy-claude quota group
     const agyClaudeGroup = table.quotaGroups?.['agy-claude'];
@@ -1327,6 +1473,23 @@ export class JevRouter {
     const affectedLanes = isSharedAgyClaude ? [...agyClaudeGroup.lanes] : [lane];
     const quotaGroup = isSharedAgyClaude ? 'agy-claude' : this.findQuotaGroupForLane(table, lane);
 
+    const logLine = sanitizeDecisionLogText(
+      formatQuotaColdLogLine({
+        quotaGroup,
+        affectedLanes,
+        until,
+        source,
+      })
+    );
+
+    const rawReason =
+      typeof errorInput === 'string'
+        ? errorInput
+        : errorInput instanceof Error
+          ? errorInput.message
+          : errorInput?.message ?? `HTTP 429 quota cooldown (${hours}h)`;
+    const cleanReason = sanitizeDecisionLogText(`${logLine} | ${rawReason}`);
+
     for (const targetLane of affectedLanes) {
       this.coldLanes.set(targetLane, {
         lane: targetLane,
@@ -1334,11 +1497,13 @@ export class JevRouter {
         markedAt,
         until,
         hours,
+        source,
+        logLine,
         reason: cleanReason,
       });
     }
 
-    return { affectedLanes, hours, until, quotaGroup };
+    return { affectedLanes, hours, durationMs, until, quotaGroup, source, logLine };
   }
 
   private findQuotaGroupForLane(table: LaneTable, lane: string): string {
@@ -1456,8 +1621,9 @@ export class JevRouter {
       }
 
       selectedLane = fallbackLane;
+      const sourceLabel = coldInfo.source ?? 'default';
       reasonParts.push(
-        `Quota fallback: ${candidateLane} (${coldInfo.quotaGroup}) is cold for ${coldInfo.hours}h until ${coldInfo.until}, routed to fallback ${selectedLane}.`
+        `Quota fallback: ${candidateLane} (${coldInfo.quotaGroup}) is cold for ${coldInfo.hours}h until ${coldInfo.until} (time from ${sourceLabel}), routed to fallback ${selectedLane}.`
       );
     }
 
@@ -1606,7 +1772,7 @@ export class JevRouter {
         // Mark lane cold through core's reportQuotaError and route retry to fallback lane
         this.reportQuotaError(
           decision.lane,
-          pollResult.output || pollResult.error || quotaCheck.errorSummary,
+          [pollResult.output, pollResult.error, quotaCheck.errorSummary].filter(Boolean).join('\n'),
           now
         );
         quotaFallbackTriggered = true;
@@ -1832,7 +1998,15 @@ export function reportLaneQuotaError(
   lane: string,
   errorInput?: string | Error | { hours?: number; retryAfterHours?: number; message?: string; status?: number },
   now?: Date
-): { affectedLanes: string[]; hours: number; until: string; quotaGroup: string } {
+): {
+  affectedLanes: string[];
+  hours: number;
+  durationMs: number;
+  until: string;
+  quotaGroup: string;
+  source: QuotaCooldownSource;
+  logLine: string;
+} {
   return defaultJevRouter.reportQuotaError(lane, errorInput, now);
 }
 
