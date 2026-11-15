@@ -182,81 +182,8 @@ Describe 'register-boot-task.ps1' {
   }
 }
 
-Describe 'retire-old-boot-launchers.ps1' {
-  $retire = Join-Path $here 'retire-old-boot-launchers.ps1'
-
-  It 'dry-run lists DREAM-Alienware-BootAll Startup and Run entries with %USERPROFILE% and changes nothing' {
-    $fakeStartup = Join-Path $TestDrive 'startup-dry'
-    $fakeRetired = Join-Path $TestDrive 'retired-dry'
-    $fakeRunKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
-    New-Item -ItemType Directory -Path $fakeStartup -Force | Out-Null
-    $startupVbs = Join-Path $fakeStartup 'DREAM-Alienware-BootAll.vbs'
-    Set-Content -LiteralPath $startupVbs -Value 'psCmd = "powershell.exe -File ""%USERPROFILE%\antigravity\DREAM-Engine\ops\node\boot-alienware-services.ps1"""' -Encoding UTF8
-    $otherFile = Join-Path $fakeStartup 'GrinDroid.cmd'
-    Set-Content -LiteralPath $otherFile -Value '@echo off' -Encoding UTF8
-
-    Mock Get-ItemProperty {
-      [pscustomobject]@{
-        'DREAM-Alienware-BootAll' = "$env:USERPROFILE\antigravity\DREAM-Engine\ops\node\boot-alienware-services.ps1"
-        'GrinDroid' = 'C:\GrinDroid\run.exe'
-      }
-    } -ParameterFilter { $LiteralPath -eq $fakeRunKey }
-    Mock Rename-ItemProperty {}
-
-    $out = & $retire -StartupDir $fakeStartup -RunKeyPath $fakeRunKey -RetiredDir $fakeRetired | Out-String
-    $out | Should Match 'DRY RUN'
-    $out | Should Match 'DREAM-Alienware-BootAll\.vbs'
-    $out | Should Match '%USERPROFILE%\\antigravity\\DREAM-Engine\\ops\\node\\boot-alienware-services\.ps1'
-    $out | Should Not Match '(?i)[A-Z]:\\Users\\'
-    $out | Should Not Match 'GrinDroid'
-    (Test-Path -LiteralPath $startupVbs) | Should Be $true
-    (Test-Path -LiteralPath $otherFile) | Should Be $true
-    (Test-Path -LiteralPath $fakeRetired) | Should Be $false
-    Assert-MockCalled Rename-ItemProperty -Times 0 -Exactly -Scope It
-  }
-
-  It 'with -Apply moves only DREAM-Alienware-BootAll Startup file into retired and renames Run value to .retired with data file beside it' {
-    $fakeStartup = Join-Path $TestDrive 'startup-apply'
-    $fakeRetired = Join-Path $TestDrive 'retired-apply'
-    $fakeRunKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
-    New-Item -ItemType Directory -Path $fakeStartup -Force | Out-Null
-    $startupVbs = Join-Path $fakeStartup 'DREAM-Alienware-BootAll.vbs'
-    Set-Content -LiteralPath $startupVbs -Value 'psCmd = "powershell.exe -File ""%USERPROFILE%\antigravity\DREAM-Engine\ops\node\boot-alienware-services.ps1"""' -Encoding UTF8
-    $otherFile = Join-Path $fakeStartup 'GrinDroid.cmd'
-    Set-Content -LiteralPath $otherFile -Value '@echo off' -Encoding UTF8
-
-    $runValueData = 'powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%USERPROFILE%\antigravity\DREAM-Engine\ops\node\boot-alienware-services.ps1"'
-    Mock Get-ItemProperty {
-      [pscustomobject]@{
-        'DREAM-Alienware-BootAll' = $runValueData
-        'GrinDroid' = 'C:\GrinDroid\run.exe'
-      }
-    } -ParameterFilter { $LiteralPath -eq $fakeRunKey }
-    Mock Rename-ItemProperty {}
-
-    $out = & $retire -StartupDir $fakeStartup -RunKeyPath $fakeRunKey -RetiredDir $fakeRetired -Apply | Out-String
-    $out | Should Match 'APPLIED'
-    (Test-Path -LiteralPath $startupVbs) | Should Be $false
-    (Test-Path -LiteralPath (Join-Path $fakeRetired 'DREAM-Alienware-BootAll.vbs')) | Should Be $true
-    (Test-Path -LiteralPath $otherFile) | Should Be $true
-
-    $savedRunText = Join-Path $fakeRetired 'DREAM-Alienware-BootAll.retired.txt'
-    (Test-Path -LiteralPath $savedRunText) | Should Be $true
-    (Get-Content -LiteralPath $savedRunText -Raw).Trim() | Should Be $runValueData
-
-    Assert-MockCalled Rename-ItemProperty -Times 1 -Exactly -Scope It -ParameterFilter {
-      $LiteralPath -eq $fakeRunKey -and $Name -eq 'DREAM-Alienware-BootAll' -and $NewName -eq 'DREAM-Alienware-BootAll.retired'
-    }
-  }
-
-  It 'never calls Remove-Item or Remove-ItemProperty' {
-    $src = Get-Content -LiteralPath $retire -Raw
-    $src | Should Not Match '\bRemove-Item(Property)?\b'
-  }
-}
-
 Describe 'New boot files carry no user folder path and no private LAN address' {
-  $files = @('boot-alienware-services.ps1', 'boot-alienware-services.vbs', 'boot-alienware-services.Tests.ps1', 'register-boot-task.ps1', 'retire-old-boot-launchers.ps1') | ForEach-Object { Join-Path $here $_ }
+  $files = @('boot-alienware-services.ps1', 'boot-alienware-services.vbs', 'boot-alienware-services.Tests.ps1', 'register-boot-task.ps1', 'retire-old-boot-launchers.ps1', 'retire-old-boot-launchers.Tests.ps1') | ForEach-Object { Join-Path $here $_ }
   It 'names no Windows user folder' {
     @($files | ForEach-Object { Select-String -LiteralPath $_ -Pattern '(?i)[A-Z]:[\\/]+Users[\\/]+[^%\\/\s"]' }).Count | Should Be 0
   }
