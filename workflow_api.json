@@ -73,7 +73,7 @@
       "Alienware": {
         "address": "in the node env file",
         "user": "see the node env file",
-        "cleanProfileRule": "The orphaned legacy adults-only profile and its Windows user-profile record are 100% purged.",
+        "cleanProfileRule": "Other private projects also live on this node, in their own folders, repositories and agent sessions on a separate drive. They are not part of this repo. Never open, read, copy or mix their files, prompts or memory with this repo. A task for one of them is written as a handoff file for its own session in the drop box, and nothing else is done.",
         "hardware": "Desktop Aurora R12, 11th-Gen Intel i7-11700F, 40 GB RAM, 1.39 TB NVMe SSD, NVIDIA GeForce RTX 3070 (8 GB CUDA), 2.5 Gb Ethernet",
         "autoBootTask": "DREAM-Alienware-BootAll (ops/node/boot-alienware-services.ps1 — runs at Logon + every 15 min; launches Free Claude Code :8082/admin via signed Python 3.14.10 interpreter)",
         "ports": {
