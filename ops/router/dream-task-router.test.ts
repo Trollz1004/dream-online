@@ -16,6 +16,12 @@ import {
   validateWeeklyRankingFile,
   validateWeeklyRankingFileOnDisk,
   DEFAULT_RANK_MODELS_PROMPT_PATH,
+  DEFAULT_QUOTA_COOLDOWN_HOURS,
+  DEFAULT_QUOTA_COOLDOWN_MS,
+  MIN_QUOTA_COOLDOWN_MS,
+  MAX_QUOTA_COOLDOWN_MS,
+  QUOTA_RESET_BUFFER_MS,
+  parseQuotaCooldown,
   parseQuotaCooldownHours,
   JevRouter,
   routeJevTask,
@@ -341,9 +347,10 @@ test('Quota and 429 cold-lane fallback with shared agy Claude quota and secret-f
     const logPath = path.join(tmpRoot, 'decisions.log');
     const router = new JevRouter({ decisionsLogPath: logPath });
 
-    // Verify hour parsing (explicit hours vs default 24h)
+    // Verify hour parsing (explicit hours vs default DEFAULT_QUOTA_COOLDOWN_HOURS = 2h)
+    assert.equal(DEFAULT_QUOTA_COOLDOWN_HOURS, 2);
     assert.equal(parseQuotaCooldownHours('HTTP 429 Too Many Requests: retry in 5 hours'), 5);
-    assert.equal(parseQuotaCooldownHours('HTTP 429 quota exceeded'), 24);
+    assert.equal(parseQuotaCooldownHours('HTTP 429 quota exceeded'), DEFAULT_QUOTA_COOLDOWN_HOURS);
 
     // Report a 5-hour quota error on claude-opus-5-5 in agy
     const report = router.reportQuotaError(
@@ -384,14 +391,17 @@ test('Quota and 429 cold-lane fallback with shared agy Claude quota and secret-f
     assert.equal(bulkDecision.quota_fallback, true);
     assert.ok(bulkDecision.reason.includes('Quota fallback: claude-sonnet-5-5'));
 
-    // Report a 429 without explicit hours on grok -> defaults to 24 hours cold
+    // Report a 429 without explicit hours on grok -> defaults to DEFAULT_QUOTA_COOLDOWN_HOURS (2 hours) cold
     const fakeSecretValue = ['sk', 'redactiontest999999'].join('-');
     const grokReport = router.reportQuotaError(
       'grok',
       `HTTP 429 rate limit reached with token=${fakeSecretValue}`,
       now
     );
-    assert.equal(grokReport.hours, 24);
+    assert.equal(grokReport.hours, DEFAULT_QUOTA_COOLDOWN_HOURS);
+    assert.equal(grokReport.source, 'default');
+    assert.ok(grokReport.logLine.includes(grokReport.until));
+    assert.ok(grokReport.logLine.includes('default'));
     const postXDecision = router.route(
       `Post to X our new release announcement thread with token=${fakeSecretValue}`,
       { now, extraSecretsToRedact: [fakeSecretValue] }
@@ -400,11 +410,16 @@ test('Quota and 429 cold-lane fallback with shared agy Claude quota and secret-f
     assert.equal(postXDecision.lane, 'gemini-3.8-flash');
     assert.equal(postXDecision.quota_fallback, true);
 
-    // Advance clock by 6 hours: 5-hour agy-claude cooldown has expired, 24-hour grok cooldown is still active
+    // At 1 hour, both the 5-hour agy-claude cooldown and 2-hour default grok cooldown are still active
+    const oneHourLater = new Date(now.getTime() + 1 * 3_600_000);
+    assert.equal(router.isLaneCold('claude-opus-5-5', oneHourLater), true);
+    assert.equal(router.isLaneCold('grok', oneHourLater), true);
+
+    // Advance clock by 6 hours: both 5-hour agy-claude and 2-hour grok cooldowns have expired
     const sixHoursLater = new Date(now.getTime() + 6 * 3_600_000);
     assert.equal(router.isLaneCold('claude-opus-5-5', sixHoursLater), false);
     assert.equal(router.isLaneCold('claude-sonnet-5-5', sixHoursLater), false);
-    assert.equal(router.isLaneCold('grok', sixHoursLater), true);
+    assert.equal(router.isLaneCold('grok', sixHoursLater), false);
 
     const warmedHardDecision = router.route(
       'Fix concurrency deadlock in state machine protocol design',
