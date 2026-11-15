@@ -183,7 +183,10 @@ test('runner + Panda: uses Panda pick when no model header or engine floor inter
     const logLines = fs
       .readFileSync(path.join(folders.done, 'panda-pick.log'), 'utf8')
       .split(/\r?\n/);
-    assert.equal(logLines[0], formatTaskLogFirstLine('claude-sonnet-5-5', 'panda'));
+    assert.ok(
+      logLines[0].startsWith(`${formatTaskLogFirstLine('claude-sonnet-5-5', 'panda')} | code map: `),
+      logLines[0]
+    );
   } finally {
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
@@ -249,7 +252,7 @@ test('header override: task header model line wins over a model named on the lan
     const log1Lines = fs
       .readFileSync(path.join(folders.done, '01-header-override.log'), 'utf8')
       .split(/\r?\n/);
-    assert.equal(log1Lines[0], 'model: gemini-3.8-flash (picked by: header)');
+    assert.ok(log1Lines[0].startsWith('model: gemini-3.8-flash (picked by: header) | code map: '), log1Lines[0]);
 
     const tick2 = await inboxRunner.tick();
     assert.equal(tick2.status, 'done');
@@ -261,7 +264,7 @@ test('header override: task header model line wins over a model named on the lan
     const log2Lines = fs
       .readFileSync(path.join(folders.done, '02-model-wins-over-lane-model.log'), 'utf8')
       .split(/\r?\n/);
-    assert.equal(log2Lines[0], 'model: gemini-3.8-flash (picked by: header)');
+    assert.ok(log2Lines[0].startsWith('model: gemini-3.8-flash (picked by: header) | code map: '), log2Lines[0]);
   } finally {
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
@@ -336,7 +339,7 @@ test('engine floor: lane engine never runs below claude-opus-5-5 or gemini-4-arg
     const log1Lines = fs
       .readFileSync(path.join(folders.done, '01-engine-floor-flash.log'), 'utf8')
       .split(/\r?\n/);
-    assert.equal(log1Lines[0], 'model: gemini-4-argon (picked by: floor)');
+    assert.ok(log1Lines[0].startsWith('model: gemini-4-argon (picked by: floor) | code map: '), log1Lines[0]);
 
     // Tick 2: Panda answered claude-opus-5.5 -> meets floor so Panda answer is used
     const tick2 = await inboxRunner.tick();
@@ -349,7 +352,7 @@ test('engine floor: lane engine never runs below claude-opus-5-5 or gemini-4-arg
     const log2Lines = fs
       .readFileSync(path.join(folders.done, '02-engine-floor-opus.log'), 'utf8')
       .split(/\r?\n/);
-    assert.equal(log2Lines[0], 'model: claude-opus-5-5 (picked by: panda)');
+    assert.ok(log2Lines[0].startsWith('model: claude-opus-5-5 (picked by: panda) | code map: '), log2Lines[0]);
 
     // Tick 3: task has lane: engine + model: gemini-3.8-flash -> clamped to gemini-4-argon by floor without calling Panda
     const tick3 = await inboxRunner.tick();
@@ -363,7 +366,7 @@ test('engine floor: lane engine never runs below claude-opus-5-5 or gemini-4-arg
     const log3Lines = fs
       .readFileSync(path.join(folders.done, '03-engine-floor-lower-header.log'), 'utf8')
       .split(/\r?\n/);
-    assert.equal(log3Lines[0], 'model: gemini-4-argon (picked by: floor)');
+    assert.ok(log3Lines[0].startsWith('model: gemini-4-argon (picked by: floor) | code map: '), log3Lines[0]);
   } finally {
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
@@ -467,7 +470,7 @@ test('cold pick from Panda: never runs a cold model; on lane engine with Argon c
       path.join(folders.done, '02-engine-argon-cold-panda-argon.log'),
       'utf8'
     );
-    assert.equal(log2.split(/\r?\n/)[0], 'model: claude-opus-5-5 (picked by: fallback)');
+    assert.ok(log2.split(/\r?\n/)[0].startsWith('model: claude-opus-5-5 (picked by: fallback) | code map: '), log2.split(/\r?\n/)[0]);
     assert.match(
       log2,
       /\[panda\] fallback to claude-opus-5-5: Panda \/route selected cold lane gemini-4-argon/
@@ -485,7 +488,7 @@ test('cold pick from Panda: never runs a cold model; on lane engine with Argon c
       path.join(folders.done, '03-engine-argon-cold-panda-flash.log'),
       'utf8'
     );
-    assert.equal(log3.split(/\r?\n/)[0], 'model: claude-opus-5-5 (picked by: floor)');
+    assert.ok(log3.split(/\r?\n/)[0].startsWith('model: claude-opus-5-5 (picked by: floor) | code map: '), log3.split(/\r?\n/)[0]);
 
     // 2c. Both floor models (gemini-4-argon and claude-opus-5-5) are cold -> behaves exactly as before this PR (gemini-3.8-flash)
     engineRunner.getRouter().reportQuotaError('claude-opus-5-5', 'HTTP 429 quota exceeded', now);
@@ -590,7 +593,7 @@ test('fallback: when Panda is down, slow, returns malformed JSON or missing mode
         'utf8'
       );
       const logLines = logContent.split(/\r?\n/).filter(Boolean);
-      assert.equal(logLines[0], 'model: gemini-3.8-flash (picked by: fallback)');
+      assert.ok(logLines[0].startsWith('model: gemini-3.8-flash (picked by: fallback) | code map: '), logLines[0]);
       assert.ok(
         logLines.some(
           (line) =>
