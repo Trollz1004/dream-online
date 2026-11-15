@@ -130,6 +130,30 @@ Describe 'Step 0 vault zip move' {
     (Test-Path -LiteralPath $note) | Should Be $true
   }
 
+  It 'gives a moved zip a dated name when vault-zips already holds one of the same name, overwriting nothing' {
+    $fakeVault = Join-Path $TestDrive 'vault-dupe'
+    $fakeZips = Join-Path $TestDrive 'dream-boot\vault-zips-dupe'
+    New-Item -ItemType Directory -Path $fakeVault -Force | Out-Null
+    New-Item -ItemType Directory -Path $fakeZips -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $fakeZips 'same.zip') -Value 'PK-old' -Encoding ASCII
+    Set-Content -LiteralPath (Join-Path $fakeVault 'same.zip') -Value 'PK-new' -Encoding ASCII
+
+    $moved = @(Move-VaultZips -VaultPath $fakeVault -DestDir $fakeZips)
+    $moved.Count | Should Be 1
+    (Split-Path -Leaf $moved[0]) | Should Match '^same-\d{8}-\d{6}\.zip$'
+    (Get-Content -LiteralPath (Join-Path $fakeZips 'same.zip') -Raw).Trim() | Should Be 'PK-old'
+    (Get-Content -LiteralPath $moved[0] -Raw).Trim() | Should Be 'PK-new'
+    (Test-Path -LiteralPath (Join-Path $fakeVault 'same.zip')) | Should Be $false
+
+    Set-Content -LiteralPath (Join-Path $fakeVault 'same.zip') -Value 'PK-third' -Encoding ASCII
+    Mock Get-Date { [datetime]'2026-01-02T03:04:05' }
+    Set-Content -LiteralPath (Join-Path $fakeZips 'same-20260102-030405.zip') -Value 'PK-dated' -Encoding ASCII
+    $moved2 = @(Move-VaultZips -VaultPath $fakeVault -DestDir $fakeZips)
+    (Split-Path -Leaf $moved2[0]) | Should Be 'same-20260102-030405-2.zip'
+    (Get-Content -LiteralPath (Join-Path $fakeZips 'same-20260102-030405.zip') -Raw).Trim() | Should Be 'PK-dated'
+    @(Get-ChildItem -LiteralPath $fakeZips -Filter '*.zip').Count | Should Be 4
+  }
+
   It 'defaults destination to %LOCALAPPDATA%\dream-boot\vault-zips and never deletes .zip files' {
     $vaultZipsDir | Should Be (Join-Path $env:LOCALAPPDATA 'dream-boot\vault-zips')
     $src = Get-Content -LiteralPath (Join-Path $here 'boot-alienware-services.ps1') -Raw
