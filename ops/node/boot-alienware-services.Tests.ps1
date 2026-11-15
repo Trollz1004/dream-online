@@ -67,16 +67,17 @@ Describe 'Swarm Command check' {
   Mock Start-DetachedService {}
   Mock Test-Path { $true } -ParameterFilter { $LiteralPath -like '*swarm-command*' }
 
-  It 'both ports down: starts backend and front end once each, hidden, on 127.0.0.1' {
+  It 'port 8000 down: starts backend once, hidden, on 127.0.0.1:8000 and never starts a separate server on 3001' {
     Mock Get-SwarmPython { 'X:\venv\Scripts\python.exe' }
     Mock Test-TcpPort { $false }
     $started = @(Invoke-SwarmCommandCheck)
-    $started.Count | Should Be 2
+    $started.Count | Should Be 1
+    $started[0] | Should Be 'backend'
     Assert-MockCalled Start-DetachedService -Times 1 -Exactly -Scope It -ParameterFilter { $CommandLine -like '*run_server(port=8000)*' -and $ShowWindow -eq 0 }
-    Assert-MockCalled Start-DetachedService -Times 1 -Exactly -Scope It -ParameterFilter { $CommandLine -like '*http.server 3001 --bind 127.0.0.1*' -and $ShowWindow -eq 0 }
-    Assert-MockCalled Write-BootLog -Times 2 -Exactly -Scope It
+    Assert-MockCalled Start-DetachedService -Times 0 -Exactly -Scope It -ParameterFilter { $CommandLine -like '*3001*' -or $CommandLine -like '*http.server*' }
+    Assert-MockCalled Write-BootLog -Times 1 -Exactly -Scope It
   }
-  It 'both ports up: calls nothing' {
+  It 'port 8000 up: calls nothing' {
     Mock Get-SwarmPython { 'X:\venv\Scripts\python.exe' }
     Mock Test-TcpPort { $true }
     @(Invoke-SwarmCommandCheck).Count | Should Be 0
@@ -87,6 +88,10 @@ Describe 'Swarm Command check' {
     Mock Test-TcpPort { $false }
     @(Invoke-SwarmCommandCheck).Count | Should Be 0
     Assert-MockCalled Start-DetachedService -Times 0 -Exactly -Scope It
+  }
+  It 'defines port 8000 and no separate front end port variable' {
+    $swarmBackendPort | Should Be 8000
+    (Get-Variable -Name swarmFrontendPort -ErrorAction SilentlyContinue) | Should Be $null
   }
 }
 
@@ -101,6 +106,34 @@ Describe 'Write-BootLog' {
     $lines[0] | Should Match '^\d{4}-\d{2}-\d{2}T.* \| started thing \(127\.0\.0\.1:1\) \| port 1 not listening$'
     $script:bootLogDir = $saved
     $script:bootLog = Join-Path $saved 'boot.log'
+  }
+}
+
+Describe 'Step 0 vault zip move' {
+  It 'moves stray .zip files from the vault folder into vault-zips and leaves notes untouched' {
+    $fakeVault = Join-Path $TestDrive 'vault-with-zips'
+    $fakeZips = Join-Path $TestDrive 'dream-boot\vault-zips'
+    New-Item -ItemType Directory -Path $fakeVault -Force | Out-Null
+    $zipA = Join-Path $fakeVault 'stray-a.zip'
+    $zipB = Join-Path $fakeVault 'stray-b.zip'
+    $note = Join-Path $fakeVault 'keep-me.md'
+    Set-Content -LiteralPath $zipA -Value 'PK-fake-a' -Encoding ASCII
+    Set-Content -LiteralPath $zipB -Value 'PK-fake-b' -Encoding ASCII
+    Set-Content -LiteralPath $note -Value '# Note' -Encoding UTF8
+
+    $moved = @(Move-VaultZips -VaultPath $fakeVault -DestDir $fakeZips)
+    $moved.Count | Should Be 2
+    (Test-Path -LiteralPath $zipA) | Should Be $false
+    (Test-Path -LiteralPath $zipB) | Should Be $false
+    (Test-Path -LiteralPath (Join-Path $fakeZips 'stray-a.zip')) | Should Be $true
+    (Test-Path -LiteralPath (Join-Path $fakeZips 'stray-b.zip')) | Should Be $true
+    (Test-Path -LiteralPath $note) | Should Be $true
+  }
+
+  It 'defaults destination to %LOCALAPPDATA%\dream-boot\vault-zips and never deletes .zip files' {
+    $vaultZipsDir | Should Be (Join-Path $env:LOCALAPPDATA 'dream-boot\vault-zips')
+    $src = Get-Content -LiteralPath (Join-Path $here 'boot-alienware-services.ps1') -Raw
+    $src | Should Not Match '\*\.zip.*Remove-Item'
   }
 }
 
@@ -149,8 +182,81 @@ Describe 'register-boot-task.ps1' {
   }
 }
 
+Describe 'retire-old-boot-launchers.ps1' {
+  $retire = Join-Path $here 'retire-old-boot-launchers.ps1'
+
+  It 'dry-run lists DREAM-Alienware-BootAll Startup and Run entries with %USERPROFILE% and changes nothing' {
+    $fakeStartup = Join-Path $TestDrive 'startup-dry'
+    $fakeRetired = Join-Path $TestDrive 'retired-dry'
+    $fakeRunKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+    New-Item -ItemType Directory -Path $fakeStartup -Force | Out-Null
+    $startupVbs = Join-Path $fakeStartup 'DREAM-Alienware-BootAll.vbs'
+    Set-Content -LiteralPath $startupVbs -Value 'psCmd = "powershell.exe -File ""%USERPROFILE%\antigravity\DREAM-Engine\ops\node\boot-alienware-services.ps1"""' -Encoding UTF8
+    $otherFile = Join-Path $fakeStartup 'GrinDroid.cmd'
+    Set-Content -LiteralPath $otherFile -Value '@echo off' -Encoding UTF8
+
+    Mock Get-ItemProperty {
+      [pscustomobject]@{
+        'DREAM-Alienware-BootAll' = "$env:USERPROFILE\antigravity\DREAM-Engine\ops\node\boot-alienware-services.ps1"
+        'GrinDroid' = 'C:\GrinDroid\run.exe'
+      }
+    } -ParameterFilter { $LiteralPath -eq $fakeRunKey }
+    Mock Rename-ItemProperty {}
+
+    $out = & $retire -StartupDir $fakeStartup -RunKeyPath $fakeRunKey -RetiredDir $fakeRetired | Out-String
+    $out | Should Match 'DRY RUN'
+    $out | Should Match 'DREAM-Alienware-BootAll\.vbs'
+    $out | Should Match '%USERPROFILE%\\antigravity\\DREAM-Engine\\ops\\node\\boot-alienware-services\.ps1'
+    $out | Should Not Match '(?i)[A-Z]:\\Users\\'
+    $out | Should Not Match 'GrinDroid'
+    (Test-Path -LiteralPath $startupVbs) | Should Be $true
+    (Test-Path -LiteralPath $otherFile) | Should Be $true
+    (Test-Path -LiteralPath $fakeRetired) | Should Be $false
+    Assert-MockCalled Rename-ItemProperty -Times 0 -Exactly -Scope It
+  }
+
+  It 'with -Apply moves only DREAM-Alienware-BootAll Startup file into retired and renames Run value to .retired with data file beside it' {
+    $fakeStartup = Join-Path $TestDrive 'startup-apply'
+    $fakeRetired = Join-Path $TestDrive 'retired-apply'
+    $fakeRunKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+    New-Item -ItemType Directory -Path $fakeStartup -Force | Out-Null
+    $startupVbs = Join-Path $fakeStartup 'DREAM-Alienware-BootAll.vbs'
+    Set-Content -LiteralPath $startupVbs -Value 'psCmd = "powershell.exe -File ""%USERPROFILE%\antigravity\DREAM-Engine\ops\node\boot-alienware-services.ps1"""' -Encoding UTF8
+    $otherFile = Join-Path $fakeStartup 'GrinDroid.cmd'
+    Set-Content -LiteralPath $otherFile -Value '@echo off' -Encoding UTF8
+
+    $runValueData = 'powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%USERPROFILE%\antigravity\DREAM-Engine\ops\node\boot-alienware-services.ps1"'
+    Mock Get-ItemProperty {
+      [pscustomobject]@{
+        'DREAM-Alienware-BootAll' = $runValueData
+        'GrinDroid' = 'C:\GrinDroid\run.exe'
+      }
+    } -ParameterFilter { $LiteralPath -eq $fakeRunKey }
+    Mock Rename-ItemProperty {}
+
+    $out = & $retire -StartupDir $fakeStartup -RunKeyPath $fakeRunKey -RetiredDir $fakeRetired -Apply | Out-String
+    $out | Should Match 'APPLIED'
+    (Test-Path -LiteralPath $startupVbs) | Should Be $false
+    (Test-Path -LiteralPath (Join-Path $fakeRetired 'DREAM-Alienware-BootAll.vbs')) | Should Be $true
+    (Test-Path -LiteralPath $otherFile) | Should Be $true
+
+    $savedRunText = Join-Path $fakeRetired 'DREAM-Alienware-BootAll.retired.txt'
+    (Test-Path -LiteralPath $savedRunText) | Should Be $true
+    (Get-Content -LiteralPath $savedRunText -Raw).Trim() | Should Be $runValueData
+
+    Assert-MockCalled Rename-ItemProperty -Times 1 -Exactly -Scope It -ParameterFilter {
+      $LiteralPath -eq $fakeRunKey -and $Name -eq 'DREAM-Alienware-BootAll' -and $NewName -eq 'DREAM-Alienware-BootAll.retired'
+    }
+  }
+
+  It 'never calls Remove-Item or Remove-ItemProperty' {
+    $src = Get-Content -LiteralPath $retire -Raw
+    $src | Should Not Match '\bRemove-Item(Property)?\b'
+  }
+}
+
 Describe 'New boot files carry no user folder path and no private LAN address' {
-  $files = @('boot-alienware-services.ps1', 'boot-alienware-services.vbs', 'boot-alienware-services.Tests.ps1', 'register-boot-task.ps1') | ForEach-Object { Join-Path $here $_ }
+  $files = @('boot-alienware-services.ps1', 'boot-alienware-services.vbs', 'boot-alienware-services.Tests.ps1', 'register-boot-task.ps1', 'retire-old-boot-launchers.ps1') | ForEach-Object { Join-Path $here $_ }
   It 'names no Windows user folder' {
     @($files | ForEach-Object { Select-String -LiteralPath $_ -Pattern '(?i)[A-Z]:[\\/]+Users[\\/]+[^%\\/\s"]' }).Count | Should Be 0
   }

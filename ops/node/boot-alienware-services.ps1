@@ -10,7 +10,7 @@
 # - :9133  DreamOps Bridge (game/server/dreamops-bridge/src/server.js)
 # - :8765  Panda Router (scheduled task DreamPandaRouter; started through the task only)
 # - inbox runner (scheduled task DreamRouterInbox; started through the task only, never a second runner)
-# - :8000 / :3001 Swarm Command backend and built front end (%USERPROFILE%\antigravity\tools\swarm-command), 127.0.0.1 only
+# - :8000  Swarm Command page and API from backend (%USERPROFILE%\antigravity\tools\swarm-command), 127.0.0.1 only
 # - 13/13 multi-harness skills sync.
 # Repeat runs never open a window or a browser tab. Every start writes one line to %LOCALAPPDATA%\dream-boot\boot.log.
 # Tests: powershell -NoProfile -Command "Import-Module Pester -RequiredVersion 3.4.0; Invoke-Pester -Path ops/node/boot-alienware-services.Tests.ps1"
@@ -30,20 +30,18 @@ $vaultRoot = "C:\DREAM\Antigravity"
 $alienwareVaultId = "9f7e513d0604b00d"
 $bootLogDir = "$env:LOCALAPPDATA\dream-boot"
 $bootLog = Join-Path $bootLogDir "boot.log"
+$vaultZipsDir = Join-Path $bootLogDir "vault-zips"
 
 # Panda Router and inbox runner are owned by their own scheduled tasks. This script only asks those tasks to start.
 $pandaRouterTask = "DreamPandaRouter"
 $pandaRouterHealthUrl = "http://127.0.0.1:8765/health"
 $inboxRunnerTask = "DreamRouterInbox"
 
-# Swarm Command: FastAPI backend (server.py binds 127.0.0.1 only, port 8000; no database needed, it falls back to
-# in-memory) plus the built React front end (frontend\build, which calls 127.0.0.1:8000). Port 3000 belongs to Obsidian
-# on this node, so the front end is served on 3001 by the Python standard library http.server, bound to 127.0.0.1.
+# Swarm Command: FastAPI backend (server.py binds 127.0.0.1 only, port 8000; serves its page and its API;
+# no database needed, it falls back to in-memory).
 $swarmRoot = "$env:USERPROFILE\antigravity\tools\swarm-command"
 $swarmBackendDir = Join-Path $swarmRoot "backend"
-$swarmBuildDir = Join-Path $swarmRoot "frontend\build"
 $swarmBackendPort = 8000
-$swarmFrontendPort = 3001
 
 function Test-TcpPort([string]$HostIp, [int]$Port) {
     $client = New-Object System.Net.Sockets.TcpClient
@@ -141,12 +139,25 @@ function Invoke-SwarmCommandCheck {
         Write-BootLog "Swarm Command backend (127.0.0.1:$swarmBackendPort)" "port $swarmBackendPort not listening"
         $started += 'backend'
     }
-    if (-not (Test-TcpPort "127.0.0.1" $swarmFrontendPort) -and (Test-Path -LiteralPath (Join-Path $swarmBuildDir "index.html"))) {
-        Start-DetachedService "`"$py`" -m http.server $swarmFrontendPort --bind 127.0.0.1 --directory `"$swarmBuildDir`"" $swarmBuildDir 0
-        Write-BootLog "Swarm Command front end (127.0.0.1:$swarmFrontendPort)" "port $swarmFrontendPort not listening"
-        $started += 'frontend'
-    }
     return $started
+}
+
+# Step 0: Move any stray .zip archives out of the Obsidian Vault into %LOCALAPPDATA%\dream-boot\vault-zips\
+# so the 1 GB Obsidian Sync cap is never bloated and nothing is deleted.
+function Move-VaultZips([string]$VaultPath = $vaultRoot, [string]$DestDir = $vaultZipsDir) {
+    $moved = @()
+    if (-not $VaultPath -or -not (Test-Path -LiteralPath $VaultPath)) { return $moved }
+    $zips = @(Get-ChildItem -LiteralPath $VaultPath -Filter "*.zip" -File -Force -ErrorAction SilentlyContinue)
+    if ($zips.Count -eq 0) { return $moved }
+    if (-not (Test-Path -LiteralPath $DestDir)) {
+        New-Item -ItemType Directory -Path $DestDir -Force -ErrorAction SilentlyContinue | Out-Null
+    }
+    foreach ($z in $zips) {
+        $target = Join-Path $DestDir $z.Name
+        Move-Item -LiteralPath $z.FullName -Destination $target -Force -ErrorAction SilentlyContinue
+        $moved += $target
+    }
+    return $moved
 }
 
 # First run after a boot: the only run allowed to open anything visible (Obsidian, the two browser tabs).
@@ -168,8 +179,8 @@ function Invoke-BootAll {
         Set-Content -Path $firstRunFlag -Value (Get-Date -Format o) -Force -ErrorAction SilentlyContinue
     }
 
-    # 0. Clean any stray .zip archives from Obsidian Vault so 1 GB Obsidian Sync is never bloated
-    Get-ChildItem $vaultRoot -Filter "*.zip" -Force -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+    # 0. Move any stray .zip archives from Obsidian Vault into %LOCALAPPDATA%\dream-boot\vault-zips\ so 1 GB Obsidian Sync is never bloated and nothing is deleted
+    Move-VaultZips | Out-Null
 
     # 1. Obsidian (Vault 9f7e513d0604b00d -> C:\DREAM\Antigravity, Port :27123) for $5 Obsidian Sync.
     #    Obsidian is a window, so it is opened on the first run after a boot only, never on a repeat run.
@@ -230,7 +241,7 @@ function Invoke-BootAll {
         Write-BootLog "DreamOps Bridge (127.0.0.1:9133)" "port 9133 not listening"
     }
 
-    # 8. Panda Router (:8765), inbox runner and Swarm Command (:8000, :3001)
+    # 8. Panda Router (:8765), inbox runner and Swarm Command (:8000)
     Invoke-PandaRouterCheck | Out-Null
     Invoke-InboxRunnerCheck | Out-Null
     Invoke-SwarmCommandCheck | Out-Null
