@@ -154,7 +154,17 @@ function Move-VaultZips([string]$VaultPath = $vaultRoot, [string]$DestDir = $vau
     }
     foreach ($z in $zips) {
         $target = Join-Path $DestDir $z.Name
-        Move-Item -LiteralPath $z.FullName -Destination $target -Force -ErrorAction SilentlyContinue
+        if (Test-Path -LiteralPath $target) {
+            # A zip of the same name is already in vault-zips: give this one a dated name so nothing is overwritten.
+            $stamp = (Get-Date).ToString("yyyyMMdd-HHmmss")
+            $target = Join-Path $DestDir ("{0}-{1}{2}" -f $z.BaseName, $stamp, $z.Extension)
+            $n = 2
+            while (Test-Path -LiteralPath $target) {
+                $target = Join-Path $DestDir ("{0}-{1}-{2}{3}" -f $z.BaseName, $stamp, $n, $z.Extension)
+                $n++
+            }
+        }
+        Move-Item -LiteralPath $z.FullName -Destination $target -ErrorAction SilentlyContinue
         $moved += $target
     }
     return $moved
