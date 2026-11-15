@@ -111,6 +111,32 @@ export const DREAM_INTAKE_REPO_ROOT_ENV = 'DREAM_INTAKE_REPO_ROOT';
 export const MAX_CONSECUTIVE_FAILURES = 3;
 export const LANE_LIVENESS_TIMEOUT_MS = 10 * 60 * 1000;
 export const LANE_PROCESS_MISSING_REASON = 'lane process missing';
+/** The code map script (task c1). The runner builds the map of each repo with it before a lane starts. */
+export const DEFAULT_CODEMAP_SCRIPT_PATH = path.resolve(ROUTER_DIR, '..', 'codemap', 'build-codemap.mjs');
+/** Copy of each repo's code map in the synced vault: %USERPROFILE%\Obsidian\Alienware\codemap\<repo>.md */
+export const DEFAULT_CODEMAP_VAULT_DIR = path.join(os.homedir(), 'Obsidian', 'Alienware', 'codemap');
+/** A code map build that takes longer than this never blocks the task. */
+export const CODEMAP_BUILD_TIMEOUT_MS = 60_000;
+/** Portable path of the code map the brief points at (the runner fills in the repo). */
+export const CODEMAP_BRIEF_PATH_TEMPLATE = '%USERPROFILE%\\antigravity\\.fable-kitchen\\codemap\\<repo>.md';
+
+export type CodemapState = 'fresh' | 'rebuilt' | 'skipped';
+
+export interface CodemapStatus {
+  state: CodemapState;
+  /** Why the map was skipped (or a note on a rebuilt map whose vault copy failed). */
+  reason: string | null;
+  /** Absolute path of the map under the kitchen folder. */
+  mapPath: string;
+}
+
+/** One phrase for the first log line of a task: `code map: fresh`, `code map: rebuilt` or `code map: skipped (<why>)`. */
+export function formatCodemapStatus(status: Pick<CodemapStatus, 'state' | 'reason'>): string {
+  if (status.state === 'skipped') {
+    return `code map: skipped (${status.reason || 'unknown'})`;
+  }
+  return `code map: ${status.state}`;
+}
 
 export const INBOX_SUBFOLDERS = ['queued', 'running', 'done', 'failed', 'for-judge'] as const;
 export type InboxSubfolder = (typeof INBOX_SUBFOLDERS)[number];
@@ -230,6 +256,14 @@ export interface InboxRunnerOptions {
   pandaPool?: Record<string, string>;
   /** Optional timeout in ms for Panda /route calls (default: 2000). */
   pandaTimeoutMs?: number;
+  /** Folder for code maps (default: the kitchen folder's codemap\, i.e. %USERPROFILE%\antigravity\.fable-kitchen\codemap). */
+  codemapDir?: string;
+  /** Folder the code map is copied to (default: %USERPROFILE%\Obsidian\Alienware\codemap). */
+  codemapVaultDir?: string;
+  /** Path to build-codemap.mjs (default: ops/codemap/build-codemap.mjs in this repo). */
+  codemapScriptPath?: string;
+  /** Longest a code map build may take before the task goes on without it (default: 60000). */
+  codemapTimeoutMs?: number;
 }
 
 /**
@@ -596,9 +630,12 @@ export function isKnownLaneInTable(table: LaneTable, candidateLane: string): boo
 export function buildCookbookCommonRulesPreamble(options?: {
   branchName?: string;
   baseBranch?: string;
+  /** Portable (%USERPROFILE%) path of the repo's code map. */
+  codemapPath?: string;
 }): string {
   const branchName = options?.branchName ?? 'ai/inbox/<id>';
   const prBase = (options?.baseBranch ?? DEFAULT_BASE_BRANCH).replace(/^origin\//, '');
+  const codemapPath = options?.codemapPath ?? CODEMAP_BRIEF_PATH_TEMPLATE;
   return [
     'Use your highest reasoning level. Read docs/standards/AGENT-STANDARD.md before anything else.',
     `PR only: work on branch ${branchName} and open a pull request with gh against base ${prBase}; never push to main or master, never merge, never use --no-verify or --force, never rewrite history.`,
@@ -606,12 +643,14 @@ export function buildCookbookCommonRulesPreamble(options?: {
     'No secrets: this repo is public; no private LAN addresses, no secrets, never print an environment value.',
     'Proof pasted: a passing exit code is not proof; paste real command output in the PR description.',
     'Obsidian note: finish with a caveman Obsidian note under %USERPROFILE%\\Obsidian\\Alienware\\ with DID, BROKE, NEXT, BLOCKED, FILES, and paste its path.',
+    `Code map: read the code map at ${codemapPath} first, then the task.`,
+    "Fleet memory: if the ai-memory tool is available, search it for the task's subject before you start. At the end store at most three lasting facts: what changed, where, what broke. Never a secret, never an env value, never anything from a vault file.",
   ].join('\n');
 }
 
 export function prependCookbookRulesToTask(
   task: ParsedInboxTask,
-  options?: { branchName?: string; baseBranch?: string }
+  options?: { branchName?: string; baseBranch?: string; codemapPath?: string }
 ): string {
   const preamble = buildCookbookCommonRulesPreamble(options);
   return `${preamble}\n\n# ${task.title}\n\n${task.taskText}`;
@@ -726,6 +765,10 @@ export class InboxRunner {
   private readonly pandaPoolPath?: string;
   private readonly pandaPool?: Record<string, string>;
   private readonly pandaTimeoutMs: number;
+  private readonly codemapDir: string;
+  private readonly codemapVaultDir: string;
+  private readonly codemapScriptPath: string;
+  private readonly codemapTimeoutMs: number;
 
   private isTickActive = false;
   private startupGhChecked = false;
@@ -788,6 +831,10 @@ export class InboxRunner {
     this.pandaPoolPath = options?.pandaPoolPath;
     this.pandaPool = options?.pandaPool;
     this.pandaTimeoutMs = options?.pandaTimeoutMs ?? DEFAULT_PANDA_TIMEOUT_MS;
+    this.codemapDir = options?.codemapDir ?? path.join(path.dirname(this.inboxDir), 'codemap');
+    this.codemapVaultDir = options?.codemapVaultDir ?? DEFAULT_CODEMAP_VAULT_DIR;
+    this.codemapScriptPath = options?.codemapScriptPath ?? DEFAULT_CODEMAP_SCRIPT_PATH;
+    this.codemapTimeoutMs = options?.codemapTimeoutMs ?? CODEMAP_BUILD_TIMEOUT_MS;
     this.adapter =
       options?.adapter ??
       new AgyDispatchAdapter({
@@ -893,6 +940,111 @@ export class InboxRunner {
   /** Runs a git or gh command with the scrubbed environment (dedicated GH_CONFIG_DIR, no GitHub token variables). */
   private runCommand(req: CommandExecRequest): Promise<CommandExecResult> {
     return this.commandRunner({ ...req, env: this.laneEnv });
+  }
+
+  /**
+   * Makes sure the repo's code map is current before a lane starts.
+   * Missing or older than the worktree's base commit: rebuild it with build-codemap.mjs from the fresh worktree,
+   * write it under the kitchen codemap folder and copy it to the vault codemap folder.
+   * Never throws: a failed or slow build returns `skipped` with a short reason and the task goes on.
+   */
+  public async ensureCodemap(repoName: string, worktreePath: string): Promise<CodemapStatus> {
+    const mapPath = path.join(this.codemapDir, `${repoName}.md`);
+    const vaultPath = path.join(this.codemapVaultDir, `${repoName}.md`);
+    const skipped = (reason: string): CodemapStatus => ({ state: 'skipped', reason, mapPath });
+    const copyToVault = (): string | null => {
+      try {
+        fs.mkdirSync(this.codemapVaultDir, { recursive: true });
+        fs.copyFileSync(mapPath, vaultPath);
+        return null;
+      } catch {
+        return 'vault copy failed';
+      }
+    };
+
+    try {
+      if (!fs.existsSync(worktreePath)) {
+        return skipped('worktree missing');
+      }
+
+      // Base commit time of the fresh worktree (HEAD is the base it was made from).
+      let baseCommitMs: number | null = null;
+      try {
+        const logRes = await this.runCommand({
+          command: 'git',
+          args: ['log', '-1', '--format=%ct', 'HEAD'],
+          cwd: worktreePath,
+        });
+        const seconds = Number.parseInt(String(logRes.stdout ?? '').trim(), 10);
+        if (logRes.exitCode === 0 && Number.isFinite(seconds) && seconds > 0) {
+          baseCommitMs = seconds * 1000;
+        }
+      } catch {
+        baseCommitMs = null;
+      }
+
+      if (fs.existsSync(mapPath) && baseCommitMs !== null) {
+        const mapMtimeMs = fs.statSync(mapPath).mtimeMs;
+        if (mapMtimeMs >= baseCommitMs) {
+          if (!fs.existsSync(vaultPath)) {
+            copyToVault();
+          }
+          return { state: 'fresh', reason: null, mapPath };
+        }
+      }
+
+      if (!fs.existsSync(this.codemapScriptPath)) {
+        return skipped('build script missing');
+      }
+
+      fs.mkdirSync(this.codemapDir, { recursive: true });
+      const tmpPath = `${mapPath}.tmp`;
+      try {
+        fs.rmSync(tmpPath, { force: true });
+      } catch {
+        // best effort
+      }
+
+      let timer: NodeJS.Timeout | null = null;
+      const timeoutSeconds = Math.round(this.codemapTimeoutMs / 1000);
+      const timedOut = new Promise<'timeout'>((resolve) => {
+        timer = setTimeout(() => resolve('timeout'), this.codemapTimeoutMs);
+        timer.unref?.();
+      });
+      const buildRun = this.runCommand({
+        command: process.execPath,
+        args: [this.codemapScriptPath, worktreePath, repoName, '--out', tmpPath],
+        cwd: worktreePath,
+        timeoutMs: this.codemapTimeoutMs,
+      }).catch((err: unknown) => ({
+        exitCode: 1,
+        stdout: '',
+        stderr: String((err as Error)?.message ?? err),
+      }));
+      const raced = await Promise.race([buildRun, timedOut]);
+      if (timer) clearTimeout(timer);
+
+      if (raced === 'timeout') {
+        return skipped(`build took over ${timeoutSeconds}s`);
+      }
+      if (raced.exitCode !== 0) {
+        try {
+          fs.rmSync(tmpPath, { force: true });
+        } catch {
+          // best effort
+        }
+        return skipped(`build failed, exit ${raced.exitCode}`);
+      }
+      if (!fs.existsSync(tmpPath) || fs.statSync(tmpPath).size === 0) {
+        return skipped('build wrote no map');
+      }
+      fs.renameSync(tmpPath, mapPath);
+      const copyNote = copyToVault();
+      return { state: 'rebuilt', reason: copyNote, mapPath };
+    } catch (err: unknown) {
+      const code = (err as NodeJS.ErrnoException)?.code;
+      return skipped(code ? `build error ${code}` : 'build error');
+    }
   }
 
   /**
@@ -1987,6 +2139,16 @@ export class InboxRunner {
           cwd: repoTarget.root,
         });
 
+        // Code map: after the worktree is made and before the lane starts. Never blocks the task.
+        const codemapStatus: CodemapStatus =
+          worktreeAddRes.exitCode === 0
+            ? await this.ensureCodemap(repoTarget.name, worktreePath)
+            : {
+                state: 'skipped',
+                reason: 'worktree add failed',
+                mapPath: path.join(this.codemapDir, `${repoTarget.name}.md`),
+              };
+
         let activeRouted = routed;
         let selectedModel = await this.selectModelBeforeAgyRun(parsed, activeRouted);
         let decision = selectedModel.decision;
@@ -1997,6 +2159,7 @@ export class InboxRunner {
         const basePromptWithRules = prependCookbookRulesToTask(parsed, {
           branchName,
           baseBranch: configuredBase,
+          codemapPath: toPortablePath(codemapStatus.mapPath, this.env),
         });
 
         let currentPrompt = isLivenessRequeue
@@ -2009,6 +2172,10 @@ export class InboxRunner {
 
         if (lastPandaFallbackLogLine) {
           combinedLogs.push(lastPandaFallbackLogLine);
+        }
+
+        if (codemapStatus.state === 'skipped' || codemapStatus.reason) {
+          combinedLogs.push(`[codemap] ${repoTarget.name}: ${formatCodemapStatus(codemapStatus)}${codemapStatus.state === 'rebuilt' && codemapStatus.reason ? ` (${codemapStatus.reason})` : ''}`);
         }
 
         if (worktreeAddRes.exitCode !== 0) {
@@ -2253,7 +2420,7 @@ export class InboxRunner {
         }
 
         void lastPandaFallbackLogLine;
-        const firstLogLine = formatTaskLogFirstLine(decision.lane, modelPickedBy);
+        const firstLogLine = `${formatTaskLogFirstLine(decision.lane, modelPickedBy)} | ${formatCodemapStatus(codemapStatus)}`;
         const bodyLogContent = combinedLogs.filter(Boolean).join('\n--- attempt ---\n');
         const sanitizedLogContent = sanitizeDecisionLogText(
           bodyLogContent ? `${firstLogLine}\n${bodyLogContent}` : firstLogLine,
