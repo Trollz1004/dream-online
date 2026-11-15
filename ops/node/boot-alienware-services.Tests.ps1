@@ -67,16 +67,17 @@ Describe 'Swarm Command check' {
   Mock Start-DetachedService {}
   Mock Test-Path { $true } -ParameterFilter { $LiteralPath -like '*swarm-command*' }
 
-  It 'both ports down: starts backend and front end once each, hidden, on 127.0.0.1' {
+  It 'port 8000 down: starts backend once, hidden, on 127.0.0.1:8000 and never starts a separate server on 3001' {
     Mock Get-SwarmPython { 'X:\venv\Scripts\python.exe' }
     Mock Test-TcpPort { $false }
     $started = @(Invoke-SwarmCommandCheck)
-    $started.Count | Should Be 2
+    $started.Count | Should Be 1
+    $started[0] | Should Be 'backend'
     Assert-MockCalled Start-DetachedService -Times 1 -Exactly -Scope It -ParameterFilter { $CommandLine -like '*run_server(port=8000)*' -and $ShowWindow -eq 0 }
-    Assert-MockCalled Start-DetachedService -Times 1 -Exactly -Scope It -ParameterFilter { $CommandLine -like '*http.server 3001 --bind 127.0.0.1*' -and $ShowWindow -eq 0 }
-    Assert-MockCalled Write-BootLog -Times 2 -Exactly -Scope It
+    Assert-MockCalled Start-DetachedService -Times 0 -Exactly -Scope It -ParameterFilter { $CommandLine -like '*3001*' -or $CommandLine -like '*http.server*' }
+    Assert-MockCalled Write-BootLog -Times 1 -Exactly -Scope It
   }
-  It 'both ports up: calls nothing' {
+  It 'port 8000 up: calls nothing' {
     Mock Get-SwarmPython { 'X:\venv\Scripts\python.exe' }
     Mock Test-TcpPort { $true }
     @(Invoke-SwarmCommandCheck).Count | Should Be 0
@@ -87,6 +88,10 @@ Describe 'Swarm Command check' {
     Mock Test-TcpPort { $false }
     @(Invoke-SwarmCommandCheck).Count | Should Be 0
     Assert-MockCalled Start-DetachedService -Times 0 -Exactly -Scope It
+  }
+  It 'defines port 8000 and no separate front end port variable' {
+    $swarmBackendPort | Should Be 8000
+    (Get-Variable -Name swarmFrontendPort -ErrorAction SilentlyContinue) | Should Be $null
   }
 }
 

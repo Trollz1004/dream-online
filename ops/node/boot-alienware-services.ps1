@@ -10,7 +10,7 @@
 # - :9133  DreamOps Bridge (game/server/dreamops-bridge/src/server.js)
 # - :8765  Panda Router (scheduled task DreamPandaRouter; started through the task only)
 # - inbox runner (scheduled task DreamRouterInbox; started through the task only, never a second runner)
-# - :8000 / :3001 Swarm Command backend and built front end (%USERPROFILE%\antigravity\tools\swarm-command), 127.0.0.1 only
+# - :8000  Swarm Command page and API from backend (%USERPROFILE%\antigravity\tools\swarm-command), 127.0.0.1 only
 # - 13/13 multi-harness skills sync.
 # Repeat runs never open a window or a browser tab. Every start writes one line to %LOCALAPPDATA%\dream-boot\boot.log.
 # Tests: powershell -NoProfile -Command "Import-Module Pester -RequiredVersion 3.4.0; Invoke-Pester -Path ops/node/boot-alienware-services.Tests.ps1"
@@ -36,14 +36,11 @@ $pandaRouterTask = "DreamPandaRouter"
 $pandaRouterHealthUrl = "http://127.0.0.1:8765/health"
 $inboxRunnerTask = "DreamRouterInbox"
 
-# Swarm Command: FastAPI backend (server.py binds 127.0.0.1 only, port 8000; no database needed, it falls back to
-# in-memory) plus the built React front end (frontend\build, which calls 127.0.0.1:8000). Port 3000 belongs to Obsidian
-# on this node, so the front end is served on 3001 by the Python standard library http.server, bound to 127.0.0.1.
+# Swarm Command: FastAPI backend (server.py binds 127.0.0.1 only, port 8000; serves its page and its API;
+# no database needed, it falls back to in-memory).
 $swarmRoot = "$env:USERPROFILE\antigravity\tools\swarm-command"
 $swarmBackendDir = Join-Path $swarmRoot "backend"
-$swarmBuildDir = Join-Path $swarmRoot "frontend\build"
 $swarmBackendPort = 8000
-$swarmFrontendPort = 3001
 
 function Test-TcpPort([string]$HostIp, [int]$Port) {
     $client = New-Object System.Net.Sockets.TcpClient
@@ -141,11 +138,6 @@ function Invoke-SwarmCommandCheck {
         Write-BootLog "Swarm Command backend (127.0.0.1:$swarmBackendPort)" "port $swarmBackendPort not listening"
         $started += 'backend'
     }
-    if (-not (Test-TcpPort "127.0.0.1" $swarmFrontendPort) -and (Test-Path -LiteralPath (Join-Path $swarmBuildDir "index.html"))) {
-        Start-DetachedService "`"$py`" -m http.server $swarmFrontendPort --bind 127.0.0.1 --directory `"$swarmBuildDir`"" $swarmBuildDir 0
-        Write-BootLog "Swarm Command front end (127.0.0.1:$swarmFrontendPort)" "port $swarmFrontendPort not listening"
-        $started += 'frontend'
-    }
     return $started
 }
 
@@ -230,7 +222,7 @@ function Invoke-BootAll {
         Write-BootLog "DreamOps Bridge (127.0.0.1:9133)" "port 9133 not listening"
     }
 
-    # 8. Panda Router (:8765), inbox runner and Swarm Command (:8000, :3001)
+    # 8. Panda Router (:8765), inbox runner and Swarm Command (:8000)
     Invoke-PandaRouterCheck | Out-Null
     Invoke-InboxRunnerCheck | Out-Null
     Invoke-SwarmCommandCheck | Out-Null
