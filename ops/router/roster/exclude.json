@@ -1,0 +1,54 @@
+{
+  "patterns": [
+    {
+      "pattern": "azure-*",
+      "reason": "cloud-only placeholders, not our stack"
+    },
+    {
+      "pattern": "*RETIRED*",
+      "reason": "retired folder (contains RETIRED in its name)"
+    },
+    {
+      "pattern": "microsoft-foundry",
+      "reason": "cloud-only placeholders, not our stack"
+    },
+    {
+      "pattern": "entra-app-registration",
+      "reason": "cloud-only placeholders, not our stack"
+    },
+    {
+      "pattern": "appinsights-instrumentation",
+      "reason": "cloud-only placeholders, not our stack"
+    },
+    {
+      "pattern": "antigravity-fleet",
+      "reason": "stale, names a deleted profile"
+    }
+  ],
+  "folders": {
+    "azure-*": "cloud-only placeholders, not our stack",
+    "azure-ai": "cloud-only placeholders, not our stack",
+    "azure-aigateway": "cloud-only placeholders, not our stack",
+    "azure-cloud-migrate": "cloud-only placeholders, not our stack",
+    "azure-compliance": "cloud-only placeholders, not our stack",
+    "azure-compute": "cloud-only placeholders, not our stack",
+    "azure-cost-optimization": "cloud-only placeholders, not our stack",
+    "azure-deploy": "cloud-only placeholders, not our stack",
+    "azure-diagnostics": "cloud-only placeholders, not our stack",
+    "azure-hosted-copilot-sdk": "cloud-only placeholders, not our stack",
+    "azure-kusto": "cloud-only placeholders, not our stack",
+    "azure-messaging": "cloud-only placeholders, not our stack",
+    "azure-observability": "cloud-only placeholders, not our stack",
+    "azure-prepare": "cloud-only placeholders, not our stack",
+    "azure-rbac": "cloud-only placeholders, not our stack",
+    "azure-resource-lookup": "cloud-only placeholders, not our stack",
+    "azure-resource-visualizer": "cloud-only placeholders, not our stack",
+    "azure-storage": "cloud-only placeholders, not our stack",
+    "azure-validate": "cloud-only placeholders, not our stack",
+    "microsoft-foundry": "cloud-only placeholders, not our stack",
+    "entra-app-registration": "cloud-only placeholders, not our stack",
+    "appinsights-instrumentation": "cloud-only placeholders, not our stack",
+    "marketing-fleet-prompts.RETIRED-2026-11-03": "retired folder (contains RETIRED in its name)",
+    "antigravity-fleet": "stale, names a deleted profile"
+  }
+}
