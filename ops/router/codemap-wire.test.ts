@@ -107,6 +107,8 @@ function newRunner(sb: Sandbox, runner: CommandRunner, adapter?: DispatchAdapter
     codemapTimeoutMs: timeoutMs,
     commandRunner: runner,
     adapter: adapter ?? makeAdapter([]),
+    // The sandbox root stands in for the user folder, so the brief path is written the same way on every platform.
+    env: { ...process.env, USERPROFILE: sb.tmpRoot },
     now: () => new Date('2026-11-15T07:00:00Z'),
   });
 }
@@ -271,7 +273,7 @@ test('brief: every lane gets the code map line and the fleet memory line next to
     assert.ok(codeMapLine, 'code map line present');
     assert.ok(codeMapLine!.endsWith(`codemap\\dream-online.md${CODE_MAP_LINE_END}`), codeMapLine);
     assert.ok(codeMapLine!.includes('%USERPROFILE%'), 'portable path, no user folder name');
-    assert.ok(!codeMapLine!.includes(os.homedir()), 'no user folder name');
+    assert.ok(!codeMapLine!.includes(sb.tmpRoot), 'no real folder path');
     assert.ok(prompt.includes(FLEET_MEMORY_LINE));
     const log = fs.readFileSync(path.join(folders.done, 'codemap-task.log'), 'utf8');
     assert.match(log.split(/\r?\n/)[0], / \| code map: rebuilt$/);
