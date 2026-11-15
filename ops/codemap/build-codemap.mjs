@@ -38,6 +38,9 @@ const SCRIPT_EXT = new Set(['ps1', 'psm1', 'sh', 'bash', 'bat', 'cmd', 'vbs', 'm
 const OPS_DIRS = new Set(['ops', 'scripts', 'script', 'tasks', 'cron', 'scheduled', 'jobs', 'bin', 'deploy', 'infra']);
 const SCHEDULED_RE = /Register-ScheduledTask|schtasks(\.exe)?\s|New-ScheduledTaskTrigger|crontab|node-cron|cron\.schedule|^\s*-\s*cron\s*:|^\s*schedule\s*:/im;
 
+// A line that holds a regex literal with alternation is a pattern, not a scheduled task.
+const looksScheduled = (text) => text.split(/\r?\n/).some((l) => SCHEDULED_RE.test(l) && !/\/[^/\s]*\|[^/]*\//.test(l));
+
 const MAX_READ_BYTES = 400 * 1024;
 const MAX_FILES = 60000;
 const MAX_DEPTH = 14;
@@ -87,7 +90,7 @@ const groupOf = (dir) => {
 };
 const isTestFile = (rel) => {
   const base = path.posix.basename(rel);
-  return /\.(test|spec)\.[a-z]+$/i.test(base) || /^test_.*\.py$/i.test(base) || /_test\.py$/i.test(base)
+  return /\.(test|spec|tests)\.[a-z0-9]+$/i.test(base) || /^test_.*\.py$/i.test(base) || /_test\.py$/i.test(base)
     || /(^|\/)(__tests__|tests?)\//i.test(rel);
 };
 const oneLine = (s, n = 110) => {
@@ -184,17 +187,33 @@ function readmeLine(text) {
 }
 
 function firstComment(text) {
-  const lines = text.split(/\r?\n/).slice(0, 25);
+  const lines = text.split(/\r?\n/).slice(0, 30);
+  let inBlock = false;
+  const skip = (t) => !t || /^\.(SYNOPSIS|DESCRIPTION|NOTES|EXAMPLE|PARAMETER)\b/i.test(t) || /^(eslint|@ts-|prettier|type:|pylint|noqa|SPDX|Copyright|requires\b|region\b|endregion\b)/i.test(t) || t === 'use strict' || /^[<#>*\/"'=-]+$/.test(t);
   for (const raw of lines) {
     const line = raw.trim();
+    if (inBlock) {
+      if (/^(#>|\*\/|"""|''')/.test(line)) { inBlock = false; continue; }
+      const t = line.replace(/^\*\s?/, '').replace(/(#>|\*\/|"""|''')$/, '').trim();
+      if (/(#>|\*\/|"""|''')$/.test(line)) inBlock = false;
+      if (skip(t)) continue;
+      return oneLine(t);
+    }
     if (!line || line.startsWith('#!') || /coding[:=]/.test(line) || /^@?echo off/i.test(line)) continue;
-    let m = line.match(/^(?:#|\/\/+|::|REM\s|'|\/\*+|\*|"""|''')\s*(.*?)\s*(?:\*\/|"""|''')?$/i);
+    const open = line.match(/^(<#|\/\*+|"""|''')\s*(.*)$/);
+    if (open) {
+      const rest = open[2].replace(/(#>|\*\/|"""|''')\s*$/, '').trim();
+      if (!/(#>|\*\/|"""|''')\s*$/.test(open[2]) || !open[2]) inBlock = !/(#>|\*\/|"""|''')\s*$/.test(open[2]);
+      if (!skip(rest)) return oneLine(rest);
+      continue;
+    }
+    const m = line.match(/^(?:#|\/\/+|::|REM\s|')\s*(.*)$/i);
     if (!m) {
-      if (/^(<#|param\s*\(|\[CmdletBinding)/i.test(line)) continue;
+      if (/^(param\s*\(|\[CmdletBinding|Set-StrictMode|\$ErrorActionPreference|setlocal)/i.test(line)) continue;
       return '';
     }
     const t = m[1].replace(/^[-=*#\s]+/, '').trim();
-    if (!t || /^\.(SYNOPSIS|DESCRIPTION|NOTES|EXAMPLE)$/i.test(t) || /^(eslint|@ts-|prettier|type:|pylint|noqa|SPDX|Copyright|<#|#>)/i.test(t) || t === 'use strict') continue;
+    if (skip(t)) continue;
     return oneLine(t);
   }
   return '';
@@ -356,7 +375,7 @@ export function buildCodemap(root, name, opts = {}) {
     }
     return { d, desc };
   });
-  const rootFiles = files.filter((f) => !f.dir);
+  const rootFiles = files.filter((f) => !f.dir).sort((a, b) => Number(a.name.startsWith('.')) - Number(b.name.startsWith('.')) || a.name.localeCompare(b.name));
 
   // package.json scripts
   const pkgs = [];
@@ -380,7 +399,7 @@ export function buildCodemap(root, name, opts = {}) {
     const text = read(f);
     if (text == null) continue;
     try {
-      if (SCHEDULED_RE.test(text) && !isTestFile(f.rel)) scheduled.add(f.rel);
+      if (!isTestFile(f.rel) && looksScheduled(text)) scheduled.add(f.rel);
       if (!isCode) continue;
       if (!isTestFile(f.rel)) {
         if (SERVER_RE.test(text)) servers.push({ file: f, ports: extractPorts(text), main: /__name__\s*==\s*['"]__main__['"]/.test(text) });
@@ -422,7 +441,7 @@ export function buildCodemap(root, name, opts = {}) {
     const inOps = segs.some((s) => OPS_DIRS.has(s.toLowerCase())) && SCRIPT_EXT.has(f.ext);
     const workflow = f.dir === '.github/workflows' && /\.ya?ml$/i.test(f.name);
     return inOps || workflow || scheduled.has(f.rel);
-  });
+  }).sort((a, b) => Number(b.rel.startsWith('.github/')) - Number(a.rel.startsWith('.github/')) || Number(scheduled.has(b.rel)) - Number(scheduled.has(a.rel)) || Number(a.rel.startsWith('.')) - Number(b.rel.startsWith('.')) || a.rel.localeCompare(b.rel));
 
   const largest = files.filter((f) => SOURCE_EXT.has(f.ext) && !f.binary && !f.generated).sort((a, b) => b.size - a.size).slice(0, 15);
   const pairs = [...pairCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 40);
@@ -526,7 +545,8 @@ export function buildCodemap(root, name, opts = {}) {
     if (!opsFiles.length) out.push('- none found');
     for (const f of opsFiles.slice(0, L.ops)) {
       const t = read(f);
-      const desc = (t && firstComment(t)) || `${f.ext || 'file'} script`;
+      const yamlName = t && /\.ya?ml$/i.test(f.name) ? (t.match(/^name:\s*['"]?(.+?)['"]?\s*$/m) || [])[1] : '';
+      const desc = (yamlName && `workflow: ${oneLine(yamlName)}`) || (t && firstComment(t)) || `${f.ext || 'file'} script`;
       out.push(`- ${noteLink(f.rel)}${scheduled.has(f.rel) ? ' (scheduled)' : ''}: ${desc}`);
     }
     if (opsFiles.length > L.ops) {
