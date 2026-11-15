@@ -30,6 +30,7 @@ $vaultRoot = "C:\DREAM\Antigravity"
 $alienwareVaultId = "9f7e513d0604b00d"
 $bootLogDir = "$env:LOCALAPPDATA\dream-boot"
 $bootLog = Join-Path $bootLogDir "boot.log"
+$vaultZipsDir = Join-Path $bootLogDir "vault-zips"
 
 # Panda Router and inbox runner are owned by their own scheduled tasks. This script only asks those tasks to start.
 $pandaRouterTask = "DreamPandaRouter"
@@ -141,6 +142,24 @@ function Invoke-SwarmCommandCheck {
     return $started
 }
 
+# Step 0: Move any stray .zip archives out of the Obsidian Vault into %LOCALAPPDATA%\dream-boot\vault-zips\
+# so the 1 GB Obsidian Sync cap is never bloated and nothing is deleted.
+function Move-VaultZips([string]$VaultPath = $vaultRoot, [string]$DestDir = $vaultZipsDir) {
+    $moved = @()
+    if (-not $VaultPath -or -not (Test-Path -LiteralPath $VaultPath)) { return $moved }
+    $zips = @(Get-ChildItem -LiteralPath $VaultPath -Filter "*.zip" -File -Force -ErrorAction SilentlyContinue)
+    if ($zips.Count -eq 0) { return $moved }
+    if (-not (Test-Path -LiteralPath $DestDir)) {
+        New-Item -ItemType Directory -Path $DestDir -Force -ErrorAction SilentlyContinue | Out-Null
+    }
+    foreach ($z in $zips) {
+        $target = Join-Path $DestDir $z.Name
+        Move-Item -LiteralPath $z.FullName -Destination $target -Force -ErrorAction SilentlyContinue
+        $moved += $target
+    }
+    return $moved
+}
+
 # First run after a boot: the only run allowed to open anything visible (Obsidian, the two browser tabs).
 function Get-BootFlagPath {
     $boot = (Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue).LastBootUpTime
@@ -160,8 +179,8 @@ function Invoke-BootAll {
         Set-Content -Path $firstRunFlag -Value (Get-Date -Format o) -Force -ErrorAction SilentlyContinue
     }
 
-    # 0. Clean any stray .zip archives from Obsidian Vault so 1 GB Obsidian Sync is never bloated
-    Get-ChildItem $vaultRoot -Filter "*.zip" -Force -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+    # 0. Move any stray .zip archives from Obsidian Vault into %LOCALAPPDATA%\dream-boot\vault-zips\ so 1 GB Obsidian Sync is never bloated and nothing is deleted
+    Move-VaultZips | Out-Null
 
     # 1. Obsidian (Vault 9f7e513d0604b00d -> C:\DREAM\Antigravity, Port :27123) for $5 Obsidian Sync.
     #    Obsidian is a window, so it is opened on the first run after a boot only, never on a repeat run.

@@ -109,6 +109,34 @@ Describe 'Write-BootLog' {
   }
 }
 
+Describe 'Step 0 vault zip move' {
+  It 'moves stray .zip files from the vault folder into vault-zips and leaves notes untouched' {
+    $fakeVault = Join-Path $TestDrive 'vault-with-zips'
+    $fakeZips = Join-Path $TestDrive 'dream-boot\vault-zips'
+    New-Item -ItemType Directory -Path $fakeVault -Force | Out-Null
+    $zipA = Join-Path $fakeVault 'stray-a.zip'
+    $zipB = Join-Path $fakeVault 'stray-b.zip'
+    $note = Join-Path $fakeVault 'keep-me.md'
+    Set-Content -LiteralPath $zipA -Value 'PK-fake-a' -Encoding ASCII
+    Set-Content -LiteralPath $zipB -Value 'PK-fake-b' -Encoding ASCII
+    Set-Content -LiteralPath $note -Value '# Note' -Encoding UTF8
+
+    $moved = @(Move-VaultZips -VaultPath $fakeVault -DestDir $fakeZips)
+    $moved.Count | Should Be 2
+    (Test-Path -LiteralPath $zipA) | Should Be $false
+    (Test-Path -LiteralPath $zipB) | Should Be $false
+    (Test-Path -LiteralPath (Join-Path $fakeZips 'stray-a.zip')) | Should Be $true
+    (Test-Path -LiteralPath (Join-Path $fakeZips 'stray-b.zip')) | Should Be $true
+    (Test-Path -LiteralPath $note) | Should Be $true
+  }
+
+  It 'defaults destination to %LOCALAPPDATA%\dream-boot\vault-zips and never deletes .zip files' {
+    $vaultZipsDir | Should Be (Join-Path $env:LOCALAPPDATA 'dream-boot\vault-zips')
+    $src = Get-Content -LiteralPath (Join-Path $here 'boot-alienware-services.ps1') -Raw
+    $src | Should Not Match '\*\.zip.*Remove-Item'
+  }
+}
+
 Describe 'Repeat runs open no window and no browser tab' {
   $src = Get-Content -LiteralPath (Join-Path $here 'boot-alienware-services.ps1') -Raw
   It 'every Start-Process (Obsidian link and browser tabs) sits behind the first-run-after-boot gate' {
