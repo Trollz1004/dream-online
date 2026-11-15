@@ -4,10 +4,17 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
+  DEFAULT_QUOTA_COOLDOWN_HOURS,
+  DEFAULT_QUOTA_COOLDOWN_MS,
   type DispatchAdapter,
   type DispatchHandle,
   type DispatchJobInput,
+  JevRouter,
+  MAX_QUOTA_COOLDOWN_MS,
+  MIN_QUOTA_COOLDOWN_MS,
   parsePrUrlFromOutput,
+  parseQuotaCooldown,
+  QUOTA_RESET_BUFFER_MS,
 } from './dream-task-router.ts';
 import {
   askPandaRoute,
@@ -605,5 +612,257 @@ test('fallback: when Panda is down, slow, returns malformed JSON or missing mode
     } finally {
       fs.rmSync(tmpRoot, { recursive: true, force: true });
     }
+  }
+});
+
+test('quota reset cooldown: parses Resets in 1h20m9s, 29m23s, and 45s (+5m), defaults to 2h constant on missing or nonsense time, clamps to [5m, 24h], and logs until + source', () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-quota-reset-parse-'));
+  try {
+    const now = new Date('2026-11-15T07:04:45.000Z');
+    const router = new JevRouter({ decisionsLogPath: path.join(tmpRoot, 'decisions.log') });
+
+    assert.equal(DEFAULT_QUOTA_COOLDOWN_HOURS, 2);
+    assert.equal(DEFAULT_QUOTA_COOLDOWN_MS, 2 * 3_600_000);
+    assert.equal(QUOTA_RESET_BUFFER_MS, 5 * 60_000);
+    assert.equal(MIN_QUOTA_COOLDOWN_MS, 5 * 60_000);
+    assert.equal(MAX_QUOTA_COOLDOWN_MS, 24 * 3_600_000);
+
+    // 1. Form 1: 'Resets in 1h20m9s' -> 1h20m9s (4,809,000 ms) + 5m (300,000 ms) = 1h25m9s (5,109,000 ms)
+    const report1 = router.reportQuotaError(
+      'claude-opus-5-5',
+      'AGY_ERROR: {"short_error":"RESOURCE_EXHAUSTED (code 429): Individual quota reached. Please upgrade your subscription to increase your limits. Resets in 1h20m9s."}',
+      now
+    );
+    const expectedUntil1 = new Date(now.getTime() + (1 * 3_600_000 + 20 * 60_000 + 9 * 1_000) + 5 * 60_000).toISOString();
+    assert.equal(report1.durationMs, 5_109_000);
+    assert.equal(report1.until, expectedUntil1);
+    assert.equal(report1.source, 'message');
+    assert.equal(report1.quotaGroup, 'agy-claude');
+    assert.ok(report1.logLine.includes(expectedUntil1), report1.logLine);
+    assert.ok(report1.logLine.includes('message'), report1.logLine);
+    assert.ok(!report1.logLine.includes('default'), report1.logLine);
+
+    // 2. Form 2: 'Resets in 29m23s' -> 29m23s (1,763,000 ms) + 5m (300,000 ms) = 34m23s (2,063,000 ms)
+    const report2 = router.reportQuotaError(
+      'claude-sonnet-5-5',
+      'error: Individual quota reached. Please upgrade your subscription to increase your limits. Resets in 29m23s.',
+      now
+    );
+    const expectedUntil2 = new Date(now.getTime() + (29 * 60_000 + 23 * 1_000) + 5 * 60_000).toISOString();
+    assert.equal(report2.durationMs, 2_063_000);
+    assert.equal(report2.until, expectedUntil2);
+    assert.equal(report2.source, 'message');
+    assert.ok(report2.logLine.includes(expectedUntil2), report2.logLine);
+    assert.ok(report2.logLine.includes('message'), report2.logLine);
+
+    // 3. Form 3: 'Resets in 45s' -> 45s (45,000 ms) + 5m (300,000 ms) = 5m45s (345,000 ms)
+    const report3 = router.reportQuotaError(
+      'claude-opus-5-5',
+      'RESOURCE_EXHAUSTED (code 429): Individual quota reached. Resets in 45s.',
+      now
+    );
+    const expectedUntil3 = new Date(now.getTime() + 45 * 1_000 + 5 * 60_000).toISOString();
+    assert.equal(report3.durationMs, 345_000);
+    assert.equal(report3.until, expectedUntil3);
+    assert.equal(report3.source, 'message');
+    assert.ok(report3.logLine.includes(expectedUntil3), report3.logLine);
+    assert.ok(report3.logLine.includes('message'), report3.logLine);
+
+    // 4. No time in the text -> 2 hours (DEFAULT_QUOTA_COOLDOWN_HOURS), source: 'default'
+    const reportNoTime = router.reportQuotaError(
+      'claude-opus-5-5',
+      'RESOURCE_EXHAUSTED (code 429): Individual quota reached.',
+      now
+    );
+    const expectedUntilDefault = new Date(now.getTime() + DEFAULT_QUOTA_COOLDOWN_MS).toISOString();
+    assert.equal(reportNoTime.hours, DEFAULT_QUOTA_COOLDOWN_HOURS);
+    assert.equal(reportNoTime.durationMs, DEFAULT_QUOTA_COOLDOWN_MS);
+    assert.equal(reportNoTime.until, expectedUntilDefault);
+    assert.equal(reportNoTime.source, 'default');
+    assert.ok(reportNoTime.logLine.includes(expectedUntilDefault), reportNoTime.logLine);
+    assert.ok(reportNoTime.logLine.includes('default'), reportNoTime.logLine);
+    assert.ok(!reportNoTime.logLine.includes('message'), reportNoTime.logLine);
+
+    // 5. Nonsense times -> falls back to 2h default, and extreme times clamp to [5m, 24h]
+    for (const nonsenseText of [
+      'RESOURCE_EXHAUSTED (code 429): Resets in banana.',
+      'RESOURCE_EXHAUSTED (code 429): Resets in ???',
+      'RESOURCE_EXHAUSTED (code 429): Resets in -10m.',
+      'RESOURCE_EXHAUSTED (code 429): Resets in NaNh.',
+    ]) {
+      const nonsenseReport = router.reportQuotaError('claude-opus-5-5', nonsenseText, now);
+      assert.equal(nonsenseReport.durationMs, DEFAULT_QUOTA_COOLDOWN_MS, nonsenseText);
+      assert.equal(nonsenseReport.hours, DEFAULT_QUOTA_COOLDOWN_HOURS, nonsenseText);
+      assert.equal(nonsenseReport.source, 'default', nonsenseText);
+      assert.ok(nonsenseReport.logLine.includes(expectedUntilDefault), nonsenseReport.logLine);
+      assert.ok(nonsenseReport.logLine.includes('default'), nonsenseReport.logLine);
+    }
+
+    // Clamp > 24h to 24h max
+    const tooLongReport = router.reportQuotaError(
+      'claude-opus-5-5',
+      'RESOURCE_EXHAUSTED (code 429): Resets in 48h.',
+      now
+    );
+    assert.equal(tooLongReport.durationMs, MAX_QUOTA_COOLDOWN_MS);
+    assert.equal(tooLongReport.hours, 24);
+    assert.equal(tooLongReport.source, 'message');
+
+    // Clamp < 5m to 5m min
+    const tooShortReport = router.reportQuotaError(
+      'claude-opus-5-5',
+      'HTTP 429 Too Many Requests: retry in 0.01 hours',
+      now
+    );
+    assert.equal(tooShortReport.durationMs, MIN_QUOTA_COOLDOWN_MS);
+    assert.equal(tooShortReport.hours, 5 / 60);
+    assert.equal(tooShortReport.source, 'message');
+    assert.equal(parseQuotaCooldown('Resets in 0s').durationMs, MIN_QUOTA_COOLDOWN_MS);
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('quota group warms again once reset time + 5m has passed and is then picked by Panda instead of the fallback', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-panda-rewarm-'));
+  try {
+    const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+    const folders = ensureInboxFolders(inboxDir);
+
+    const t1 = path.join(folders.queued, '01-hit-429.md');
+    const t2 = path.join(folders.queued, '02-while-cold.md');
+    const t3 = path.join(folders.queued, '03-after-reset.md');
+
+    fs.writeFileSync(
+      t1,
+      ['# Refactor renderer pipeline', 'lane: engine', '', 'Update src/renderer/pipeline.ts.'].join('\n'),
+      'utf8'
+    );
+    fs.utimesSync(t1, new Date('2026-11-15T07:50:00Z'), new Date('2026-11-15T07:50:00Z'));
+
+    fs.writeFileSync(
+      t2,
+      ['# Refactor camera controller', 'lane: engine', '', 'Update src/renderer/camera.ts.'].join('\n'),
+      'utf8'
+    );
+    fs.utimesSync(t2, new Date('2026-11-15T07:51:00Z'), new Date('2026-11-15T07:51:00Z'));
+
+    fs.writeFileSync(
+      t3,
+      ['# Refactor lighting pass', 'lane: engine', '', 'Update src/renderer/lighting.ts.'].join('\n'),
+      'utf8'
+    );
+    fs.utimesSync(t3, new Date('2026-11-15T07:52:00Z'), new Date('2026-11-15T07:52:00Z'));
+
+    let currentTime = new Date('2026-11-15T07:55:31.000Z');
+    const expectedColdUntil = new Date(
+      currentTime.getTime() + (29 * 60_000 + 23 * 1_000) + 5 * 60_000
+    ).toISOString();
+
+    const dispatchedLanes: string[] = [];
+    let firstOpusAttemptFailedWith429 = false;
+
+    const adapter: DispatchAdapter = {
+      name: 'agy',
+      async dispatch(input: DispatchJobInput): Promise<DispatchHandle> {
+        dispatchedLanes.push(input.lane);
+        const failWith429 = input.lane === 'claude-opus-5-5' && !firstOpusAttemptFailedWith429;
+        if (failWith429) {
+          firstOpusAttemptFailedWith429 = true;
+        }
+        const err429Output = [
+          'error: Individual quota reached. Please upgrade your subscription to increase your limits. Resets in 29m23s.',
+          'AGY_ERROR: {"short_error":"RESOURCE_EXHAUSTED (code 429): Individual quota reached. Please upgrade your subscription to increase your limits. Resets in 29m23s.","status":"RESOURCE_EXHAUSTED","error_code":429}',
+        ].join('\n');
+        const okOutput = `Opened pull request ${MOCK_PR_URL}`;
+
+        return {
+          jobId: input.jobId ?? 'mock-job',
+          adapter: 'agy',
+          lane: input.lane,
+          harness: 'agy',
+          promptPath: path.join(tmpRoot, 'prompt.txt'),
+          sanitizedPrompt: input.prompt,
+          mode: 'headless-cli',
+          httpSessionSupported: false,
+          note: 'mock lane run',
+          poll: async () =>
+            failWith429
+              ? {
+                  done: true,
+                  prUrl: null,
+                  output: err429Output,
+                  error: err429Output,
+                  exitCode: 3,
+                }
+              : {
+                  done: true,
+                  prUrl: MOCK_PR_URL,
+                  output: okOutput,
+                  exitCode: 0,
+                },
+        };
+      },
+    };
+
+    const { runner } = createMockInboxCommandRunner();
+    const inboxRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir: path.join(tmpRoot, 'antigravity'),
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      adapter,
+      commandRunner: runner,
+      now: () => currentTime,
+      pandaPool: { ...DEFAULT_PANDA_POOL },
+      pandaFetch: (async () =>
+        new Response(JSON.stringify({ choice: { model_id: 'claude-opus-5.5' } }), {
+          status: 200,
+        })) as typeof fetch,
+    });
+
+    // Tick 1 at t0: Panda picks claude-opus-5-5, attempt 1 hits 429 ('Resets in 29m23s'),
+    // runner marks agy-claude cold until t0 + 34m23s and completes on fallback gemini-4-argon.
+    const tick1 = await inboxRunner.tick();
+    assert.equal(tick1.status, 'done');
+    assert.equal(tick1.quotaFallbackTriggered, true);
+    assert.equal(tick1.lane, 'gemini-4-argon');
+    assert.equal(tick1.modelPickedBy, 'fallback');
+
+    const log1 = fs.readFileSync(path.join(folders.done, '01-hit-429.log'), 'utf8');
+    assert.ok(
+      log1.includes(`cold until ${expectedColdUntil}`) && log1.includes('message'),
+      `Expected cold log line with until=${expectedColdUntil} and source=message, got:\n${log1}`
+    );
+
+    // Tick 2 at t0 + 20m (before 34m23s reset+buffer): agy-claude is still cold -> falls back to gemini-4-argon
+    currentTime = new Date(currentTime.getTime() + 20 * 60_000);
+    const tick2 = await inboxRunner.tick();
+    assert.equal(tick2.status, 'done');
+    assert.equal(tick2.lane, 'gemini-4-argon');
+    assert.equal(tick2.modelPickedBy, 'fallback');
+
+    // Tick 3 at t0 + 35m (after 34m23s reset+buffer, well before 2h/24h):
+    // agy-claude has warmed again and Panda's pick of claude-opus-5-5 is used instead of the fallback!
+    currentTime = new Date(currentTime.getTime() + 15 * 60_000);
+    const tick3 = await inboxRunner.tick();
+    assert.equal(tick3.status, 'done');
+    assert.equal(tick3.lane, 'claude-opus-5-5');
+    assert.equal(tick3.modelPickedBy, 'panda');
+
+    const log3FirstLine = fs
+      .readFileSync(path.join(folders.done, '03-after-reset.log'), 'utf8')
+      .split(/\r?\n/)[0];
+    assert.ok(
+      log3FirstLine.startsWith('model: claude-opus-5-5 (picked by: panda) | code map: '),
+      log3FirstLine
+    );
+    assert.deepEqual(dispatchedLanes, [
+      'claude-opus-5-5',
+      'gemini-4-argon',
+      'gemini-4-argon',
+      'claude-opus-5-5',
+    ]);
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
 });

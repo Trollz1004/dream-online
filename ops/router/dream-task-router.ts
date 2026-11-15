@@ -1522,8 +1522,8 @@ export class JevRouter {
 
   public getActiveColdLanes(
     now: Date = new Date()
-  ): Record<string, { until: string; hours: number; quotaGroup: string; reason: string }> {
-    const active: Record<string, { until: string; hours: number; quotaGroup: string; reason: string }> = {};
+  ): Record<string, { until: string; hours: number; quotaGroup: string; source?: QuotaCooldownSource; reason: string }> {
+    const active: Record<string, { until: string; hours: number; quotaGroup: string; source?: QuotaCooldownSource; reason: string }> = {};
     const nowMs = now.getTime();
     for (const [lane, info] of this.coldLanes.entries()) {
       if (Date.parse(info.until) > nowMs) {
@@ -1531,6 +1531,7 @@ export class JevRouter {
           until: info.until,
           hours: info.hours,
           quotaGroup: info.quotaGroup,
+          source: info.source,
           reason: info.reason,
         };
       } else {
@@ -2016,7 +2017,7 @@ export function clearColdLanes(): void {
 
 export function getColdLaneState(
   now?: Date
-): Record<string, { until: string; hours: number; quotaGroup: string; reason: string }> {
+): Record<string, { until: string; hours: number; quotaGroup: string; source?: QuotaCooldownSource; reason: string }> {
   return defaultJevRouter.getActiveColdLanes(now);
 }
 
