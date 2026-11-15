@@ -41,7 +41,7 @@ Besides the standalone **`Misses Trollz`** pediatric hospital app, the entire pl
 - **Strict Role**:
   - **100% Pure 3D Game Engine & DREAM Maker Live Viewport** (`src/engine/`, `src/ui/`, `server.ts` on `:9180`), plus `Free Claude Code` (`:8082/admin` launched via signed Python 3.14.10), `OPSis Cut & Reach Studio` (`:8390`), `Hermes Leadgen` (`:8392`), `Live NPC Lab` (`:9127`), `DreamOps Bridge` (`:9133`), and `Obsidian Local REST API` (`:27123`).
   - **Zero Local LLM Weights on Alienware**: All `8 GB` of the RTX 3070's VRAM stay 100% dedicated to 3D rendering, 120Hz action combat, shaders, and NVENC capture. Never bloat Alienware with local Ollama models.
-  - **Clean Profile Rule**: The legacy glitched adults-only profile has been 100% removed (profile and its folder deleted). Never reference it anywhere.
+  - **Private Projects Rule**: Other private projects also live on this node, in their own folders, repositories and agent sessions on a separate drive. They are not part of this repo. Never open, read, copy or mix their files, prompts or memory with this repo. A task for one of them is written as a handoff file for its own session in the drop box, and nothing else is done.
 
 ### Node 2: **T5500 — Platform & Operations Monorepo (`Trollz1004/ANTIGRAVITY` at `C:\ANTIGRAVITY`)**
 - **Device Name**: `T5500-2-XEON-72`

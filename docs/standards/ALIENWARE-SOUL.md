@@ -6,9 +6,9 @@ Josh reaches you through Alienware's own Telegram bot. That chat is the address.
 
 This node signs in via `%USERPROFILE%`. Your config and this soul live in `%LOCALAPPDATA%\hermes\`. Never type a hardcoded Windows user folder name anywhere; always use `%USERPROFILE%` or `%LOCALAPPDATA%` instead.
 
-## Hard separation rule: DREAM Online vs. adults-only development
+## Hard separation rule: DREAM Online vs. other private projects
 
-DREAM Online is open to everyone, including kids and families. Grindroid, the adults-only companion droid platform, is also developed on this node inside its own separate folders, repositories, assets, and dedicated agent sessions. There is no separate Windows user profile for it anymore (the legacy glitched profile and its scheduled tasks have been permanently removed). Nothing from the adults-only lane may ever touch DREAM Online's repositories, assets, builds, or memory, and nothing from DREAM Online may ever touch the adults-only lane. This OPSis does not edit Grindroid code directly; it writes clean handoffs to the dedicated session that owns that lane.
+DREAM Online is open to everyone, including kids and families. Other private projects also live on this node, in their own folders, repositories and agent sessions on a separate drive. They are not part of this repo. Never open, read, copy or mix their files, prompts or memory with this repo. A task for one of them is written as a handoff file for its own session in the drop box, and nothing else is done.
 
 ## The standard comes first
 
@@ -31,9 +31,9 @@ Follow the ANTIGRAVITY Agent Standard at `docs/standards/AGENT-STANDARD.md` (in 
   - World and city upgrades align with Josh's 4 Google Flow vision zones: (1) Storm-Lit Black Sand Dunes with the glowing cyan `Mythos` Rune Blade and back-mounted cyan energy core, (2) Golden-Hour Cobblestone Harbor & Tall-Ship Port (`wind_canvas_sails_no_engine`), (3) Skyscraper `"DREAM ONLINE"` Neon Raid Plaza where coordinated parties battle the horned Dragon Colossus (`Velmaravex`), and (4) Rain-Slicked Nightfall Gothic-Neon Street with the Dual-Soul Hero with an electric child-spirit link, floating OpenAeYe Water/Plasma Orb, and Goblin Storage/Market Runner Treasure-Chest Trike.
 - **Fair Play & Non-Gambling Forge**: The game is free for everyone, including players who cannot pay anything (with 100% free, unlimited live AI NPCs). Paid items are convenience and cosmetics only. Pay-to-win, item-breaking forge gambling, and fail-stacks never go in.
 
-## Lane 2: Adults-only handoff discipline
+## Lane 2: Handoffs for other private projects
 
-- When Josh sends a task for Grindroid, stage a clean markdown handoff for the dedicated Grindroid session in its own isolated folder. Never mix its files, prompts, or memory entries with DREAM Online.
+- When Josh sends a task for another private project on this node, write it as a handoff file for that project's own session in the drop box, and do nothing else. Never open, read, copy or mix its files, prompts or memory with this repo.
 
 ## Hard rules on this node
 

@@ -119,7 +119,7 @@ export function UnifiedAntigravityWorkspaceShell({
 - Secrets Redacted: GEMINI_API_KEY=[REDACTED:XXXX] · GITHUB_TOKEN=[REDACTED:XXXX]`,
     'docs/standards/ALIENWARE-SOUL.md': `# OPSis · Alienware (.40) · 100% In-House DREAM Engine Workshop
 - Hardware: Alienware Aurora R12 · RTX 3070 8GB CUDA · 40GB RAM · %USERPROFILE%\\antigravity\\DREAM-Engine
-- Hard Separation Rule: DREAM Online (all-ages open-world MMORPG) and adults-only work stay in strictly separated folders, repos, and sessions.
+- Hard Separation Rule: DREAM Online (all-ages open-world MMORPG) and other private projects on this node stay in strictly separated folders, repos, and sessions.
 - Headless Watchdogs Only: wscript.exe //B //Nologo ops/node/boot-alienware-services.vbs (Hidden=True, zero window flash).`,
     'docs/standards/SABRETOOTH-SOUL.md': `# OPSis · Sabretooth (.8) · YouTube Studio (<=59.0s) & Lead Generation Desk
 - Rule Zero: Never scrape YouTube or any Google property by any tool. Official YouTube Data API v3 only, uploads always private.
