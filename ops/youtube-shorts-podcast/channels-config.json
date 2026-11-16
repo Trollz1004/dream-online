@@ -1,11 +1,29 @@
 {
-  "schema_version": "2026-10-27.1",
-  "pipeline_name": "DREAM Online & Until No Kid In Need — Multi-Channel YouTube Shorts & Natural Female Voice Podcast Engine",
+  "schema_version": "2026-11-16.1",
+  "pipeline_name": "DREAM Online & AI Dream Team Studio — Multi-Channel YouTube Shorts & Natural Female Voice Podcast Engine",
+  "studio_title": "Alienware Lead-Gen Command Studio",
+  "studio_url": "http://192.168.0.40:8392/",
+  "node": "Alienware (192.168.0.40)",
+  "yt_dlp_enabled": false,
+  "youtube_scraping_enabled": false,
+  "youtube_publish_method": "youtube-data-api-v3",
+  "youtube_upload_privacy_status": "private",
+  "youtube_policy": {
+    "yt_dlp_enabled": false,
+    "youtube_scraping_enabled": false,
+    "publish_method": "YouTube Data API v3 private uploads only",
+    "privacy_status": "private",
+    "contains_synthetic_media": true,
+    "self_declared_made_for_kids": false
+  },
   "governance": {
     "marketing_lead": "Google Gemini (GM #1 — Primary Co-CEO & Marketing Director)",
-    "execution_agent": "Hermes (OPSis) on Sabretooth (192.168.0.8)",
+    "execution_agent": "Hermes (OPSis) on Alienware (192.168.0.40) — Alienware Lead-Gen Command Studio (http://192.168.0.40:8392/)",
     "paperclip_enabled": false,
     "paperclip_policy": "NO_PAPERCLIP — All Paperclip references permanently removed. Hermes executes directly under Google Gemini (GM #1) marketing strategy and creative direction.",
+    "yt_dlp_enabled": false,
+    "youtube_scraping_enabled": false,
+    "youtube_upload_policy": "YouTube Data API v3 private uploads only (yt_dlp_enabled: false)",
     "engine_identity": "100% In-House DREAM-Engine (WebGPU/WebGL2) — Zero Unreal Engine, Zero Godot — 100% Built and Governed by AI (Built with Google Gemini)",
     "world_evolution_modes": [
       "MODERN_3D_DAYDREAM",
@@ -45,7 +63,7 @@
       }
     },
     "local_amd_gpu_engine": {
-      "node": "Sabretooth (192.168.0.8 — 16 GB AMD Radeon RX 6800)",
+      "node": "Alienware (192.168.0.40 — 16 GB AMD Radeon RX 6800)",
       "primary_local_model": "kokoro-82m",
       "secondary_local_models": [
         "lfm3-omni-2b",
@@ -89,6 +107,11 @@
       "id": "dream-online-mmorpg",
       "name": "DREAM Online — 100% AI-Built Evolving 3D MMORPG",
       "handle_slug": "@DreamOnlineMMO",
+      "enabled": false,
+      "yt_dlp_enabled": false,
+      "youtube_scraping_enabled": false,
+      "publish_method": "youtube-data-api-v3",
+      "upload_privacy": "private",
       "focus": "Day Dream (Modern 3D) -> Nightmare -> 16-Bit Circle-Craft (RETRO_16BIT_CIRCLES cylindrical/circle-voxels) world morphs, 100% in-house DREAM-Engine devlogs, zero Unreal, zero Godot.",
       "default_lead_voice": "Aoede",
       "default_cohost_voice": "Kore",
@@ -100,16 +123,21 @@
       "max_duration_seconds": 58.5
     },
     {
-      "id": "until-no-kid-in-need",
-      "name": "Until No Kid In Need — AI For Good & E-Waste Mission",
-      "handle_slug": "@UntilNoKidInNeed",
-      "focus": "onlinerecycle.net e-waste recycling education, transparent AI-for-good engineering, #ForTheKids #UntilNoKidInNeed community stories.",
+      "id": "onlinerecycle-ewaste",
+      "name": "OnlineRecycle.net — AI E-Waste Intake & Hardware Recovery",
+      "handle_slug": "@OnlineRecycle",
+      "enabled": false,
+      "yt_dlp_enabled": false,
+      "youtube_scraping_enabled": false,
+      "publish_method": "youtube-data-api-v3",
+      "upload_privacy": "private",
+      "focus": "onlinerecycle.net B2B e-waste pickup, responsible workstation and server recovery, component testing and studio hardware intake.",
       "default_lead_voice": "Aoede",
       "default_cohost_voice": "Kore",
       "local_fallback_voice": "af_heart",
       "required_badges": [
         "Built with Google Gemini",
-        "#UntilNoKidInNeed"
+        "OnlineRecycle.net"
       ],
       "max_duration_seconds": 58.5
     },
@@ -117,7 +145,12 @@
       "id": "ai-dream-team-studio",
       "name": "AI Dream Team Studio — Built with Google Gemini",
       "handle_slug": "@AIDreamTeamStudio",
-      "focus": "Behind-the-scenes multi-agent engineering across Alienware (.40), T5500 (.15), and Sabretooth (.8), zero-slop AI breakthroughs, female-hosted AI engineering podcast.",
+      "enabled": false,
+      "yt_dlp_enabled": false,
+      "youtube_scraping_enabled": false,
+      "publish_method": "youtube-data-api-v3",
+      "upload_privacy": "private",
+      "focus": "Behind-the-scenes multi-agent engineering across Alienware (192.168.0.40) and T5500 (192.168.0.15) via Alienware Lead-Gen Command Studio (http://192.168.0.40:8392/), zero-slop AI breakthroughs, female-hosted AI engineering podcast.",
       "default_lead_voice": "Aoede",
       "default_cohost_voice": "Kore",
       "local_fallback_voice": "af_bella",
@@ -129,24 +162,21 @@
     }
   ],
   "opsis_24x7_stream_gate": {
-    "stream_name": "OPSis / Jarvis 24/7 Mission Control Live Stream",
+    "stream_name": "OPSis 24/7 Studio Live Stream",
     "enabled": false,
     "public_dao_wallet_tracking": false,
     "onlinerecycle_ai_intake_verified": false,
     "dream_online_mtx_verified": false,
-    "exclude_founder_personal_ebay_donations": true,
+    "exclude_founder_personal_ebay_sales": true,
     "pre_gassed_base_mainnet_dao_wallets": {
       "network": "base-mainnet",
       "chain_id": 8453,
       "rpc_url": "https://mainnet.base.org",
       "revenue_model": "FOR_PROFIT_LLC",
       "founder_and_taxable_percentage": 90,
-      "charity_tax_deduction_ceiling_percentage": 10,
-      "full_charity_100_percent_retired": true,
-      "tax_law_policy": "Under the post-Big-Beautiful-Bill tax law, 90% of every dollar is taxable income and only 10% can be tax-deducted. Never use FOUNDER_PERCENTAGE=0 or CHARITY_PERCENTAGE=100.",
+      "tax_deduction_ceiling_percentage": 10,
+      "tax_law_policy": "Under the post-Big-Beautiful-Bill tax law, 90% of every dollar is taxable income and only 10% can be tax-deducted.",
       "gospel_splitter_contract": "0x9855B75061D4c841791382998f0CE8B2BCC965A4",
-      "gospel_charity_shriners_safe": "0x8d3dEADbE2b4B857A43331D459270B5eedC7084e",
-      "charity_ein": "36-2193608",
       "gospel_infra_safe": "0xe0a42f83900af719019eBeD3D9473BE8E8f2920b",
       "gospel_founder_wallet": "0x7c3E283119718395Ef5EfBAC4F52738C2018daA7"
     },
@@ -155,10 +185,10 @@
       "visual_brand_hub": "Google Gemini Small Business Hub (Nano Banana 2.1 + automated receipt/ledger charts)",
       "decisions_api": "OpenAI gpt-6-luna Decisions API ($0.10/1M input tokens, 10x faster structured JSON)",
       "cross_agent_skill_sync": "MuscleMemory (Codex <-> Claude Code <-> Gemini)",
-      "local_16gb_omni_voice_model": "Liquid AI LFM3-Omni-2B (2.17B GGUF/ONNX, 32K ctx, 16kHz audio/video/image in -> 24kHz natural speech out on Sabretooth .8)",
+      "local_16gb_omni_voice_model": "Liquid AI LFM3-Omni-2B (2.17B GGUF/ONNX, 32K ctx, 16kHz audio/video/image in -> 24kHz natural speech out on Alienware 192.168.0.40)",
       "local_desktop_mcp_processor": "Hob (MIT open-source on-device Gemma 4 + MCP document/code processor)",
       "local_codebase_graph_memory": "Graph-MIND (local directed-graph entity & call-hierarchy memory with zero LLM calls on save)"
     },
-    "verification_policy": "The 24/7 OPSis/Jarvis Mission Control livestream is strictly gated until AI verifiably helps fund the mission (AI-driven e-waste intake on onlinerecycle.net broken down for Shriners, automated DREAM Online microtransactions, or verified public transparent crypto wallet / Shriners DAO ledger on Base Mainnet 8453). Founder Joshua Coleman's personal out-of-pocket eBay donations to Shriners are NEVER counted as AI-generated funding. Zero fake metrics, zero slop."
+    "verification_policy": "The 24/7 OPSis studio livestream is strictly gated until AI verifiably generates revenue (AI-driven e-waste intake on onlinerecycle.net, automated DREAM Online microtransactions, or verified public ledger on Base Mainnet 8453). Founder Joshua Coleman's personal out-of-pocket eBay sales are NEVER counted as AI-generated funding. Zero fake metrics, zero slop."
   }
 }

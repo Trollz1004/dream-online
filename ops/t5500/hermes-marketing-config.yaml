@@ -4,7 +4,7 @@
 # (lives at %LOCALAPPDATA%\hermes\profiles\marketing\config.yaml once
 # Bootstrap-T5500.ps1 copies it there). This profile is the Hermes operator
 # the T5500's AGENTS.md calls OPSis: a marketing-desk lane with no local
-# models, reachable by the Sabretooth operator over the LAN through
+# models, reachable by the Alienware operator over the LAN through
 # `hermes peer add t5500 --url http://<this machine's LAN IP>:8377 --key <API_SERVER_KEY>`.
 #
 # Every field below is a real hermes-agent config.yaml key, checked against
@@ -50,7 +50,7 @@ local_runtime:
   enabled: false
 
 # The API server: this profile's gateway, bound to the LAN (not just
-# loopback) so the Sabretooth operator can reach it as a peer. The key lives
+# loopback) so the Alienware operator can reach it as a peer. The key lives
 # in this profile's .env, never here.
 gateway:
   api_server:
@@ -58,6 +58,16 @@ gateway:
     port: 8377
     host: 0.0.0.0
     model_name: OPSis
+
+# YouTube scraping and yt-dlp are permanently disabled across the fleet.
+# All YouTube operations use the official YouTube Data API v3 (private uploads only).
+youtube:
+  enabled: false
+  yt_dlp_enabled: false
+  youtube_scraping_enabled: false
+  publish_method: youtube-data-api-v3
+  upload_privacy: private
+  policy: "YouTube Data API v3 private uploads only (yt_dlp_enabled: false)"
 
 # Keep API keys and tokens out of logs everywhere this profile writes one.
 security:
