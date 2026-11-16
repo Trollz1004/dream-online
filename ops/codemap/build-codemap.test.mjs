@@ -143,13 +143,16 @@ test('names become Obsidian links only when a note of that name could exist', ()
   assert.equal(noteLink('src/[id].tsx'), '`src/[id].tsx`');
 });
 
-test('maskSecrets hides keys, private addresses and user folders', () => {
+test('maskSecrets hides keys, private addresses and user folders while allowing 192.168.0.15 and 192.168.0.40', () => {
   assert.equal(maskSecrets(`x ${FAKE_KEY} y`), 'x XXXX y');
   assert.equal(maskSecrets('api_key=abcdef123456'), 'api_key=XXXX');
   // fakes built at runtime so the repo never holds the shapes themselves
   const lanIp = ['192', '168', '1', '20'].join('.');
+  const retiredIp = ['192', '168', '0', '8'].join('.');
   const userDir = ['C:', 'Users', 'fake-person', 'repo'].join('\\');
   assert.equal(maskSecrets(`http://${lanIp}:3000`), 'http://XXXX:3000');
+  assert.equal(maskSecrets(`http://${retiredIp}:8392`), 'http://XXXX:8392');
+  assert.equal(maskSecrets('http://192.168.0.40:9180 and http://192.168.0.15:20128'), 'http://192.168.0.40:9180 and http://192.168.0.15:20128');
   assert.equal(maskSecrets(userDir), '%USERPROFILE%\\repo');
   assert.equal(maskSecrets('DREAM-Engine-wt-inbox-a1-engine-load-real-character-models'), 'DREAM-Engine-wt-inbox-a1-engine-load-real-character-models');
 });

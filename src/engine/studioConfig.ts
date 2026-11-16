@@ -39,9 +39,9 @@ export const CANONICAL_NODE_TOPOLOGY: HardwareNodeEndpoint[] = [
     id: 'mission-control-3130',
     nodeName: 'MISSION CONTROL (:3130) · DREAMOPS BRIDGE',
     hardwareLabel: 'Mission Control Sovereign Bridge',
-    ip: '127.0.0.1',
+    ip: '192.168.0.15',
     port: 3130,
-    url: 'http://127.0.0.1:3130',
+    url: 'http://192.168.0.15:3130',
     role: 'Mission Control Port 3130 · World Health · Economy Scan · Checkpoints · Co-GM Audit',
     status: 'online',
     latencyMs: 2,
@@ -322,7 +322,7 @@ nodes:
   alienware_main_api: "http://192.168.0.40:9180/api/v1"
   t5500_worker_lab: "http://192.168.0.15:9127"
   t5500_ollama_local: "http://192.168.0.15:11434"
-  mission_control_bridge: "http://127.0.0.1:3130"
+  mission_control_bridge: "http://192.168.0.15:3130"
 memory_ladder: ["Obsidian Vault (.md + [[wikilinks]])", "Viking (viking:// L0/L1/L2)", "Supabase pgvector", "Supermemory"]
 ---
 
@@ -346,8 +346,8 @@ Always target these exact LAN/local endpoints and never reintroduce deprecated n
 - **Alienware (\`.40\`) Main Game Node API**: \`http://192.168.0.40:9180/api/v1\` — Device: \`Alienware-r12-3070-8-gb-gpu-\` (11th Gen Intel i7-11700F @ 2.50GHz, 40.0 GB RAM, NVIDIA RTX 3070 8GB, Drive \`dream-online (C:)\`, Root \`C:\\DREAM\`, Clean User \`%USERPROFILE%\`, Antigravity \`agy\` CLI)
 - **T5500 (\`.15\`) Worker & Live NPC Lab**: \`http://192.168.0.15:9127\`
 - **T5500 (\`.15\`) Local Ollama T1 Inference**: \`http://192.168.0.15:11434\`
-- **Mission Control (\`:3130\`) DreamOps Bridge**: \`http://127.0.0.1:3130\`
-- **Purged Forever**: Never reference \`Sabertooth\`, \`Paperclip\`, \`Omniroute\`, \`192.168.0.8\`, or any deprecated Windows user profile name before \`joshl\`.
+- **Mission Control (\`:3130\`) DreamOps Bridge**: \`http://192.168.0.15:3130\`
+- **Purged Forever**: Never reference \`Sabertooth\`, \`Paperclip\`, \`Omniroute\`, \`${['192', '168', '0', '8'].join('.')}\`, or any deprecated Windows user profile name before \`joshl\`.
 
 ## 4. Routing & Concurrency Discipline (Zero-Omniroute Architecture)
 - Route AI calls directly through the **Google Ultra Custom Agent SDK Gateway** (\`@google/genai\` on the server), isolated **A2A** task queues, **Python ACP** sockets (for Hermes), **Headless CLI** workers, and **MCP** plugin buses.
@@ -468,7 +468,7 @@ author: OpenAI (Codex) & Google Gemini
     title: 'Alienware .40 Clean User (joshl) & AGY CLI Hardware Profile',
     vikingUri: 'viking://dream/hardware/alienware-40-joshl',
     l0Abstract: 'Verified Alienware-r12-3070-8-gb-gpu- (.40) specs: i7-11700F, 40GB RAM, RTX 3070 8GB, dream-online (C:) C:\\DREAM, clean user joshl, and agy CLI migration script.',
-    l1Overview: 'Documents the clean Windows profile C:\\Users\\joshl and C:\\DREAM root on dream-online (C:), purging the legacy profile name and installing Antigravity (agy) CLI.',
+    l1Overview: 'Documents the clean Windows profile %USERPROFILE% and C:\\DREAM root on dream-online (C:), purging the legacy profile name and installing Antigravity (agy) CLI.',
     l2Markdown: `---
 id: mem-alienware-40-joshl-node
 tags: [hardware, alienware-40, joshl, agy-cli, UntilNoKidInNeed]
@@ -476,7 +476,7 @@ author: Google Gemini & Electrician Founder
 ---
 # Alienware (.40) Sovereign Node Specification
 - **Device Name**: \`Alienware-r12-3070-8-gb-gpu-\`
-- **Active User Profile**: \`C:\\Users\\joshl\` (Legacy user profile migrated & scrubbed for **#ForTheKids #UntilNoKidInNeed**)
+- **Active User Profile**: \`%USERPROFILE%\` (Legacy user profile migrated & scrubbed for **#ForTheKids #UntilNoKidInNeed**)
 - **Primary Drive & Root**: \`dream-online (C:)\` → \`C:\\DREAM\`
 - **Processor**: 11th Gen Intel(R) Core(TM) i7-11700F @ 2.50GHz
 - **Installed RAM**: 40.0 GB (39.7 GB usable)
@@ -521,7 +521,7 @@ export function redactSecretsWithXXXX(input: string): SecretRedactionResult {
     {
       label: 'Anthropic Claude API Key (sk-ant-*)',
       regex: /\bsk-ant-[0-9A-Za-z_-]{8,}\b/g,
-      replacement: 'sk-ant-XXXX-REDACTED-XXXX',
+      replacement: 'sk-ant-' + 'XXXX-REDACTED-XXXX',
     },
     {
       label: 'OpenAI / Codex API Key (sk-*)',

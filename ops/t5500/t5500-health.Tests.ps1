@@ -224,3 +224,19 @@ Describe 'OmniRoute location' {
         }
     }
 }
+
+Describe 'T5500 files carry no user folder path and no loopback reach address' {
+    $files = @(
+        't5500-health.ps1', 't5500-health.Tests.ps1', 'Bootstrap-T5500.ps1',
+        'Bootstrap-T5500.Tests.ps1', 'Register-T5500Health.ps1',
+        'AGENTS.t5500.md', 'README.md', 'hermes-marketing-config.yaml'
+    ) | ForEach-Object { Join-Path $here $_ }
+
+    It 'names no Windows user folder' {
+        @($files | ForEach-Object { Select-String -LiteralPath $_ -Pattern '(?i)[A-Z]:[\\/]+Users[\\/]+[^%\\/\s"]' }).Count | Should Be 0
+    }
+
+    It 'names no loopback reach address (use 192.168.0.15 from ops/fleet/fleet-map.json)' {
+        @($files | ForEach-Object { Select-String -LiteralPath $_ -Pattern '(?i)(?:https?|wss?)://(?:localhost|127\.0\.0\.1)\b|\b(?:localhost|127\.0\.0\.1):\d{2,5}\b' }).Count | Should Be 0
+    }
+}

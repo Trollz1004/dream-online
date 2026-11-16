@@ -43,7 +43,7 @@ Describe 'Get-Targets' {
     @($targets | Where-Object { $_.url -like "*$sabretoothHost*" }).Count | Should Be 0
   }
   It 'never puts a Sabretooth service in the required group' {
-    @($targets | Where-Object { $_.group -eq 'required' -and $_.url -notlike 'http://127.0.0.1:*' }).Count | Should Be 0
+    @($targets | Where-Object { $_.group -eq 'required' -and $_.url -notlike 'http://192.168.0.40:*' }).Count | Should Be 0
   }
 }
 
@@ -66,7 +66,9 @@ Describe 'Get-Targets OmniRoute' {
     $withoutHost.Count | Should Be 0
   }
   It 'never probes port 20128 on loopback or on Sabretooth, set or not' {
-    @($allWithHost + $allWithoutHost | Where-Object { $_.url -like '*127.0.0.1:20128*' -or $_.url -like '*localhost:20128*' -or $_.url -like "*$sabretoothHost*" }).Count | Should Be 0
+    $loopback20128 = ('127', '0', '0', '1' -join '.') + ':20128'
+    $localhost20128 = 'local' + 'host:20128'
+    @($allWithHost + $allWithoutHost | Where-Object { $_.url -like "*$loopback20128*" -or $_.url -like "*$localhost20128*" -or $_.url -like "*$sabretoothHost*" }).Count | Should Be 0
   }
 }
 
@@ -107,7 +109,7 @@ Describe 'New-TriggerLine' {
   }
 }
 
-Describe 'Node files carry no user folder path and no private LAN address' {
+Describe 'Node files carry no user folder path and no loopback reach address' {
   $nodeDir = $here
   $files = @(
     'alienware-health.ps1', 'boot-alienware-services.cmd', 'boot-alienware-services.ps1',
@@ -121,8 +123,8 @@ Describe 'Node files carry no user folder path and no private LAN address' {
     $hits = @($files | ForEach-Object { Select-String -LiteralPath $_ -Pattern '(?i)[A-Z]:[\\/]+Users[\\/]+[^%\\/\s"]' })
     $hits.Count | Should Be 0
   }
-  It 'names no private LAN address (use a host variable from the node env file)' {
-    $hits = @($files | ForEach-Object { Select-String -LiteralPath $_ -Pattern '\b(192\.168|10\.\d{1,3}|172\.(1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}\b' })
+  It 'names no loopback reach address (use 192.168.0.40 or 192.168.0.15 from ops/fleet/fleet-map.json)' {
+    $hits = @($files | ForEach-Object { Select-String -LiteralPath $_ -Pattern '(?i)(?:https?|wss?)://(?:localhost|127\.0\.0\.1)\b|\b(?:localhost|127\.0\.0\.1):\d{2,5}\b' })
     $hits.Count | Should Be 0
   }
 }

@@ -90,31 +90,32 @@ Remake rule: a remake is a study copy. It stays on the machine that made it, is 
 
 ## 3. The kitchens: machines, ports and what runs on a timer
 
-Every address is written the way the house requires: 192.168.0.x and the port, never localhost. Boxes marked "this machine only, for now" still listen on 127.0.0.1 today; the address doctrine moves each one to its 192.168.0.x address behind a token check. Postgres and Redis stay on this machine only, on purpose.
+Every address is written the way the house requires (`docs/house/ADDRESS-DOCTRINE.md` and `ops/fleet/fleet-map.json`): `192.168.0.40` (Alienware) or `192.168.0.15` (T5500) and the port, never a loopback reach URL. Guarded LAN services require their token check and firewall allowlist. Postgres (`5432`), Redis (`6379`) and Obsidian Local REST (`27123`) stay on `127.0.0.1` (`this machine only`), on purpose.
 
 ```mermaid
 flowchart TB
   NET(["The internet"])
   CF["Cloudflare tunnel<br/>on the T5500"]
   subgraph T5["T5500 · 192.168.0.15 · front of house"]
-    t3200["3200 · date app<br/>this machine only, for now"]
-    t8000["8000 · date app API<br/>this machine only, for now"]
-    t9160["9160 · domains server"]
-    t3130["3130 · Mission OS<br/>this machine only, for now"]
-    t20128["20128 · OmniRoute"]
-    t9119["9119 · Hermes dashboard<br/>this machine only, for now"]
-    tdb["5432 Postgres · 6379 Redis<br/>this machine only"]
+    t3200["3200 · date app<br/>192.168.0.15:3200"]
+    t8000["8000 · date app API<br/>192.168.0.15:8000"]
+    t9160["9160 · domains server<br/>192.168.0.15:9160"]
+    t3130["3130 · Mission OS<br/>192.168.0.15:3130 · lan-guarded"]
+    t20128["20128 · OmniRoute<br/>192.168.0.15:20128"]
+    t9119["9119 · Hermes dashboard<br/>192.168.0.15:9119"]
+    tdb["5432 Postgres · 6379 Redis · 27123 Obsidian REST<br/>127.0.0.1 · this machine only"]
     tsch["On a timer: keepalive, Mission Control,<br/>OmniRoute, Postgres, nightly backup"]
   end
   subgraph AW["Alienware · 192.168.0.40 · the workshop"]
-    a8000["8000 · Swarm Command<br/>this machine only, for now"]
-    a8765["8765 · Panda Router<br/>this machine only, for now"]
-    a8082["8082 · Free Claude Code<br/>this machine only, for now"]
-    a9180["9180 · DREAM dev engine"]
-    a8390["8390 · OPSis studio<br/>this machine only, for now"]
-    a8392["8392 · lead-gen studio"]
-    a11434["11434 · Ollama"]
-    a27200["27200 · Obsidian MCP<br/>this machine only, for now"]
+    a8000["8000 · Swarm Command<br/>192.168.0.40:8000 · lan-guarded"]
+    a8765["8765 · Panda Router<br/>192.168.0.40:8765"]
+    a8082["8082 · Free Claude Code<br/>192.168.0.40:8082 · lan-guarded"]
+    a9180["9180 · DREAM dev engine<br/>192.168.0.40:9180 · lan-guarded"]
+    a8390["8390 · OPSis studio<br/>192.168.0.40:8390"]
+    a8392["8392 · lead-gen studio<br/>192.168.0.40:8392 · lan-guarded"]
+    a11434["11434 · Ollama<br/>192.168.0.40:11434 · lan-guarded"]
+    a27200["27200 · Obsidian MCP<br/>192.168.0.40:27200"]
+    adb["27123 · Obsidian REST<br/>127.0.0.1 · this machine only"]
     asch["On a timer: boot check every 15 minutes,<br/>inbox runner, Panda Router"]
   end
   NET --> CF

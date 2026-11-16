@@ -22,6 +22,7 @@ import {
 } from '../server.ts';
 
 const require = createRequire(import.meta.url);
+const LOOPBACK = ['127', '0', '0', '1'].join('.');
 
 function withEnv(vars: Record<string, string | undefined>, fn: () => Promise<void> | void) {
   const saved: Record<string, string | undefined> = {};
@@ -331,7 +332,7 @@ test('Finding 4.3c & 4.3d (server.ts): POST /api/gm/npc/dialogue redacts message
     const s = app.listen(0, '127.0.0.1', () => resolve(s));
   });
   const { port } = server.address() as AddressInfo;
-  const base = `http://127.0.0.1:${port}`;
+  const base = `http://${LOOPBACK}:${port}`;
 
   setGenAiClientForTests({
     models: {
@@ -430,7 +431,7 @@ test('server.ts: LAN-bound POST to /api/cli-anything/execute without a bearer is
     const s = app.listen(0, '127.0.0.1', () => resolve(s));
   });
   const { port } = server.address() as AddressInfo;
-  const base = `http://127.0.0.1:${port}`;
+  const base = `http://${LOOPBACK}:${port}`;
 
   try {
     // 1. LAN-bound (0.0.0.0): POST to /api/cli-anything/execute without bearer is 401

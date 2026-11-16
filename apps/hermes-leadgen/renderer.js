@@ -602,7 +602,7 @@ async function triggerObsidianSync() {
       agent: 'gemini',
       useCase: 'Sabretooth :8392 Separated-Tabs Studio + :8391/health Rules + YouTube Studio UCJnFUOdEfSOJiXLnx6lXSzg + Gemini Notebook 9hNDPCQa3kw Remaster + Natural Female Voice',
       summary: 'Separated :8392 into 9 dedicated single-purpose tabs, banned robotic Windows SAPI/speechSynthesis in favor of server-side Natural Neural Female Voice (Aoede/AvaNeural), updated :8391/health with Official API Prospecting + YouTube Data API v3 Made-with-AI rules, and built Gemini Notebook remaster for 9hNDPCQa3kw.',
-      proof: 'http://127.0.0.1:8392/ | http://127.0.0.1:8391/health | https://studio.youtube.com/channel/UCJnFUOdEfSOJiXLnx6lXSzg'
+      proof: 'http://192.168.0.40:8392/ | http://192.168.0.40:8391/health | https://studio.youtube.com/channel/UCJnFUOdEfSOJiXLnx6lXSzg'
     })
   });
   await res.json();

@@ -1,6 +1,6 @@
 /**
  * Panda Router client for step 1 of Jev router wiring:
- * POSTs the task text to http://127.0.0.1:8765/route with the pool from
+ * POSTs the task text to http://192.168.0.40:8765/route with the pool from
  * %USERPROFILE%\antigravity\tools\panda-router\panda-pool.json,
  * mode cheapest_above_threshold, minimum success 0.6, and a 2 second limit,
  * returning the agy model string or null.
@@ -9,8 +9,9 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { getServiceUrl } from '../fleet/fleet-map.mjs';
 
-export const DEFAULT_PANDA_ROUTE_URL = 'http://127.0.0.1:8765/route';
+export const DEFAULT_PANDA_ROUTE_URL = getServiceUrl('panda-router', '/route');
 export const DEFAULT_PANDA_POOL_PATH = path.join(
   os.homedir(),
   'antigravity',

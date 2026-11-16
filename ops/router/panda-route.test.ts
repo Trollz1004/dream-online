@@ -80,6 +80,7 @@ test('askPandaRoute: POSTs task text to /route with pool, mode cheapest_above_th
   }) as typeof fetch;
 
   assert.equal(DEFAULT_PANDA_TIMEOUT_MS, 2_000);
+  assert.equal(DEFAULT_PANDA_ROUTE_URL, 'http://192.168.0.40:8765/route');
   const picked = await askPandaRoute('Fix typo in README header', {
     pool: { ...DEFAULT_PANDA_POOL },
     fetchImpl: fakeFetch,
@@ -103,7 +104,7 @@ test('askPandaRoute: returns null when Panda is down, slow, returns malformed JS
   const downPick = await askPandaRoute('Fix typo', {
     pool: { ...DEFAULT_PANDA_POOL },
     fetchImpl: (async () => {
-      throw new Error('connect ECONNREFUSED 127.0.0.1:8765');
+      throw new Error('connect ECONNREFUSED 192.168.0.40:8765');
     }) as unknown as typeof fetch,
   });
   assert.equal(downPick, null);
@@ -521,7 +522,7 @@ test('fallback: when Panda is down, slow, returns malformed JSON or missing mode
     {
       name: 'down',
       pandaFetch: (async () => {
-        throw new Error('connect ECONNREFUSED 127.0.0.1:8765');
+        throw new Error('connect ECONNREFUSED 192.168.0.40:8765');
       }) as unknown as typeof fetch,
       expectedReasonSubstring: 'Panda /route unreachable',
     },

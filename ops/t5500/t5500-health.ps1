@@ -1,11 +1,11 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 <#
 .SYNOPSIS
     The T5500's self-healing health check: heals first, then tells.
 
 .DESCRIPTION
     Probes four things, each by identity, never by an open port alone:
-      - the Hermes "marketing" gateway at http://127.0.0.1:8377/health,
+      - the Hermes "marketing" gateway at http://192.168.0.15:8377/health,
         confirmed by the identity its own /health route returns
         ("platform":"hermes-agent"), not just a 200;
       - OmniRoute on this T5500 at http://$T5500_HOST:20128/v1/models (the
@@ -44,7 +44,7 @@ $script:OpsStateRoot   = 'C:\DREAM\ops-state\t5500'
 $script:HealthJsonPath = Join-Path $script:OpsStateRoot 'health.json'
 $script:HealthLogPath  = Join-Path $script:OpsStateRoot 'health.log'
 
-$script:MarketingGatewayUrl = 'http://127.0.0.1:8377/health'
+$script:MarketingGatewayUrl = 'http://192.168.0.15:8377/health'
 $script:MarketingGatewayIdentity = '"platform":"hermes-agent"'
 # OmniRoute lives on the T5500. Its address is T5500_HOST from the node env file; with no value
 # set there is no URL, and nothing falls back to loopback or to Sabretooth.
@@ -195,7 +195,7 @@ function Write-T5500HealthLogLine {
 function Show-T5500HealthTable {
     param([Parameter(Mandatory)][hashtable]$Checks, [Parameter(Mandatory)][string]$Status)
     Write-Host ("Overall status: {0}" -f $Status)
-    Write-Host ("  Marketing gateway (127.0.0.1:8377): {0} - {1}" -f (Get-HealthWord $Checks.MarketingGateway.Healthy), $Checks.MarketingGateway.Detail)
+    Write-Host ("  Marketing gateway (192.168.0.15:8377): {0} - {1}" -f (Get-HealthWord $Checks.MarketingGateway.Healthy), $Checks.MarketingGateway.Detail)
     Write-Host ("  OmniRoute (T5500_HOST:20128, reported, never healed): {0} - {1}" -f (Get-HealthWord $Checks.OmniRoute.Healthy), $Checks.OmniRoute.Detail)
     Write-Host ("  GitHub CLI sign-in: {0} - {1}" -f (Get-HealthWord $Checks.GhAuth.Healthy), $Checks.GhAuth.Detail)
     Write-Host ("  Free disk space: {0} - {1}" -f (Get-HealthWord $Checks.FreeDisk.Healthy), $Checks.FreeDisk.Detail)

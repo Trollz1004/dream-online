@@ -66,7 +66,10 @@ export function maskSecrets(text) {
   s = s.replace(/\b((?:api[_-]?key|apikey|token|secret|password|passwd|pwd|auth)[A-Za-z_]*\s*[=:]\s*)(['"]?)[^\s'"`,;)]{6,}\2/gi, '$1$2XXXX$2');
   s = s.replace(/\b[a-f0-9]{32,}\b/gi, (m) => (/[0-9]/.test(m) && /[a-f]/i.test(m) ? 'XXXX' : m));
   s = s.replace(/[A-Za-z0-9+/_=-]{32,}/g, (m) => (m.split(/[-_./+=]/).some((seg) => seg.length >= 20 && /[A-Z]/.test(seg) && /[a-z]/.test(seg) && /[0-9]/.test(seg)) ? 'XXXX' : m));
-  s = s.replace(/\b(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3})\b/g, 'XXXX');
+  s = s.replace(
+    /\b(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3})\b/g,
+    (m) => (m === '192.168.0.15' || m === '192.168.0.40' ? m : 'XXXX')
+  );
   return s;
 }
 

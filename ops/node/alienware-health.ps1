@@ -45,14 +45,14 @@ $script:StackScript = 'C:\DREAM\hermes\scripts\dream-stack.ps1'
 function Get-NowZ { (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') }
 
 function Get-Targets {
-  # Identity strings verified against the live services on 2026-09-19.
+  # Identity strings verified against the live services on 2026-09-19; URLs from ops/fleet/fleet-map.json.
   $targets = @(
-    [pscustomobject]@{ name = 'live_npc_lab_9127';      group = 'required'; url = 'http://127.0.0.1:9127/health';        mustContain = 'dream-live-npc-lab' }
-    [pscustomobject]@{ name = 'dreamops_bridge_9133';   group = 'required'; url = 'http://127.0.0.1:9133/health';        mustContain = 'dreamops-bridge' }
-    [pscustomobject]@{ name = 'hermes_dashboard_9119';  group = 'optional'; url = 'http://127.0.0.1:9119/api/health';    mustContain = '"ok":true' }
-    [pscustomobject]@{ name = 'ollama_11434';           group = 'optional'; url = 'http://127.0.0.1:11434/api/tags';     mustContain = '"models":[' }
-    [pscustomobject]@{ name = 'jarvis_hud_9150';        group = 'optional'; url = 'http://127.0.0.1:9150/health';        mustContain = 'airi-dashboard' }
-    [pscustomobject]@{ name = 'crosslisting_3000';      group = 'optional'; url = 'http://127.0.0.1:3000/';              mustContain = '<div id="root">' }
+    [pscustomobject]@{ name = 'live_npc_lab_9127';      group = 'required'; url = 'http://192.168.0.40:9127/health';        mustContain = 'dream-live-npc-lab' }
+    [pscustomobject]@{ name = 'dreamops_bridge_9133';   group = 'required'; url = 'http://192.168.0.40:9133/health';        mustContain = 'dreamops-bridge' }
+    [pscustomobject]@{ name = 'hermes_dashboard_9119';  group = 'optional'; url = 'http://192.168.0.40:9119/api/health';    mustContain = '"ok":true' }
+    [pscustomobject]@{ name = 'ollama_11434';           group = 'optional'; url = 'http://192.168.0.40:11434/api/tags';     mustContain = '"models":[' }
+    [pscustomobject]@{ name = 'jarvis_hud_9150';        group = 'optional'; url = 'http://192.168.0.40:9150/health';        mustContain = 'airi-dashboard' }
+    [pscustomobject]@{ name = 'crosslisting_3000';      group = 'optional'; url = 'http://192.168.0.40:3000/';              mustContain = '<div id="root">' }
   )
   # OmniRoute lives on the T5500. The address is T5500_HOST from the node env file. With no
   # address there is no target: nothing falls back to loopback or to Sabretooth.
@@ -166,7 +166,7 @@ function Invoke-HealthMain {
   $logOut = Join-Path $heartbeat 'health.log'
   $triggersOut = Join-Path $heartbeat 'TRIGGERS.jsonl'
 
-  # Localhost probes must never go through a system proxy.
+  # Fleet LAN probes must never go through a system proxy.
   [System.Net.WebRequest]::DefaultWebProxy = $null
 
   $results = @(Invoke-ProbePass)

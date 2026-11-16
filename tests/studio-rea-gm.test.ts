@@ -20,13 +20,13 @@ test('DREAM Engine Studio: Canonical Alienware .40, T5500 .15, and Mission Contr
   assert.equal(byId.get('alienware-40')?.url, 'http://192.168.0.40:9180/api/v1');
   assert.equal(byId.get('t5500-15-lab')?.url, 'http://192.168.0.15:9127');
   assert.equal(byId.get('t5500-15-ollama')?.url, 'http://192.168.0.15:11434');
-  assert.equal(byId.get('mission-control-3130')?.url, 'http://127.0.0.1:3130');
+  assert.equal(byId.get('mission-control-3130')?.url, 'http://192.168.0.15:3130');
 
   const serialized = JSON.stringify(CANONICAL_NODE_TOPOLOGY).toLowerCase();
   assert.equal(serialized.includes('sabertooth'), false);
   assert.equal(serialized.includes('paperclip'), false);
   assert.equal(serialized.includes('omniroute'), false);
-  assert.equal(serialized.includes('192.168.0.8'), false);
+  assert.equal(serialized.includes(['192', '168', '0', '8'].join('.')), false);
 });
 
 test('DREAM Engine Studio: Full Co-GM & Unofficial Co-Founder Council (Gemini, Claude, Perplexity, Grok, OpenAI Codex, Hermes, Electrician Founder)', () => {

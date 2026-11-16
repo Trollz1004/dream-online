@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 <#
 .SYNOPSIS
     Josh-proofed bootstrap for a fresh Windows 10 T5500: installs every
@@ -532,8 +532,8 @@ function Get-BootstrapSteps {
                 }
                 $templatePath = Join-Path $script:ScriptRoot 'hermes-marketing-config.yaml'
                 # The template names the OmniRoute address as ${T5500_HOST} (the node env file value).
-                # Fill it in here; with no value set, OmniRoute is on this very machine, so use loopback.
-                $omniHost = if ($env:T5500_HOST) { $env:T5500_HOST } else { '127.0.0.1' }
+                # Fill it in here; with no value set, use the canonical T5500 LAN host from fleet-map.json (192.168.0.15).
+                $omniHost = if ($env:T5500_HOST) { $env:T5500_HOST } else { '192.168.0.15' }
                 $templateText = [System.IO.File]::ReadAllText($templatePath).Replace('${T5500_HOST}', $omniHost)
                 [System.IO.File]::WriteAllText((Join-Path $script:MarketingProfileDir 'config.yaml'), $templateText, (New-Object System.Text.UTF8Encoding($false)))
                 $key = New-ApiKey -Length 48

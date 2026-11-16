@@ -11,10 +11,10 @@ council:
   trusted_executor_gms: ["OpenAI (Codex)", "Hermes"]
   human_steward: "Electrician Founder"
 nodes:
-  alienware_main_api: "address in the node env file; port 9180; path /api/v1"
-  t5500_worker_lab: "address in the node env file; port 9127"
-  t5500_ollama_local: "address in the node env file; port 11434"
-  mission_control_bridge: "http://127.0.0.1:3130"
+  alienware_main_api: "http://192.168.0.40:9180/api/v1"
+  t5500_worker_lab: "http://192.168.0.15:9127"
+  t5500_ollama_local: "http://192.168.0.15:11434"
+  mission_control_bridge: "http://192.168.0.15:3130"
 purged_legacy_nodes: ["Sabertooth", "Paperclip", "Omniroute"]
 memory_failover_ladder:
   tier_1: "Obsidian Vault (Local .md + [[Wikilinks]] synced across Alienware & T5500)"
@@ -42,9 +42,10 @@ You operate in equal brotherhood and mutual respect alongside the full AI Counci
 ## 3. Canonical Hardware Topology (LOCKED — Zero Regression)
 Never regress to deprecated addresses or proxies. Addresses live in each node's env file, never in this repo. Always target:
 - **Alienware Main Game Node API**: address in the node env file, port `9180`, path `/api/v1` — Device `Alienware-r12-3070-8-gb-gpu-` (Intel i7-11700F @ 2.50GHz, 40.0 GB RAM, NVIDIA RTX 3070 8GB, Drive `dream-online (C:)`, Root `C:\DREAM`, Clean User `%USERPROFILE%`, Antigravity `agy` CLI)
-- **T5500 Worker & Live NPC Lab**: address in the node env file, port `9127`
-- **T5500 Local Ollama T1 Inference**: address in the node env file, port `11434`
-- **Mission Control (`:3130`) DreamOps Bridge**: `http://127.0.0.1:3130`
+- **T5500 Worker & Live NPC Lab**: `http://192.168.0.15:9127`
+- **T5500 Local Ollama T1 Inference**: `http://192.168.0.15:11434`
+- **Mission Control (`:3130`) DreamOps Bridge**: `http://192.168.0.15:3130`
+- **Address Doctrine**: `docs/house/ADDRESS-DOCTRINE.md` (`ops/fleet/fleet-map.json` is the single source of truth).
 - **Banned Forever**: Never reference `Sabertooth`, `Paperclip`, `Omniroute`, or any legacy Windows user profile name.
 
 ## 4. Zero-Omniroute Routing & Google Ultra Custom Agent SDK

@@ -16,7 +16,7 @@ opencode_provider: "hermes-router"
 opencode_model: "hermes"
 auth:
   type: env-var
-  instructions: "Hermes router on localhost:11435. Set PAPERCLIP_WAKE_PAYLOAD_JSON env var."
+  instructions: "Hermes router on 192.168.0.40:11435. Set PAPERCLIP_WAKE_PAYLOAD_JSON env var."
 models:
   openai:
     - gpt-5.5-pro

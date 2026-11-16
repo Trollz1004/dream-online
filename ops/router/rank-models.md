@@ -16,7 +16,7 @@ This job is never run by a wrapper, an unattended harness, or a local model (`He
 ## Prompt to Paste into a Live Fable or Argon Session
 
 ```text
-Use your highest reasoning level. Read docs/standards/AGENT-STANDARD.md, ops/router/lanes.json, and ops/router/dream-task-router.ts before anything else. Never push to main or master, never merge, never use --no-verify or --force. Never type a Windows user folder name in any file; write %USERPROFILE%. Never print an environment variable value, a secret, or a private LAN address. Never scrape YouTube or any Google site.
+Use your highest reasoning level. Read docs/standards/AGENT-STANDARD.md, docs/house/ADDRESS-DOCTRINE.md, ops/router/lanes.json, and ops/router/dream-task-router.ts before anything else. Never push to main or master, never merge, never use --no-verify or --force. Never type a Windows user folder name in any file; write %USERPROFILE%. Never print an environment variable value or a secret; use 192.168.0.40 and 192.168.0.15 from ops/fleet/fleet-map.json for reach addresses. Never scrape YouTube or any Google site.
 
 You are running the weekly Jev router model ranking refresh in a live official session (Fable or Gemini 4 Argon). Do the following steps in order:
 
