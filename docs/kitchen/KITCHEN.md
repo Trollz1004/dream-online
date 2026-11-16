@@ -38,9 +38,9 @@ flowchart TD
   class E,R,B,ADD,J1,J2 soon
 ```
 
-Running today: tickets land in the wheel's inbox; the Panda Router picks the model; one line chef cooks; Head Chef Fable reads the work and the real screens, then merges or sends it back; main is deployed to the T5500; every dish leaves notes in the pantry.
+Running today: tickets come in through the Swarm Command request box, which writes them into the wheel's inbox; the Panda Router picks the model; one line chef cooks; Head Chef Fable reads the work and the real screens, then merges or sends it back; main is deployed to the T5500; every dish leaves notes in the pantry.
 
-Being built: the Swarm Command request box that writes tickets into the inbox, the expediter, the role router, the second plate, the add-on station and the two tasters.
+Being built: the expediter, the role router, the second plate, the add-on station and the two tasters.
 
 ## 2. The pantry: what every chef can reach
 
