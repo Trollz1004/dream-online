@@ -2,9 +2,10 @@ import http from "node:http";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { compactMemory, handleDialogue, handleWorldEvent, readAiFailures, readMemory } from "./npcEngine.js";
+import { getServiceBindHost, getServicePort } from "../../../../ops/fleet/fleet-map.mjs";
 
-const HOST = process.env.DREAM_LIVE_NPC_HOST || "127.0.0.1";
-const PORT = Number(process.env.DREAM_LIVE_NPC_PORT || 9127);
+const HOST = getServiceBindHost("live-npc-lab", process.env.DREAM_LIVE_NPC_HOST);
+const PORT = getServicePort("live-npc-lab", process.env.DREAM_LIVE_NPC_PORT);
 const CONTRACTS_DIR = path.resolve(process.cwd(), "data");
 const SAMPLES_DIR = path.join(CONTRACTS_DIR, "samples");
 const NPC_PROFILES_FILE = "npc-profiles.json";
