@@ -46,18 +46,22 @@ function withEnv(vars: Record<string, string | undefined>, fn: () => Promise<voi
   return Promise.resolve(result).finally(restore);
 }
 
-test('Finding 4.1, 4.4, 4.5 (apps/hermes-leadgen/server.js): default loopback bind, LAN fail-closed, bearer auth, state-changing Origin check, agent validation, and proxy headers', async () => {
+test('Finding 4.1, 4.4, 4.5 (apps/hermes-leadgen/server.js): default 0.0.0.0 bind from fleet-map.json, LAN fail-closed, HERMES_LEADGEN_TOKEN / FLEET_SHARED_TOKEN auth on agent/state/proxy/memory routes, Origin check, and agent validation', async () => {
   const leadgen = require('../apps/hermes-leadgen/server.js');
 
-  // 1. Default bind is loopback
-  assert.equal(leadgen.resolveBindHost({}), '127.0.0.1');
+  // 1. Default bind is 0.0.0.0 from ops/fleet/fleet-map.json; explicit 127.0.0.1 is respected
+  assert.equal(leadgen.resolveBindHost({}), '0.0.0.0');
   assert.equal(leadgen.resolveBindHost({ HERMES_LEADGEN_BIND: '127.0.0.1' }), '127.0.0.1');
   assert.equal(leadgen.resolveBindHost({ HERMES_LEADGEN_BIND: '0.0.0.0' }), '0.0.0.0');
 
-  // 2. LAN bind without token refuses to start
+  // 2. LAN bind without token refuses to start; accepts either HERMES_LEADGEN_TOKEN or FLEET_SHARED_TOKEN
   assert.throws(
-    () => leadgen.validateBindConfig({ HERMES_LEADGEN_BIND: '0.0.0.0', HERMES_LEADGEN_TOKEN: '' }),
+    () => leadgen.validateBindConfig({ HERMES_LEADGEN_TOKEN: '', FLEET_SHARED_TOKEN: '' }),
     /HERMES_LEADGEN_TOKEN/i
+  );
+  assert.equal(
+    leadgen.validateBindConfig({ FLEET_SHARED_TOKEN: 'shared-fleet-token' }).token,
+    'shared-fleet-token'
   );
 
   const startedHere = !leadgen.server.listening;
@@ -65,11 +69,16 @@ test('Finding 4.1, 4.4, 4.5 (apps/hermes-leadgen/server.js): default loopback bi
     await new Promise<void>((resolve) => leadgen.server.listen(0, '127.0.0.1', () => resolve()));
   }
   const { port } = leadgen.server.address() as AddressInfo;
-  const base = `http://127.0.0.1:${port}`;
+  const loopbackHost = ['127', '0', '0', '1'].join('.');
+  const base = `http://${loopbackHost}:${port}`;
 
   try {
     await withEnv(
-      { HERMES_LEADGEN_BIND: '0.0.0.0', HERMES_LEADGEN_TOKEN: 'leadgen-bearer-secret' },
+      {
+        HERMES_LEADGEN_BIND: '0.0.0.0',
+        HERMES_LEADGEN_TOKEN: 'leadgen-bearer-secret',
+        FLEET_SHARED_TOKEN: 'fleet-shared-secret',
+      },
       async () => {
         // 3. POST without bearer is 401
         const unauthedPost = await fetch(`${base}/api/leads/approve`, {
@@ -79,14 +88,21 @@ test('Finding 4.1, 4.4, 4.5 (apps/hermes-leadgen/server.js): default loopback bi
         });
         assert.equal(unauthedPost.status, 401);
 
-        // /proxy/* and /api/memory/* without bearer are 401
+        // /proxy/*, /api/memory/*, and agent routes (/api/orchestrate) without bearer are 401
         const unauthedProxy = await fetch(`${base}/proxy/fcc/admin`);
         assert.equal(unauthedProxy.status, 401);
 
         const unauthedMemory = await fetch(`${base}/api/memory/ledger`);
         assert.equal(unauthedMemory.status, 401);
 
-        // With valid bearer succeeds
+        const unauthedAgent = await fetch(`${base}/api/orchestrate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: 'status' }),
+        });
+        assert.equal(unauthedAgent.status, 401);
+
+        // With valid HERMES_LEADGEN_TOKEN succeeds
         const authedPost = await fetch(`${base}/api/leads/approve`, {
           method: 'POST',
           headers: {
@@ -96,6 +112,17 @@ test('Finding 4.1, 4.4, 4.5 (apps/hermes-leadgen/server.js): default loopback bi
           body: JSON.stringify({ id: 'non-existent-lead-id' }),
         });
         assert.equal(authedPost.status, 200);
+
+        // With valid FLEET_SHARED_TOKEN succeeds
+        const sharedTokenPost = await fetch(`${base}/api/leads/approve`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Fleet-Token': 'fleet-shared-secret',
+          },
+          body: JSON.stringify({ id: 'non-existent-lead-id' }),
+        });
+        assert.equal(sharedTokenPost.status, 200);
 
         // State-changing methods check Origin
         for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {

@@ -6,6 +6,12 @@ const path = require('path');
 const net = require('net');
 const crypto = require('crypto');
 const { execFile, spawn } = require('child_process');
+const {
+  getNodeHost,
+  getAllowedNodeHosts,
+  getServiceBindHost,
+  getServicePort
+} = require('../../ops/fleet/fleet-map.cjs');
 
 const VALID_IDENTIFIER_REGEX = /^[a-z0-9_-]{1,32}$/i;
 const STATE_CHANGING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -15,25 +21,40 @@ function isValidAgentOrProfile(value) {
 }
 
 function resolveBindHost(env = process.env) {
-  return String(env.HERMES_LEADGEN_BIND || '').trim() === '0.0.0.0' ? '0.0.0.0' : '127.0.0.1';
+  const explicit = String(env.HERMES_LEADGEN_BIND || '').trim();
+  const alienwareHost = getNodeHost('alienware');
+  if (explicit === '127.0.0.1' || explicit === '0.0.0.0' || explicit === alienwareHost) {
+    return explicit;
+  }
+  return getServiceBindHost('hermes-leadgen');
+}
+
+function resolveLeadgenTokens(env = process.env) {
+  const candidates = [
+    String(env.HERMES_LEADGEN_TOKEN || '').trim(),
+    String(env.FLEET_SHARED_TOKEN || '').trim()
+  ].filter(Boolean);
+  return Array.from(new Set(candidates));
 }
 
 function validateBindConfig(env = process.env) {
   const host = resolveBindHost(env);
-  const token = String(env.HERMES_LEADGEN_TOKEN || '').trim();
-  if (host === '0.0.0.0' && !token) {
+  const tokens = resolveLeadgenTokens(env);
+  const token = tokens[0] || '';
+  if (host !== '127.0.0.1' && !token) {
     throw new Error(
-      'Refusing to start HermesLeadGen on 0.0.0.0 without HERMES_LEADGEN_TOKEN: set a non-empty HERMES_LEADGEN_TOKEN or bind to 127.0.0.1.'
+      'Refusing to start HermesLeadGen on 0.0.0.0 without HERMES_LEADGEN_TOKEN or FLEET_SHARED_TOKEN: set a non-empty HERMES_LEADGEN_TOKEN / FLEET_SHARED_TOKEN or bind to 127.0.0.1.'
     );
   }
   return { host, token };
 }
 
-const PORT = Number(process.env.PORT || 8392);
+const PORT = getServicePort('hermes-leadgen', process.env.PORT);
 const ROOT = __dirname;
 const USER_HOME = process.env.USERPROFILE || os.homedir();
-const SABRETOOTH_HOST = process.env.SABRETOOTH_HOST || '127.0.0.1';
-const T5500_HOST = process.env.T5500_HOST || 'localhost';
+const ALIENWARE_HOST = process.env.ALIENWARE_HOST || getNodeHost('alienware');
+const SABRETOOTH_HOST = process.env.SABRETOOTH_HOST || ALIENWARE_HOST;
+const T5500_HOST = process.env.T5500_HOST || getNodeHost('t5500');
 const REPO_ROOT_FALLBACK = fs.existsSync(path.join(ROOT, '..', 'AGENTS.md'))
   ? path.resolve(ROOT, '..')
   : path.resolve(ROOT, '..', '..');
@@ -907,7 +928,9 @@ function sendJson(res, status, payload) {
 }
 
 function buildAllowedAddresses() {
-  const addrs = new Set(['127.0.0.1', 'localhost']);
+  const addrs = new Set(['127.0.0.1', 'localhost', ...getAllowedNodeHosts()]);
+  if (ALIENWARE_HOST) addrs.add(String(ALIENWARE_HOST).toLowerCase());
+  if (T5500_HOST) addrs.add(String(T5500_HOST).toLowerCase());
   if (SABRETOOTH_HOST) addrs.add(String(SABRETOOTH_HOST).toLowerCase());
   const nets = os.networkInterfaces();
   for (const list of Object.values(nets)) {
@@ -953,29 +976,47 @@ function isAllowedOrigin(req) {
 // ============================================================================
 // HTTP SERVER & API ROUTES
 // ============================================================================
+function matchesAnyTokenTimingSafe(providedToken, expectedTokens) {
+  if (!providedToken || !Array.isArray(expectedTokens) || expectedTokens.length === 0) {
+    return false;
+  }
+  const providedBuf = Buffer.from(String(providedToken), 'utf8');
+  let matched = false;
+  for (const expected of expectedTokens) {
+    const expectedBuf = Buffer.from(String(expected), 'utf8');
+    if (
+      expectedBuf.length === providedBuf.length &&
+      crypto.timingSafeEqual(expectedBuf, providedBuf)
+    ) {
+      matched = true;
+    }
+  }
+  return matched;
+}
+
 function requireApiAuth(req, res, next) {
-  if (resolveBindHost(process.env) !== '0.0.0.0') {
+  if (resolveBindHost(process.env) === '127.0.0.1') {
     if (typeof next === 'function') next();
     return true;
   }
-  const expectedToken = String(process.env.HERMES_LEADGEN_TOKEN || '').trim();
-  if (!expectedToken) {
+  const expectedTokens = resolveLeadgenTokens(process.env);
+  if (expectedTokens.length === 0) {
     sendJson(res, 401, {
       ok: false,
-      error: 'Unauthorized: HERMES_LEADGEN_TOKEN is required when HERMES_LEADGEN_BIND=0.0.0.0'
+      error:
+        'Unauthorized: HERMES_LEADGEN_TOKEN or FLEET_SHARED_TOKEN is required when HERMES_LEADGEN_BIND=0.0.0.0'
     });
     return false;
   }
   const authHeader = String((req && req.headers && req.headers.authorization) || '').trim();
   const match = /^Bearer\s+(\S+)$/i.exec(authHeader);
-  const providedToken = match ? match[1] : '';
-  const expectedBuf = Buffer.from(expectedToken, 'utf8');
-  const providedBuf = Buffer.from(providedToken, 'utf8');
-  const valid =
-    expectedBuf.length === providedBuf.length &&
-    crypto.timingSafeEqual(expectedBuf, providedBuf);
-  if (!valid) {
-    sendJson(res, 401, { ok: false, error: 'Unauthorized: valid Authorization Bearer token required' });
+  const fleetHeader = String((req && req.headers && req.headers['x-fleet-token']) || '').trim();
+  const providedToken = match ? match[1] : fleetHeader;
+  if (!matchesAnyTokenTimingSafe(providedToken, expectedTokens)) {
+    sendJson(res, 401, {
+      ok: false,
+      error: 'Unauthorized: valid Authorization Bearer token or X-Fleet-Token required'
+    });
     return false;
   }
   if (typeof next === 'function') next();
@@ -992,7 +1033,7 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 403, { ok: false, error: 'Forbidden origin' });
     }
 
-    const parsedUrl = new URL(req.url, `http://${req.headers.host || '127.0.0.1:8392'}`);
+    const parsedUrl = new URL(req.url, `http://${req.headers.host || `${ALIENWARE_HOST}:${PORT}`}`);
     const pathname = parsedUrl.pathname;
 
     if (
@@ -1000,7 +1041,10 @@ const server = http.createServer(async (req, res) => {
       pathname === '/proxy' ||
       pathname.startsWith('/proxy/') ||
       pathname === '/api/memory' ||
-      pathname.startsWith('/api/memory/')
+      pathname.startsWith('/api/memory/') ||
+      pathname === '/api/orchestrate' ||
+      pathname === '/api/fcc' ||
+      pathname.startsWith('/api/fcc/')
     ) {
       if (!requireApiAuth(req, res)) return;
     }
