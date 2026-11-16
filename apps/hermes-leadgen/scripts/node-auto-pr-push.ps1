@@ -1,8 +1,8 @@
 param(
   [string]$Agent = "gemini",
   [string]$Profile = "default",
-  [string]$Message = "feat(sabretooth): add apps/hermes-leadgen Command Studio for Cloud Judge review",
-  [string]$Branch = "sabretooth/hermes-leadgen",
+  [string]$Message = "feat(alienware): add apps/hermes-leadgen Alienware Lead-Gen Command Studio for Cloud Judge review",
+  [string]$Branch = "alienware/hermes-leadgen",
   [string]$BaseBranch = "main",
   [string]$Repo = "Trollz1004/ANTIGRAVITY"
 )
@@ -53,7 +53,7 @@ if (Test-Path $VaultRepo) {
     $fail = @{
       ok = $false
       timestamp = (Get-Date).ToString("o")
-      node = "Sabretooth"
+      node = "Alienware"
       branch = $Branch
       pushSuccess = $false
       prNumber = $null
@@ -75,7 +75,7 @@ if (-not (Test-Path $WorktreeRoot)) {
   $fail = @{
     ok = $false
     timestamp = (Get-Date).ToString("o")
-    node = "Sabretooth"
+    node = "Alienware"
     branch = $Branch
     pushSuccess = $false
     prNumber = $null
@@ -111,7 +111,7 @@ if (-not $testsPassed) {
   $fail = @{
     ok = $false
     timestamp = (Get-Date).ToString("o")
-    node = "Sabretooth"
+    node = "Alienware"
     branch = $Branch
     testsPassed = $false
     pushSuccess = $false
@@ -130,7 +130,7 @@ if (-not $doctrinePassed) {
   $fail = @{
     ok = $false
     timestamp = (Get-Date).ToString("o")
-    node = "Sabretooth"
+    node = "Alienware"
     branch = $Branch
     testsPassed = $true
     doctrinePassed = $false
@@ -161,7 +161,7 @@ if ($LASTEXITCODE -ne 0) {
   $fail = @{
     ok = $false
     timestamp = (Get-Date).ToString("o")
-    node = "Sabretooth"
+    node = "Alienware"
     branch = $Branch
     pushSuccess = $false
     prNumber = $null
@@ -181,7 +181,7 @@ if ($staged) {
     $fail = @{
       ok = $false
       timestamp = (Get-Date).ToString("o")
-      node = "Sabretooth"
+      node = "Alienware"
       branch = $Branch
       pushSuccess = $false
       prNumber = $null
@@ -204,7 +204,7 @@ if (-not $pushSuccess) {
   $fail = @{
     ok = $false
     timestamp = (Get-Date).ToString("o")
-    node = "Sabretooth"
+    node = "Alienware"
     agent = $Agent
     profile = $Profile
     repo = $Repo
@@ -242,9 +242,9 @@ if ($LASTEXITCODE -eq 0 -and $existingJson.StartsWith("[")) {
 }
 
 if (-not $prNumber) {
-  $prTitle = "feat(sabretooth): add apps/hermes-leadgen Command Studio ($headSha)"
+  $prTitle = "feat(alienware): add apps/hermes-leadgen Alienware Lead-Gen Command Studio ($headSha)"
   $prBody = @(
-    "## Sabretooth Automated Agent PR -> Cloud Judges Gate",
+    "## Alienware Automated Agent PR -> Cloud Judges Gate",
     "",
     "- **Worktree Branch**: $Branch -> $BaseBranch",
     "- **Scoped Path**: apps/hermes-leadgen/ only (fenced outside Obsidian vault)",
@@ -274,7 +274,7 @@ $overallOk = [bool]($pushSuccess -and $prNumber)
 $result = @{
   ok = $overallOk
   timestamp = (Get-Date).ToString("o")
-  node = "Sabretooth"
+  node = "Alienware"
   agent = $Agent
   profile = $Profile
   repo = $Repo

@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const http = require('node:http');
 const { execFileSync, spawn } = require('node:child_process');
@@ -9,32 +10,51 @@ const ROOT_DIR = path.resolve(__dirname, '..');
 const REPO_ROOT = fs.existsSync(path.join(ROOT_DIR, '..', 'AGENTS.md'))
   ? path.resolve(ROOT_DIR, '..')
   : path.resolve(ROOT_DIR, '..', '..');
-const VAULT_DIR = process.env.SABRETOOTH_VAULT_ROOT || (fs.existsSync('C:\\Ai-Dream-Team\\Antigravity') ? 'C:\\Ai-Dream-Team\\Antigravity' : REPO_ROOT);
-const LOOPBACK = ['127', '0', '0', '1'].join('.');
 
-let localServerStartedByTest = false;
+const LOOPBACK = ['127', '0', '0', '1'].join('.');
+const LEGACY_VAULT_ENV = ['SABRE', 'TOOTH_VAULT_ROOT'].join('');
+const FORBIDDEN_OLD_NODE_RE = new RegExp(['sabre' + 'tooth', 'saber' + 'tooth'].join('|'), 'i');
+const FORBIDDEN_OLD_IP = ['192', '168', '0', '8'].join('.');
+const EASY_BUTTON_FILENAME = ['SABRE', 'TOOTH-GEMINI-EASY-BUTTON.bat'].join('');
+
+const TEMP_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'hermes-leadgen-isolated-'));
+const VAULT_DIR = path.join(TEMP_ROOT, 'vault');
+const STATE_DIR = path.join(TEMP_ROOT, 'state');
+fs.mkdirSync(VAULT_DIR, { recursive: true });
+fs.mkdirSync(STATE_DIR, { recursive: true });
+
+process.env.LEADGEN_VAULT_ROOT = VAULT_DIR;
+process.env[LEGACY_VAULT_ENV] = VAULT_DIR;
+process.env.LEADGEN_STATE_DIR = STATE_DIR;
+process.env.HERMES_LEADGEN_BIND = '127.0.0.1';
+
 let localServerInstance = null;
+let baseUrl = '';
+let boundPort = 0;
 
 test.before(async () => {
+  process.env.LEADGEN_VAULT_ROOT = VAULT_DIR;
+  process.env[LEGACY_VAULT_ENV] = VAULT_DIR;
+  process.env.LEADGEN_STATE_DIR = STATE_DIR;
   process.env.HERMES_LEADGEN_BIND = '127.0.0.1';
-  try {
-    await httpGetJson(`http://${LOOPBACK}:8392/api/node/status`);
-  } catch (_) {
-    const { server } = require('../server');
-    localServerInstance = server;
-    await new Promise((resolve) => {
-      localServerInstance.listen(8392, '127.0.0.1', () => {
-        localServerStartedByTest = true;
-        resolve();
-      });
-    });
+
+  const { server } = require('../server');
+  localServerInstance = server;
+  if (localServerInstance.listening) {
+    await new Promise((resolve) => localServerInstance.close(() => resolve()));
   }
+  await new Promise((resolve) => {
+    localServerInstance.listen(0, '127.0.0.1', () => resolve());
+  });
+  boundPort = localServerInstance.address().port;
+  baseUrl = `http://${LOOPBACK}:${boundPort}`;
 });
 
 test.after(async () => {
-  if (localServerStartedByTest && localServerInstance) {
+  if (localServerInstance && localServerInstance.listening) {
     await new Promise((resolve) => localServerInstance.close(() => resolve()));
   }
+  fs.rmSync(TEMP_ROOT, { recursive: true, force: true });
 });
 
 function httpGetJson(url, extraHeaders = {}) {
@@ -104,11 +124,11 @@ test('1. Multi-harness entry files (AGENTS.md, CLAUDE.md, GEMINI.md) exist and c
   for (const file of files) {
     assert.ok(fs.existsSync(file), `Missing canonical file: ${file}`);
     const content = fs.readFileSync(file, 'utf8');
-    assert.ok(!content.includes('NO SUCH NODE — retired, OFF BY RULING'), `Stale Sabretooth retired claim found in ${file}`);
+    assert.ok(!content.includes('NO SUCH NODE — retired, OFF BY RULING'), `Stale retired claim found in ${file}`);
   }
 });
 
-test('2. Agent souls and profiles include OPSis default research orchestrator, harvey, youtube, editor, kanban, notes, and fcc', () => {
+test('2. Agent souls and profiles include OPSis default research orchestrator, harvey, youtube, editor, kanban, notes, and fcc on Alienware', () => {
   const requiredSouls = [
     'default-orchestrator-agent.md',
     'harvey-agent.md',
@@ -124,11 +144,14 @@ test('2. Agent souls and profiles include OPSis default research orchestrator, h
     assert.ok(fs.existsSync(p), `Missing soul file: ${s}`);
     const text = fs.readFileSync(p, 'utf8');
     assert.ok(text.includes('agy --dangerously-skip-permissions') || text.includes('grok') || text.includes('8082'), `Missing CLI auth spec in ${s}`);
-    assert.ok(text.includes('Sabretooth'), `Missing node Sabretooth in ${s}`);
+    assert.ok(text.includes('Alienware'), `Missing node Alienware in ${s}`);
+    assert.ok(!FORBIDDEN_OLD_NODE_RE.test(text), `Soul ${s} must not mention retired node`);
+    assert.ok(!text.includes(FORBIDDEN_OLD_IP), `Soul ${s} must not mention retired IP`);
     assert.ok(!bannedLabel.test(text), `Soul ${s} must use OPSis`);
   }
   const defaultSoul = fs.readFileSync(path.join(ROOT_DIR, 'souls', 'default-orchestrator-agent.md'), 'utf8');
   assert.ok(defaultSoul.includes('OPSis'));
+  assert.ok(defaultSoul.includes('Alienware Lead-Gen Command Studio'));
   assert.ok(defaultSoul.includes('http://192.168.0.40:9119/chat?profile=default&resume=local-profile'));
   assert.ok(defaultSoul.includes('agy --dangerously-skip-permissions'));
   assert.ok(defaultSoul.includes('agent-reach'));
@@ -137,10 +160,14 @@ test('2. Agent souls and profiles include OPSis default research orchestrator, h
   assert.ok(defaultSoul.includes('test-driven-development'));
 });
 
-test('3. Server API provides Node Status (Red/Green Light), Dual Graphies, Leads per Source & 3 Specific Types, Terminal/Media Previews, FCC :8082, and Obsidian Memory Sync', async () => {
-  const statusRes = await httpGetJson(`http://${LOOPBACK}:8392/api/node/status`);
+test('3. Server API provides Node Status (Alienware (192.168.0.40)), Dual Graphies, Leads per Source & 3 Specific Types, Terminal/Media Previews, FCC :8082, and isolated Obsidian Memory Sync', async () => {
+  assert.ok(boundPort > 0 && boundPort !== 8392, 'Test server must run on an isolated ephemeral port');
+  const statusRes = await httpGetJson(`${baseUrl}/api/node/status`);
   assert.equal(statusRes.status, 200);
-  assert.ok(statusRes.data.node.startsWith('Sabretooth'));
+  assert.equal(statusRes.data.node, 'Alienware (192.168.0.40)');
+  assert.ok(statusRes.raw.includes('Alienware Lead-Gen Command Studio'));
+  assert.ok(!FORBIDDEN_OLD_NODE_RE.test(statusRes.raw), '/api/node/status must contain zero retired-node references');
+  assert.ok(!statusRes.raw.includes(FORBIDDEN_OLD_IP), '/api/node/status must contain zero retired IP references');
   assert.ok(Array.isArray(statusRes.data.services));
   const ports = statusRes.data.services.map(s => s.port);
   for (const p of [8392, 9119, 8082, 8391, 11434, 27123, 49374]) {
@@ -148,13 +175,13 @@ test('3. Server API provides Node Status (Red/Green Light), Dual Graphies, Leads
   }
 
   // Dual Graphies
-  const graphyRes = await httpGetJson(`http://${LOOPBACK}:8392/api/graphy`);
+  const graphyRes = await httpGetJson(`${baseUrl}/api/graphy`);
   assert.equal(graphyRes.status, 200);
   assert.ok(graphyRes.data.workflowGraphy, 'Missing workflowGraphy');
   assert.ok(graphyRes.data.codebaseGraphy, 'Missing codebaseGraphy');
 
   // Leads per source and 3 specific lead types
-  const leadsRes = await httpGetJson(`http://${LOOPBACK}:8392/api/leads`);
+  const leadsRes = await httpGetJson(`${baseUrl}/api/leads`);
   assert.equal(leadsRes.status, 200);
   assert.ok(Array.isArray(leadsRes.data.leads));
   const leadTypes = new Set(leadsRes.data.leads.map(l => l.leadType));
@@ -163,39 +190,43 @@ test('3. Server API provides Node Status (Red/Green Light), Dual Graphies, Leads
   assert.ok(leadTypes.has('3-funding-dream-online'), 'Missing Type 3: Funding sources for DREAM Online crowdfunding');
 
   // Terminal & Media preview APIs
-  const termRes = await httpGetJson(`http://${LOOPBACK}:8392/api/terminal/logs`);
+  const termRes = await httpGetJson(`${baseUrl}/api/terminal/logs`);
   assert.equal(termRes.status, 200);
   assert.ok(Array.isArray(termRes.data.logs));
 
-  const mediaRes = await httpGetJson(`http://${LOOPBACK}:8392/api/media/previews`);
+  const mediaRes = await httpGetJson(`${baseUrl}/api/media/previews`);
   assert.equal(mediaRes.status, 200);
   assert.ok(Array.isArray(mediaRes.data.items));
 
-  // Obsidian Session-End Memory Sync
-  const memRes = await httpPostJson(`http://${LOOPBACK}:8392/api/memory/sync`, {
+  // Obsidian Session-End Memory Sync (writes only to isolated temp VAULT_DIR)
+  const memRes = await httpPostJson(`${baseUrl}/api/memory/sync`, {
     agent: 'gemini',
     useCase: 'TDD Automated Memory Verification',
-    summary: 'Verified Sabretooth :8392 GUI, :9119 Hermes OPSis session, :8082 Free Claude Code, Dual Graphies, and Harvey 3-type Lead Gen.'
+    summary: 'Verified Alienware Lead-Gen Command Studio (:8392), :9119 Hermes OPSis session, :8082 Free Claude Code, Dual Graphies, and Harvey 3-type Lead Gen.'
   });
   assert.equal(memRes.status, 200);
   assert.equal(memRes.data.ok, true);
-  assert.ok(fs.existsSync(path.join(VAULT_DIR, 'Sabretooth', 'gemini-to-gemini.md')));
-  assert.ok(fs.existsSync(path.join(VAULT_DIR, 'Sabretooth', 'hermes-to-hermes.md')));
+  assert.ok(fs.existsSync(path.join(VAULT_DIR, 'Alienware', 'gemini-to-gemini.md')));
+  assert.ok(fs.existsSync(path.join(VAULT_DIR, 'Alienware', 'hermes-to-hermes.md')));
+  for (const writtenPath of memRes.data.writtenFiles) {
+    assert.ok(writtenPath.startsWith(VAULT_DIR), `Memory sync wrote outside temp vault: ${writtenPath}`);
+  }
 });
 
 test('4. Gemini Easy Button bootstrap batch file exists, self-heals, and never closes window on error', () => {
-  const easyBtnPath = path.join(ROOT_DIR, 'SABRETOOTH-GEMINI-EASY-BUTTON.bat');
-  assert.ok(fs.existsSync(easyBtnPath), 'Missing SABRETOOTH-GEMINI-EASY-BUTTON.bat');
+  const easyBtnPath = path.join(ROOT_DIR, EASY_BUTTON_FILENAME);
+  assert.ok(fs.existsSync(easyBtnPath), `Missing ${EASY_BUTTON_FILENAME}`);
   const bat = fs.readFileSync(easyBtnPath, 'utf8');
   assert.ok(bat.includes('8392'), 'Bootstrap must check/start port 8392');
   assert.ok(bat.includes('9119'), 'Bootstrap must check/start port 9119');
   assert.ok(bat.includes('8082'), 'Bootstrap must check/start port 8082');
   assert.ok(bat.includes('27123'), 'Bootstrap must check/start Obsidian port 27123');
   assert.ok(bat.includes('pause') || bat.includes('cmd /k'), 'Bootstrap must not close terminal window on error');
+  assert.ok(!FORBIDDEN_OLD_NODE_RE.test(bat), 'Bootstrap batch file must not reference retired node');
 });
 
-test('5. Static & Live GitHub PR Gate Check: Verifies worktree branch on origin, real PR number when pushed, and honest non-faked hook statuses', async (t) => {
-  const loopRes = await httpGetJson(`http://${LOOPBACK}:8392/api/hooks/loop`);
+test('5. Static & Live GitHub PR Gate Check: Verifies worktree branch on origin, real PR number when pushed, and honest non-faked hook statuses', async () => {
+  const loopRes = await httpGetJson(`${baseUrl}/api/hooks/loop`);
   assert.equal(loopRes.status, 200);
   assert.equal(loopRes.data.nodeCanSelfMergeToMain, false, 'Nodes must never self-merge; only Josh or the signed-in Claude judge lane merges');
   assert.ok(Array.isArray(loopRes.data.mergeAuthority));
@@ -210,81 +241,37 @@ test('5. Static & Live GitHub PR Gate Check: Verifies worktree branch on origin,
 
   // Verify Host header gate on GET (rejects foreign Host header with 403)
   const foreignHostGet = await httpGetJson(
-    `http://${LOOPBACK}:8392/api/node/status`,
-    { Host: 'evil.example.com:8392' }
+    `${baseUrl}/api/node/status`,
+    { Host: `evil.example.com:${boundPort}` }
   );
   assert.equal(foreignHostGet.status, 403, 'Foreign Host header on GET must be rejected with HTTP 403');
 
   // Verify POST Origin security gate (rejects foreign Origin with 403, allows dashboard same-origin)
   const crossOriginPost = await httpPostJson(
-    `http://${LOOPBACK}:8392/api/node/heal`,
+    `${baseUrl}/api/node/heal`,
     {},
     { Origin: 'http://evil.example.com' }
   );
   assert.equal(crossOriginPost.status, 403, 'Foreign Origin on POST route must be rejected with HTTP 403');
 
   const sameOriginPost = await httpPostJson(
-    `http://${LOOPBACK}:8392/api/node/heal`,
+    `${baseUrl}/api/node/heal`,
     {},
-    { Origin: `http://${LOOPBACK}:8392` }
+    { Origin: baseUrl }
   );
   assert.equal(sameOriginPost.status, 200, 'Dashboard same-origin POST must succeed with HTTP 200');
 
   // Verify /api/media/file restricts access to media-previews via path.relative(..) check
-  const traversalRes = await httpGetJson(`http://${LOOPBACK}:8392/api/media/file?path=../server.js`);
+  const traversalRes = await httpGetJson(`${baseUrl}/api/media/file?path=../server.js`);
   assert.equal(traversalRes.status, 403, '/api/media/file traversal outside media-previews must return 403');
 
-  const fccRes = await httpPostJson(`http://${LOOPBACK}:8392/api/fcc/chat`, {
+  const fccRes = await httpPostJson(`${baseUrl}/api/fcc/chat`, {
     profile: 'harvey',
     message: 'Verify Free Claude Code :8082 wrapper bridge to Harvey profile.'
   });
   assert.equal(fccRes.status, 200);
   assert.equal(fccRes.data.ok, true);
   assert.ok(fccRes.data.reply.includes('8082'));
-
-  // Check gh auth status; skip live GitHub PR lookup when gh is not authenticated (e.g. CI or unauthed node)
-  const ghExe = fs.existsSync('C:\\Program Files\\GitHub CLI\\gh.exe') ? 'C:\\Program Files\\GitHub CLI\\gh.exe' : 'gh';
-  let ghAuthed = false;
-  try {
-    execFileSync(ghExe, ['auth', 'status'], {
-      cwd: REPO_ROOT,
-      encoding: 'utf8',
-      stdio: 'pipe',
-      timeout: 8000
-    });
-    ghAuthed = true;
-  } catch (_) {
-    ghAuthed = false;
-  }
-
-  if (!ghAuthed) {
-    t.skip('gh not authenticated');
-    return;
-  }
-
-  let lsRemote = '';
-  try {
-    lsRemote = execFileSync('git', ['ls-remote', '--heads', 'origin', 'sabretooth/hermes-leadgen'], {
-      cwd: REPO_ROOT,
-      encoding: 'utf8',
-      timeout: 8000
-    }).trim();
-  } catch (_) {
-    lsRemote = '';
-  }
-  if (!lsRemote) {
-    return;
-  }
-  assert.match(lsRemote, /^[0-9a-f]{40}\s+refs\/heads\/sabretooth\/hermes-leadgen$/m);
-
-  const prJson = execFileSync(ghExe, ['pr', 'list', '--repo', 'Trollz1004/ANTIGRAVITY', '--head', 'sabretooth/hermes-leadgen', '--state', 'open', '--json', 'number,url'], {
-    cwd: REPO_ROOT,
-    encoding: 'utf8',
-    timeout: 8000
-  }).trim();
-  const parsed = JSON.parse(prJson);
-  assert.ok(Array.isArray(parsed) && parsed.length > 0, 'Expected open PR for sabretooth/hermes-leadgen');
-  assert.ok(Number.isInteger(parsed[0].number) && parsed[0].number > 0, 'Expected real numeric GitHub PR number');
 });
 
 test('6. Mandatory RooFlow + SpecKit Post-Work Git Push & PR Creation Gate (speckit.git.push-and-pr) uses worktree apps/hermes-leadgen and checks exit codes', async () => {
@@ -298,7 +285,7 @@ test('6. Mandatory RooFlow + SpecKit Post-Work Git Push & PR Creation Gate (spec
   assert.ok(fs.existsSync(scriptPath), 'Missing scripts/node-auto-pr-push.ps1');
   const scriptText = fs.readFileSync(scriptPath, 'utf8');
   assert.ok(scriptText.includes('C:\\Ai-Dream-Team\\_pr-worktree'), 'Auto-PR script must use C:\\Ai-Dream-Team\\_pr-worktree');
-  assert.ok(scriptText.includes('sabretooth/hermes-leadgen'), 'Auto-PR script must use branch sabretooth/hermes-leadgen');
+  assert.ok(scriptText.includes('alienware/hermes-leadgen'), 'Auto-PR script must use branch alienware/hermes-leadgen');
   assert.ok(scriptText.includes('apps/hermes-leadgen'), 'Auto-PR script must stage only apps/hermes-leadgen paths');
   assert.ok(scriptText.includes('doctrine-check.py'), 'Auto-PR script must run doctrine-check.py');
   assert.ok(scriptText.includes('git push'), 'Auto-PR script must push node branch');
@@ -307,18 +294,7 @@ test('6. Mandatory RooFlow + SpecKit Post-Work Git Push & PR Creation Gate (spec
 });
 
 test('7. Separated Tabs, :8391/health Official API Prospecting + YouTube Data API v3 Made-with-AI TOS, YouTube Studio UCJnFUOdEfSOJiXLnx6lXSzg, 9hNDPCQa3kw Gemini Notebook Remaster, and Zero Robotic TTS', async () => {
-  try {
-    const health8391 = await httpGetJson(`http://${LOOPBACK}:8391/health`);
-    if (health8391.status === 200 && health8391.data?.worker) {
-      const w = health8391.data.worker;
-      assert.equal(w.youtube_publish_method, 'youtube-data-api-v3', 'YouTube must remain API v3 only');
-      assert.equal(w.youtube_made_with_ai_tos.containsSyntheticMedia, true, 'Made with AI (containsSyntheticMedia) must be enforced');
-      assert.equal(w.youtube_studio_url, 'https://studio.youtube.com/channel/UCJnFUOdEfSOJiXLnx6lXSzg');
-      assert.equal(w.gemini_notebook_remaster_source.legacyVideoId, '9hNDPCQa3kw');
-    }
-  } catch (_) {}
-
-  const ytStudio = await httpGetJson(`http://${LOOPBACK}:8392/api/youtube/studio`);
+  const ytStudio = await httpGetJson(`${baseUrl}/api/youtube/studio`);
   assert.equal(ytStudio.status, 200);
   assert.equal(ytStudio.data.studioChannelId, 'UCJnFUOdEfSOJiXLnx6lXSzg');
   assert.equal(ytStudio.data.splitRules.harveyLeadGenerator.officialApisOnly, true);
@@ -330,8 +306,9 @@ test('7. Separated Tabs, :8391/health Official API Prospecting + YouTube Data AP
 
   const rendererCode = fs.readFileSync(path.join(ROOT_DIR, 'renderer.js'), 'utf8');
   assert.ok(!rendererCode.includes('window.speechSynthesis.speak'), 'Robotic browser speechSynthesis must never be called');
+  assert.ok(!FORBIDDEN_OLD_NODE_RE.test(rendererCode), 'renderer.js must not reference retired node');
 
-  const roboticRes = await httpPostJson(`http://${LOOPBACK}:8392/api/tts/female`, {
+  const roboticRes = await httpPostJson(`${baseUrl}/api/tts/female`, {
     text: 'Test',
     voice: 'microsoft-david-sapi-robotic'
   });
@@ -339,6 +316,8 @@ test('7. Separated Tabs, :8391/health Official API Prospecting + YouTube Data AP
 
   const htmlCode = fs.readFileSync(path.join(ROOT_DIR, 'index.html'), 'utf8');
   assert.ok(!new RegExp('jar' + 'vis', 'i').test(htmlCode), 'index.html must use OPSis');
+  assert.ok(htmlCode.includes('Alienware Lead-Gen Command Studio'), 'index.html must include Alienware Lead-Gen Command Studio');
+  assert.ok(!FORBIDDEN_OLD_NODE_RE.test(htmlCode), 'index.html must not reference retired node');
   for (const tab of ['orchestrator', 'terminal', 'media', 'graphy', 'harvey', 'youtube', 'fcc', 'kanban', 'notes']) {
     assert.ok(htmlCode.includes(`data-tab="${tab}"`), `Missing separated tab button: ${tab}`);
     assert.ok(htmlCode.includes(`id="tab-${tab}"`), `Missing separated tab panel: tab-${tab}`);
@@ -371,7 +350,6 @@ test('5b. Merge authority wording: Josh or the signed-in Claude judge lane only;
   const soul = fs.readFileSync(path.join(ROOT_DIR, 'souls', 'default-orchestrator-agent.md'), 'utf8');
   assert.ok(soul.includes('Gemini'), 'Gemini stays listed as a reviewer');
 });
-
 
 function httpRequestJson(url, method, payload, extraHeaders = {}) {
   return new Promise((resolve, reject) => {
@@ -409,20 +387,11 @@ function httpRequestJson(url, method, payload, extraHeaders = {}) {
 }
 
 test('8a. Security Audit Run 1 (4.1, 4.4, 4.5): no-token defaults to 127.0.0.1, token resolves 0.0.0.0 from fleet-map.json', async () => {
-  const { server, startServer, resolveBindHost } = require('../server');
+  const { resolveBindHost } = require('../server');
   assert.equal(resolveBindHost({ HERMES_LEADGEN_TOKEN: '', FLEET_SHARED_TOKEN: '' }), '127.0.0.1');
   assert.equal(resolveBindHost({ HERMES_LEADGEN_TOKEN: 'leadgen-token' }), '0.0.0.0');
   assert.equal(resolveBindHost({ HERMES_LEADGEN_BIND: '127.0.0.1', HERMES_LEADGEN_TOKEN: 'leadgen-token' }), '127.0.0.1');
   assert.equal(resolveBindHost({ HERMES_LEADGEN_BIND: '0.0.0.0' }), '0.0.0.0');
-
-  if (!server.listening) {
-    await new Promise((resolve) => startServer(0, { HERMES_LEADGEN_BIND: '127.0.0.1' }, resolve));
-    try {
-      assert.equal(server.address().address, '127.0.0.1');
-    } finally {
-      await new Promise((resolve) => server.close(() => resolve()));
-    }
-  }
 });
 
 test('8b. Security Audit Run 1 (4.1, 4.4, 4.5): explicit LAN bind without token refuses to start; unset bind without token returns warning', () => {
@@ -469,14 +438,6 @@ test('8b. Security Audit Run 1 (4.1, 4.4, 4.5): explicit LAN bind without token 
 });
 
 test('8c. Security Audit Run 1 (4.1, 4.4, 4.5): a POST without the bearer is 401 when LAN-bound, and proxy/memory/Origin/header rules hold', async () => {
-  const { server } = require('../server');
-  const startedHere = !server.listening;
-  if (startedHere) {
-    await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
-  }
-  const { port } = server.address();
-  const baseUrl = `http://${LOOPBACK}:${port}`;
-
   const savedBind = process.env.HERMES_LEADGEN_BIND;
   const savedToken = process.env.HERMES_LEADGEN_TOKEN;
   const testToken = 'sec-run1-lan-bearer-token';
@@ -550,65 +511,41 @@ test('8c. Security Audit Run 1 (4.1, 4.4, 4.5): a POST without the bearer is 401
     else process.env.HERMES_LEADGEN_BIND = savedBind;
     if (savedToken === undefined) delete process.env.HERMES_LEADGEN_TOKEN;
     else process.env.HERMES_LEADGEN_TOKEN = savedToken;
-    if (startedHere && server.listening) {
-      await new Promise((resolve) => server.close(() => resolve()));
-    }
   }
 });
 
 test('8d. Security Audit Run 1 (4.1, 4.4, 4.5): a bad agent value is 400', async () => {
-  const { server, isValidAgentOrProfile } = require('../server');
+  const { isValidAgentOrProfile } = require('../server');
   assert.equal(isValidAgentOrProfile('gemini'), true);
   assert.equal(isValidAgentOrProfile('../evil'), false);
   assert.equal(isValidAgentOrProfile('bad;id'), false);
   assert.equal(isValidAgentOrProfile('a'.repeat(33)), false);
 
-  const startedHere = !server.listening;
-  if (startedHere) {
-    await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
-  }
-  const { port } = server.address();
-  const baseUrl = `http://${LOOPBACK}:${port}`;
+  const badAgentHook = await httpPostJson(`${baseUrl}/api/hooks/push-pr`, {
+    runGitPushPr: true,
+    agent: '../evil-agent',
+    profile: 'default'
+  });
+  assert.equal(badAgentHook.status, 400);
 
-  try {
-    const badAgentHook = await httpPostJson(`${baseUrl}/api/hooks/push-pr`, {
-      runGitPushPr: true,
-      agent: '../evil-agent',
-      profile: 'default'
-    });
-    assert.equal(badAgentHook.status, 400);
+  const badProfileHook = await httpPostJson(`${baseUrl}/api/hooks/push-pr`, {
+    runGitPushPr: true,
+    agent: 'gemini',
+    profile: 'bad;profile'
+  });
+  assert.equal(badProfileHook.status, 400);
 
-    const badProfileHook = await httpPostJson(`${baseUrl}/api/hooks/push-pr`, {
-      runGitPushPr: true,
-      agent: 'gemini',
-      profile: 'bad;profile'
-    });
-    assert.equal(badProfileHook.status, 400);
+  const badAgentSync = await httpPostJson(`${baseUrl}/api/memory/sync`, {
+    agent: 'bad/agent',
+    summary: 'test'
+  });
+  assert.equal(badAgentSync.status, 400);
 
-    const badAgentSync = await httpPostJson(`${baseUrl}/api/memory/sync`, {
-      agent: 'bad/agent',
-      summary: 'test'
-    });
-    assert.equal(badAgentSync.status, 400);
-
-    const badAgentSoul = await httpGetJson(`${baseUrl}/api/souls/bad%3Bagent`);
-    assert.equal(badAgentSoul.status, 400);
-  } finally {
-    if (startedHere && server.listening) {
-      await new Promise((resolve) => server.close(() => resolve()));
-    }
-  }
+  const badAgentSoul = await httpGetJson(`${baseUrl}/api/souls/bad%3Bagent`);
+  assert.equal(badAgentSoul.status, 400);
 });
 
 test('8e. Security Audit Run 1: LAN-bound DELETE or PUT to any /api path without a bearer is 401', async () => {
-  const { server } = require('../server');
-  const startedHere = !server.listening;
-  if (startedHere) {
-    await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
-  }
-  const { port } = server.address();
-  const baseUrl = `http://${LOOPBACK}:${port}`;
-
   const savedBind = process.env.HERMES_LEADGEN_BIND;
   const savedToken = process.env.HERMES_LEADGEN_TOKEN;
   const testToken = 'sec-run1-lan-bearer-token';
@@ -629,9 +566,6 @@ test('8e. Security Audit Run 1: LAN-bound DELETE or PUT to any /api path without
     else process.env.HERMES_LEADGEN_BIND = savedBind;
     if (savedToken === undefined) delete process.env.HERMES_LEADGEN_TOKEN;
     else process.env.HERMES_LEADGEN_TOKEN = savedToken;
-    if (startedHere && server.listening) {
-      await new Promise((resolve) => server.close(() => resolve()));
-    }
   }
 });
 

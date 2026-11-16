@@ -65,7 +65,7 @@
   {
     "id": "obsidian-save",
     "name": "Obsidian Session Save + 6-Layer Memory Fallbacks",
-    "description": "Appends timestamped node-specific entries to Sabretooth/*-to-*.md and mirrors to T5500 ai-memory (:49374), Supermemory, OpenViking, Supabase, and Graphy.",
+    "description": "Appends timestamped node-specific entries to Alienware/*-to-*.md and mirrors to T5500 ai-memory (:49374), Supermemory, OpenViking, Supabase, and Graphy.",
     "cli": "powershell -File ../session-note.ps1",
     "mandatory": true
   },
