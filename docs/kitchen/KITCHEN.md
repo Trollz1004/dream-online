@@ -38,9 +38,9 @@ flowchart TD
   class E,R,B,ADD,J1,J2 soon
 ```
 
-Running today: tickets come in through the Swarm Command request box and the wheel's inbox; the Panda Router picks the model; one line chef cooks; Head Chef Fable reads the work and the real screens, then merges or sends it back; main is deployed to the T5500; every dish leaves notes in the pantry.
+Running today: tickets land in the wheel's inbox; the Panda Router picks the model; one line chef cooks; Head Chef Fable reads the work and the real screens, then merges or sends it back; main is deployed to the T5500; every dish leaves notes in the pantry.
 
-Being built: the expediter, the role router, the second plate, the add-on station and the two tasters.
+Being built: the Swarm Command request box that writes tickets into the inbox, the expediter, the role router, the second plate, the add-on station and the two tasters.
 
 ## 2. The pantry: what every chef can reach
 
@@ -90,31 +90,31 @@ Remake rule: a remake is a study copy. It stays on the machine that made it, is 
 
 ## 3. The kitchens: machines, ports and what runs on a timer
 
-Every address is written the way the house requires: 192.168.0.x and the port, never localhost.
+Every address is written the way the house requires: 192.168.0.x and the port, never localhost. Boxes marked "this machine only, for now" still listen on 127.0.0.1 today; the address doctrine moves each one to its 192.168.0.x address behind a token check. Postgres and Redis stay on this machine only, on purpose.
 
 ```mermaid
 flowchart TB
   NET(["The internet"])
   CF["Cloudflare tunnel<br/>on the T5500"]
   subgraph T5["T5500 · 192.168.0.15 · front of house"]
-    t3200["3200 · date app"]
-    t8000["8000 · date app API"]
+    t3200["3200 · date app<br/>this machine only, for now"]
+    t8000["8000 · date app API<br/>this machine only, for now"]
     t9160["9160 · domains server"]
-    t3130["3130 · Mission OS"]
+    t3130["3130 · Mission OS<br/>this machine only, for now"]
     t20128["20128 · OmniRoute"]
-    t9119["9119 · Hermes dashboard"]
+    t9119["9119 · Hermes dashboard<br/>this machine only, for now"]
     tdb["5432 Postgres · 6379 Redis<br/>this machine only"]
     tsch["On a timer: keepalive, Mission Control,<br/>OmniRoute, Postgres, nightly backup"]
   end
   subgraph AW["Alienware · 192.168.0.40 · the workshop"]
-    a8000["8000 · Swarm Command"]
-    a8765["8765 · Panda Router"]
-    a8082["8082 · Free Claude Code"]
+    a8000["8000 · Swarm Command<br/>this machine only, for now"]
+    a8765["8765 · Panda Router<br/>this machine only, for now"]
+    a8082["8082 · Free Claude Code<br/>this machine only, for now"]
     a9180["9180 · DREAM dev engine"]
-    a8390["8390 · OPSis studio"]
+    a8390["8390 · OPSis studio<br/>this machine only, for now"]
     a8392["8392 · lead-gen studio"]
     a11434["11434 · Ollama"]
-    a27200["27200 · Obsidian MCP"]
+    a27200["27200 · Obsidian MCP<br/>this machine only, for now"]
     asch["On a timer: boot check every 15 minutes,<br/>inbox runner, Panda Router"]
   end
   NET --> CF
