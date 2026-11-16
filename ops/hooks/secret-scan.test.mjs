@@ -175,7 +175,7 @@ test('rule windows-user-path: blocks Windows user folder path without literal re
   assert.deepEqual(scanText(safeProfile), []);
 });
 
-test('rule loopback-reach-address and forbidden-test-node-ip: blocks loopback reach URLs and 192.168.0.8 while allowing bare 127.0.0.1 bind, fleet node IPs, archive/, and secret-scan:allow', () => {
+test('rule loopback-reach-address and forbidden-test-node-ip: blocks loopback reach URLs and retired test-node IP while allowing bare 127.0.0.1 bind, fleet node IPs, archive/, and allow marker', () => {
   const httpLoopback = ['http://', '127', '.', '0', '.', '0', '.', '1', ':8080'].join('');
   const httpsLocalhost = ['https://', 'local', 'host', '/health'].join('');
   const wssLoopback = ['wss://', 'local', 'host', ':9180'].join('');

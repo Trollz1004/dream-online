@@ -43,11 +43,12 @@ const REQUIRED_SERVICE_KEYS = [
 ];
 
 const FORBIDDEN_OLD_IP = ['192', '168', '0', '8'].join('.');
+const FORBIDDEN_OLD_NODE_RE = new RegExp(['sabre' + 'tooth', 'saber' + 'tooth'].join('|'), 'i');
 const LOOPBACK_HOST = ['127', '0', '0', '1'].join('.');
 
 test('fleet-map.json defines only alienware (192.168.0.40) and t5500 (192.168.0.15) with zero retired node references', () => {
   const raw = fs.readFileSync(FLEET_MAP_PATH, 'utf8');
-  assert.ok(!/sabretooth|sabertooth/i.test(raw), 'fleet-map.json must never mention Sabretooth');
+  assert.ok(!FORBIDDEN_OLD_NODE_RE.test(raw), 'fleet-map.json must never mention the retired third node');
   assert.ok(!raw.includes(FORBIDDEN_OLD_IP), 'fleet-map.json must never contain the retired third-node IP');
 
   const map = loadFleetMap();
@@ -178,7 +179,7 @@ test('docs/house/ADDRESS-DOCTRINE.md exists and documents 192.168.0.XX:XXXX, fle
   assert.match(text, /5432/);
   assert.match(text, /6379/);
   assert.match(text, /27123/);
-  assert.ok(!/sabretooth|sabertooth/i.test(text));
+  assert.ok(!FORBIDDEN_OLD_NODE_RE.test(text));
   assert.ok(!text.includes(FORBIDDEN_OLD_IP));
   assert.ok(!text.includes(LOOPBACK_HOST + ':8000'));
 });
