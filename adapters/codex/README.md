@@ -1,5 +1,7 @@
 # Codex Adapter
 
+> History, kept for the record. Not current. Paperclip is retired forever.
+
 Paperclip alias: `codex`
 
 CLI: `codex`

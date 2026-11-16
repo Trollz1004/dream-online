@@ -22,7 +22,7 @@ if (-not $NodeName) {
 }
 
 $vaultRoot = if (Test-Path "C:\DREAM\Antigravity") { "C:\DREAM\Antigravity" } elseif (Test-Path "C:\Ai-Dream-Team\Antigravity") { "C:\Ai-Dream-Team\Antigravity" } else { "C:\ANTIGRAVITY\Antigravity" }
-$repoVaultMirror = "C:\Users\joshl\antigravity\DREAM-Engine\memory\obsidian-vault"
+$repoVaultMirror = "$env:USERPROFILE\antigravity\DREAM-Engine\memory\obsidian-vault"
 
 function Protect-Secrets([string]$Text) {
     if (-not $Text) { return "" }

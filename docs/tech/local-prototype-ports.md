@@ -26,7 +26,7 @@ service may take their ports (identity strings are in
 | --- | --- | --- |
 | `9119` | Hermes dashboard (optional) | `/api/health` contains `"ok":true` |
 | `11434` | Ollama (optional, T0 ambient NPCs only) | `/api/tags` contains `"models":[` |
-| `9150` | The older JARVIS HUD copy in the stack (optional) | `/health` contains `airi-dashboard` |
+| `9150` | The older OPSis HUD copy in the stack (optional) | `/health` contains `airi-dashboard` |
 | `3000` | Crosslisting OS (optional, not game work; Obsidian may also answer on `127.0.0.1:3000`) | `/` contains `<div id="root">` |
 | `27123` | Obsidian Local REST API (the game vault's MCP handshake) | answers `initialize` as `obsidian-local-rest-api` |
 | `8099` | Retired reference-slice web server; the active engine and combat slice run on the in-house DREAM Engine on `9180` | serves `build\web` |

@@ -1,4 +1,6 @@
-# Tasks: Mission Control with JARVIS on the Echo Show
+# Tasks: Mission Control with OPSis (formerly JARVIS) on the Echo Show
+
+> History, kept for the record. Not current. The name is OPSis; JARVIS is retired.
 
 **Input**: `spec.md`, `plan.md`. **Prerequisite**: the research report and the ANTIGRAVITY survey under `C:\DREAM\recon\mission-control\`.
 

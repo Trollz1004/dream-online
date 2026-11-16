@@ -1,5 +1,7 @@
 # Gemini Adapter
 
+> History, kept for the record. Not current. Paperclip is retired forever.
+
 Paperclip alias: `gemini`
 
 CLI: `gemini`

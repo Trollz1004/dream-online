@@ -8,7 +8,7 @@ description: >-
 
 ## Installed Local Paths on Alienware (`.40`)
 - **Blender 5.2.3 Launcher (WindowsApps Alias)**:
-  `C:\Users\joshl\AppData\Local\Microsoft\WindowsApps\blender-launcher.exe`
+  `%LOCALAPPDATA%\Microsoft\WindowsApps\blender-launcher.exe`
 - **Blender 5.2.3 Package Root**:
   `C:\Program Files\WindowsApps\BlenderFoundation.Blender_5.2.3.0_x64__ppwjx1n5r4v9t\Blender\blender-launcher.exe`
 - **CLI-Anything Blender Python Harness**:

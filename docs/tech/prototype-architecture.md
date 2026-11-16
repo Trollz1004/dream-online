@@ -29,7 +29,7 @@ Track B: the engine decision is made (in-house DREAM Engine); the earlier Godot 
 
 ## Live-NPC Backend Target
 
-The Live NPC Lab on `127.0.0.1:9127` is the authoritative backend today. Game triggers post to it, it routes by NPC tier with allowlist, timeout and fallback, and it writes memory back. Paperclip was an earlier plan for a webhook backend on Sabretooth port `3100`; it is now parked, nothing depends on it, and it answers on no port.
+The Live NPC Lab on `127.0.0.1:9127` is the authoritative backend today. Game triggers post to it, it routes by NPC tier with allowlist, timeout and fallback, and it writes memory back. Paperclip was an earlier plan for a webhook backend on Sabretooth port `3100`; Paperclip is retired forever, nothing depends on it, and it answers on no port.
 
 Initial implementation must stub this flow before spending on high-cost models.
 

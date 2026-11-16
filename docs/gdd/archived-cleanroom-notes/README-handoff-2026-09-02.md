@@ -1,3 +1,4 @@
+> History, kept for the record. Not current.
 > **Archive.** This file is an archive; its node and port claims are stale.
 
 # Handoff: DREAM Online — First Gate slice, GM Control, funding reel

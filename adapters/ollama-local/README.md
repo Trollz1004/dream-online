@@ -1,5 +1,7 @@
 # Ollama-Local Adapter
 
+> History, kept for the record. Not current. Paperclip is retired forever.
+
 Paperclip alias: `ollama-local`
 
 CLI: `opencode` (delegates to ollama-local provider)

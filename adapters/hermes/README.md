@@ -1,5 +1,7 @@
 # Hermes Adapter
 
+> History, kept for the record. Not current. Paperclip is retired forever.
+
 Paperclip alias: `hermes`
 
 CLI: `hermes`

@@ -39,7 +39,7 @@ See `index.html` `STYLES` array for the full list.
 
 - **World Seed** -> procedural worldgen seed (terrain + lore + faction generator).
 - **Skills: Magic System / Combat System / Economy** -> rule & mechanic definitions to feed the
-  DREAM-Engine (zero Unreal, zero Godot) and its three visual states
+  DREAM-Engine (zero Unreal, Godot is retired) and its three visual states
   (MODERN_3D_DAYDREAM / NIGHTMARE_CRISIS / RETRO_16BIT_CIRCLES).
 - **Roleplay / Dialogue Engine** -> NPC dialogue systems for the Live NPC Lab.
 - **World Map** -> overworld + trade-route generation.
@@ -49,7 +49,7 @@ See `index.html` `STYLES` array for the full list.
 
 - World-art generation for Shorts thumbnails / B-roll.
 - World Seed -> one-line hook material for a <=59s Short (one sentence -> a story).
-- Style presets -> consistent channel art across the DREAM Online / Until No Kid In Need channels.
+- Style presets -> consistent channel art across the DREAM Online channels.
 
 ## Notes for running it
 
@@ -62,6 +62,6 @@ See `index.html` `STYLES` array for the full list.
 
 ## Original source
 
-Rebuilt with the remake engine from: `C:\Users\joshl\remakes\neta-art-world-new`
+Rebuilt with the remake engine from: `%USERPROFILE%\remakes\neta-art-world-new`
 (desktop visual score 81.69% before de-branding; de-branding intentionally diverged from the
 original for ToS compliance). Content swap board: `remake/content.json` (131 slots, 100% re-authored).

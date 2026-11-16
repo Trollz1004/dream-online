@@ -1,5 +1,7 @@
 # Grok Adapter (xAI)
 
+> History, kept for the record. Not current. Paperclip is retired forever.
+
 Paperclip adapter type: `opencode_local`
 Paperclip alias: `grok`
 CLI: `grok` (v0.2.60+ alpha, at `~/.grok/bin/grok`)

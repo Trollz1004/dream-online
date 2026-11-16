@@ -28,7 +28,7 @@ The engine is the in-house DREAM Engine (`src/engine/`). The slice below was an 
 
 - Live NPC Lab: `game/server/live-npc-lab`, `npm start`, health `http://127.0.0.1:9127/health` must contain `dream-live-npc-lab`. Tests: `npm test` (ten scripts) and `npm run test:contracts` (eleven contracts). Cloud calls are off by default; providers are gated in `src/providers.js`; Hermes is a disabled-by-default webhook provider.
 - DreamOps Bridge: `game/server/dreamops-bridge`, `npm start`, health `http://127.0.0.1:9133/health` must contain `dreamops-bridge`. Inspection and safe proposal endpoints only; it never executes a destructive rollback. It has no test script yet.
-- Both bind to `127.0.0.1`. Other services on the same box own their ports and no Dream service takes them: Hermes dashboard 9119, Ollama 11434, the older JARVIS HUD 9150, Crosslisting 3000, Obsidian's REST API 27123. The full list, with reserved Dream ports, is in `docs/tech/local-prototype-ports.md`.
+- Both bind to `127.0.0.1`. Other services on the same box own their ports and no Dream service takes them: Hermes dashboard 9119, Ollama 11434, the older OPSis HUD 9150, Crosslisting 3000, Obsidian's REST API 27123. The full list, with reserved Dream ports, is in `docs/tech/local-prototype-ports.md`.
 - Verified on 2026-09-26 in the cloud checkout: Live NPC Lab `npm test` and `npm run test:contracts` pass; `ops/node/brain` tests 10 of 10. The in-house DREAM Engine headless suite (`npm run lint` and `npm test`) runs directly in Node with no third-party engine install.
 
 ## Unreal (reference only, never the engine)

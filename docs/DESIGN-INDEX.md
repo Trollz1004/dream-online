@@ -4,7 +4,7 @@ This folder contains implementation-facing companion docs for the first playable
 
 Canonical build root: `C:\DREAM\dream-online` on the Alienware node (`DREAM_ROOT` resolves there; the older `D:` drive root was folded in and removed on 2026-09-19).
 
-Primary design source of truth remains the canon document, kept local and ignored by git at `paperclip-tro/projects/PROJECT-2-DREAM-ONLINE.md` under the repo root.
+Primary design source of truth lives in `docs/gdd/` (`docs/gdd/canon-lore-inhouse.md` and `docs/gdd/*`).
 
 Classified founder-only material remains outside repo in the OneDrive do-not-commit vault. Do not copy it here, into git, into PR bodies, or into public docs.
 
