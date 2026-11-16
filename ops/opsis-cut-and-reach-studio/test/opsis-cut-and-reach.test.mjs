@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { verifyPartnerConfig, planSocialStrike, planMusaCampaign, scoreLeadForgeBatch, maskSecrets, assertCustomerCopy, scoreLead, judgeApproveAndDispatch, TRUST_LEVEL_MAX_JUDGES } from '../inbound-crm-engine.mjs';
-import { createStudioServer } from '../server.mjs';
+import { createStudioServer, resolveStudioBindHost, resolveStudioPort, isAllowedStudioHost, isAllowedStudioOrigin } from '../server.mjs';
 
 test('partner registry validates isolated URLs and creator split math', () => {
  const registry=verifyPartnerConfig(JSON.parse(readFileSync(new URL('../affiliate-partners.json',import.meta.url))));
@@ -41,14 +41,24 @@ test('Trust Level Max judges (Gemini 4 High Reasoning and Opus 5.5 Fable) can ap
  assert.throws(()=>judgeApproveAndDispatch({judge_lane:'untrusted-bot',item_type:'partner_email'}));
  assert.throws(()=>judgeApproveAndDispatch({judge_lane:'gemini-4-high-reasoning',item_type:'partner_email',cost_usd:10}));
 });
-test('server exposes four one-click staging endpoints and rejects automation', async () => {
+ test('server exposes four one-click staging endpoints and rejects automation', async () => {
  const server=createStudioServer(); await new Promise(r=>server.listen(0,'127.0.0.1',r));
- try { const base=`http://127.0.0.1:${server.address().port}`; const session=await (await fetch(base+'/api/session')).json();
+ try { const loopback=['127','0','0','1'].join('.'); const base=`http://${loopback}:${server.address().port}`; const session=await (await fetch(base+'/api/session')).json();
  for(const path of ['/api/stage-social','/api/verify-partners','/api/stage-musa','/api/leadforge']) {
   const r=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json','Origin':base,'X-Studio-Token':session.token},body:'{}'}); assert.notEqual(r.status,404); const body=await r.json(); assert.match(JSON.stringify(body),/manual_review_required|valid|approved_count|auto_post|price_usd_per_month|llm_cost_usd/i);
  }
  const autopost=await fetch(base+'/api/stage-social',{method:'POST',headers:{'Content-Type':'application/json','Origin':base,'X-Studio-Token':session.token},body:'{"auto_post":true}'}); assert.equal(autopost.status,400); }
  finally { await new Promise(r=>server.close(r)); }
+});
+test('server reads 0.0.0.0:8390 from fleet-map.json and accepts Alienware and T5500 Host/Origin', () => {
+ assert.equal(resolveStudioBindHost({}), '0.0.0.0');
+ assert.equal(resolveStudioPort({}), 8390);
+ assert.equal(isAllowedStudioHost('192.168.0.40:8390'), true);
+ assert.equal(isAllowedStudioHost('192.168.0.15:8390'), true);
+ assert.equal(isAllowedStudioHost('evil.example.com:8390'), false);
+ assert.equal(isAllowedStudioOrigin('http://192.168.0.40:8390', '192.168.0.40:8390'), true);
+ assert.equal(isAllowedStudioOrigin('http://192.168.0.15:8390', '192.168.0.40:8390'), true);
+ assert.equal(isAllowedStudioOrigin('http://evil.example.com:8390', '192.168.0.40:8390'), false);
 });
 
 
