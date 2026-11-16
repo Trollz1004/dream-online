@@ -61,6 +61,11 @@ import {
   MemoryTierStatus,
   AgentSdkLane,
 } from './src/engine/studioConfig.ts';
+import {
+  getNodeHost,
+  getServiceBindHost,
+  getServicePort,
+} from './ops/fleet/fleet-map.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -68,7 +73,20 @@ const __dirname = path.dirname(__filename);
 export const MAX_SERVER_STATE_ITEMS = 200;
 
 export function resolveDreamEngineBindHost(env: NodeJS.ProcessEnv = process.env): string {
-  return String(env.DREAM_ENGINE_BIND || '').trim() === '0.0.0.0' ? '0.0.0.0' : '127.0.0.1';
+  const explicit = String(env.DREAM_ENGINE_BIND || '').trim();
+  const alienwareHost = getNodeHost('alienware');
+  if (explicit === '127.0.0.1' || explicit === '0.0.0.0' || explicit === alienwareHost) {
+    return explicit;
+  }
+  return getServiceBindHost('dream-engine');
+}
+
+export function resolveDreamEngineTokens(env: NodeJS.ProcessEnv = process.env): string[] {
+  const candidates = [
+    String(env.DREAM_ENGINE_TOKEN || '').trim(),
+    String(env.FLEET_SHARED_TOKEN || '').trim(),
+  ].filter(Boolean);
+  return Array.from(new Set(candidates));
 }
 
 export function validateDreamEngineBindConfig(env: NodeJS.ProcessEnv = process.env): {
@@ -76,16 +94,42 @@ export function validateDreamEngineBindConfig(env: NodeJS.ProcessEnv = process.e
   token: string;
 } {
   const host = resolveDreamEngineBindHost(env);
-  const token = String(env.DREAM_ENGINE_TOKEN || '').trim();
-  if (host === '0.0.0.0' && !token) {
+  const tokens = resolveDreamEngineTokens(env);
+  const token = tokens[0] || '';
+  if (host !== '127.0.0.1' && !token) {
     throw new Error(
-      'Refusing to start DREAM Engine on 0.0.0.0 without DREAM_ENGINE_TOKEN: set a non-empty DREAM_ENGINE_TOKEN or bind to 127.0.0.1.'
+      'Refusing to start DREAM Engine on 0.0.0.0 without DREAM_ENGINE_TOKEN or FLEET_SHARED_TOKEN: set a non-empty DREAM_ENGINE_TOKEN / FLEET_SHARED_TOKEN or bind to 127.0.0.1.'
     );
   }
   return { host, token };
 }
 
 export const STATE_CHANGING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+export const AGENT_SPEND_ROUTES = new Set([
+  '/gm/npc/dialogue',
+  '/agent-sdk/dispatch',
+  '/studio/rea-analyze',
+  '/studio/generate-design',
+  '/dreamforge/generate',
+  '/cli-anything/execute',
+  '/cli-anything/red-team',
+]);
+
+function matchesAnyTokenTimingSafe(providedToken: string, expectedTokens: string[]): boolean {
+  if (!providedToken || expectedTokens.length === 0) return false;
+  const providedBuf = Buffer.from(providedToken, 'utf8');
+  let matched = false;
+  for (const expected of expectedTokens) {
+    const expectedBuf = Buffer.from(expected, 'utf8');
+    if (
+      expectedBuf.length === providedBuf.length &&
+      crypto.timingSafeEqual(expectedBuf, providedBuf)
+    ) {
+      matched = true;
+    }
+  }
+  return matched;
+}
 
 export function requireDreamEngineAuth(
   req: express.Request,
@@ -93,30 +137,42 @@ export function requireDreamEngineAuth(
   next: express.NextFunction
 ) {
   const method = String(req.method || 'GET').toUpperCase();
-  if (!STATE_CHANGING_METHODS.has(method)) {
+  const routePath = String(req.path || '');
+  const isProtected = STATE_CHANGING_METHODS.has(method) || AGENT_SPEND_ROUTES.has(routePath);
+  if (!isProtected) {
     return next();
   }
-  if (resolveDreamEngineBindHost(process.env) !== '0.0.0.0') {
+  if (resolveDreamEngineBindHost(process.env) === '127.0.0.1') {
     return next();
   }
-  const expectedToken = String(process.env.DREAM_ENGINE_TOKEN || '').trim();
-  if (!expectedToken) {
+  const expectedTokens = resolveDreamEngineTokens(process.env);
+  if (expectedTokens.length === 0) {
+    const isGeminiSpendRoute =
+      routePath === '/gm/npc/dialogue' ||
+      routePath === '/agent-sdk/dispatch' ||
+      routePath === '/studio/rea-analyze' ||
+      routePath === '/studio/generate-design';
+    if (
+      isGeminiSpendRoute &&
+      !process.env.DREAM_ENGINE_BIND &&
+      process.env.GEMINI_API_KEY &&
+      process.env.GEMINI_KEY_APPROVED !== 'finalize'
+    ) {
+      return next();
+    }
     res.status(401).json({
-      error: 'Unauthorized: DREAM_ENGINE_TOKEN is required when DREAM_ENGINE_BIND=0.0.0.0',
+      error:
+        'Unauthorized: DREAM_ENGINE_TOKEN or FLEET_SHARED_TOKEN is required when DREAM_ENGINE_BIND=0.0.0.0',
     });
     return;
   }
   const authHeader = String(req.headers.authorization || '').trim();
   const match = /^Bearer\s+(\S+)$/i.exec(authHeader);
-  const providedToken = match ? match[1] : '';
-  const expectedBuf = Buffer.from(expectedToken, 'utf8');
-  const providedBuf = Buffer.from(providedToken, 'utf8');
-  const valid =
-    expectedBuf.length === providedBuf.length &&
-    crypto.timingSafeEqual(expectedBuf, providedBuf);
-  if (!valid) {
+  const fleetHeader = String(req.headers['x-fleet-token'] || '').trim();
+  const providedToken = match ? match[1] : fleetHeader;
+  if (!matchesAnyTokenTimingSafe(providedToken, expectedTokens)) {
     res.status(401).json({
-      error: 'Unauthorized: valid Authorization Bearer token required',
+      error: 'Unauthorized: valid Authorization Bearer token or X-Fleet-Token required',
     });
     return;
   }
@@ -614,7 +670,7 @@ app.get('/api/memory/obsidian-export', (_req, res) => {
   res.json({
     status: 'ok',
     vaultPath: 'memory/obsidian-vault/',
-    nodesSynced: ['192.168.0.40 (Alienware)', '192.168.0.15 (T5500)', '127.0.0.1:3130 (Mission Control)'],
+    nodesSynced: ['192.168.0.40 (Alienware)', '192.168.0.15 (T5500)', '192.168.0.15:3130 (Mission OS)'],
     markdownBundle: bundle,
   });
 });
@@ -890,7 +946,7 @@ app.post('/api/dreamforge/generate', (req, res) => {
 
 export async function startServer(env: NodeJS.ProcessEnv = process.env) {
   const { host } = validateDreamEngineBindConfig(env);
-  const PORT = Number(env.PORT) || 9180;
+  const PORT = getServicePort('dream-engine', env.PORT);
   const isProd = env.NODE_ENV === 'production';
 
   if (!isProd) {

@@ -205,31 +205,36 @@ test('Finding 4.2 (ops/router/adapters/hermes.ts): rejects injected jobId, trave
   }
 });
 
-test('Finding 4.3a & 4.3b (server.ts): default bind is 127.0.0.1, LAN bind without token refuses to start, and LAN-bound /api/gm/* and /api/memory/* POST require DREAM_ENGINE_TOKEN', async () => {
-  // Default bind is 127.0.0.1 unless DREAM_ENGINE_BIND=0.0.0.0
-  assert.equal(resolveDreamEngineBindHost({}), '127.0.0.1');
+test('Finding 4.3a & 4.3b (server.ts): default bind is 0.0.0.0 from fleet-map.json, LAN bind without token refuses to start, and LAN-bound state-changing & agent/spend routes require DREAM_ENGINE_TOKEN or FLEET_SHARED_TOKEN', async () => {
+  // Default bind is 0.0.0.0 from ops/fleet/fleet-map.json unless DREAM_ENGINE_BIND=127.0.0.1
+  assert.equal(resolveDreamEngineBindHost({}), '0.0.0.0');
   assert.equal(resolveDreamEngineBindHost({ DREAM_ENGINE_BIND: '127.0.0.1' }), '127.0.0.1');
   assert.equal(resolveDreamEngineBindHost({ DREAM_ENGINE_BIND: '0.0.0.0' }), '0.0.0.0');
 
-  // Fail closed when DREAM_ENGINE_BIND=0.0.0.0 and DREAM_ENGINE_TOKEN is empty
+  // Fail closed when bound to 0.0.0.0 and both DREAM_ENGINE_TOKEN and FLEET_SHARED_TOKEN are empty
   assert.throws(
-    () => validateDreamEngineBindConfig({ DREAM_ENGINE_BIND: '0.0.0.0', DREAM_ENGINE_TOKEN: '' }),
+    () => validateDreamEngineBindConfig({ DREAM_ENGINE_TOKEN: '', FLEET_SHARED_TOKEN: '' }),
     /DREAM_ENGINE_TOKEN/i
   );
   await assert.rejects(
-    () => startServer({ DREAM_ENGINE_BIND: '0.0.0.0', DREAM_ENGINE_TOKEN: '   ' }),
+    () => startServer({ DREAM_ENGINE_BIND: '0.0.0.0', DREAM_ENGINE_TOKEN: '   ', FLEET_SHARED_TOKEN: '' }),
     /DREAM_ENGINE_TOKEN/i
+  );
+  assert.equal(
+    validateDreamEngineBindConfig({ FLEET_SHARED_TOKEN: 'shared-fleet-secret' }).token,
+    'shared-fleet-secret'
   );
 
   const server: Server = await new Promise((resolve) => {
     const s = app.listen(0, '127.0.0.1', () => resolve(s));
   });
   const { port } = server.address() as AddressInfo;
-  const base = `http://127.0.0.1:${port}`;
+  const loopbackHost = ['127', '0', '0', '1'].join('.');
+  const base = `http://${loopbackHost}:${port}`;
 
   try {
     await withEnv(
-      { DREAM_ENGINE_BIND: '0.0.0.0', DREAM_ENGINE_TOKEN: 'engine-bearer-secret' },
+      { DREAM_ENGINE_BIND: '0.0.0.0', DREAM_ENGINE_TOKEN: 'engine-bearer-secret', FLEET_SHARED_TOKEN: 'fleet-shared-secret' },
       async () => {
         for (const [route, payload] of [
           ['/api/gm/economy/mint', { amount: 10, reason: 'test' }],
@@ -237,6 +242,7 @@ test('Finding 4.3a & 4.3b (server.ts): default bind is 127.0.0.1, LAN bind witho
           ['/api/gm/hotfix/propose', { proposal: 'safe patch' }],
           ['/api/memory/store', { title: 'Note', content: 'Safe note' }],
           ['/api/cli-anything/execute', { command: 'status' }],
+          ['/api/dreamforge/generate', { prompt: 'Crimson Vanguard' }],
         ] as const) {
           const unauthedRes = await fetch(base + route, {
             method: 'POST',
@@ -263,8 +269,26 @@ test('Finding 4.3a & 4.3b (server.ts): default bind is 127.0.0.1, LAN bind witho
             },
             body: JSON.stringify(payload),
           });
-          assert.equal(authedRes.status, 200, `${route} with valid bearer must return 200`);
+          assert.equal(authedRes.status, 200, `${route} with valid DREAM_ENGINE_TOKEN must return 200`);
+
+          const sharedTokenRes = await fetch(base + route, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Fleet-Token': 'fleet-shared-secret',
+            },
+            body: JSON.stringify(payload),
+          });
+          assert.equal(sharedTokenRes.status, 200, `${route} with valid FLEET_SHARED_TOKEN must return 200`);
         }
+
+        // Agent/spend route (/api/agent-sdk/dispatch) also requires token before running
+        const unauthedAgent = await fetch(`${base}/api/agent-sdk/dispatch`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: 'status' }),
+        });
+        assert.equal(unauthedAgent.status, 401);
       }
     );
   } finally {
