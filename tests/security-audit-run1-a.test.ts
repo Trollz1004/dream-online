@@ -50,19 +50,34 @@ function withEnv(vars: Record<string, string | undefined>, fn: () => Promise<voi
 test('Finding 4.1, 4.4, 4.5 (apps/hermes-leadgen/server.js): default 0.0.0.0 bind from fleet-map.json, LAN fail-closed, HERMES_LEADGEN_TOKEN / FLEET_SHARED_TOKEN auth on agent/state/proxy/memory routes, Origin check, and agent validation', async () => {
   const leadgen = require('../apps/hermes-leadgen/server.js');
 
-  // 1. Default bind is 0.0.0.0 from ops/fleet/fleet-map.json; explicit 127.0.0.1 is respected
-  assert.equal(leadgen.resolveBindHost({}), '0.0.0.0');
-  assert.equal(leadgen.resolveBindHost({ HERMES_LEADGEN_BIND: '127.0.0.1' }), '127.0.0.1');
+  // 1. No-token defaults to 127.0.0.1; token present resolves 0.0.0.0 from ops/fleet/fleet-map.json; explicit binds are respected
+  assert.equal(leadgen.resolveBindHost({ HERMES_LEADGEN_TOKEN: '', FLEET_SHARED_TOKEN: '' }), '127.0.0.1');
+  assert.equal(leadgen.resolveBindHost({ HERMES_LEADGEN_TOKEN: 'leadgen-token' }), '0.0.0.0');
+  assert.equal(leadgen.resolveBindHost({ HERMES_LEADGEN_BIND: '127.0.0.1', HERMES_LEADGEN_TOKEN: 'leadgen-token' }), '127.0.0.1');
   assert.equal(leadgen.resolveBindHost({ HERMES_LEADGEN_BIND: '0.0.0.0' }), '0.0.0.0');
 
-  // 2. LAN bind without token refuses to start; accepts either HERMES_LEADGEN_TOKEN or FLEET_SHARED_TOKEN
+  const noTokenConfig = leadgen.validateBindConfig({ HERMES_LEADGEN_TOKEN: '', FLEET_SHARED_TOKEN: '' });
+  assert.equal(noTokenConfig.host, '127.0.0.1');
+  assert.equal(noTokenConfig.token, '');
+  assert.match(String(noTokenConfig.warning), /HERMES_LEADGEN_TOKEN/);
+  assert.match(String(noTokenConfig.warning), /FLEET_SHARED_TOKEN/);
+
+  // 2. Explicit LAN bind without token refuses to start; accepts either HERMES_LEADGEN_TOKEN or FLEET_SHARED_TOKEN
   assert.throws(
-    () => leadgen.validateBindConfig({ HERMES_LEADGEN_TOKEN: '', FLEET_SHARED_TOKEN: '' }),
+    () => leadgen.validateBindConfig({ HERMES_LEADGEN_BIND: '0.0.0.0', HERMES_LEADGEN_TOKEN: '', FLEET_SHARED_TOKEN: '' }),
+    /HERMES_LEADGEN_TOKEN/i
+  );
+  assert.throws(
+    () => leadgen.validateBindConfig({ HERMES_LEADGEN_BIND: '192.168.0.40', HERMES_LEADGEN_TOKEN: '', FLEET_SHARED_TOKEN: '' }),
     /HERMES_LEADGEN_TOKEN/i
   );
   assert.equal(
     leadgen.validateBindConfig({ FLEET_SHARED_TOKEN: 'shared-fleet-token' }).token,
     'shared-fleet-token'
+  );
+  assert.equal(
+    leadgen.validateBindConfig({ FLEET_SHARED_TOKEN: 'shared-fleet-token' }).host,
+    '0.0.0.0'
   );
 
   const startedHere = !leadgen.server.listening;

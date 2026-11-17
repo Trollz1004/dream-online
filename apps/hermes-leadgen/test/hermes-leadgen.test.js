@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawn } = require('node:child_process');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 const REPO_ROOT = fs.existsSync(path.join(ROOT_DIR, '..', 'AGENTS.md'))
@@ -408,10 +408,11 @@ function httpRequestJson(url, method, payload, extraHeaders = {}) {
   });
 }
 
-test('8a. Security Audit Run 1 (4.1, 4.4, 4.5): default bind is 0.0.0.0 from fleet-map.json', async () => {
+test('8a. Security Audit Run 1 (4.1, 4.4, 4.5): no-token defaults to 127.0.0.1, token resolves 0.0.0.0 from fleet-map.json', async () => {
   const { server, startServer, resolveBindHost } = require('../server');
-  assert.equal(resolveBindHost({}), '0.0.0.0');
-  assert.equal(resolveBindHost({ HERMES_LEADGEN_BIND: '127.0.0.1' }), '127.0.0.1');
+  assert.equal(resolveBindHost({ HERMES_LEADGEN_TOKEN: '', FLEET_SHARED_TOKEN: '' }), '127.0.0.1');
+  assert.equal(resolveBindHost({ HERMES_LEADGEN_TOKEN: 'leadgen-token' }), '0.0.0.0');
+  assert.equal(resolveBindHost({ HERMES_LEADGEN_BIND: '127.0.0.1', HERMES_LEADGEN_TOKEN: 'leadgen-token' }), '127.0.0.1');
   assert.equal(resolveBindHost({ HERMES_LEADGEN_BIND: '0.0.0.0' }), '0.0.0.0');
 
   if (!server.listening) {
@@ -424,14 +425,23 @@ test('8a. Security Audit Run 1 (4.1, 4.4, 4.5): default bind is 0.0.0.0 from fle
   }
 });
 
-test('8b. Security Audit Run 1 (4.1, 4.4, 4.5): LAN bind without token refuses to start', () => {
+test('8b. Security Audit Run 1 (4.1, 4.4, 4.5): explicit LAN bind without token refuses to start; unset bind without token returns warning', () => {
   const { validateBindConfig, startServer } = require('../server');
+  const noTokenConfig = validateBindConfig({ HERMES_LEADGEN_TOKEN: '', FLEET_SHARED_TOKEN: '' });
+  assert.equal(noTokenConfig.host, '127.0.0.1');
+  assert.match(String(noTokenConfig.warning), /HERMES_LEADGEN_TOKEN/);
+  assert.match(String(noTokenConfig.warning), /FLEET_SHARED_TOKEN/);
+
   assert.throws(
-    () => validateBindConfig({ HERMES_LEADGEN_BIND: '0.0.0.0', HERMES_LEADGEN_TOKEN: '' }),
+    () => validateBindConfig({ HERMES_LEADGEN_BIND: '0.0.0.0', HERMES_LEADGEN_TOKEN: '', FLEET_SHARED_TOKEN: '' }),
     /HERMES_LEADGEN_TOKEN/i
   );
   assert.throws(
-    () => startServer(0, { HERMES_LEADGEN_BIND: '0.0.0.0', HERMES_LEADGEN_TOKEN: '   ' }),
+    () => validateBindConfig({ HERMES_LEADGEN_BIND: '192.168.0.40', HERMES_LEADGEN_TOKEN: '', FLEET_SHARED_TOKEN: '' }),
+    /HERMES_LEADGEN_TOKEN/i
+  );
+  assert.throws(
+    () => startServer(0, { HERMES_LEADGEN_BIND: '0.0.0.0', HERMES_LEADGEN_TOKEN: '   ', FLEET_SHARED_TOKEN: '' }),
     /HERMES_LEADGEN_TOKEN/i
   );
 
@@ -443,7 +453,8 @@ test('8b. Security Audit Run 1 (4.1, 4.4, 4.5): LAN bind without token refuses t
         ...process.env,
         PORT: '0',
         HERMES_LEADGEN_BIND: '0.0.0.0',
-        HERMES_LEADGEN_TOKEN: ''
+        HERMES_LEADGEN_TOKEN: '',
+        FLEET_SHARED_TOKEN: ''
       },
       encoding: 'utf8',
       stdio: 'pipe',
@@ -589,7 +600,6 @@ test('8d. Security Audit Run 1 (4.1, 4.4, 4.5): a bad agent value is 400', async
   }
 });
 
-
 test('8e. Security Audit Run 1: LAN-bound DELETE or PUT to any /api path without a bearer is 401', async () => {
   const { server } = require('../server');
   const startedHere = !server.listening;
@@ -622,5 +632,61 @@ test('8e. Security Audit Run 1: LAN-bound DELETE or PUT to any /api path without
     if (startedHere && server.listening) {
       await new Promise((resolve) => server.close(() => resolve()));
     }
+  }
+});
+
+test('8f. live-start: no token with unset HERMES_LEADGEN_BIND binds 127.0.0.1, emits one warning naming missing setting, and starts cleanly', async () => {
+  const child = spawn(process.execPath, [path.join(ROOT_DIR, 'server.js')], {
+    env: {
+      ...process.env,
+      PORT: '0',
+      HERMES_LEADGEN_BIND: '',
+      HERMES_LEADGEN_TOKEN: '',
+      FLEET_SHARED_TOKEN: ''
+    },
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+
+  let stdout = '';
+  let stderr = '';
+  const listeningRe = new RegExp(`Listening on http:\\/\\/${LOOPBACK.replace(/\./g, '\\.')}:(\\d+)`);
+
+  try {
+    const port = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(`Timed out waiting for leadgen server start. stdout=${stdout} stderr=${stderr}`));
+      }, 10000);
+      child.stdout.on('data', (chunk) => {
+        stdout += String(chunk);
+        const m = listeningRe.exec(stdout);
+        if (m) {
+          clearTimeout(timer);
+          resolve(Number(m[1]));
+        }
+      });
+      child.stderr.on('data', (chunk) => {
+        stderr += String(chunk);
+      });
+      child.once('exit', (code) => {
+        clearTimeout(timer);
+        reject(new Error(`leadgen exited early (${code}): stdout=${stdout} stderr=${stderr}`));
+      });
+    });
+
+    const warningLines = stderr.trim().split(/\r?\n/).filter(Boolean);
+    assert.equal(warningLines.length, 1);
+    assert.match(warningLines[0], /HERMES_LEADGEN_TOKEN/);
+    assert.match(warningLines[0], /FLEET_SHARED_TOKEN/);
+    assert.match(warningLines[0], /127\.0\.0\.1/);
+
+    const statusRes = await httpGetJson(`http://${LOOPBACK}:${port}/api/node/status`);
+    assert.equal(statusRes.status, 200);
+    const approveRes = await httpPostJson(`http://${LOOPBACK}:${port}/api/leads/approve`, {
+      id: 'non-existent-lead-id'
+    });
+    assert.equal(approveRes.status, 200);
+  } finally {
+    child.kill();
+    await new Promise((resolve) => child.once('exit', resolve));
   }
 });

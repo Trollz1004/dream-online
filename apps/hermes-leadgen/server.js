@@ -20,15 +20,6 @@ function isValidAgentOrProfile(value) {
   return typeof value === 'string' && VALID_IDENTIFIER_REGEX.test(value);
 }
 
-function resolveBindHost(env = process.env) {
-  const explicit = String(env.HERMES_LEADGEN_BIND || '').trim();
-  const alienwareHost = getNodeHost('alienware');
-  if (explicit === '127.0.0.1' || explicit === '0.0.0.0' || explicit === alienwareHost) {
-    return explicit;
-  }
-  return getServiceBindHost('hermes-leadgen');
-}
-
 function resolveLeadgenTokens(env = process.env) {
   const candidates = [
     String(env.HERMES_LEADGEN_TOKEN || '').trim(),
@@ -37,19 +28,40 @@ function resolveLeadgenTokens(env = process.env) {
   return Array.from(new Set(candidates));
 }
 
+function resolveBindHost(env = process.env) {
+  const explicit = String(env.HERMES_LEADGEN_BIND || '').trim();
+  const alienwareHost = getNodeHost('alienware');
+  if (explicit === '127.0.0.1' || explicit === '0.0.0.0' || explicit === alienwareHost) {
+    return explicit;
+  }
+  if (resolveLeadgenTokens(env).length === 0) {
+    return '127.0.0.1';
+  }
+  return getServiceBindHost('hermes-leadgen');
+}
+
 function validateBindConfig(env = process.env) {
   const host = resolveBindHost(env);
   const tokens = resolveLeadgenTokens(env);
   const token = tokens[0] || '';
   if (host !== '127.0.0.1' && !token) {
     throw new Error(
-      'Refusing to start HermesLeadGen on 0.0.0.0 without HERMES_LEADGEN_TOKEN or FLEET_SHARED_TOKEN: set a non-empty HERMES_LEADGEN_TOKEN / FLEET_SHARED_TOKEN or bind to 127.0.0.1.'
+      `Refusing to start HermesLeadGen on ${host} without HERMES_LEADGEN_TOKEN or FLEET_SHARED_TOKEN: set a non-empty HERMES_LEADGEN_TOKEN / FLEET_SHARED_TOKEN or bind to 127.0.0.1.`
     );
   }
-  return { host, token };
+  const explicit = String(env.HERMES_LEADGEN_BIND || '').trim();
+  const port = getServicePort('hermes-leadgen', env.PORT);
+  const warning =
+    !token && explicit !== '127.0.0.1'
+      ? `[hermes-leadgen] WARNING: HERMES_LEADGEN_TOKEN or FLEET_SHARED_TOKEN is not set; binding 127.0.0.1 on port ${port} (this machine only).`
+      : null;
+  return { host, token, warning };
 }
 
-const PORT = getServicePort('hermes-leadgen', process.env.PORT);
+const PORT =
+  String(process.env.PORT || '').trim() === '0'
+    ? 0
+    : getServicePort('hermes-leadgen', process.env.PORT);
 const ROOT = __dirname;
 const USER_HOME = process.env.USERPROFILE || os.homedir();
 const ALIENWARE_HOST = process.env.ALIENWARE_HOST || getNodeHost('alienware');
@@ -1739,9 +1751,14 @@ const server = http.createServer(async (req, res) => {
 });
 
 function startServer(port = PORT, env = process.env, onListening) {
-  const { host } = validateBindConfig(env);
+  const { host, warning } = validateBindConfig(env);
+  if (warning) {
+    console.warn(warning);
+  }
   return server.listen(port, host, () => {
-    console.log(`[Sabretooth Command Studio] Listening on http://${host}:${port} (http://${SABRETOOTH_HOST}:${port}/)`);
+    const addr = server.address();
+    const actualPort = addr && typeof addr === 'object' ? addr.port : port;
+    console.log(`[Sabretooth Command Studio] Listening on http://${host}:${actualPort} (http://${SABRETOOTH_HOST}:${actualPort}/)`);
     if (typeof onListening === 'function') onListening();
   });
 }
