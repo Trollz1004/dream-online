@@ -94,6 +94,9 @@ async function startLabServer(dataDir) {
       DREAM_ENABLE_CLOUD_AI: "1",
       DREAM_AI_PROVIDER: "hermes",
       DREAM_LIVE_NPC_PORT: String(port),
+      DREAM_LIVE_NPC_HOST: "",
+      DREAM_LIVE_NPC_TOKEN: "",
+      FLEET_SHARED_TOKEN: "",
       DREAM_LIVE_NPC_DATA: dataDir,
       NPC_HERMES_WEBHOOK_URL: ""
     },
