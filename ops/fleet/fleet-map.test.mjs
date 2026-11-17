@@ -6,6 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import * as esmFleet from './fleet-map.mjs';
 import {
   FLEET_MAP_PATH,
   loadFleetMap,
@@ -185,4 +186,119 @@ test('docs/house/ADDRESS-DOCTRINE.md exists and documents 192.168.0.XX:XXXX, fle
   assert.ok(!FORBIDDEN_OLD_NODE_RE.test(text));
   assert.ok(!text.includes(FORBIDDEN_OLD_IP));
   assert.ok(!text.includes(LOOPBACK_HOST + ':8000'));
+});
+
+test('Stage E1: fleet-map.json includes spine and githubAccount/repos/harnesses on alienware and t5500', () => {
+  const map = loadFleetMap();
+  assert.equal(map.spine, 'docs/house/SPINE.md');
+
+  const expectedAlienwareRepos = [
+    'Trollz1004/dream-online',
+    'Trollz1004/swarm-command',
+    'Trollz1004/ANTIGRAVITY',
+  ];
+  const expectedT5500Repos = [
+    'Trollz1004/ANTIGRAVITY',
+    'Trollz1004/dream-online',
+  ];
+  const expectedAlienwareHarnesses = [
+    'agy',
+    'claude-code',
+    'codex',
+    'gemini',
+    'hermes',
+    'openclaw',
+    'freebuff',
+    'free-claude-code',
+  ];
+  const expectedT5500Harnesses = [
+    'agy',
+    'claude-code',
+    'codex',
+    'gemini',
+    'hermes',
+    'openclaw',
+    'omniroute',
+  ];
+
+  const aw = getNode('alienware');
+  assert.equal(aw.name, 'Alienware');
+  assert.equal(aw.host, '192.168.0.40');
+  assert.equal(aw.ip, '192.168.0.40');
+  assert.equal(aw.role, 'workshop');
+  assert.equal(aw.githubAccount, 'Trollz1004');
+  assert.deepEqual(aw.repos, expectedAlienwareRepos);
+  assert.deepEqual(aw.harnesses, expectedAlienwareHarnesses);
+
+  const t5 = getNode('t5500');
+  assert.equal(t5.name, 'T5500');
+  assert.equal(t5.host, '192.168.0.15');
+  assert.equal(t5.ip, '192.168.0.15');
+  assert.equal(t5.role, 'front-of-house');
+  assert.equal(t5.githubAccount, 'Trollz1004');
+  assert.deepEqual(t5.repos, expectedT5500Repos);
+  assert.deepEqual(t5.harnesses, expectedT5500Harnesses);
+});
+
+test('Stage E1: ESM and CJS loaders export getSpinePath, getNodeRepos, getNodeHarnesses and snake_case aliases', () => {
+  assert.equal(typeof esmFleet.getSpinePath, 'function', 'ESM must export getSpinePath');
+  assert.equal(typeof esmFleet.getNodeRepos, 'function', 'ESM must export getNodeRepos');
+  assert.equal(typeof esmFleet.getNodeHarnesses, 'function', 'ESM must export getNodeHarnesses');
+  assert.equal(typeof esmFleet.get_spine_path, 'function', 'ESM must export get_spine_path');
+  assert.equal(typeof esmFleet.get_node_repos, 'function', 'ESM must export get_node_repos');
+  assert.equal(typeof esmFleet.get_node_harnesses, 'function', 'ESM must export get_node_harnesses');
+
+  assert.equal(typeof cjsFleet.getSpinePath, 'function', 'CJS must export getSpinePath');
+  assert.equal(typeof cjsFleet.getNodeRepos, 'function', 'CJS must export getNodeRepos');
+  assert.equal(typeof cjsFleet.getNodeHarnesses, 'function', 'CJS must export getNodeHarnesses');
+  assert.equal(typeof cjsFleet.get_spine_path, 'function', 'CJS must export get_spine_path');
+  assert.equal(typeof cjsFleet.get_node_repos, 'function', 'CJS must export get_node_repos');
+  assert.equal(typeof cjsFleet.get_node_harnesses, 'function', 'CJS must export get_node_harnesses');
+
+  assert.equal(esmFleet.getSpinePath(), 'docs/house/SPINE.md');
+  assert.equal(cjsFleet.getSpinePath(), 'docs/house/SPINE.md');
+  assert.equal(esmFleet.get_spine_path(), 'docs/house/SPINE.md');
+  assert.equal(cjsFleet.get_spine_path(), 'docs/house/SPINE.md');
+
+  assert.deepEqual(esmFleet.getNodeRepos('alienware'), [
+    'Trollz1004/dream-online',
+    'Trollz1004/swarm-command',
+    'Trollz1004/ANTIGRAVITY',
+  ]);
+  assert.deepEqual(cjsFleet.getNodeRepos('alienware'), esmFleet.getNodeRepos('alienware'));
+  assert.deepEqual(esmFleet.getNodeRepos('t5500'), [
+    'Trollz1004/ANTIGRAVITY',
+    'Trollz1004/dream-online',
+  ]);
+  assert.deepEqual(cjsFleet.get_node_repos('t5500'), esmFleet.get_node_repos('t5500'));
+
+  assert.deepEqual(esmFleet.getNodeHarnesses('alienware'), [
+    'agy',
+    'claude-code',
+    'codex',
+    'gemini',
+    'hermes',
+    'openclaw',
+    'freebuff',
+    'free-claude-code',
+  ]);
+  assert.deepEqual(cjsFleet.getNodeHarnesses('alienware'), esmFleet.getNodeHarnesses('alienware'));
+  assert.deepEqual(esmFleet.getNodeHarnesses('t5500'), [
+    'agy',
+    'claude-code',
+    'codex',
+    'gemini',
+    'hermes',
+    'openclaw',
+    'omniroute',
+  ]);
+  assert.deepEqual(cjsFleet.get_node_harnesses('t5500'), esmFleet.get_node_harnesses('t5500'));
+
+  // Defensive copy check: mutating returned arrays must not mutate cached map
+  const reposCopy = esmFleet.getNodeRepos('alienware');
+  reposCopy.push('mutated/repo');
+  assert.equal(esmFleet.getNodeRepos('alienware').includes('mutated/repo'), false);
+
+  assert.throws(() => esmFleet.getNodeRepos('unknown-node'), /Unknown fleet node/);
+  assert.throws(() => cjsFleet.getNodeHarnesses('unknown-node'), /Unknown fleet node/);
 });
