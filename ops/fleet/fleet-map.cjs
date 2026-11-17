@@ -32,6 +32,14 @@ function loadFleetMap(customPath = FLEET_MAP_PATH) {
   return parsed;
 }
 
+function getSpinePath(map = loadFleetMap()) {
+  const spine = map && typeof map.spine === 'string' ? map.spine.trim() : '';
+  if (!spine) {
+    throw new Error('Missing "spine" path in fleet-map.json');
+  }
+  return spine;
+}
+
 function getNode(nodeId, map = loadFleetMap()) {
   const key = String(nodeId || '').trim().toLowerCase();
   const node = map && map.nodes ? map.nodes[key] : null;
@@ -43,6 +51,16 @@ function getNode(nodeId, map = loadFleetMap()) {
 
 function getNodeHost(nodeId, map = loadFleetMap()) {
   return getNode(nodeId, map).host;
+}
+
+function getNodeRepos(nodeId, map = loadFleetMap()) {
+  const node = getNode(nodeId, map);
+  return Array.isArray(node.repos) ? [...node.repos] : [];
+}
+
+function getNodeHarnesses(nodeId, map = loadFleetMap()) {
+  const node = getNode(nodeId, map);
+  return Array.isArray(node.harnesses) ? [...node.harnesses] : [];
 }
 
 function getAllowedNodeHosts(map = loadFleetMap()) {
@@ -117,8 +135,11 @@ function getServicesByScope(scope, map = loadFleetMap()) {
 module.exports = {
   FLEET_MAP_PATH,
   loadFleetMap,
+  getSpinePath,
   getNode,
   getNodeHost,
+  getNodeRepos,
+  getNodeHarnesses,
   getAllowedNodeHosts,
   getService,
   getServiceBindHost,
@@ -128,8 +149,11 @@ module.exports = {
   getServicesByNode,
   getServicesByScope,
   load_fleet_map: loadFleetMap,
+  get_spine_path: getSpinePath,
   get_node: getNode,
   get_node_host: getNodeHost,
+  get_node_repos: getNodeRepos,
+  get_node_harnesses: getNodeHarnesses,
   get_allowed_node_hosts: getAllowedNodeHosts,
   get_service: getService,
   get_service_url: getServiceUrl,

@@ -2,20 +2,51 @@
   "version": "1.0.0",
   "updated": "2026-11-16",
   "doctrine": "docs/house/ADDRESS-DOCTRINE.md",
+  "spine": "docs/house/SPINE.md",
   "nodes": {
     "alienware": {
       "id": "alienware",
       "name": "Alienware",
       "host": "192.168.0.40",
       "ip": "192.168.0.40",
-      "role": "workshop"
+      "role": "workshop",
+      "githubAccount": "Trollz1004",
+      "repos": [
+        "Trollz1004/dream-online",
+        "Trollz1004/swarm-command",
+        "Trollz1004/ANTIGRAVITY"
+      ],
+      "harnesses": [
+        "agy",
+        "claude-code",
+        "codex",
+        "gemini",
+        "hermes",
+        "openclaw",
+        "freebuff",
+        "free-claude-code"
+      ]
     },
     "t5500": {
       "id": "t5500",
       "name": "T5500",
       "host": "192.168.0.15",
       "ip": "192.168.0.15",
-      "role": "front-of-house"
+      "role": "front-of-house",
+      "githubAccount": "Trollz1004",
+      "repos": [
+        "Trollz1004/ANTIGRAVITY",
+        "Trollz1004/dream-online"
+      ],
+      "harnesses": [
+        "agy",
+        "claude-code",
+        "codex",
+        "gemini",
+        "hermes",
+        "openclaw",
+        "omniroute"
+      ]
     }
   },
   "services": [

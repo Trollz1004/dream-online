@@ -6,15 +6,15 @@ This is the public copy of the House rules, ruled by Joshua Coleman on 2026-09-3
 
 - **Claude Code** on the signed-in CLI is the judge lane: it writes specs and cards, judges work, pushes and merges. It never runs on an API key. It works on the node that holds the work, with a browser extension for anything that lives in a browser. The claude.ai session is for records and reading.
 - **Codex** is the peer judge lane; it owns the crowdfunding work and reviews game work.
-- **Hermes is OPSis**, the operator. Hermes runs on the founder's Nous Research subscription for its own model and on a self-hosted gateway for sub-agents, so its use costs the Claude cap nothing. OPSis runs the monitors, speaks the answers, files the reports, commits on branches a judge lane lands. OPSis is never Claude, and never called JARVIS.
+- **Hermes is OPSis**, the operator. Hermes runs on the founder's Nous Research subscription for its own model and on a self-hosted gateway for sub-agents, so its use costs the Claude cap nothing. OPSis runs the monitors, speaks the answers, files the reports, commits on branches a judge lane lands. OPSis is never Claude.
 - **Gemini in AI Studio** builds DREAM Engine, DREAM Maker and the screen savers in Build mode, in the free preview only, judged from the node, pushed to GitHub through AI Studio's sync when a judge lane says so. An AI Studio project is also long memory: its files and chat do not expire, so it keeps `MEMORY.md`, `DECISIONS.md` and `BRIEF.md`.
 - **FreeBuff, OpenCode, OpenClaw and AnythingLLM** are zero-cost helpers: implementation cards, the designer, the local gateway, the phone.
 
 ## The nodes
 
-- **Alienware is the workshop**: the game, the engine in AI Studio, the judge lanes, everything in development.
-- **Sabretooth is the shelf**: finished, shipped, always-running product and Mission Control. Nothing is developed there; finished work is pushed to it.
-- **The T5500 is the marketing desk**: no local models; Hermes, Grok, Emergent, the Aside browser agent and Muse run marketing from there. Its bootstrap is `ops/t5500/` in this repository.
+- **Alienware (`192.168.0.40`) is the workshop**: the game, the engine in AI Studio, the studios, the wheel inbox runner, the judge lanes, everything in development.
+- **T5500 (`192.168.0.15`) is front-of-house**: finished, shipped, always-running products, customer support, and Mission OS (`192.168.0.15:3130`). Heavy builds are never compiled on T5500; finished work routes through the Alienware wheel. Its bootstrap is `ops/t5500/` in this repository.
+- **Third machine boundary**: the third machine is a separate test node under a separate GitHub account and is never named or reached from `Trollz1004` code.
 
 ## The rules that stand above everything
 
@@ -31,7 +31,7 @@ This is the public copy of the House rules, ruled by Joshua Coleman on 2026-09-3
 
 ## Monitoring
 
-Mission Control on Sabretooth is the one place: every repository's checks and pull requests, every public link, the shipped products' notification paths proven in test mode, both nodes' services by identity string, the AI Studio stage state, and the founder's voice. Validators and their target lists are in this repository's records; the spec is `specs/006-mission-control-jarvis/`.
+Mission OS on T5500 (`192.168.0.15:3130`) is the one place: every repository's checks and pull requests, every public link, the shipped products' notification paths proven in test mode, both nodes' services by identity string, the AI Studio stage state, and the founder's voice. Validators and their target lists are in this repository's records; the API contract is `docs/ops/MISSION-OS-API.md` and canonical addresses live in `docs/house/ADDRESS-DOCTRINE.md`.
 
 ## The tribute
 
