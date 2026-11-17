@@ -106,9 +106,46 @@ function Get-GitState {
   $result
 }
 
+function Get-AgentDriftPath {
+  if (-not [string]::IsNullOrWhiteSpace($env:AGENT_DRIFT_PATH)) { return $env:AGENT_DRIFT_PATH }
+  return (Join-Path $env:LOCALAPPDATA 'dream-boot\agent-drift.json')
+}
+
+function Get-AgentDriftState {
+  param([string]$Path = (Get-AgentDriftPath))
+  $default = [ordered]@{ ok = $true; light = 'green'; driftedFiles = @() }
+  if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path)) {
+    return $default
+  }
+  try {
+    $raw = [System.IO.File]::ReadAllText($Path, [System.Text.Encoding]::UTF8)
+    if ([string]::IsNullOrWhiteSpace($raw)) { return $default }
+    $parsed = $raw | ConvertFrom-Json
+    $files = @()
+    if ($null -ne $parsed.driftedFiles) {
+      $files = @($parsed.driftedFiles | ForEach-Object {
+        if ($_ -is [string]) {
+          [ordered]@{ file = $_; reason = 'drifted' }
+        } else {
+          [ordered]@{ file = [string]$_.file; reason = [string]$_.reason }
+        }
+      })
+    }
+    $isOk = ($files.Count -eq 0)
+    if ($null -ne $parsed.PSObject.Properties['ok']) {
+      $isOk = [bool]$parsed.ok -and ($files.Count -eq 0)
+    }
+    $light = if (-not $isOk -or $files.Count -gt 0) { 'amber' } else { 'green' }
+    return [ordered]@{ ok = $isOk; light = $light; driftedFiles = $files }
+  } catch {
+    return [ordered]@{ ok = $true; light = 'green'; driftedFiles = @(); error = $_.Exception.Message }
+  }
+}
+
 function Get-Overall {
-  param($Results, [bool]$GitOk)
+  param($Results, [bool]$GitOk, $AgentDrift = $null)
   if (@($Results | Where-Object { $_.group -eq 'required' -and $_.status -ne 'UP' }).Count -gt 0) { return 'RED' }
+  if ($null -ne $AgentDrift -and (-not $AgentDrift.ok -or @($AgentDrift.driftedFiles).Count -gt 0)) { return 'AMBER' }
   if (@($Results | Where-Object { $_.status -ne 'UP' }).Count -gt 0) { return 'YELLOW' }
   if (-not $GitOk) { return 'YELLOW' }
   'GREEN'
@@ -127,13 +164,15 @@ function New-TriggerLine {
 function Invoke-ProbePass { foreach ($t in Get-Targets) { Invoke-Probe -Target $t } }
 
 function ConvertTo-Snapshot {
-  param($Results, $Git, [string]$Overall, [bool]$Healed)
+  param($Results, $Git, [string]$Overall, [bool]$Healed, $AgentDrift = $null)
   $groups = [ordered]@{ required = [ordered]@{}; optional = [ordered]@{}; remote = [ordered]@{} }
   foreach ($r in $Results) { $groups[$r.group][$r.name] = [ordered]@{ status = $r.status; detail = $r.detail; ms = $r.ms } }
+  $driftValue = if ($null -ne $AgentDrift) { $AgentDrift } else { [ordered]@{ ok = $true; light = 'green'; driftedFiles = @() } }
   [ordered]@{
     ts = Get-NowZ; node = $script:NodeName; lan = $script:NodeLan
     required = $groups.required; optional = $groups.optional; remote = $groups.remote
     git = [ordered]@{ dream_online = $Git }
+    agent_drift = $driftValue
     bring_up_ran = $Healed
     overall = $Overall
   }
@@ -142,7 +181,16 @@ function ConvertTo-Snapshot {
 function Show-Table {
   param($Snapshot)
   Write-Host ''
-  Write-Host ("ALIENWARE health at {0}, overall {1}" -f $Snapshot.ts, $Snapshot.overall) -ForegroundColor Cyan
+  $driftedList = @()
+  if ($Snapshot.Contains('agent_drift') -and $null -ne $Snapshot.agent_drift -and $null -ne $Snapshot.agent_drift.driftedFiles) {
+    $driftedList = @($Snapshot.agent_drift.driftedFiles | ForEach-Object { if ($_ -is [string]) { $_ } else { $_.file } })
+  }
+  $overallLabel = if ($Snapshot.overall -eq 'AMBER' -and $driftedList.Count -gt 0) {
+    "AMBER (agent drift: $($driftedList -join ', '))"
+  } else {
+    $Snapshot.overall
+  }
+  Write-Host ("ALIENWARE health at {0}, overall {1}" -f $Snapshot.ts, $overallLabel) -ForegroundColor Cyan
   foreach ($g in 'required', 'optional', 'remote') {
     Write-Host ("-- {0} --" -f $g) -ForegroundColor DarkGray
     foreach ($k in $Snapshot[$g].Keys) {
@@ -150,6 +198,11 @@ function Show-Table {
       $color = if ($v.status -eq 'UP') { 'Green' } elseif ($g -eq 'required') { 'Red' } else { 'Yellow' }
       Write-Host ("  {0,-24} {1,-14} {2}" -f $k, $v.status, $v.detail) -ForegroundColor $color
     }
+  }
+  if ($Snapshot.Contains('agent_drift') -and $null -ne $Snapshot.agent_drift) {
+    $driftColor = if ($Snapshot.agent_drift.ok) { 'Green' } else { 'DarkYellow' }
+    $driftDetail = if ($driftedList.Count -gt 0) { $driftedList -join ', ' } else { 'clean' }
+    Write-Host ("agent_drift: {0} ({1})" -f $Snapshot.agent_drift.light, $driftDetail) -ForegroundColor $driftColor
   }
   $git = $Snapshot.git.dream_online
   Write-Host ("git dream-online: branch {0}, {1} changed tracked files, equal to origin/main: {2}" -f $git.branch, $git.tracked_dirty_lines, $git.equal_to_origin) -ForegroundColor DarkGray
@@ -185,8 +238,9 @@ function Invoke-HealthMain {
 
   $git = Get-GitState -Path $repoRoot -Branch 'main'
   $gitOk = [bool]($git.equal_to_origin -and ($git.tracked_dirty_lines -eq 0))
-  $overall = Get-Overall -Results $results -GitOk $gitOk
-  $snapshot = ConvertTo-Snapshot -Results $results -Git $git -Overall $overall -Healed $healed
+  $agentDrift = Get-AgentDriftState
+  $overall = Get-Overall -Results $results -GitOk $gitOk -AgentDrift $agentDrift
+  $snapshot = ConvertTo-Snapshot -Results $results -Git $git -Overall $overall -Healed $healed -AgentDrift $agentDrift
 
   $snapshot | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $jsonOut -Encoding UTF8
   $summary = ($results | ForEach-Object { "$($_.name):$($_.status)" }) -join ' '

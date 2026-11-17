@@ -88,6 +88,60 @@ Describe 'Get-Overall' {
   It 'is GREEN when everything is UP and git is in step' {
     Get-Overall -Results @((New-Result 'required' 'UP'), (New-Result 'optional' 'UP'), (New-Result 'remote' 'UP')) -GitOk $true | Should Be 'GREEN'
   }
+  It 'is AMBER when services and git are healthy and agent_drift reports drifted files' {
+    $drift = [ordered]@{
+      ok = $false
+      light = 'amber'
+      driftedFiles = @([ordered]@{ file = 'AGENTS.md'; reason = 'drifted' })
+    }
+    Get-Overall -Results @((New-Result 'required' 'UP'), (New-Result 'optional' 'UP')) -GitOk $true -AgentDrift $drift | Should Be 'AMBER'
+  }
+  It 'stays RED when a required service is down even if agent_drift reports drifted files' {
+    $drift = [ordered]@{
+      ok = $false
+      light = 'amber'
+      driftedFiles = @([ordered]@{ file = 'AGENTS.md'; reason = 'drifted' })
+    }
+    Get-Overall -Results @((New-Result 'required' 'DOWN')) -GitOk $true -AgentDrift $drift | Should Be 'RED'
+  }
+}
+
+Describe 'Get-AgentDriftState and AMBER snapshot/table' {
+  It 'reads drifted files from AGENT_DRIFT_PATH and sets ok=false, light=amber' {
+    $driftPath = Join-Path $TestDrive 'agent-drift-drifted.json'
+    '{"checkedAt":"2026-11-16T00:00:00Z","node":"alienware","ok":false,"light":"amber","driftedCount":2,"driftedFiles":[{"file":"AGENTS.md","reason":"drifted"},{"file":"%USERPROFILE%\\.claude\\CLAUDE.md","reason":"missing-block"}]}' | Set-Content -LiteralPath $driftPath -Encoding UTF8
+    $saved = $env:AGENT_DRIFT_PATH
+    $env:AGENT_DRIFT_PATH = $driftPath
+    try {
+      (Get-AgentDriftPath) | Should Be $driftPath
+      $state = Get-AgentDriftState
+      $state.ok | Should Be $false
+      $state.light | Should Be 'amber'
+      @($state.driftedFiles).Count | Should Be 2
+      @($state.driftedFiles)[0].file | Should Be 'AGENTS.md'
+
+      $snap = ConvertTo-Snapshot -Results @() -Git ([ordered]@{}) -Overall 'AMBER' -Healed $false -AgentDrift $state
+      $snap.overall | Should Be 'AMBER'
+      $snap.agent_drift.light | Should Be 'amber'
+      @($snap.agent_drift.driftedFiles).Count | Should Be 2
+
+      Mock Write-Host {}
+      Show-Table -Snapshot $snap
+      Assert-MockCalled Write-Host -Times 1 -Exactly -Scope It -ParameterFilter {
+        $Object -like '*AMBER (agent drift: AGENTS.md, %USERPROFILE%\.claude\CLAUDE.md)*'
+      }
+    } finally {
+      if ($null -eq $saved) { Remove-Item Env:\AGENT_DRIFT_PATH -ErrorAction SilentlyContinue } else { $env:AGENT_DRIFT_PATH = $saved }
+    }
+  }
+
+  It 'returns green default when agent-drift.json is absent' {
+    $missing = Join-Path $TestDrive 'does-not-exist-agent-drift.json'
+    $state = Get-AgentDriftState -Path $missing
+    $state.ok | Should Be $true
+    $state.light | Should Be 'green'
+    @($state.driftedFiles).Count | Should Be 0
+  }
 }
 
 Describe 'Get-HealNeeded' {

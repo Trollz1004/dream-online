@@ -27,6 +27,7 @@ process.env.LEADGEN_VAULT_ROOT = VAULT_DIR;
 process.env[LEGACY_VAULT_ENV] = VAULT_DIR;
 process.env.LEADGEN_STATE_DIR = STATE_DIR;
 process.env.HERMES_LEADGEN_BIND = '127.0.0.1';
+process.env.AGENT_DRIFT_PATH = path.join(TEMP_ROOT, 'isolated-agent-drift.json');
 
 let localServerInstance = null;
 let baseUrl = '';
@@ -623,4 +624,100 @@ test('8f. live-start: no token with unset HERMES_LEADGEN_BIND binds 127.0.0.1, e
     child.kill();
     await new Promise((resolve) => child.once('exit', resolve));
   }
+});
+
+test('9. Stage E3: getAlienwareNodeStatus turns AMBER with drifted file names on agent-drift.json drift, GREEN when clean, RED when service down', async () => {
+  const { getAlienwareNodeStatus } = require('../server');
+  const driftFile = path.join(TEMP_ROOT, 'stage-e3-agent-drift.json');
+
+  // 1. Clean agent-drift.json + all services UP -> GREEN
+  fs.writeFileSync(
+    driftFile,
+    JSON.stringify({
+      checkedAt: '2026-11-16T00:00:00Z',
+      node: 'alienware',
+      ok: true,
+      light: 'green',
+      driftedCount: 0,
+      driftedFiles: []
+    }),
+    'utf8'
+  );
+  const greenStatus = await getAlienwareNodeStatus({
+    agentDriftPath: driftFile,
+    probeService: async () => true
+  });
+  assert.equal(greenStatus.nodeLight, 'GREEN');
+  assert.equal(greenStatus.allGreen, true);
+  assert.equal(greenStatus.agentDrift.light, 'green');
+  assert.equal(greenStatus.agentDrift.driftedCount, 0);
+  assert.deepEqual(greenStatus.agentDrift.driftedFiles, []);
+  const greenPill = greenStatus.services.find((s) => s.id === 'agent-drift');
+  assert.ok(greenPill, 'Must include agent-drift status-strip item');
+  assert.equal(greenPill.name, 'Agent Files Sync');
+  assert.equal(greenPill.light, 'GREEN');
+
+  // 2. Drifted agent-drift.json + all services UP -> AMBER with exact drifted file names and allGreen false
+  fs.writeFileSync(
+    driftFile,
+    JSON.stringify({
+      checkedAt: '2026-11-16T00:00:00Z',
+      node: 'alienware',
+      ok: false,
+      light: 'amber',
+      driftedCount: 2,
+      driftedFiles: [
+        { file: 'AGENTS.md', reason: 'drifted' },
+        { file: '%USERPROFILE%\\.claude\\CLAUDE.md', reason: 'missing-block' }
+      ]
+    }),
+    'utf8'
+  );
+  const amberStatus = await getAlienwareNodeStatus({
+    agentDriftPath: driftFile,
+    probeService: async () => true
+  });
+  assert.equal(amberStatus.nodeLight, 'AMBER');
+  assert.equal(amberStatus.allGreen, false);
+  assert.equal(amberStatus.agentDrift.light, 'amber');
+  assert.equal(amberStatus.agentDrift.driftedCount, 2);
+  assert.equal(amberStatus.agentDrift.driftedFiles.length, 2);
+  const amberPill = amberStatus.services.find((s) => s.id === 'agent-drift');
+  assert.ok(amberPill);
+  assert.equal(amberPill.light, 'AMBER');
+  assert.ok(amberPill.detail.includes('AGENTS.md'));
+  assert.ok(amberPill.detail.includes('CLAUDE.md'));
+
+  // 3. Drifted agent-drift.json + a service DOWN -> RED overrides AMBER
+  const redStatus = await getAlienwareNodeStatus({
+    agentDriftPath: driftFile,
+    probeService: async (_host, port) => port !== 9119
+  });
+  assert.equal(redStatus.nodeLight, 'RED');
+  assert.equal(redStatus.allGreen, false);
+
+  // 4. HTTP /api/node/status honors AGENT_DRIFT_PATH env override
+  const savedDriftEnv = process.env.AGENT_DRIFT_PATH;
+  process.env.AGENT_DRIFT_PATH = driftFile;
+  try {
+    const res = await httpGetJson(`${baseUrl}/api/node/status`);
+    assert.equal(res.status, 200);
+    assert.equal(res.data.agentDrift.light, 'amber');
+    assert.equal(res.data.agentDrift.driftedCount, 2);
+    assert.equal(res.data.allGreen, false);
+    const pill = res.data.services.find((s) => s.id === 'agent-drift');
+    assert.ok(pill && pill.light === 'AMBER' && pill.detail.includes('AGENTS.md'));
+  } finally {
+    if (savedDriftEnv === undefined) delete process.env.AGENT_DRIFT_PATH;
+    else process.env.AGENT_DRIFT_PATH = savedDriftEnv;
+  }
+
+  // 5. Renderer and styles support WCAG AAA amber pill (#111827 / #fffbeb / #f59e0b)
+  const rendererSrc = fs.readFileSync(path.join(ROOT_DIR, 'renderer.js'), 'utf8');
+  const cssSrc = fs.readFileSync(path.join(ROOT_DIR, 'styles.css'), 'utf8');
+  assert.match(rendererSrc, /amber/);
+  assert.match(cssSrc, /\.light-pill\.amber/);
+  assert.match(cssSrc, /#fffbeb/i);
+  assert.match(cssSrc, /#f59e0b/i);
+  assert.match(cssSrc, /#111827/i);
 });

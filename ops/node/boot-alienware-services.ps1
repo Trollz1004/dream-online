@@ -30,6 +30,7 @@ $vaultRoot = "C:\DREAM\Antigravity"
 $alienwareVaultId = "9f7e513d0604b00d"
 $bootLogDir = "$env:LOCALAPPDATA\dream-boot"
 $bootLog = Join-Path $bootLogDir "boot.log"
+$agentDriftJson = Join-Path $bootLogDir "agent-drift.json"
 $vaultZipsDir = Join-Path $bootLogDir "vault-zips"
 
 # Panda Router and inbox runner are owned by their own scheduled tasks. This script only asks those tasks to start.
@@ -142,6 +143,46 @@ function Invoke-SwarmCommandCheck {
     return $started
 }
 
+function Invoke-FleetStatusCheck {
+    $fleetStatusScript = Join-Path $repoRoot "ops\fleet\fleet-status-server.mjs"
+    if (-not (Test-TcpPort "127.0.0.1" 9165) -and (Test-Path -LiteralPath $fleetStatusScript)) {
+        Start-DetachedService "`"$nodeExe`" `"$fleetStatusScript`"" $repoRoot 0
+        Write-BootLog "Fleet Status (192.168.0.40:9165)" "port 9165 not listening"
+        return $true
+    }
+    return $false
+}
+
+function Invoke-AgentDriftScript([string]$ScriptPath, [string]$TargetRepoRoot, [string]$StatusPath) {
+    try {
+        & $ScriptPath -Node alienware -Scope all -RepoRoot $TargetRepoRoot -StatusJsonPath $StatusPath -SoftExit | Out-Null
+    } catch {}
+}
+
+function Read-AgentDriftJson([string]$StatusPath) {
+    if ([string]::IsNullOrWhiteSpace($StatusPath) -or -not (Test-Path -LiteralPath $StatusPath)) { return $null }
+    try {
+        $raw = [System.IO.File]::ReadAllText($StatusPath, [System.Text.Encoding]::UTF8)
+        if ([string]::IsNullOrWhiteSpace($raw)) { return $null }
+        return ($raw | ConvertFrom-Json)
+    } catch {
+        return $null
+    }
+}
+
+function Invoke-AgentDriftCheck {
+    $driftScript = Join-Path $repoRoot "ops\agents\check-agent-drift.ps1"
+    if (-not (Test-Path -LiteralPath $driftScript)) { return $false }
+    Invoke-AgentDriftScript -ScriptPath $driftScript -TargetRepoRoot $repoRoot -StatusPath $agentDriftJson
+    $status = Read-AgentDriftJson -StatusPath $agentDriftJson
+    if ($null -ne $status -and [int]$status.driftedCount -gt 0) {
+        $names = @($status.driftedFiles | ForEach-Object { $_.file }) -join ', '
+        Write-BootLog "agent drift AMBER" "drifted files: $names"
+        return $true
+    }
+    return $false
+}
+
 # Step 0: Move any stray .zip archives out of the Obsidian Vault into %LOCALAPPDATA%\dream-boot\vault-zips\
 # so the 1 GB Obsidian Sync cap is never bloated and nothing is deleted.
 function Move-VaultZips([string]$VaultPath = $vaultRoot, [string]$DestDir = $vaultZipsDir) {
@@ -251,12 +292,13 @@ function Invoke-BootAll {
         Write-BootLog "DreamOps Bridge (192.168.0.40:9133)" "port 9133 not listening"
     }
 
-    # 8. Panda Router (:8765), inbox runner and Swarm Command (:8000)
+    # 8. Panda Router (:8765), inbox runner, Swarm Command (:8000), and Fleet Status (:9165)
     Invoke-PandaRouterCheck | Out-Null
     Invoke-InboxRunnerCheck | Out-Null
     Invoke-SwarmCommandCheck | Out-Null
+    Invoke-FleetStatusCheck | Out-Null
 
-    # 9. Ensure Multi-Harness Skills and Workflow JSONs are synchronized
+    # 9. Ensure Multi-Harness Skills and Workflow JSONs are synchronized, then record agent drift status (non-blocking)
     if (Test-Path "$repoRoot\ops\node\sync-multi-harness-skills.mjs") {
         & $nodeExe "$repoRoot\ops\node\sync-multi-harness-skills.mjs" | Out-Null
     }
@@ -264,6 +306,7 @@ function Invoke-BootAll {
         Copy-Item "$repoRoot\api.workflow.json" "$vaultRoot\api.workflow.json" -Force -ErrorAction SilentlyContinue
         Copy-Item "$repoRoot\workflow_api.json" "$vaultRoot\workflow_api.json" -Force -ErrorAction SilentlyContinue
     }
+    Invoke-AgentDriftCheck | Out-Null
 
     # 10. Open DREAM Dev Engine Studio (http://192.168.0.40:9180) and Free Claude Code Admin (http://192.168.0.40:8082/admin)
     #     on the first run after a boot only. Waits up to 30 seconds for 9180; if it is still down, no tab opens this boot.

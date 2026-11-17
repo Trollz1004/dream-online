@@ -704,7 +704,42 @@ function checkTcpPort(host, port, timeoutMs = 1500) {
   });
 }
 
-async function getAlienwareNodeStatus() {
+function resolveAgentDriftPath(options = {}, env = process.env) {
+  if (options && typeof options.agentDriftPath === 'string' && options.agentDriftPath.trim()) {
+    return options.agentDriftPath.trim();
+  }
+  if (env && typeof env.AGENT_DRIFT_PATH === 'string' && env.AGENT_DRIFT_PATH.trim()) {
+    return env.AGENT_DRIFT_PATH.trim();
+  }
+  return path.join(env.LOCALAPPDATA || USER_HOME, 'dream-boot', 'agent-drift.json');
+}
+
+function readAgentDriftStatus(driftPath) {
+  const empty = { light: 'green', driftedCount: 0, driftedFiles: [] };
+  if (!driftPath || !fs.existsSync(driftPath)) return empty;
+  try {
+    const raw = fs.readFileSync(driftPath, 'utf8').replace(/^\uFEFF/, '');
+    if (!raw.trim()) return empty;
+    const parsed = JSON.parse(raw);
+    const items = Array.isArray(parsed && parsed.driftedFiles) ? parsed.driftedFiles : [];
+    const driftedFiles = items
+      .map((item) => {
+        if (typeof item === 'string') return { file: item, reason: 'drifted' };
+        return {
+          file: String((item && item.file) || ''),
+          reason: String((item && item.reason) || 'drifted')
+        };
+      })
+      .filter((item) => item.file.length > 0);
+    const driftedCount = driftedFiles.length;
+    const light = driftedCount > 0 ? 'amber' : 'green';
+    return { light, driftedCount, driftedFiles };
+  } catch (_) {
+    return empty;
+  }
+}
+
+async function getAlienwareNodeStatus(options = {}) {
   const definitions = [
     { id: 'gui-8392', name: 'Alienware Lead-Gen Command Studio (:8392)', host: ALIENWARE_HOST, port: 8392, url: `http://${ALIENWARE_HOST}:8392/` },
     { id: 'hermes-9119', name: 'Hermes OPSis Orchestrator (:9119)', host: ALIENWARE_HOST, port: 9119, url: `http://${ALIENWARE_HOST}:9119/chat?profile=default&resume=local-profile` },
@@ -716,9 +751,14 @@ async function getAlienwareNodeStatus() {
     { id: 't5500-omniroute-20128', name: 'T5500 OmniRoute AI Router (:20128)', host: T5500_HOST, port: 20128, url: `http://${T5500_HOST}:20128/v1/models` }
   ];
 
-  const services = await Promise.all(
+  const probeFn = typeof options.probeService === 'function' ? options.probeService : null;
+  const serviceChecks = await Promise.all(
     definitions.map(async (svc) => {
-      const up = svc.port === PORT ? true : await checkTcpPort(svc.host, svc.port);
+      const up = probeFn
+        ? Boolean(await probeFn(svc.host, svc.port, svc))
+        : svc.port === PORT
+          ? true
+          : await checkTcpPort(svc.host, svc.port);
       return {
         ...svc,
         up,
@@ -728,6 +768,23 @@ async function getAlienwareNodeStatus() {
     })
   );
 
+  const driftPath = resolveAgentDriftPath(options, options.env || process.env);
+  const agentDrift = readAgentDriftStatus(driftPath);
+  const anyServiceDown = serviceChecks.some((s) => !s.up);
+  const nodeLight = anyServiceDown ? 'RED' : agentDrift.driftedFiles.length > 0 ? 'AMBER' : 'GREEN';
+  const driftedNames = agentDrift.driftedFiles.map((d) => d.file);
+  const agentDriftPill = {
+    id: 'agent-drift',
+    name: 'Agent Files Sync',
+    up: agentDrift.driftedCount === 0,
+    light: agentDrift.driftedCount > 0 ? 'AMBER' : 'GREEN',
+    detail: driftedNames.length > 0 ? `Drifted: ${driftedNames.join(', ')}` : '0 drifted',
+    url: 'ops/agents/check-agent-drift.ps1',
+    checkedAt: new Date().toISOString()
+  };
+
+  const services = [...serviceChecks, agentDriftPill];
+
   return {
     node: `Alienware (${ALIENWARE_HOST})`,
     title: 'Alienware Lead-Gen Command Studio',
@@ -735,7 +792,9 @@ async function getAlienwareNodeStatus() {
     role: 'Alienware Lead-Gen Command Studio (:8392) + Hermes OPSis (:9119) + Free Claude Code (:8082/admin) + Harvey 3-Type Lead Gen + YouTube Shorts (<=59s) + Dual Graphy GUI',
     isolationRule: 'Alienware Lead-Gen Command Studio (:8392) is strictly scoped to lead-gen and shorts. T5500 (:3130 OPSis streamable studio) and port :9180 (3D Game Engine) remain strictly separate.',
     cliCommand: 'agy --dangerously-skip-permissions',
-    allGreen: services.every((s) => s.up),
+    nodeLight,
+    agentDrift,
+    allGreen: nodeLight === 'GREEN',
     services
   };
 }

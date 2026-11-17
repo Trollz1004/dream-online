@@ -34,7 +34,7 @@ document.querySelectorAll('.tab-btn').forEach((btn) => {
 });
 
 // ============================================================================
-// 2. RED LIGHT / GREEN LIGHT PORT STATUS BAR & SELF-HEAL
+// 2. RED / AMBER / GREEN LIGHT PORT STATUS BAR & SELF-HEAL
 // ============================================================================
 async function refreshNodeStatus() {
   try {
@@ -42,14 +42,33 @@ async function refreshNodeStatus() {
     const data = await res.json();
     const strip = document.getElementById('service-lights-strip');
     if (!strip || !Array.isArray(data.services)) return;
-    strip.innerHTML = data.services
-      .map(
-        (s) => `
-        <div class="light-pill ${s.up ? 'green' : 'red'}" title="${escapeHtml(s.url)}">
+    const hasDriftPill = data.services.some((s) => s.id === 'agent-drift');
+    const items = [...data.services];
+    if (!hasDriftPill && data.agentDrift) {
+      const drifted = Array.isArray(data.agentDrift.driftedFiles) ? data.agentDrift.driftedFiles : [];
+      const names = drifted.map((d) => (typeof d === 'string' ? d : d.file)).filter(Boolean);
+      items.push({
+        id: 'agent-drift',
+        name: 'Agent Files Sync',
+        up: names.length === 0,
+        light: names.length > 0 ? 'AMBER' : 'GREEN',
+        detail: names.length > 0 ? `Drifted: ${names.join(', ')}` : '0 drifted',
+        url: 'ops/agents/check-agent-drift.ps1'
+      });
+    }
+    strip.innerHTML = items
+      .map((s) => {
+        const pillClass = s.light === 'AMBER' ? 'amber' : s.up ? 'green' : 'red';
+        const labelHtml =
+          s.light === 'AMBER' && s.detail
+            ? `${escapeHtml(s.name)}: <strong>AMBER</strong> (${escapeHtml(s.detail)})`
+            : `${escapeHtml(s.name)}: <strong>${escapeHtml(s.light)}</strong>`;
+        return `
+        <div class="light-pill ${pillClass}" title="${escapeHtml(s.detail || s.url || '')}">
           <span class="led"></span>
-          <span>${escapeHtml(s.name)}: <strong>${s.light}</strong></span>
-        </div>`
-      )
+          <span>${labelHtml}</span>
+        </div>`;
+      })
       .join('');
   } catch (err) {
     console.error('Status check error:', err);
