@@ -10,7 +10,7 @@ Follow the other references as usual ([new-app.md](new-app.md), [existing-app.md
 | --- | --- | --- |
 | API key | The user runs `generate-api-key` for `THESYS_API_KEY` | No `generate-api-key` and no `THESYS_API_KEY`. The user adds their provider key (for example `OPENAI_API_KEY`) to `.env` themselves. |
 | Client | OpenAI client with `baseURL: "https://api.thesys.dev/v1/embed"` | The provider's own client with its default base URL |
-| Model ids | `{provider}/{model}`, such as `openai/gpt-5` | The provider's own ids, such as `gpt-5`. Gateway's free models do not apply. |
+| Model ids | `{provider}/{model}`, such as `openai/gpt-6-astra` | The provider's own ids, such as `gpt-6-astra`. Gateway's free models do not apply. |
 | System prompt | `generateSystemPrompt({ cloud: true, library, promptOptions, instructions })` | `generateSystemPrompt({ library, promptOptions })`. No `cloud`, no `instructions`. |
 | Conversation storage | Gateway conversations: `useOpenuiCloudStorage`, frontend tokens, `@openuidev/server` history helpers | App-owned only: `restStorage` or a custom `ChatStorage` ([agent-interface.md](agent-interface.md#choose-conversation-storage)), or in memory |
 | Correction | Gateway corrects while streaming | None |
@@ -66,7 +66,7 @@ import OpenAI from "openai";
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const completion = await openai.chat.completions.create(
-  { model: "gpt-5", messages: [{ role: "system", content: systemPrompt }, ...messages], stream: true },
+  { model: "gpt-6-astra", messages: [{ role: "system", content: systemPrompt }, ...messages], stream: true },
   { signal: request.signal },
 );
 ```

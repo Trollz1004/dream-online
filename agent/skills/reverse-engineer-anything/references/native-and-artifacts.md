@@ -397,9 +397,9 @@ references) and explicit scope. Preserve unknown types/duplicate names; static
 interface equality is not runtime compatibility. CLI accepts complete inline
 Evidence in `rea compare-wasm-interfaces input.json --json`.
 
-## Godot PCK
+## Standalone PCK archives (external offline targets only)
 
-For a standalone PCK, `open_binary` then `inspect_artifact` with
+DREAM Online runs on the 100% in-house DREAM Engine in `src/engine/`, never an external engine runtime. For an external standalone PCK archive under clean-room analysis, `open_binary` then `inspect_artifact` with
 `detail: "summary"` retains the complete static inventory. Use the returned
 `parent_evidence_id` with `inspect_analysis_view` inventory occurrences filtered
 by exact `logical_paths` or `occurrence_ids`, and join `artifact_id` to nodes
@@ -412,6 +412,6 @@ Distinguish declared MD5 from observed SHA-256 and graph/page completeness from
 `source_coverage`. Encrypted directories and sparse bundles have unknown entry
 coverage; encrypted members have unknown content identity. An empty filtered
 page cannot prove absence in unknown coverage. Retained views are historical,
-not fresh filesystem checks. No decryption, Godot resource decoding, GDScript
+not fresh filesystem checks. No decryption, external resource decoding, script
 decompilation or target execution is provided. See
-[Godot PCK](https://github.com/morluto/rea/blob/main/docs/godot-pck.md).
+[PCK artifact reference](https://github.com/morluto/rea/blob/main/docs/godot-pck.md).

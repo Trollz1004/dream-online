@@ -11,7 +11,7 @@ import { generateSystemPrompt, type LibrarySpec } from "@openuidev/lang-core";
 import library from "@/lib/openui.spec.json";
 
 const response = await gateway.responses.create({
-  model: "openai/gpt-5",
+  model: "openai/gpt-6-astra",
   input,
   instructions: generateSystemPrompt({ cloud: true, library: library as LibrarySpec }),
   stream: true,

@@ -1,7 +1,32 @@
 name: test-driven-development
 description: "Alias for mandatory TDD skill (RED -> GREEN -> REFACTOR) ensuring compatibility with harnesses expecting test-driven-development."
 version: 2.1.0
-model: gpt-5.5
+model: gpt-6-astra
 instructions_file: ../SKILL.md
 house_rules: "docs/house/HOUSE-MOTION-RULE.md, docs/house/THE-HOUSE.md and docs/house/PAYMENT-ACCOUNTS-RULE.md. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here."
 current_beats_existing: "Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports (ops/handoffs/FABLE-HANDOFFS-2026-11-06.md section 0)."
+
+# --- TROLLZ1004-SPINE:START ---
+trollz1004_spine:
+  scope: "repo"
+  repo: "dream-online"
+  spine: "docs/house/SPINE.md"
+  fleet_map: "ops/fleet/fleet-map.json"
+  nodes:
+    alienware: "192.168.0.40"
+    t5500: "192.168.0.15"
+  trusted_three:
+    - "claude-opus-5.5"
+    - "fable"
+    - "gemini-4-carbon"
+    - "gpt-6-astra"
+    - "gpt-6.1-sol"
+    - "codex"
+  mcp_kit:
+    command: "cmd.exe"
+    args:
+      - "/d"
+      - "/c"
+      - "node"
+      - "%USERPROFILE%\\antigravity\\DREAM-Engine-runner\\ops\\kit\\server.mjs"
+# --- TROLLZ1004-SPINE:END ---

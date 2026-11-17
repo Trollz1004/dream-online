@@ -251,20 +251,31 @@ test('docs/house/PAYMENT-ACCOUNTS-RULE.md carries no email address (the sign-ins
   assert.equal(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(raw), false);
 });
 
-test('ops/node/skills/house-boot/SKILL.md line 8 carries no Windows user folder path and no private LAN addresses exist in the file', () => {
+test('ops/node/skills/house-boot/SKILL.md line 8 carries no Windows user folder path and enforces Address Doctrine', () => {
   const raw = fs.readFileSync(path.join(REPO_ROOT, 'ops/node/skills/house-boot/SKILL.md'), 'utf8');
   const line8 = raw.split(/\r?\n/)[7] ?? '';
   assert.equal(/[A-Za-z]:[\\/]+Users[\\/]+/i.test(raw), false);
   assert.ok(line8.includes('%USERPROFILE%'));
   assert.ok(line8.includes('the newest CLAUDE-USER-PREFERENCES file in the drop box'));
   assert.equal(line8.includes('CLAUDE-USER-PREFERENCES-v2026-10-26.md'), false);
-  assert.equal(
-    /\b(?:192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})\b/.test(
-      raw,
-    ),
-    false,
+
+  assert.ok(raw.includes('192.168.0.40'));
+  assert.ok(raw.includes('192.168.0.15'));
+  assert.ok(raw.includes('ops/fleet/fleet-map.json'));
+
+  const retiredIpRe = new RegExp('\\b' + ['192', '168', '0', '8'].join('\\.') + '\\b');
+  assert.equal(retiredIpRe.test(raw), false);
+
+  const loopbackReachRe = new RegExp(
+    '(?:https?|wss?):\\/\\/(?:local' + 'host|127\\.0\\.0\\.1)\\b|\\b(?:local' + 'host|127\\.0\\.0\\.1):\\d{2,5}\\b',
+    'i',
   );
-  assert.ok(raw.includes('the node address in the node env file'));
+  assert.equal(loopbackReachRe.test(raw), false);
+
+  const privateIpMatches =
+    raw.match(/\b(?:192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})\b/g) ?? [];
+  const disallowedIps = privateIpMatches.filter((ip) => ip !== '192.168.0.40' && ip !== '192.168.0.15');
+  assert.deepEqual(disallowedIps, []);
 });
 
 test('silent edit to PAYMENT-ACCOUNTS-RULE.md or a definition file missing its pointer fails with the file name', () => {
@@ -303,6 +314,32 @@ test('silent edit to HOUSE-MOTION-RULE.md or missing pointer in a definition fil
   assert.ok(errNote && errNote.includes('.agents/skills/hallmark/HOUSE-NOTE.md'));
 });
 
+function isRenderedRepoDefinition(relPath: string): boolean {
+  const base = path.posix.basename(relPath);
+  if (
+    relPath === 'AGENTS.md' ||
+    relPath === 'AGENT.md' ||
+    relPath === 'CLAUDE.md' ||
+    relPath === 'GEMINI.md' ||
+    relPath === 'CODEX.md' ||
+    relPath === 'OPENCODE.md' ||
+    relPath === 'GROK.md' ||
+    relPath === 'GEMINI_SOUL.md' ||
+    relPath === 'ops/t5500/AGENTS.t5500.md'
+  ) {
+    return true;
+  }
+  return (
+    /SOUL.*\.md$/i.test(base) ||
+    base === 'SKILL.md' ||
+    base === 'HOUSE-NOTE.md' ||
+    base === 'skill.json' ||
+    base === 'gemini.toml' ||
+    base === 'openai.yaml' ||
+    base === 'agents.yaml'
+  );
+}
+
 test('every agent definition file matched by glob carries the house rule and pull-first pointers in its own format', () => {
   const files = walkDefinitionFiles();
   assert.ok(files.length >= 150, `Expected at least 150 definition files, found ${files.length}`);
@@ -315,6 +352,38 @@ test('every agent definition file matched by glob carries the house rule and pul
   }
 
   assert.deepEqual(failures, [], `Definition drift detected:\n${failures.join('\n')}`);
+});
+
+test('rendered repo definition files carry the TROLLZ1004-SPINE managed block', () => {
+  const files = walkDefinitionFiles().filter(isRenderedRepoDefinition);
+  assert.ok(files.length >= 150, `Expected at least 150 rendered definition files, found ${files.length}`);
+
+  const failures: string[] = [];
+  for (const rel of files) {
+    const content = fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8');
+    const ext = path.extname(rel).toLowerCase();
+    if (ext === '.md') {
+      if (!content.includes('<!-- TROLLZ1004-SPINE:START -->') || !content.includes('<!-- TROLLZ1004-SPINE:END -->')) {
+        failures.push(`${rel}: missing TROLLZ1004-SPINE markdown markers`);
+      }
+    } else if (ext === '.toml' || ext === '.yaml' || ext === '.yml') {
+      if (!content.includes('# --- TROLLZ1004-SPINE:START ---') || !content.includes('# --- TROLLZ1004-SPINE:END ---')) {
+        failures.push(`${rel}: missing TROLLZ1004-SPINE comment markers`);
+      }
+    } else if (ext === '.json') {
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+      if (
+        parsed._trollz1004_spine_start !== 'managed-by-render-agent-files' ||
+        !parsed.trollz1004_spine ||
+        typeof parsed.trollz1004_spine !== 'object' ||
+        parsed._trollz1004_spine_end !== 'managed-by-render-agent-files'
+      ) {
+        failures.push(`${rel}: missing TROLLZ1004-SPINE JSON managed block`);
+      }
+    }
+  }
+
+  assert.deepEqual(failures, [], `Missing TROLLZ1004-SPINE managed block:\n${failures.join('\n')}`);
 });
 
 test('five vendored files are byte-identical to SOURCE-MANIFEST recorded upstream tree on origin/main', () => {
