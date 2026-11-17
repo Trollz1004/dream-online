@@ -4,7 +4,7 @@ import net from 'node:net';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   getAllowedNodeHosts,
   getNodeHost,
@@ -13,6 +13,12 @@ import {
   getServicePort,
   getServicesByNode,
 } from './fleet-map.mjs';
+import {
+  checkRequiredEnv,
+  logStartupEnvCheck,
+} from '../agents/env-required.mjs';
+
+const FLEET_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 const DEFAULT_PROBE_TIMEOUT_MS = 1500;
 
@@ -124,6 +130,9 @@ function normalizeMissingEnvEntries(input) {
 
 export async function collectMissingEnv(options = {}, env = process.env, probedServices = []) {
   const collected = [];
+
+  const ownEnvCheck = checkRequiredEnv(FLEET_DIR, env);
+  collected.push(...ownEnvCheck.missingEnv);
 
   if (typeof options.serviceMissingEnv === 'function') {
     collected.push(...normalizeMissingEnvEntries(await options.serviceMissingEnv()));
@@ -345,6 +354,7 @@ export async function computeNodeStatus(options = {}) {
     flashing,
     driftedFiles,
     missingEnv,
+    serviceMissingEnv: missingEnv,
     reasons,
     services: services.map(({ missingEnv: _m, ...rest }) => rest),
     checkedAt: new Date().toISOString(),
@@ -391,6 +401,7 @@ export function startFleetStatusServer(options = {}) {
   if (warning) {
     console.warn(warning);
   }
+  logStartupEnvCheck(FLEET_DIR, env);
   const { server } = createFleetStatusServer({ ...options, env, node: nodeId });
   const lanIp = getNodeHost(nodeId);
 

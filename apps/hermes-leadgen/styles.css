@@ -49,6 +49,72 @@ code {
   border-bottom: 3px solid var(--green);
 }
 
+.top-status-bar.status-amber {
+  border-bottom-color: #f59e0b;
+}
+
+.top-status-bar.status-red {
+  border-bottom-color: #ef4444;
+}
+
+.node-status-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.node-status-banner.hidden {
+  display: none;
+}
+
+.node-status-banner.amber {
+  background: #1c1403;
+  border-bottom: 3px solid #f59e0b;
+  color: #fde68a;
+}
+
+.node-status-banner.amber code {
+  background: #2e2006;
+  color: #fef3c7;
+  border: 1px solid #f59e0b;
+}
+
+.node-status-banner.red {
+  background: #22090c;
+  border-bottom: 3px solid #ef4444;
+  color: #fecaca;
+}
+
+.node-status-banner.red code {
+  background: #3b0d12;
+  color: #fee2e2;
+  border: 1px solid #ef4444;
+}
+
+.node-status-banner-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
+
+.node-status-banner.amber .node-status-banner-badge {
+  background: #f59e0b;
+  color: #111827;
+}
+
+.node-status-banner.red .node-status-banner-badge {
+  background: #ef4444;
+  color: #ffffff;
+}
+
 .brand-title {
   font-size: 26px;
   font-weight: 800;

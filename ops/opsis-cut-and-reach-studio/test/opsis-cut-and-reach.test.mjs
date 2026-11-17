@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { verifyPartnerConfig, planSocialStrike, planMusaCampaign, scoreLeadForgeBatch, maskSecrets, assertCustomerCopy, scoreLead, judgeApproveAndDispatch, TRUST_LEVEL_MAX_JUDGES } from '../inbound-crm-engine.mjs';
@@ -109,16 +109,25 @@ test('studio live-start without token binds 127.0.0.1, emits one warning naming 
    });
   });
   const warningLines = stderr.trim().split(/\r?\n/).filter(Boolean);
-  assert.equal(warningLines.length, 1);
+  assert.equal(warningLines.length, 2);
   assert.match(warningLines[0], /OPSIS_STUDIO_TOKEN/);
   assert.match(warningLines[0], /FLEET_SHARED_TOKEN/);
   assert.match(warningLines[0], /127\.0\.0\.1/);
+  assert.match(warningLines[1], /\[opsis-studio\] Startup env check: missing required setting names: OPSIS_STUDIO_TOKEN/);
 
   const base = `http://${loopback}:${port}`;
+  const healthRes = await fetch(`${base}/health`);
+  assert.equal(healthRes.status, 200);
+  const health = await healthRes.json();
+  assert.equal(health.ok, true);
+  assert.equal(health.service, 'opsis-studio');
+  assert.deepEqual(health.missingEnv, ['OPSIS_STUDIO_TOKEN']);
+
   const sessionRes = await fetch(`${base}/api/session`);
   assert.equal(sessionRes.status, 200);
   const session = await sessionRes.json();
   assert.ok(session.token);
+  assert.deepEqual(session.missingEnv, ['OPSIS_STUDIO_TOKEN']);
 
   const stageRes = await fetch(`${base}/api/stage-social`, {
    method: 'POST',
@@ -145,8 +154,16 @@ test('studio with OPSIS_STUDIO_TOKEN or FLEET_SHARED_TOKEN resolves 0.0.0.0 and 
 
   const bearerSession = await fetch(`${base}/api/session`, { headers: { Authorization: 'Bearer studio-lan-secret' } });
   assert.equal(bearerSession.status, 200);
+  const bearerSessionJson = await bearerSession.json();
+  assert.deepEqual(bearerSessionJson.missingEnv, []);
   const fleetSession = await fetch(`${base}/api/session`, { headers: { 'X-Fleet-Token': 'fleet-shared-secret' } });
   assert.equal(fleetSession.status, 200);
+  const healthRes = await fetch(`${base}/health`);
+  assert.equal(healthRes.status, 200);
+  const healthRaw = await healthRes.text();
+  assert.equal(healthRaw.includes('studio-lan-secret'), false);
+  assert.equal(healthRaw.includes('fleet-shared-secret'), false);
+  assert.deepEqual(JSON.parse(healthRaw), { ok: true, service: 'opsis-studio', missingEnv: [] });
 
   const unauthedPost = await fetch(`${base}/api/stage-social`, {
    method: 'POST',
@@ -185,6 +202,15 @@ test('studio with OPSIS_STUDIO_TOKEN or FLEET_SHARED_TOKEN resolves 0.0.0.0 and 
  } finally {
   await new Promise((resolve) => server.close(resolve));
  }
+});
+
+test('Stage E4 (opsis-studio): env.required.json exists with OPSIS_STUDIO_TOKEN and FLEET_SHARED_TOKEN alternative', () => {
+ const manifestPath = fileURLToPath(new URL('../env.required.json', import.meta.url));
+ assert.equal(existsSync(manifestPath), true, 'ops/opsis-cut-and-reach-studio/env.required.json must exist');
+ const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+ assert.equal(manifest.service, 'opsis-studio');
+ assert.deepEqual(manifest.required, ['OPSIS_STUDIO_TOKEN']);
+ assert.deepEqual(manifest.alternatives, { OPSIS_STUDIO_TOKEN: ['FLEET_SHARED_TOKEN'] });
 });
 
 

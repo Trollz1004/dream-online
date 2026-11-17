@@ -1,9 +1,13 @@
 import { createServer } from "node:http";
-import { pathToFileURL } from "node:url";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { audit } from "./audit.js";
 import { resolveDreamOpsTokens, route } from "./routes.js";
 import { ensureStorage } from "./storage.js";
 import { getAllowedNodeHosts, getServiceBindHost, getServicePort } from "../../../../ops/fleet/fleet-map.mjs";
+import { logStartupEnvCheck } from "../../../../ops/agents/env-required.mjs";
+
+const DREAMOPS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 export { resolveDreamOpsTokens };
 
@@ -69,6 +73,7 @@ export async function startDreamOpsServer(opts = {}) {
   if (warning) {
     console.warn(warning);
   }
+  logStartupEnvCheck(DREAMOPS_DIR, env);
   const port = opts.port !== undefined ? opts.port : resolveDreamOpsPort(env);
   await ensureStorage();
   await audit("service.start", "dreamops-bridge", { host, port });

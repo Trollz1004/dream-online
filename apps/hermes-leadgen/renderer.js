@@ -43,6 +43,7 @@ async function refreshNodeStatus() {
     const strip = document.getElementById('service-lights-strip');
     if (!strip || !Array.isArray(data.services)) return;
     const hasDriftPill = data.services.some((s) => s.id === 'agent-drift');
+    const hasEnvPill = data.services.some((s) => s.id === 'env-settings');
     const items = [...data.services];
     if (!hasDriftPill && data.agentDrift) {
       const drifted = Array.isArray(data.agentDrift.driftedFiles) ? data.agentDrift.driftedFiles : [];
@@ -54,6 +55,24 @@ async function refreshNodeStatus() {
         light: names.length > 0 ? 'AMBER' : 'GREEN',
         detail: names.length > 0 ? `Drifted: ${names.join(', ')}` : '0 drifted',
         url: 'ops/agents/check-agent-drift.ps1'
+      });
+    }
+    const missingEnvNames = Array.isArray(data.serviceMissingEnv)
+      ? data.serviceMissingEnv
+      : Array.isArray(data.missingEnv)
+        ? data.missingEnv
+        : [];
+    if (!hasEnvPill && (Array.isArray(data.missingEnv) || Array.isArray(data.serviceMissingEnv))) {
+      items.push({
+        id: 'env-settings',
+        name: 'Env Settings',
+        up: missingEnvNames.length === 0,
+        light: missingEnvNames.length > 0 ? 'AMBER' : 'GREEN',
+        detail:
+          missingEnvNames.length > 0
+            ? `Missing settings: ${missingEnvNames.join(', ')}`
+            : 'All required setting names set',
+        url: 'ops/agents/env-names-check.ps1'
       });
     }
     strip.innerHTML = items
@@ -70,6 +89,49 @@ async function refreshNodeStatus() {
         </div>`;
       })
       .join('');
+
+    const topBar = document.querySelector('.top-status-bar');
+    if (topBar) {
+      topBar.classList.remove('status-amber', 'status-red', 'status-green');
+      if (data.nodeLight === 'RED') topBar.classList.add('status-red');
+      else if (data.nodeLight === 'AMBER') topBar.classList.add('status-amber');
+      else topBar.classList.add('status-green');
+    }
+
+    const banner = document.getElementById('node-status-banner');
+    if (banner) {
+      const driftedFiles =
+        data.agentDrift && Array.isArray(data.agentDrift.driftedFiles)
+          ? data.agentDrift.driftedFiles.map((d) => (typeof d === 'string' ? d : d.file)).filter(Boolean)
+          : [];
+      const downServices = items
+        .filter((s) => s.id !== 'agent-drift' && s.id !== 'env-settings' && !s.up)
+        .map((s) => s.name)
+        .filter(Boolean);
+
+      if (data.nodeLight === 'AMBER' || data.nodeLight === 'RED') {
+        const parts = [];
+        if (downServices.length > 0) {
+          parts.push(`Services offline: ${downServices.map((n) => `<code>${escapeHtml(n)}</code>`).join(', ')}.`);
+        }
+        if (missingEnvNames.length > 0) {
+          parts.push(
+            `Missing required setting names: ${missingEnvNames.map((n) => `<code>${escapeHtml(n)}</code>`).join(', ')}.`
+          );
+        }
+        if (driftedFiles.length > 0) {
+          parts.push(`Drifted agent files: ${driftedFiles.map((f) => `<code>${escapeHtml(f)}</code>`).join(', ')}.`);
+        }
+        parts.push('Only setting names are shown; values are never read or displayed.');
+        const badgeText = data.nodeLight === 'RED' ? 'RED LIGHT' : 'AMBER LIGHT';
+        const bannerMode = data.nodeLight === 'RED' ? 'red' : 'amber';
+        banner.className = `node-status-banner ${bannerMode}`;
+        banner.innerHTML = `<span class="node-status-banner-badge">${badgeText}</span><span>${parts.join(' ')}</span>`;
+      } else {
+        banner.className = 'node-status-banner hidden';
+        banner.innerHTML = '';
+      }
+    }
   } catch (err) {
     console.error('Status check error:', err);
   }

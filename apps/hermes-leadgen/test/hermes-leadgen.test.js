@@ -28,6 +28,7 @@ process.env[LEGACY_VAULT_ENV] = VAULT_DIR;
 process.env.LEADGEN_STATE_DIR = STATE_DIR;
 process.env.HERMES_LEADGEN_BIND = '127.0.0.1';
 process.env.AGENT_DRIFT_PATH = path.join(TEMP_ROOT, 'isolated-agent-drift.json');
+process.env.ENV_STATUS_PATH = path.join(TEMP_ROOT, 'isolated-env-status.json');
 
 let localServerInstance = null;
 let baseUrl = '';
@@ -609,10 +610,11 @@ test('8f. live-start: no token with unset HERMES_LEADGEN_BIND binds 127.0.0.1, e
     });
 
     const warningLines = stderr.trim().split(/\r?\n/).filter(Boolean);
-    assert.equal(warningLines.length, 1);
+    assert.equal(warningLines.length, 2);
     assert.match(warningLines[0], /HERMES_LEADGEN_TOKEN/);
     assert.match(warningLines[0], /FLEET_SHARED_TOKEN/);
     assert.match(warningLines[0], /127\.0\.0\.1/);
+    assert.match(warningLines[1], /\[hermes-leadgen\] Startup env check: missing required setting names:.*HERMES_LEADGEN_TOKEN/);
 
     const statusRes = await httpGetJson(`http://${LOOPBACK}:${port}/api/node/status`);
     assert.equal(statusRes.status, 200);
@@ -629,6 +631,11 @@ test('8f. live-start: no token with unset HERMES_LEADGEN_BIND binds 127.0.0.1, e
 test('9. Stage E3: getAlienwareNodeStatus turns AMBER with drifted file names on agent-drift.json drift, GREEN when clean, RED when service down', async () => {
   const { getAlienwareNodeStatus } = require('../server');
   const driftFile = path.join(TEMP_ROOT, 'stage-e3-agent-drift.json');
+  const cleanEnv = {
+    HERMES_LEADGEN_TOKEN: 'stage-e3-test-token',
+    OMNIROUTE_API_KEY: 'stage-e3-omni-key',
+    ENV_STATUS_PATH: path.join(TEMP_ROOT, 'e3-no-env-status.json')
+  };
 
   // 1. Clean agent-drift.json + all services UP -> GREEN
   fs.writeFileSync(
@@ -645,6 +652,7 @@ test('9. Stage E3: getAlienwareNodeStatus turns AMBER with drifted file names on
   );
   const greenStatus = await getAlienwareNodeStatus({
     agentDriftPath: driftFile,
+    env: cleanEnv,
     probeService: async () => true
   });
   assert.equal(greenStatus.nodeLight, 'GREEN');
@@ -675,6 +683,7 @@ test('9. Stage E3: getAlienwareNodeStatus turns AMBER with drifted file names on
   );
   const amberStatus = await getAlienwareNodeStatus({
     agentDriftPath: driftFile,
+    env: cleanEnv,
     probeService: async () => true
   });
   assert.equal(amberStatus.nodeLight, 'AMBER');
@@ -691,6 +700,7 @@ test('9. Stage E3: getAlienwareNodeStatus turns AMBER with drifted file names on
   // 3. Drifted agent-drift.json + a service DOWN -> RED overrides AMBER
   const redStatus = await getAlienwareNodeStatus({
     agentDriftPath: driftFile,
+    env: cleanEnv,
     probeService: async (_host, port) => port !== 9119
   });
   assert.equal(redStatus.nodeLight, 'RED');
@@ -720,4 +730,125 @@ test('9. Stage E3: getAlienwareNodeStatus turns AMBER with drifted file names on
   assert.match(cssSrc, /#fffbeb/i);
   assert.match(cssSrc, /#f59e0b/i);
   assert.match(cssSrc, /#111827/i);
+});
+
+test('10. Stage E4: env.required.json, /health & /api/node/status missingEnv + serviceMissingEnv, AMBER light, and WCAG AAA top status banner', async () => {
+  const manifestPath = path.join(ROOT_DIR, 'env.required.json');
+  assert.equal(fs.existsSync(manifestPath), true, 'apps/hermes-leadgen/env.required.json must exist');
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  assert.equal(manifest.service, 'hermes-leadgen');
+  assert.deepEqual(manifest.required, ['HERMES_LEADGEN_TOKEN', 'OMNIROUTE_API_KEY']);
+  assert.deepEqual(manifest.alternatives, { HERMES_LEADGEN_TOKEN: ['FLEET_SHARED_TOKEN'] });
+
+  const { getAlienwareNodeStatus } = require('../server');
+  const cleanDrift = path.join(TEMP_ROOT, 'stage-e4-clean-drift.json');
+  const envStatusFile = path.join(TEMP_ROOT, 'stage-e4-env-status.json');
+  fs.writeFileSync(
+    cleanDrift,
+    JSON.stringify({ checkedAt: '2026-11-16T00:00:00Z', node: 'alienware', ok: true, light: 'green', driftedCount: 0, driftedFiles: [] }),
+    'utf8'
+  );
+
+  // 1. Missing both -> AMBER with setting names only
+  const missingStatus = await getAlienwareNodeStatus({
+    agentDriftPath: cleanDrift,
+    env: { HERMES_LEADGEN_TOKEN: '', FLEET_SHARED_TOKEN: '', OMNIROUTE_API_KEY: '', ENV_STATUS_PATH: envStatusFile },
+    probeService: async () => true
+  });
+  assert.equal(missingStatus.nodeLight, 'AMBER');
+  assert.equal(missingStatus.allGreen, false);
+  assert.deepEqual(missingStatus.missingEnv, ['HERMES_LEADGEN_TOKEN', 'OMNIROUTE_API_KEY']);
+  assert.deepEqual(missingStatus.serviceMissingEnv, ['HERMES_LEADGEN_TOKEN', 'OMNIROUTE_API_KEY']);
+
+  // 2. Alternative FLEET_SHARED_TOKEN + OMNIROUTE_API_KEY + external serviceMissingEnv -> AMBER without leaking values
+  const rtFleet = ['rt-lg-fleet', Date.now(), Math.random().toString(36).slice(2)].join('-');
+  const rtOmni = ['rt-lg-omni', Date.now(), Math.random().toString(36).slice(2)].join('-');
+  fs.writeFileSync(envStatusFile, JSON.stringify({ serviceMissingEnv: ['GEMINI_API_KEY'] }), 'utf8');
+
+  const aggStatus = await getAlienwareNodeStatus({
+    agentDriftPath: cleanDrift,
+    env: { FLEET_SHARED_TOKEN: rtFleet, OMNIROUTE_API_KEY: rtOmni, ENV_STATUS_PATH: envStatusFile },
+    probeService: async () => true
+  });
+  const aggText = JSON.stringify(aggStatus);
+  assert.equal(aggText.includes(rtFleet), false);
+  assert.equal(aggText.includes(rtOmni), false);
+  assert.equal(aggStatus.nodeLight, 'AMBER');
+  assert.deepEqual(aggStatus.missingEnv, []);
+  assert.deepEqual(aggStatus.serviceMissingEnv, ['GEMINI_API_KEY']);
+
+  // 3. All satisfied and no external missing -> GREEN
+  fs.rmSync(envStatusFile, { force: true });
+  const greenStatus = await getAlienwareNodeStatus({
+    agentDriftPath: cleanDrift,
+    env: { FLEET_SHARED_TOKEN: rtFleet, OMNIROUTE_API_KEY: rtOmni, ENV_STATUS_PATH: envStatusFile },
+    probeService: async () => true
+  });
+  assert.equal(greenStatus.nodeLight, 'GREEN');
+  assert.deepEqual(greenStatus.missingEnv, []);
+  assert.deepEqual(greenStatus.serviceMissingEnv, []);
+
+  // 4. Live HTTP child process /health and /api/node/status check
+  const child = spawn(process.execPath, [path.join(ROOT_DIR, 'server.js')], {
+    env: {
+      ...process.env,
+      PORT: '0',
+      HERMES_LEADGEN_BIND: '',
+      HERMES_LEADGEN_TOKEN: '',
+      FLEET_SHARED_TOKEN: '',
+      OMNIROUTE_API_KEY: '',
+      AGENT_DRIFT_PATH: cleanDrift,
+      ENV_STATUS_PATH: envStatusFile,
+      HERMES_LEADGEN_TARGETS: '[]'
+    },
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  let stdout = '';
+  let stderr = '';
+  const listeningRe = new RegExp(`Listening on http:\\/\\/${LOOPBACK.replace(/\./g, '\\.')}:(\\d+)`);
+  try {
+    const port = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error(`leadgen E4 timed out: stdout=${stdout} stderr=${stderr}`)), 10000);
+      child.stdout.on('data', (c) => {
+        stdout += String(c);
+        const m = listeningRe.exec(stdout);
+        if (m) {
+          clearTimeout(timer);
+          resolve(Number(m[1]));
+        }
+      });
+      child.stderr.on('data', (c) => { stderr += String(c); });
+      child.once('exit', (code) => {
+        clearTimeout(timer);
+        reject(new Error(`leadgen exited early (${code}): stdout=${stdout} stderr=${stderr}`));
+      });
+    });
+
+    const healthRes = await httpGetJson(`http://${LOOPBACK}:${port}/health`);
+    assert.equal(healthRes.status, 200);
+    assert.equal(healthRes.data.ok, true);
+    assert.equal(healthRes.data.service, 'hermes-leadgen');
+    assert.deepEqual(healthRes.data.missingEnv, ['HERMES_LEADGEN_TOKEN', 'OMNIROUTE_API_KEY']);
+    assert.deepEqual(healthRes.data.serviceMissingEnv, ['HERMES_LEADGEN_TOKEN', 'OMNIROUTE_API_KEY']);
+
+    const nodeRes = await httpGetJson(`http://${LOOPBACK}:${port}/api/node/status`);
+    assert.equal(nodeRes.status, 200);
+    assert.equal(nodeRes.data.nodeLight, 'AMBER');
+    assert.deepEqual(nodeRes.data.missingEnv, ['HERMES_LEADGEN_TOKEN', 'OMNIROUTE_API_KEY']);
+    assert.deepEqual(nodeRes.data.serviceMissingEnv, ['HERMES_LEADGEN_TOKEN', 'OMNIROUTE_API_KEY']);
+  } finally {
+    child.kill();
+    await new Promise((resolve) => child.once('exit', resolve));
+  }
+
+  // 5. HTML/Renderer/CSS expose high-contrast WCAG AAA amber banner (#1c1403 / #fde68a) and missingEnv details
+  const htmlSrc = fs.readFileSync(path.join(ROOT_DIR, 'index.html'), 'utf8');
+  const rendererSrc = fs.readFileSync(path.join(ROOT_DIR, 'renderer.js'), 'utf8');
+  const cssSrc = fs.readFileSync(path.join(ROOT_DIR, 'styles.css'), 'utf8');
+  assert.match(htmlSrc, /node-status-banner/);
+  assert.match(rendererSrc, /node-status-banner/);
+  assert.match(rendererSrc, /missingEnv/);
+  assert.match(cssSrc, /\.node-status-banner\.amber/);
+  assert.match(cssSrc, /#1c1403/i);
+  assert.match(cssSrc, /#fde68a/i);
 });

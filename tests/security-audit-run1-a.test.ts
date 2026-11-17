@@ -531,14 +531,19 @@ test('server.ts live-start: no token with unset DREAM_ENGINE_BIND binds 127.0.0.
         }
         const addr = srv.address() as AddressInfo;
         assert.equal(addr.address, '127.0.0.1');
-        assert.equal(warnings.length, 1);
+        assert.equal(warnings.length, 2);
         assert.match(warnings[0], /DREAM_ENGINE_TOKEN/);
         assert.match(warnings[0], /FLEET_SHARED_TOKEN/);
         assert.match(warnings[0], /127\.0\.0\.1/);
+        assert.match(warnings[1], /\[dream-engine\] Startup env check: missing required setting names:.*DREAM_ENGINE_TOKEN.*GEMINI_API_KEY/);
 
         const base = `http://${LOOPBACK}:${addr.port}`;
         const healthRes = await fetch(`${base}/api/gm/health`);
         assert.equal(healthRes.status, 200);
+        const healthJson = await healthRes.json() as { status: string; missingEnv: string[]; light: string };
+        assert.equal(healthJson.status, 'ok');
+        assert.deepEqual(healthJson.missingEnv, ['DREAM_ENGINE_TOKEN', 'GEMINI_API_KEY']);
+        assert.equal(healthJson.light, 'amber');
         const postRes = await fetch(`${base}/api/cli-anything/execute`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -547,6 +552,53 @@ test('server.ts live-start: no token with unset DREAM_ENGINE_BIND binds 127.0.0.
         assert.equal(postRes.status, 200);
       }
     );
+  } finally {
+    console.warn = origWarn;
+    if (srv) {
+      await new Promise<void>((resolve) => srv!.close(() => resolve()));
+    }
+  }
+});
+
+test('Stage E4 (dream-engine): env.required.json exists and /api/gm/health turns green with empty missingEnv when FLEET_SHARED_TOKEN and GEMINI_API_KEY are set', async () => {
+  const manifestPath = path.resolve(process.cwd(), 'env.required.json');
+  assert.equal(fs.existsSync(manifestPath), true, 'Root ./env.required.json must exist');
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  assert.equal(manifest.service, 'dream-engine');
+  assert.deepEqual(manifest.required, ['DREAM_ENGINE_TOKEN', 'GEMINI_API_KEY']);
+  assert.deepEqual(manifest.alternatives, { DREAM_ENGINE_TOKEN: ['FLEET_SHARED_TOKEN'] });
+
+  const rtFleet = ['rt-de-fleet', Date.now(), Math.random().toString(36).slice(2)].join('-');
+  const rtGemini = ['rt-de-gemini', Date.now(), Math.random().toString(36).slice(2)].join('-');
+  const warnings: string[] = [];
+  const origWarn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    warnings.push(args.map((a) => String(a)).join(' '));
+  };
+  let srv: Server | null = null;
+  try {
+    srv = await startServer({
+      NODE_ENV: 'production',
+      PORT: '0',
+      DREAM_ENGINE_BIND: '127.0.0.1',
+      DREAM_ENGINE_TOKEN: '',
+      FLEET_SHARED_TOKEN: rtFleet,
+      GEMINI_API_KEY: rtGemini,
+    });
+    if (!srv.listening) {
+      await new Promise<void>((resolve) => srv!.once('listening', resolve));
+    }
+    const addr = srv.address() as AddressInfo;
+    assert.equal(warnings.length, 0);
+    const res = await fetch(`http://${LOOPBACK}:${addr.port}/api/gm/health`);
+    assert.equal(res.status, 200);
+    const raw = await res.text();
+    assert.equal(raw.includes(rtFleet), false);
+    assert.equal(raw.includes(rtGemini), false);
+    const json = JSON.parse(raw) as { status: string; missingEnv: string[]; light: string };
+    assert.equal(json.status, 'ok');
+    assert.deepEqual(json.missingEnv, []);
+    assert.equal(json.light, 'green');
   } finally {
     console.warn = origWarn;
     if (srv) {

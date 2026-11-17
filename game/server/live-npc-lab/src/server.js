@@ -2,9 +2,12 @@ import { timingSafeEqual } from "node:crypto";
 import http from "node:http";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { compactMemory, handleDialogue, handleWorldEvent, readAiFailures, readMemory } from "./npcEngine.js";
 import { getAllowedNodeHosts, getServiceBindHost, getServicePort } from "../../../../ops/fleet/fleet-map.mjs";
+import { checkRequiredEnv, logStartupEnvCheck } from "../../../../ops/agents/env-required.mjs";
+
+const LIVE_NPC_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const DEFAULT_PORT = getServicePort("live-npc-lab");
 const CONTRACTS_DIR = path.resolve(process.cwd(), "data");
@@ -148,9 +151,11 @@ async function router(req, res, options = {}) {
 
   try {
     if (req.method === "GET" && url.pathname === "/health") {
+      const envCheck = checkRequiredEnv(LIVE_NPC_DIR, activeEnv);
       sendJson(res, 200, {
         ok: true,
         service: "dream-live-npc-lab",
+        missingEnv: envCheck.missingEnv,
         ts: new Date().toISOString()
       });
       return;
@@ -311,6 +316,7 @@ export function startLiveNpcServer(opts = {}) {
   if (warning) {
     console.warn(warning);
   }
+  logStartupEnvCheck(LIVE_NPC_DIR, env);
   const port = opts.port !== undefined ? opts.port : resolveLiveNpcPort(env);
   const server = createLiveNpcServer({ env, bindHost: host });
   return server.listen(port, host, () => {

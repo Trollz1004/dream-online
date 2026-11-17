@@ -12,6 +12,10 @@ const {
   getServiceBindHost,
   getServicePort
 } = require('../../ops/fleet/fleet-map.cjs');
+const {
+  checkRequiredEnv,
+  logStartupEnvCheck
+} = require('../../ops/agents/env-required.cjs');
 
 const VALID_IDENTIFIER_REGEX = /^[a-z0-9_-]{1,32}$/i;
 const STATE_CHANGING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -63,6 +67,7 @@ const PORT =
     ? 0
     : getServicePort('hermes-leadgen', process.env.PORT);
 const ROOT = __dirname;
+let activeEnv = process.env;
 const USER_HOME = process.env.USERPROFILE || os.homedir();
 const ALIENWARE_HOST = process.env.ALIENWARE_HOST || getNodeHost('alienware');
 const T5500_HOST = process.env.T5500_HOST || getNodeHost('t5500');
@@ -739,8 +744,83 @@ function readAgentDriftStatus(driftPath) {
   }
 }
 
+function resolveEnvStatusPath(options = {}, env = process.env) {
+  if (options && typeof options.envStatusPath === 'string' && options.envStatusPath.trim()) {
+    return options.envStatusPath.trim();
+  }
+  if (env && typeof env.ENV_STATUS_PATH === 'string' && env.ENV_STATUS_PATH.trim()) {
+    return env.ENV_STATUS_PATH.trim();
+  }
+  if (env && typeof env.SERVICE_MISSING_ENV_PATH === 'string' && env.SERVICE_MISSING_ENV_PATH.trim()) {
+    return env.SERVICE_MISSING_ENV_PATH.trim();
+  }
+  return path.join(env.LOCALAPPDATA || USER_HOME, 'dream-boot', 'env-status.json');
+}
+
+function normalizeMissingEnvEntries(input) {
+  if (!Array.isArray(input)) return [];
+  return input
+    .map((item) => {
+      if (typeof item === 'string') return item.trim();
+      if (item && typeof item === 'object') {
+        const name = item.name || item.env || item.key || '';
+        const svc = item.service ? `${item.service}:` : '';
+        return name ? `${svc}${String(name).trim()}` : '';
+      }
+      return '';
+    })
+    .filter(Boolean);
+}
+
+function collectLeadgenServiceMissingEnv(options = {}, env = process.env, probedServices = []) {
+  const collected = [];
+  if (Array.isArray(options.serviceMissingEnv)) {
+    collected.push(...normalizeMissingEnvEntries(options.serviceMissingEnv));
+  }
+
+  const envStatusPath = resolveEnvStatusPath(options, env);
+  if (envStatusPath && fs.existsSync(envStatusPath)) {
+    try {
+      const raw = fs.readFileSync(envStatusPath, 'utf8').replace(/^\uFEFF/, '');
+      if (raw.trim()) {
+        const parsed = JSON.parse(raw);
+        collected.push(
+          ...normalizeMissingEnvEntries(parsed && (parsed.serviceMissingEnv || parsed.missingEnv || parsed.missing))
+        );
+      }
+    } catch (_) {
+      // Ignore malformed optional env-status file
+    }
+  }
+
+  const rawEnvMissing = String((env && env.SERVICE_MISSING_ENV) || '').trim();
+  if (rawEnvMissing) {
+    if (rawEnvMissing.startsWith('[')) {
+      try {
+        collected.push(...normalizeMissingEnvEntries(JSON.parse(rawEnvMissing)));
+      } catch (_) {
+        collected.push(...rawEnvMissing.split(',').map((s) => s.trim()).filter(Boolean));
+      }
+    } else {
+      collected.push(...rawEnvMissing.split(',').map((s) => s.trim()).filter(Boolean));
+    }
+  }
+
+  for (const svc of probedServices) {
+    if (Array.isArray(svc && svc.missingEnv)) {
+      collected.push(...normalizeMissingEnvEntries(svc.missingEnv));
+    }
+    if (Array.isArray(svc && svc.serviceMissingEnv)) {
+      collected.push(...normalizeMissingEnvEntries(svc.serviceMissingEnv));
+    }
+  }
+
+  return Array.from(new Set(collected));
+}
+
 async function getAlienwareNodeStatus(options = {}) {
-  const definitions = [
+  const env = options.env || activeEnv || process.env;
+  let definitions = [
     { id: 'gui-8392', name: 'Alienware Lead-Gen Command Studio (:8392)', host: ALIENWARE_HOST, port: 8392, url: `http://${ALIENWARE_HOST}:8392/` },
     { id: 'hermes-9119', name: 'Hermes OPSis Orchestrator (:9119)', host: ALIENWARE_HOST, port: 9119, url: `http://${ALIENWARE_HOST}:9119/chat?profile=default&resume=local-profile` },
     { id: 'fcc-8082', name: 'Free Claude Code Admin (:8082/admin)', host: ALIENWARE_HOST, port: 8082, url: `http://${ALIENWARE_HOST}:8392/proxy/fcc/admin` },
@@ -751,14 +831,37 @@ async function getAlienwareNodeStatus(options = {}) {
     { id: 't5500-omniroute-20128', name: 'T5500 OmniRoute AI Router (:20128)', host: T5500_HOST, port: 20128, url: `http://${T5500_HOST}:20128/v1/models` }
   ];
 
+  const rawTargets = String((env && env.HERMES_LEADGEN_TARGETS) || '').trim();
+  if (rawTargets) {
+    try {
+      const parsedTargets = JSON.parse(rawTargets);
+      if (Array.isArray(parsedTargets)) {
+        definitions = parsedTargets;
+      }
+    } catch (_) {
+      // Fall back to default definitions if override JSON is invalid
+    }
+  }
+
   const probeFn = typeof options.probeService === 'function' ? options.probeService : null;
+  const probedExtraMissing = [];
   const serviceChecks = await Promise.all(
     definitions.map(async (svc) => {
-      const up = probeFn
-        ? Boolean(await probeFn(svc.host, svc.port, svc))
-        : svc.port === PORT
-          ? true
-          : await checkTcpPort(svc.host, svc.port);
+      let up = false;
+      if (probeFn) {
+        const res = await probeFn(svc.host, svc.port, svc);
+        if (res && typeof res === 'object') {
+          up = Boolean(res.up);
+          if (Array.isArray(res.missingEnv)) probedExtraMissing.push(...res.missingEnv);
+          if (Array.isArray(res.serviceMissingEnv)) probedExtraMissing.push(...res.serviceMissingEnv);
+        } else {
+          up = Boolean(res);
+        }
+      } else if (svc.id === 'gui-8392' || (PORT > 0 && svc.port === PORT)) {
+        up = true;
+      } else {
+        up = await checkTcpPort(svc.host, svc.port);
+      }
       return {
         ...svc,
         up,
@@ -768,10 +871,21 @@ async function getAlienwareNodeStatus(options = {}) {
     })
   );
 
-  const driftPath = resolveAgentDriftPath(options, options.env || process.env);
+  const driftPath = resolveAgentDriftPath(options, env);
   const agentDrift = readAgentDriftStatus(driftPath);
+  const ownEnvCheck = checkRequiredEnv(ROOT, env);
+  const missingEnv = ownEnvCheck.missingEnv;
+  const extraMissing = collectLeadgenServiceMissingEnv(options, env, [
+    { missingEnv: probedExtraMissing }
+  ]);
+  const serviceMissingEnv = Array.from(new Set([...missingEnv, ...extraMissing]));
+
   const anyServiceDown = serviceChecks.some((s) => !s.up);
-  const nodeLight = anyServiceDown ? 'RED' : agentDrift.driftedFiles.length > 0 ? 'AMBER' : 'GREEN';
+  const nodeLight = anyServiceDown
+    ? 'RED'
+    : agentDrift.driftedFiles.length > 0 || missingEnv.length > 0 || serviceMissingEnv.length > 0
+      ? 'AMBER'
+      : 'GREEN';
   const driftedNames = agentDrift.driftedFiles.map((d) => d.file);
   const agentDriftPill = {
     id: 'agent-drift',
@@ -782,8 +896,20 @@ async function getAlienwareNodeStatus(options = {}) {
     url: 'ops/agents/check-agent-drift.ps1',
     checkedAt: new Date().toISOString()
   };
+  const envSettingsPill = {
+    id: 'env-settings',
+    name: 'Env Settings',
+    up: serviceMissingEnv.length === 0,
+    light: serviceMissingEnv.length > 0 ? 'AMBER' : 'GREEN',
+    detail:
+      serviceMissingEnv.length > 0
+        ? `Missing settings: ${serviceMissingEnv.join(', ')}`
+        : 'All required setting names set',
+    url: 'ops/agents/env-names-check.ps1',
+    checkedAt: new Date().toISOString()
+  };
 
-  const services = [...serviceChecks, agentDriftPill];
+  const services = [...serviceChecks, agentDriftPill, envSettingsPill];
 
   return {
     node: `Alienware (${ALIENWARE_HOST})`,
@@ -794,6 +920,8 @@ async function getAlienwareNodeStatus(options = {}) {
     cliCommand: 'agy --dangerously-skip-permissions',
     nodeLight,
     agentDrift,
+    missingEnv,
+    serviceMissingEnv,
     allGreen: nodeLight === 'GREEN',
     services
   };
@@ -1148,13 +1276,26 @@ const server = http.createServer(async (req, res) => {
     }
 
     // 2. Node Red-Light / Green-Light Status & Self-Heal
+    if (pathname === '/health' && req.method === 'GET') {
+      const envReport = checkRequiredEnv(ROOT, activeEnv);
+      const extraMissing = collectLeadgenServiceMissingEnv({}, activeEnv);
+      const serviceMissingEnv = Array.from(new Set([...envReport.missingEnv, ...extraMissing]));
+      return sendJson(res, 200, {
+        ok: true,
+        service: 'hermes-leadgen',
+        light: serviceMissingEnv.length > 0 ? 'amber' : 'green',
+        missingEnv: envReport.missingEnv,
+        serviceMissingEnv
+      });
+    }
+
     if (pathname === '/api/node/status' && req.method === 'GET') {
-      const status = await getAlienwareNodeStatus();
+      const status = await getAlienwareNodeStatus({ env: activeEnv });
       return sendJson(res, 200, status);
     }
 
     if (pathname === '/api/node/heal' && req.method === 'POST') {
-      const before = await getAlienwareNodeStatus();
+      const before = await getAlienwareNodeStatus({ env: activeEnv });
       const down = before.services.filter((s) => !s.up && s.host === '127.0.0.1');
       const healed = [];
       for (const svc of down) {
@@ -1167,7 +1308,7 @@ const server = http.createServer(async (req, res) => {
         }
       }
       appendTerminalLog('default', 'POST /api/node/heal (Alienware Self-Heal)', down.length === 0 ? 'All local Alienware ports are GREEN.' : `Triggered self-heal for: ${healed.join(', ')}`);
-      const after = await getAlienwareNodeStatus();
+      const after = await getAlienwareNodeStatus({ env: activeEnv });
       return sendJson(res, 200, { ok: true, healed, status: after });
     }
 
@@ -1831,9 +1972,11 @@ const server = http.createServer(async (req, res) => {
 
 function startServer(port = PORT, env = process.env, onListening) {
   const { host, warning } = validateBindConfig(env);
+  activeEnv = env;
   if (warning) {
     console.warn(warning);
   }
+  logStartupEnvCheck(ROOT, env);
   return server.listen(port, host, () => {
     const addr = server.address();
     const actualPort = addr && typeof addr === 'object' ? addr.port : port;
