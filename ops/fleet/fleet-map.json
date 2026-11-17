@@ -96,9 +96,9 @@
       "host": "192.168.0.40",
       "port": 8765,
       "protocol": "http",
-      "scope": "lan",
+      "scope": "lan-guarded",
       "bind": "0.0.0.0",
-      "authTokenEnv": "",
+      "authTokenEnv": "FLEET_SHARED_TOKEN",
       "healthPath": "/health",
       "expectedIdentity": "ok",
       "ownerLane": "router"
@@ -236,9 +236,9 @@
       "host": "192.168.0.40",
       "port": 27200,
       "protocol": "http",
-      "scope": "lan",
+      "scope": "lan-guarded",
       "bind": "0.0.0.0",
-      "authTokenEnv": "",
+      "authTokenEnv": "FLEET_SHARED_TOKEN",
       "healthPath": "/health",
       "expectedIdentity": "obsidian-mcp",
       "ownerLane": "obsidian"
