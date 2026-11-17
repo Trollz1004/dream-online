@@ -1,5 +1,37 @@
+import { timingSafeEqual } from "node:crypto";
 import { audit } from "./audit.js";
 import { dreamRoot, listCheckpoints, readJson, writeJson } from "./storage.js";
+
+export function resolveDreamOpsTokens(env = process.env) {
+  const candidates = [
+    String(env.DREAMOPS_TOKEN || "").trim(),
+    String(env.FLEET_SHARED_TOKEN || "").trim()
+  ].filter(Boolean);
+  return Array.from(new Set(candidates));
+}
+
+function matchesAnyTokenTimingSafe(providedToken, expectedTokens) {
+  if (!providedToken || !Array.isArray(expectedTokens) || expectedTokens.length === 0) {
+    return false;
+  }
+  const providedBuf = Buffer.from(String(providedToken), "utf8");
+  let matched = false;
+  for (const expected of expectedTokens) {
+    const expectedBuf = Buffer.from(String(expected), "utf8");
+    if (expectedBuf.length === providedBuf.length && timingSafeEqual(expectedBuf, providedBuf)) {
+      matched = true;
+    }
+  }
+  return matched;
+}
+
+function hasValidDreamOpsAuth(req, expectedTokens) {
+  const authHeader = String(req.headers?.authorization || "").trim();
+  const match = /^Bearer\s+(\S+)$/i.exec(authHeader);
+  const fleetHeader = String(req.headers?.["x-fleet-token"] || "").trim();
+  const providedToken = match ? match[1] : fleetHeader;
+  return matchesAnyTokenTimingSafe(providedToken, expectedTokens);
+}
 
 function ok(res, body, status = 200) {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8" });
@@ -37,16 +69,31 @@ function scanEconomy(snapshot) {
   };
 }
 
-export async function route(req, res) {
-  const url = new URL(req.url, "http://127.0.0.1");
+export async function route(req, res, options = {}) {
+  const bindHost = options?.bindHost || "127.0.0.1";
+  const activeEnv = options?.env || process.env;
+  const loopbackHost = ["127", "0", "0", "1"].join(".");
+  const url = new URL(req.url, `http://${req.headers?.host || loopbackHost}`);
   const path = url.pathname;
+
+  if (req.method === "POST" && bindHost !== "127.0.0.1") {
+    const expectedTokens = Array.isArray(options?.expectedTokens)
+      ? options.expectedTokens
+      : resolveDreamOpsTokens(activeEnv);
+    if (!hasValidDreamOpsAuth(req, expectedTokens)) {
+      return ok(res, {
+        error: "unauthorized",
+        message: "Valid Authorization Bearer token or X-Fleet-Token required when bound beyond loopback."
+      }, 401);
+    }
+  }
 
   if (req.method === "GET" && path === "/health") {
     return ok(res, {
       status: "ok",
       service: "dreamops-bridge",
       dreamRoot: dreamRoot(),
-      localOnly: true
+      localOnly: bindHost === "127.0.0.1"
     });
   }
 
