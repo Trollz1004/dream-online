@@ -99,11 +99,10 @@ export function readAgentDrift(driftPath) {
       })
       .filter((entry) => entry.file.length > 0);
     return { present: true, driftedFiles };
-  } catch (err) {
+  } catch {
     return {
       present: true,
       driftedFiles: [{ file: path.basename(driftPath), reason: 'drifted' }],
-      error: err instanceof Error ? err.message : String(err),
     };
   }
 }
@@ -174,6 +173,10 @@ export async function collectMissingEnv(options = {}, env = process.env, probedS
   return Array.from(new Set(collected));
 }
 
+function safeProbeErrorCode(err) {
+  return err && typeof err.code === 'string' && err.code.trim() ? err.code.trim() : 'unreachable';
+}
+
 function probeTcp(host, port, timeoutMs) {
   return new Promise((resolve) => {
     const sock = new net.Socket();
@@ -187,7 +190,7 @@ function probeTcp(host, port, timeoutMs) {
     sock.setTimeout(timeoutMs);
     sock.once('connect', () => done(true, 'tcp ok'));
     sock.once('timeout', () => done(false, 'tcp timeout'));
-    sock.once('error', (err) => done(false, err.message));
+    sock.once('error', (err) => done(false, safeProbeErrorCode(err)));
     sock.connect(port, host);
   });
 }
@@ -247,7 +250,7 @@ function probeHttp(target, env, timeoutMs) {
       req.destroy(new Error('timeout'));
     });
     req.on('error', (err) => {
-      resolve({ up: false, detail: err.message || 'unreachable', missingEnv: [] });
+      resolve({ up: false, detail: safeProbeErrorCode(err), missingEnv: [] });
     });
     req.end();
   });
@@ -370,9 +373,9 @@ export function createFleetStatusServer(options = {}) {
 
       res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ ok: false, error: 'Not found' }));
-    } catch (err) {
+    } catch {
       res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) }));
+      res.end(JSON.stringify({ ok: false, error: 'Internal server error' }));
     }
   });
 
