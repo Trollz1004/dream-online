@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { verifyPartnerConfig, planSocialStrike, planMusaCampaign, scoreLeadForgeBatch, maskSecrets, assertCustomerCopy, scoreLead, judgeApproveAndDispatch, TRUST_LEVEL_MAX_JUDGES } from '../inbound-crm-engine.mjs';
-import { createStudioServer, resolveStudioBindHost, resolveStudioPort, isAllowedStudioHost, isAllowedStudioOrigin } from '../server.mjs';
+import { createStudioServer, startStudioServer, resolveStudioBindHost, resolveStudioPort, validateStudioBindConfig, isAllowedStudioHost, isAllowedStudioOrigin } from '../server.mjs';
 
 test('partner registry validates isolated URLs and creator split math', () => {
  const registry=verifyPartnerConfig(JSON.parse(readFileSync(new URL('../affiliate-partners.json',import.meta.url))));
@@ -50,8 +52,19 @@ test('Trust Level Max judges (Gemini 4 High Reasoning and Opus 5.5 Fable) can ap
  const autopost=await fetch(base+'/api/stage-social',{method:'POST',headers:{'Content-Type':'application/json','Origin':base,'X-Studio-Token':session.token},body:'{"auto_post":true}'}); assert.equal(autopost.status,400); }
  finally { await new Promise(r=>server.close(r)); }
 });
-test('server reads 0.0.0.0:8390 from fleet-map.json and accepts Alienware and T5500 Host/Origin', () => {
- assert.equal(resolveStudioBindHost({}), '0.0.0.0');
+test('server defaults to 127.0.0.1 with warning when no token is set, resolves 0.0.0.0:8390 with token, and accepts Alienware and T5500 Host/Origin', () => {
+ assert.equal(resolveStudioBindHost({ OPSIS_STUDIO_TOKEN: '', FLEET_SHARED_TOKEN: '' }), '127.0.0.1');
+ assert.equal(resolveStudioBindHost({ OPSIS_STUDIO_TOKEN: 'studio-secret' }), '0.0.0.0');
+ assert.equal(resolveStudioBindHost({ FLEET_SHARED_TOKEN: 'fleet-secret' }), '0.0.0.0');
+ assert.equal(resolveStudioBindHost({ OPSIS_STUDIO_BIND: '127.0.0.1', OPSIS_STUDIO_TOKEN: 'studio-secret' }), '127.0.0.1');
+ assert.equal(resolveStudioBindHost({ OPSIS_STUDIO_BIND: '0.0.0.0' }), '0.0.0.0');
+ const noTokenCfg = validateStudioBindConfig({ OPSIS_STUDIO_TOKEN: '', FLEET_SHARED_TOKEN: '' });
+ assert.equal(noTokenCfg.host, '127.0.0.1');
+ assert.match(String(noTokenCfg.warning), /OPSIS_STUDIO_TOKEN/);
+ assert.match(String(noTokenCfg.warning), /FLEET_SHARED_TOKEN/);
+ assert.throws(() => validateStudioBindConfig({ OPSIS_STUDIO_BIND: '0.0.0.0', OPSIS_STUDIO_TOKEN: '', FLEET_SHARED_TOKEN: '' }), /OPSIS_STUDIO_TOKEN/i);
+ assert.throws(() => validateStudioBindConfig({ OPSIS_STUDIO_BIND: '192.168.0.40', OPSIS_STUDIO_TOKEN: '', FLEET_SHARED_TOKEN: '' }), /OPSIS_STUDIO_TOKEN/i);
+ assert.throws(() => startStudioServer({ OPSIS_STUDIO_BIND: '0.0.0.0', OPSIS_STUDIO_TOKEN: '', FLEET_SHARED_TOKEN: '' }), /OPSIS_STUDIO_TOKEN/i);
  assert.equal(resolveStudioPort({}), 8390);
  assert.equal(isAllowedStudioHost('192.168.0.40:8390'), true);
  assert.equal(isAllowedStudioHost('192.168.0.15:8390'), true);
@@ -59,6 +72,119 @@ test('server reads 0.0.0.0:8390 from fleet-map.json and accepts Alienware and T5
  assert.equal(isAllowedStudioOrigin('http://192.168.0.40:8390', '192.168.0.40:8390'), true);
  assert.equal(isAllowedStudioOrigin('http://192.168.0.15:8390', '192.168.0.40:8390'), true);
  assert.equal(isAllowedStudioOrigin('http://evil.example.com:8390', '192.168.0.40:8390'), false);
+});
+
+test('studio live-start without token binds 127.0.0.1, emits one warning naming missing setting, and keeps loopback routes working', async () => {
+ const serverPath = fileURLToPath(new URL('../server.mjs', import.meta.url));
+ const loopback = ['127', '0', '0', '1'].join('.');
+ const child = spawn(process.execPath, [serverPath], {
+  env: {
+   ...process.env,
+   PORT: '0',
+   OPSIS_STUDIO_PORT: '0',
+   OPSIS_STUDIO_BIND: '',
+   OPSIS_STUDIO_TOKEN: '',
+   FLEET_SHARED_TOKEN: '',
+  },
+  stdio: ['ignore', 'pipe', 'pipe'],
+ });
+ let stdout = '';
+ let stderr = '';
+ const listenRe = new RegExp(`listening on ${loopback.replace(/\./g, '\\.')}:(\\d+)`);
+ try {
+  const port = await new Promise((resolve, reject) => {
+   const timer = setTimeout(() => reject(new Error(`Timed out waiting for studio start: stdout=${stdout} stderr=${stderr}`)), 10000);
+   child.stdout.on('data', (chunk) => {
+    stdout += String(chunk);
+    const m = listenRe.exec(stdout);
+    if (m) {
+     clearTimeout(timer);
+     resolve(Number(m[1]));
+    }
+   });
+   child.stderr.on('data', (chunk) => { stderr += String(chunk); });
+   child.once('exit', (code) => {
+    clearTimeout(timer);
+    reject(new Error(`studio exited early (${code}): stdout=${stdout} stderr=${stderr}`));
+   });
+  });
+  const warningLines = stderr.trim().split(/\r?\n/).filter(Boolean);
+  assert.equal(warningLines.length, 1);
+  assert.match(warningLines[0], /OPSIS_STUDIO_TOKEN/);
+  assert.match(warningLines[0], /FLEET_SHARED_TOKEN/);
+  assert.match(warningLines[0], /127\.0\.0\.1/);
+
+  const base = `http://${loopback}:${port}`;
+  const sessionRes = await fetch(`${base}/api/session`);
+  assert.equal(sessionRes.status, 200);
+  const session = await sessionRes.json();
+  assert.ok(session.token);
+
+  const stageRes = await fetch(`${base}/api/stage-social`, {
+   method: 'POST',
+   headers: { 'Content-Type': 'application/json', Origin: base, 'X-Studio-Token': session.token },
+   body: '{}',
+  });
+  assert.equal(stageRes.status, 200);
+ } finally {
+  child.kill();
+  await new Promise((resolve) => child.once('exit', resolve));
+ }
+});
+
+test('studio with OPSIS_STUDIO_TOKEN or FLEET_SHARED_TOKEN resolves 0.0.0.0 and enforces Bearer / X-Fleet-Token on /api/session and POST /api/*', async () => {
+ const env = { OPSIS_STUDIO_BIND: '0.0.0.0', OPSIS_STUDIO_TOKEN: 'studio-lan-secret', FLEET_SHARED_TOKEN: 'fleet-shared-secret' };
+ assert.equal(validateStudioBindConfig(env).host, '0.0.0.0');
+ const server = createStudioServer({ env });
+ const loopback = ['127', '0', '0', '1'].join('.');
+ await new Promise((resolve) => server.listen(0, loopback, resolve));
+ try {
+  const base = `http://${loopback}:${server.address().port}`;
+  assert.equal((await fetch(`${base}/api/session`)).status, 401);
+  assert.equal((await fetch(`${base}/api/session`, { headers: { Authorization: 'Bearer wrong-token' } })).status, 401);
+
+  const bearerSession = await fetch(`${base}/api/session`, { headers: { Authorization: 'Bearer studio-lan-secret' } });
+  assert.equal(bearerSession.status, 200);
+  const fleetSession = await fetch(`${base}/api/session`, { headers: { 'X-Fleet-Token': 'fleet-shared-secret' } });
+  assert.equal(fleetSession.status, 200);
+
+  const unauthedPost = await fetch(`${base}/api/stage-social`, {
+   method: 'POST',
+   headers: { 'Content-Type': 'application/json', Origin: base },
+   body: '{}',
+  });
+  assert.equal(unauthedPost.status, 401);
+
+  const wrongTokenPost = await fetch(`${base}/api/stage-social`, {
+   method: 'POST',
+   headers: { 'Content-Type': 'application/json', 'X-Fleet-Token': 'wrong-token' },
+   body: '{}',
+  });
+  assert.equal(wrongTokenPost.status, 401);
+
+  const bearerPost = await fetch(`${base}/api/stage-social`, {
+   method: 'POST',
+   headers: { 'Content-Type': 'application/json', Authorization: 'Bearer studio-lan-secret' },
+   body: '{}',
+  });
+  assert.equal(bearerPost.status, 200);
+
+  const fleetPost = await fetch(`${base}/api/stage-social`, {
+   method: 'POST',
+   headers: { 'Content-Type': 'application/json', 'X-Fleet-Token': 'fleet-shared-secret' },
+   body: '{}',
+  });
+  assert.equal(fleetPost.status, 200);
+
+  const badOriginPost = await fetch(`${base}/api/stage-social`, {
+   method: 'POST',
+   headers: { 'Content-Type': 'application/json', Origin: 'http://evil.example.com', Authorization: 'Bearer studio-lan-secret' },
+   body: '{}',
+  });
+  assert.equal(badOriginPost.status, 403);
+ } finally {
+  await new Promise((resolve) => server.close(resolve));
+ }
 });
 
 

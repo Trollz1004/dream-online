@@ -1,6 +1,6 @@
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { TimelineStore } from './timeline-engine.mjs';
 import {
@@ -25,16 +25,47 @@ const partners = JSON.parse(
 
 const ALLOWED_HOSTNAMES = new Set(['127.0.0.1', ...getAllowedNodeHosts()]);
 
+export function resolveStudioTokens(env = process.env) {
+  const candidates = [
+    String(env.OPSIS_STUDIO_TOKEN || '').trim(),
+    String(env.FLEET_SHARED_TOKEN || '').trim(),
+  ].filter(Boolean);
+  return Array.from(new Set(candidates));
+}
+
 export function resolveStudioBindHost(env = process.env) {
   const explicit = String(env.OPSIS_STUDIO_BIND || '').trim();
   if (explicit === '127.0.0.1' || explicit === '0.0.0.0' || ALLOWED_HOSTNAMES.has(explicit)) {
     return explicit;
   }
+  if (resolveStudioTokens(env).length === 0) {
+    return '127.0.0.1';
+  }
   return getServiceBindHost('opsis-studio');
 }
 
 export function resolveStudioPort(env = process.env) {
-  return getServicePort('opsis-studio', env.OPSIS_STUDIO_PORT || env.PORT);
+  const raw = String(env.OPSIS_STUDIO_PORT || env.PORT || '').trim();
+  if (raw === '0') return 0;
+  return getServicePort('opsis-studio', raw);
+}
+
+export function validateStudioBindConfig(env = process.env) {
+  const host = resolveStudioBindHost(env);
+  const tokens = resolveStudioTokens(env);
+  const token = tokens[0] || '';
+  if (host !== '127.0.0.1' && !token) {
+    throw new Error(
+      `Refusing to start OPSis Studio on ${host} without OPSIS_STUDIO_TOKEN or FLEET_SHARED_TOKEN: set a non-empty OPSIS_STUDIO_TOKEN / FLEET_SHARED_TOKEN or bind to 127.0.0.1.`
+    );
+  }
+  const explicit = String(env.OPSIS_STUDIO_BIND || '').trim();
+  const configuredPort = getServicePort('opsis-studio', env.OPSIS_STUDIO_PORT || env.PORT);
+  const warning =
+    !token && explicit !== '127.0.0.1'
+      ? `[opsis-studio] WARNING: OPSIS_STUDIO_TOKEN or FLEET_SHARED_TOKEN is not set; binding 127.0.0.1 on port ${configuredPort} (this machine only).`
+      : null;
+  return { host, token, warning };
 }
 
 export function isAllowedStudioHost(hostHeader) {
@@ -67,9 +98,33 @@ async function json(req) {
   return raw ? JSON.parse(raw) : {};
 }
 
-export function createStudioServer() {
+function matchesAnyTokenTimingSafe(providedToken, expectedTokens) {
+  if (!providedToken || !Array.isArray(expectedTokens) || expectedTokens.length === 0) {
+    return false;
+  }
+  const providedBuf = Buffer.from(String(providedToken), 'utf8');
+  let matched = false;
+  for (const expected of expectedTokens) {
+    const expectedBuf = Buffer.from(String(expected), 'utf8');
+    if (expectedBuf.length === providedBuf.length && timingSafeEqual(expectedBuf, providedBuf)) {
+      matched = true;
+    }
+  }
+  return matched;
+}
+
+function hasValidStudioFleetAuth(req, expectedTokens) {
+  const authHeader = String(req.headers.authorization || '').trim();
+  const match = /^Bearer\s+(\S+)$/i.exec(authHeader);
+  const fleetHeader = String(req.headers['x-fleet-token'] || '').trim();
+  const providedToken = match ? match[1] : fleetHeader;
+  return matchesAnyTokenTimingSafe(providedToken, expectedTokens);
+}
+
+export function createStudioServer(options = {}) {
   const store = new TimelineStore();
   const token = randomBytes(32).toString('hex');
+  const resolveEnv = () => options?.env || process.env;
   return http.createServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -86,7 +141,18 @@ export function createStudioServer() {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end(html);
       return;
     }
+    const activeEnv = resolveEnv();
+    const bindHost = resolveStudioBindHost(activeEnv);
+    const isLanBound = bindHost !== '127.0.0.1';
+    const expectedTokens = resolveStudioTokens(activeEnv);
+
     if (req.method === 'GET' && req.url === '/api/session') {
+      if (isLanBound && !hasValidStudioFleetAuth(req, expectedTokens)) {
+        res
+          .writeHead(401, { 'Content-Type': 'application/json' })
+          .end(JSON.stringify({ error: 'Unauthorized: valid Authorization Bearer token or X-Fleet-Token required' }));
+        return;
+      }
       res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ token }));
       return;
     }
@@ -103,7 +169,21 @@ export function createStudioServer() {
       res.writeHead(404).end();
       return;
     }
-    if (
+    if (isLanBound) {
+      if (!hasValidStudioFleetAuth(req, expectedTokens)) {
+        res
+          .writeHead(401, { 'Content-Type': 'application/json' })
+          .end(JSON.stringify({ error: 'Unauthorized: valid Authorization Bearer token or X-Fleet-Token required' }));
+        return;
+      }
+      if (
+        (req.headers.origin && !isAllowedStudioOrigin(req.headers.origin, host)) ||
+        !/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')
+      ) {
+        res.writeHead(403).end();
+        return;
+      }
+    } else if (
       !isAllowedStudioOrigin(req.headers.origin, host) ||
       req.headers['x-studio-token'] !== token ||
       !/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')
@@ -136,10 +216,26 @@ export function createStudioServer() {
   });
 }
 
+export function startStudioServer(env = process.env, onListening) {
+  const { host, warning } = validateStudioBindConfig(env);
+  if (warning) {
+    console.warn(warning);
+  }
+  const port = resolveStudioPort(env);
+  const server = createStudioServer({ env });
+  return server.listen(port, host, () => {
+    const addr = server.address();
+    const actualPort = addr && typeof addr === 'object' ? addr.port : port;
+    console.log(`OPSis studio listening on ${host}:${actualPort}`);
+    if (typeof onListening === 'function') onListening();
+  });
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const bindHost = resolveStudioBindHost();
-  const port = resolveStudioPort();
-  createStudioServer().listen(port, bindHost, () =>
-    console.log(`OPSis studio listening on ${bindHost}:${port}`)
-  );
+  try {
+    startStudioServer(process.env);
+  } catch (err) {
+    console.error(`[opsis-studio] ${err instanceof Error ? err.message : String(err)}`);
+    process.exit(1);
+  }
 }
