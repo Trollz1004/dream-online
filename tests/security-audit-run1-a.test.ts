@@ -233,15 +233,26 @@ test('Finding 4.2 (ops/router/adapters/hermes.ts): rejects injected jobId, trave
   }
 });
 
-test('Finding 4.3a & 4.3b (server.ts): default bind is 0.0.0.0 from fleet-map.json, LAN bind without token refuses to start, and LAN-bound state-changing & agent/spend routes require DREAM_ENGINE_TOKEN or FLEET_SHARED_TOKEN', async () => {
-  // Default bind is 0.0.0.0 from ops/fleet/fleet-map.json unless DREAM_ENGINE_BIND=127.0.0.1
-  assert.equal(resolveDreamEngineBindHost({}), '0.0.0.0');
-  assert.equal(resolveDreamEngineBindHost({ DREAM_ENGINE_BIND: '127.0.0.1' }), '127.0.0.1');
+test('Finding 4.3a & 4.3b (server.ts): no-token defaults to 127.0.0.1 with warning, token resolves 0.0.0.0 from fleet-map.json, explicit LAN bind without token refuses to start, and LAN-bound state-changing & agent/spend routes require DREAM_ENGINE_TOKEN or FLEET_SHARED_TOKEN', async () => {
+  // Without tokens, unset bind falls back to 127.0.0.1; with a token, unset bind uses 0.0.0.0 from ops/fleet/fleet-map.json
+  assert.equal(resolveDreamEngineBindHost({ DREAM_ENGINE_TOKEN: '', FLEET_SHARED_TOKEN: '' }), '127.0.0.1');
+  assert.equal(resolveDreamEngineBindHost({ DREAM_ENGINE_TOKEN: 'engine-token' }), '0.0.0.0');
+  assert.equal(resolveDreamEngineBindHost({ DREAM_ENGINE_BIND: '127.0.0.1', DREAM_ENGINE_TOKEN: 'engine-token' }), '127.0.0.1');
   assert.equal(resolveDreamEngineBindHost({ DREAM_ENGINE_BIND: '0.0.0.0' }), '0.0.0.0');
 
-  // Fail closed when bound to 0.0.0.0 and both DREAM_ENGINE_TOKEN and FLEET_SHARED_TOKEN are empty
+  const noTokenConfig = validateDreamEngineBindConfig({ DREAM_ENGINE_TOKEN: '', FLEET_SHARED_TOKEN: '' });
+  assert.equal(noTokenConfig.host, '127.0.0.1');
+  assert.equal(noTokenConfig.token, '');
+  assert.match(String(noTokenConfig.warning), /DREAM_ENGINE_TOKEN/);
+  assert.match(String(noTokenConfig.warning), /FLEET_SHARED_TOKEN/);
+
+  // Fail closed when explicitly bound to 0.0.0.0 or LAN IP and both DREAM_ENGINE_TOKEN and FLEET_SHARED_TOKEN are empty
   assert.throws(
-    () => validateDreamEngineBindConfig({ DREAM_ENGINE_TOKEN: '', FLEET_SHARED_TOKEN: '' }),
+    () => validateDreamEngineBindConfig({ DREAM_ENGINE_BIND: '0.0.0.0', DREAM_ENGINE_TOKEN: '', FLEET_SHARED_TOKEN: '' }),
+    /DREAM_ENGINE_TOKEN/i
+  );
+  assert.throws(
+    () => validateDreamEngineBindConfig({ DREAM_ENGINE_BIND: '192.168.0.40', DREAM_ENGINE_TOKEN: '', FLEET_SHARED_TOKEN: '' }),
     /DREAM_ENGINE_TOKEN/i
   );
   await assert.rejects(
@@ -251,6 +262,10 @@ test('Finding 4.3a & 4.3b (server.ts): default bind is 0.0.0.0 from fleet-map.js
   assert.equal(
     validateDreamEngineBindConfig({ FLEET_SHARED_TOKEN: 'shared-fleet-secret' }).token,
     'shared-fleet-secret'
+  );
+  assert.equal(
+    validateDreamEngineBindConfig({ FLEET_SHARED_TOKEN: 'shared-fleet-secret' }).host,
+    '0.0.0.0'
   );
 
   const server: Server = await new Promise((resolve) => {
@@ -475,5 +490,52 @@ test('server.ts: LAN-bound POST to /api/cli-anything/execute without a bearer is
     );
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('server.ts live-start: no token with unset DREAM_ENGINE_BIND binds 127.0.0.1, emits one warning naming missing setting, and serves clean HTTP responses', async () => {
+  const warnings: string[] = [];
+  const origWarn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    warnings.push(args.map((a) => String(a)).join(' '));
+  };
+  let srv: Server | null = null;
+  try {
+    await withEnv(
+      { DREAM_ENGINE_TOKEN: '', FLEET_SHARED_TOKEN: '', DREAM_ENGINE_BIND: '' },
+      async () => {
+        srv = await startServer({
+          NODE_ENV: 'production',
+          PORT: '0',
+          DREAM_ENGINE_TOKEN: '',
+          FLEET_SHARED_TOKEN: '',
+          DREAM_ENGINE_BIND: '',
+        });
+        if (!srv.listening) {
+          await new Promise<void>((resolve) => srv!.once('listening', resolve));
+        }
+        const addr = srv.address() as AddressInfo;
+        assert.equal(addr.address, '127.0.0.1');
+        assert.equal(warnings.length, 1);
+        assert.match(warnings[0], /DREAM_ENGINE_TOKEN/);
+        assert.match(warnings[0], /FLEET_SHARED_TOKEN/);
+        assert.match(warnings[0], /127\.0\.0\.1/);
+
+        const base = `http://${LOOPBACK}:${addr.port}`;
+        const healthRes = await fetch(`${base}/api/gm/health`);
+        assert.equal(healthRes.status, 200);
+        const postRes = await fetch(`${base}/api/cli-anything/execute`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command: 'status' }),
+        });
+        assert.equal(postRes.status, 200);
+      }
+    );
+  } finally {
+    console.warn = origWarn;
+    if (srv) {
+      await new Promise<void>((resolve) => srv!.close(() => resolve()));
+    }
   }
 });

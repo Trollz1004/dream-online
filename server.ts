@@ -72,15 +72,6 @@ const __dirname = path.dirname(__filename);
 
 export const MAX_SERVER_STATE_ITEMS = 200;
 
-export function resolveDreamEngineBindHost(env: NodeJS.ProcessEnv = process.env): string {
-  const explicit = String(env.DREAM_ENGINE_BIND || '').trim();
-  const alienwareHost = getNodeHost('alienware');
-  if (explicit === '127.0.0.1' || explicit === '0.0.0.0' || explicit === alienwareHost) {
-    return explicit;
-  }
-  return getServiceBindHost('dream-engine');
-}
-
 export function resolveDreamEngineTokens(env: NodeJS.ProcessEnv = process.env): string[] {
   const candidates = [
     String(env.DREAM_ENGINE_TOKEN || '').trim(),
@@ -89,19 +80,38 @@ export function resolveDreamEngineTokens(env: NodeJS.ProcessEnv = process.env): 
   return Array.from(new Set(candidates));
 }
 
+export function resolveDreamEngineBindHost(env: NodeJS.ProcessEnv = process.env): string {
+  const explicit = String(env.DREAM_ENGINE_BIND || '').trim();
+  const alienwareHost = getNodeHost('alienware');
+  if (explicit === '127.0.0.1' || explicit === '0.0.0.0' || explicit === alienwareHost) {
+    return explicit;
+  }
+  if (resolveDreamEngineTokens(env).length === 0) {
+    return '127.0.0.1';
+  }
+  return getServiceBindHost('dream-engine');
+}
+
 export function validateDreamEngineBindConfig(env: NodeJS.ProcessEnv = process.env): {
   host: string;
   token: string;
+  warning: string | null;
 } {
   const host = resolveDreamEngineBindHost(env);
   const tokens = resolveDreamEngineTokens(env);
   const token = tokens[0] || '';
   if (host !== '127.0.0.1' && !token) {
     throw new Error(
-      'Refusing to start DREAM Engine on 0.0.0.0 without DREAM_ENGINE_TOKEN or FLEET_SHARED_TOKEN: set a non-empty DREAM_ENGINE_TOKEN / FLEET_SHARED_TOKEN or bind to 127.0.0.1.'
+      `Refusing to start DREAM Engine on ${host} without DREAM_ENGINE_TOKEN or FLEET_SHARED_TOKEN: set a non-empty DREAM_ENGINE_TOKEN / FLEET_SHARED_TOKEN or bind to 127.0.0.1.`
     );
   }
-  return { host, token };
+  const explicit = String(env.DREAM_ENGINE_BIND || '').trim();
+  const port = getServicePort('dream-engine', env.PORT);
+  const warning =
+    !token && explicit !== '127.0.0.1'
+      ? `[dream-engine] WARNING: DREAM_ENGINE_TOKEN or FLEET_SHARED_TOKEN is not set; binding 127.0.0.1 on port ${port} (this machine only).`
+      : null;
+  return { host, token, warning };
 }
 
 export const STATE_CHANGING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -147,19 +157,6 @@ export function requireDreamEngineAuth(
   }
   const expectedTokens = resolveDreamEngineTokens(process.env);
   if (expectedTokens.length === 0) {
-    const isGeminiSpendRoute =
-      routePath === '/gm/npc/dialogue' ||
-      routePath === '/agent-sdk/dispatch' ||
-      routePath === '/studio/rea-analyze' ||
-      routePath === '/studio/generate-design';
-    if (
-      isGeminiSpendRoute &&
-      !process.env.DREAM_ENGINE_BIND &&
-      process.env.GEMINI_API_KEY &&
-      process.env.GEMINI_KEY_APPROVED !== 'finalize'
-    ) {
-      return next();
-    }
     res.status(401).json({
       error:
         'Unauthorized: DREAM_ENGINE_TOKEN or FLEET_SHARED_TOKEN is required when DREAM_ENGINE_BIND=0.0.0.0',
@@ -945,8 +942,11 @@ app.post('/api/dreamforge/generate', (req, res) => {
 });
 
 export async function startServer(env: NodeJS.ProcessEnv = process.env) {
-  const { host } = validateDreamEngineBindConfig(env);
-  const PORT = getServicePort('dream-engine', env.PORT);
+  const { host, warning } = validateDreamEngineBindConfig(env);
+  if (warning) {
+    console.warn(warning);
+  }
+  const PORT = String(env.PORT || '').trim() === '0' ? 0 : getServicePort('dream-engine', env.PORT);
   const isProd = env.NODE_ENV === 'production';
 
   if (!isProd) {
