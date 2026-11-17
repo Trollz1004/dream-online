@@ -34,22 +34,31 @@ export const RULES = Object.freeze([
   { id: 'paypal-secret-assignment', label: 'PayPal secret/token assigned a long value', re: /PAYPAL[A-Z0-9_]*(?:SECRET|TOKEN)\s*[=:]\s*["']?[A-Za-z0-9_-]{40,}/i },
   { id: 'generic-sk-key', label: 'Generic sk- API key shape', re: /(?<![A-Za-z0-9])sk-(?!ant-)[A-Za-z0-9_-]{20,}/ },
   { id: 'windows-user-path', label: 'Windows user folder path', re: /(?<![A-Za-z0-9])[cC]:[\\/]+[uU]sers[\\/]+[a-zA-Z0-9_.-]+/ },
-  { id: 'private-ipv4', label: 'Private IPv4 address shape', re: /\b(?:192\.168|10\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}\b/ },
+  { id: 'loopback-reach-address', label: 'Loopback reach address (use 192.168.0.40 or 192.168.0.15 from ops/fleet/fleet-map.json)', re: /(?:https?|wss?):\/\/(?:localhost|127\.0\.0\.1)\b|\b(?:localhost|127\.0\.0\.1):\d{2,5}\b/i },
+  { id: 'forbidden-test-node-ip', label: 'Forbidden retired test node IP', re: /\b192\.168\.0\.8\b/ },
 ]);
+
+export function isArchivePath(filePath = '') {
+  const norm = String(filePath || '').replace(/\\/g, '/');
+  return /(?:^|\/)archive\//i.test(norm);
+}
 
 /**
  * Scan text. Returns findings with rule id and 1-based line only. The matched value is
  * deliberately never returned.
  * @param {string} text
+ * @param {{ file?: string }} [options]
  * @returns {Array<{ rule: string, label: string, line: number }>}
  */
-export function scanText(text) {
+export function scanText(text, options = {}) {
   const findings = [];
+  const inArchive = isArchivePath(options?.file);
   const lines = String(text).split(/\r?\n/);
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
     if (line.includes(ALLOW_MARKER)) continue;
     for (const rule of RULES) {
+      if (inArchive && rule.id === 'loopback-reach-address') continue;
       if (rule.re.test(line)) findings.push({ rule: rule.id, label: rule.label, line: i + 1 });
     }
   }
@@ -158,7 +167,7 @@ export function scanPush(stdinText) {
       range = originMain ? [localSha, '--not', 'origin/main'] : [localSha];
     }
     for (const a of addedLines(range)) {
-      for (const f of scanText(a.text)) {
+      for (const f of scanText(a.text, { file: a.file })) {
         const key = `${a.commit}|${a.file}|${a.line}|${f.rule}`;
         if (seen.has(key)) continue;
         seen.add(key);
@@ -212,7 +221,7 @@ function main(argv) {
   if (mode === '--files') {
     const hits = [];
     for (const file of argv.slice(1)) {
-      for (const f of scanText(readFileSync(file, 'utf8'))) hits.push({ ...f, file, commit: '' });
+      for (const f of scanText(readFileSync(file, 'utf8'), { file })) hits.push({ ...f, file, commit: '' });
     }
     if (hits.length) {
       report(hits);

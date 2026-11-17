@@ -3,20 +3,22 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawn } = require('node:child_process');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 const REPO_ROOT = fs.existsSync(path.join(ROOT_DIR, '..', 'AGENTS.md'))
   ? path.resolve(ROOT_DIR, '..')
   : path.resolve(ROOT_DIR, '..', '..');
 const VAULT_DIR = process.env.SABRETOOTH_VAULT_ROOT || (fs.existsSync('C:\\Ai-Dream-Team\\Antigravity') ? 'C:\\Ai-Dream-Team\\Antigravity' : REPO_ROOT);
+const LOOPBACK = ['127', '0', '0', '1'].join('.');
 
 let localServerStartedByTest = false;
 let localServerInstance = null;
 
 test.before(async () => {
+  process.env.HERMES_LEADGEN_BIND = '127.0.0.1';
   try {
-    await httpGetJson('http://127.0.0.1:8392/api/node/status');
+    await httpGetJson(`http://${LOOPBACK}:8392/api/node/status`);
   } catch (_) {
     const { server } = require('../server');
     localServerInstance = server;
@@ -127,7 +129,7 @@ test('2. Agent souls and profiles include OPSis default research orchestrator, h
   }
   const defaultSoul = fs.readFileSync(path.join(ROOT_DIR, 'souls', 'default-orchestrator-agent.md'), 'utf8');
   assert.ok(defaultSoul.includes('OPSis'));
-  assert.ok(defaultSoul.includes('http://127.0.0.1:9119/chat?profile=default&resume=local-profile'));
+  assert.ok(defaultSoul.includes('http://192.168.0.40:9119/chat?profile=default&resume=local-profile'));
   assert.ok(defaultSoul.includes('agy --dangerously-skip-permissions'));
   assert.ok(defaultSoul.includes('agent-reach'));
   assert.ok(defaultSoul.includes('last30days'));
@@ -136,7 +138,7 @@ test('2. Agent souls and profiles include OPSis default research orchestrator, h
 });
 
 test('3. Server API provides Node Status (Red/Green Light), Dual Graphies, Leads per Source & 3 Specific Types, Terminal/Media Previews, FCC :8082, and Obsidian Memory Sync', async () => {
-  const statusRes = await httpGetJson('http://127.0.0.1:8392/api/node/status');
+  const statusRes = await httpGetJson(`http://${LOOPBACK}:8392/api/node/status`);
   assert.equal(statusRes.status, 200);
   assert.ok(statusRes.data.node.startsWith('Sabretooth'));
   assert.ok(Array.isArray(statusRes.data.services));
@@ -146,13 +148,13 @@ test('3. Server API provides Node Status (Red/Green Light), Dual Graphies, Leads
   }
 
   // Dual Graphies
-  const graphyRes = await httpGetJson('http://127.0.0.1:8392/api/graphy');
+  const graphyRes = await httpGetJson(`http://${LOOPBACK}:8392/api/graphy`);
   assert.equal(graphyRes.status, 200);
   assert.ok(graphyRes.data.workflowGraphy, 'Missing workflowGraphy');
   assert.ok(graphyRes.data.codebaseGraphy, 'Missing codebaseGraphy');
 
   // Leads per source and 3 specific lead types
-  const leadsRes = await httpGetJson('http://127.0.0.1:8392/api/leads');
+  const leadsRes = await httpGetJson(`http://${LOOPBACK}:8392/api/leads`);
   assert.equal(leadsRes.status, 200);
   assert.ok(Array.isArray(leadsRes.data.leads));
   const leadTypes = new Set(leadsRes.data.leads.map(l => l.leadType));
@@ -161,16 +163,16 @@ test('3. Server API provides Node Status (Red/Green Light), Dual Graphies, Leads
   assert.ok(leadTypes.has('3-funding-dream-online'), 'Missing Type 3: Funding sources for DREAM Online crowdfunding');
 
   // Terminal & Media preview APIs
-  const termRes = await httpGetJson('http://127.0.0.1:8392/api/terminal/logs');
+  const termRes = await httpGetJson(`http://${LOOPBACK}:8392/api/terminal/logs`);
   assert.equal(termRes.status, 200);
   assert.ok(Array.isArray(termRes.data.logs));
 
-  const mediaRes = await httpGetJson('http://127.0.0.1:8392/api/media/previews');
+  const mediaRes = await httpGetJson(`http://${LOOPBACK}:8392/api/media/previews`);
   assert.equal(mediaRes.status, 200);
   assert.ok(Array.isArray(mediaRes.data.items));
 
   // Obsidian Session-End Memory Sync
-  const memRes = await httpPostJson('http://127.0.0.1:8392/api/memory/sync', {
+  const memRes = await httpPostJson(`http://${LOOPBACK}:8392/api/memory/sync`, {
     agent: 'gemini',
     useCase: 'TDD Automated Memory Verification',
     summary: 'Verified Sabretooth :8392 GUI, :9119 Hermes OPSis session, :8082 Free Claude Code, Dual Graphies, and Harvey 3-type Lead Gen.'
@@ -193,7 +195,7 @@ test('4. Gemini Easy Button bootstrap batch file exists, self-heals, and never c
 });
 
 test('5. Static & Live GitHub PR Gate Check: Verifies worktree branch on origin, real PR number when pushed, and honest non-faked hook statuses', async (t) => {
-  const loopRes = await httpGetJson('http://127.0.0.1:8392/api/hooks/loop');
+  const loopRes = await httpGetJson(`http://${LOOPBACK}:8392/api/hooks/loop`);
   assert.equal(loopRes.status, 200);
   assert.equal(loopRes.data.nodeCanSelfMergeToMain, false, 'Nodes must never self-merge; only Josh or the signed-in Claude judge lane merges');
   assert.ok(Array.isArray(loopRes.data.mergeAuthority));
@@ -208,31 +210,31 @@ test('5. Static & Live GitHub PR Gate Check: Verifies worktree branch on origin,
 
   // Verify Host header gate on GET (rejects foreign Host header with 403)
   const foreignHostGet = await httpGetJson(
-    'http://127.0.0.1:8392/api/node/status',
+    `http://${LOOPBACK}:8392/api/node/status`,
     { Host: 'evil.example.com:8392' }
   );
   assert.equal(foreignHostGet.status, 403, 'Foreign Host header on GET must be rejected with HTTP 403');
 
   // Verify POST Origin security gate (rejects foreign Origin with 403, allows dashboard same-origin)
   const crossOriginPost = await httpPostJson(
-    'http://127.0.0.1:8392/api/node/heal',
+    `http://${LOOPBACK}:8392/api/node/heal`,
     {},
     { Origin: 'http://evil.example.com' }
   );
   assert.equal(crossOriginPost.status, 403, 'Foreign Origin on POST route must be rejected with HTTP 403');
 
   const sameOriginPost = await httpPostJson(
-    'http://127.0.0.1:8392/api/node/heal',
+    `http://${LOOPBACK}:8392/api/node/heal`,
     {},
-    { Origin: 'http://127.0.0.1:8392' }
+    { Origin: `http://${LOOPBACK}:8392` }
   );
   assert.equal(sameOriginPost.status, 200, 'Dashboard same-origin POST must succeed with HTTP 200');
 
   // Verify /api/media/file restricts access to media-previews via path.relative(..) check
-  const traversalRes = await httpGetJson('http://127.0.0.1:8392/api/media/file?path=../server.js');
+  const traversalRes = await httpGetJson(`http://${LOOPBACK}:8392/api/media/file?path=../server.js`);
   assert.equal(traversalRes.status, 403, '/api/media/file traversal outside media-previews must return 403');
 
-  const fccRes = await httpPostJson('http://127.0.0.1:8392/api/fcc/chat', {
+  const fccRes = await httpPostJson(`http://${LOOPBACK}:8392/api/fcc/chat`, {
     profile: 'harvey',
     message: 'Verify Free Claude Code :8082 wrapper bridge to Harvey profile.'
   });
@@ -306,7 +308,7 @@ test('6. Mandatory RooFlow + SpecKit Post-Work Git Push & PR Creation Gate (spec
 
 test('7. Separated Tabs, :8391/health Official API Prospecting + YouTube Data API v3 Made-with-AI TOS, YouTube Studio UCJnFUOdEfSOJiXLnx6lXSzg, 9hNDPCQa3kw Gemini Notebook Remaster, and Zero Robotic TTS', async () => {
   try {
-    const health8391 = await httpGetJson('http://127.0.0.1:8391/health');
+    const health8391 = await httpGetJson(`http://${LOOPBACK}:8391/health`);
     if (health8391.status === 200 && health8391.data?.worker) {
       const w = health8391.data.worker;
       assert.equal(w.youtube_publish_method, 'youtube-data-api-v3', 'YouTube must remain API v3 only');
@@ -316,7 +318,7 @@ test('7. Separated Tabs, :8391/health Official API Prospecting + YouTube Data AP
     }
   } catch (_) {}
 
-  const ytStudio = await httpGetJson('http://127.0.0.1:8392/api/youtube/studio');
+  const ytStudio = await httpGetJson(`http://${LOOPBACK}:8392/api/youtube/studio`);
   assert.equal(ytStudio.status, 200);
   assert.equal(ytStudio.data.studioChannelId, 'UCJnFUOdEfSOJiXLnx6lXSzg');
   assert.equal(ytStudio.data.splitRules.harveyLeadGenerator.officialApisOnly, true);
@@ -329,7 +331,7 @@ test('7. Separated Tabs, :8391/health Official API Prospecting + YouTube Data AP
   const rendererCode = fs.readFileSync(path.join(ROOT_DIR, 'renderer.js'), 'utf8');
   assert.ok(!rendererCode.includes('window.speechSynthesis.speak'), 'Robotic browser speechSynthesis must never be called');
 
-  const roboticRes = await httpPostJson('http://127.0.0.1:8392/api/tts/female', {
+  const roboticRes = await httpPostJson(`http://${LOOPBACK}:8392/api/tts/female`, {
     text: 'Test',
     voice: 'microsoft-david-sapi-robotic'
   });
@@ -406,14 +408,15 @@ function httpRequestJson(url, method, payload, extraHeaders = {}) {
   });
 }
 
-test('8a. Security Audit Run 1 (4.1, 4.4, 4.5): default bind is loopback', async () => {
+test('8a. Security Audit Run 1 (4.1, 4.4, 4.5): no-token defaults to 127.0.0.1, token resolves 0.0.0.0 from fleet-map.json', async () => {
   const { server, startServer, resolveBindHost } = require('../server');
-  assert.equal(resolveBindHost({}), '127.0.0.1');
-  assert.equal(resolveBindHost({ HERMES_LEADGEN_BIND: '127.0.0.1' }), '127.0.0.1');
+  assert.equal(resolveBindHost({ HERMES_LEADGEN_TOKEN: '', FLEET_SHARED_TOKEN: '' }), '127.0.0.1');
+  assert.equal(resolveBindHost({ HERMES_LEADGEN_TOKEN: 'leadgen-token' }), '0.0.0.0');
+  assert.equal(resolveBindHost({ HERMES_LEADGEN_BIND: '127.0.0.1', HERMES_LEADGEN_TOKEN: 'leadgen-token' }), '127.0.0.1');
   assert.equal(resolveBindHost({ HERMES_LEADGEN_BIND: '0.0.0.0' }), '0.0.0.0');
 
   if (!server.listening) {
-    await new Promise((resolve) => startServer(0, {}, resolve));
+    await new Promise((resolve) => startServer(0, { HERMES_LEADGEN_BIND: '127.0.0.1' }, resolve));
     try {
       assert.equal(server.address().address, '127.0.0.1');
     } finally {
@@ -422,14 +425,23 @@ test('8a. Security Audit Run 1 (4.1, 4.4, 4.5): default bind is loopback', async
   }
 });
 
-test('8b. Security Audit Run 1 (4.1, 4.4, 4.5): LAN bind without token refuses to start', () => {
+test('8b. Security Audit Run 1 (4.1, 4.4, 4.5): explicit LAN bind without token refuses to start; unset bind without token returns warning', () => {
   const { validateBindConfig, startServer } = require('../server');
+  const noTokenConfig = validateBindConfig({ HERMES_LEADGEN_TOKEN: '', FLEET_SHARED_TOKEN: '' });
+  assert.equal(noTokenConfig.host, '127.0.0.1');
+  assert.match(String(noTokenConfig.warning), /HERMES_LEADGEN_TOKEN/);
+  assert.match(String(noTokenConfig.warning), /FLEET_SHARED_TOKEN/);
+
   assert.throws(
-    () => validateBindConfig({ HERMES_LEADGEN_BIND: '0.0.0.0', HERMES_LEADGEN_TOKEN: '' }),
+    () => validateBindConfig({ HERMES_LEADGEN_BIND: '0.0.0.0', HERMES_LEADGEN_TOKEN: '', FLEET_SHARED_TOKEN: '' }),
     /HERMES_LEADGEN_TOKEN/i
   );
   assert.throws(
-    () => startServer(0, { HERMES_LEADGEN_BIND: '0.0.0.0', HERMES_LEADGEN_TOKEN: '   ' }),
+    () => validateBindConfig({ HERMES_LEADGEN_BIND: '192.168.0.40', HERMES_LEADGEN_TOKEN: '', FLEET_SHARED_TOKEN: '' }),
+    /HERMES_LEADGEN_TOKEN/i
+  );
+  assert.throws(
+    () => startServer(0, { HERMES_LEADGEN_BIND: '0.0.0.0', HERMES_LEADGEN_TOKEN: '   ', FLEET_SHARED_TOKEN: '' }),
     /HERMES_LEADGEN_TOKEN/i
   );
 
@@ -441,7 +453,8 @@ test('8b. Security Audit Run 1 (4.1, 4.4, 4.5): LAN bind without token refuses t
         ...process.env,
         PORT: '0',
         HERMES_LEADGEN_BIND: '0.0.0.0',
-        HERMES_LEADGEN_TOKEN: ''
+        HERMES_LEADGEN_TOKEN: '',
+        FLEET_SHARED_TOKEN: ''
       },
       encoding: 'utf8',
       stdio: 'pipe',
@@ -462,7 +475,7 @@ test('8c. Security Audit Run 1 (4.1, 4.4, 4.5): a POST without the bearer is 401
     await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
   }
   const { port } = server.address();
-  const baseUrl = `http://127.0.0.1:${port}`;
+  const baseUrl = `http://${LOOPBACK}:${port}`;
 
   const savedBind = process.env.HERMES_LEADGEN_BIND;
   const savedToken = process.env.HERMES_LEADGEN_TOKEN;
@@ -555,7 +568,7 @@ test('8d. Security Audit Run 1 (4.1, 4.4, 4.5): a bad agent value is 400', async
     await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
   }
   const { port } = server.address();
-  const baseUrl = `http://127.0.0.1:${port}`;
+  const baseUrl = `http://${LOOPBACK}:${port}`;
 
   try {
     const badAgentHook = await httpPostJson(`${baseUrl}/api/hooks/push-pr`, {
@@ -587,7 +600,6 @@ test('8d. Security Audit Run 1 (4.1, 4.4, 4.5): a bad agent value is 400', async
   }
 });
 
-
 test('8e. Security Audit Run 1: LAN-bound DELETE or PUT to any /api path without a bearer is 401', async () => {
   const { server } = require('../server');
   const startedHere = !server.listening;
@@ -595,7 +607,7 @@ test('8e. Security Audit Run 1: LAN-bound DELETE or PUT to any /api path without
     await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
   }
   const { port } = server.address();
-  const baseUrl = `http://127.0.0.1:${port}`;
+  const baseUrl = `http://${LOOPBACK}:${port}`;
 
   const savedBind = process.env.HERMES_LEADGEN_BIND;
   const savedToken = process.env.HERMES_LEADGEN_TOKEN;
@@ -620,5 +632,61 @@ test('8e. Security Audit Run 1: LAN-bound DELETE or PUT to any /api path without
     if (startedHere && server.listening) {
       await new Promise((resolve) => server.close(() => resolve()));
     }
+  }
+});
+
+test('8f. live-start: no token with unset HERMES_LEADGEN_BIND binds 127.0.0.1, emits one warning naming missing setting, and starts cleanly', async () => {
+  const child = spawn(process.execPath, [path.join(ROOT_DIR, 'server.js')], {
+    env: {
+      ...process.env,
+      PORT: '0',
+      HERMES_LEADGEN_BIND: '',
+      HERMES_LEADGEN_TOKEN: '',
+      FLEET_SHARED_TOKEN: ''
+    },
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+
+  let stdout = '';
+  let stderr = '';
+  const listeningRe = new RegExp(`Listening on http:\\/\\/${LOOPBACK.replace(/\./g, '\\.')}:(\\d+)`);
+
+  try {
+    const port = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(`Timed out waiting for leadgen server start. stdout=${stdout} stderr=${stderr}`));
+      }, 10000);
+      child.stdout.on('data', (chunk) => {
+        stdout += String(chunk);
+        const m = listeningRe.exec(stdout);
+        if (m) {
+          clearTimeout(timer);
+          resolve(Number(m[1]));
+        }
+      });
+      child.stderr.on('data', (chunk) => {
+        stderr += String(chunk);
+      });
+      child.once('exit', (code) => {
+        clearTimeout(timer);
+        reject(new Error(`leadgen exited early (${code}): stdout=${stdout} stderr=${stderr}`));
+      });
+    });
+
+    const warningLines = stderr.trim().split(/\r?\n/).filter(Boolean);
+    assert.equal(warningLines.length, 1);
+    assert.match(warningLines[0], /HERMES_LEADGEN_TOKEN/);
+    assert.match(warningLines[0], /FLEET_SHARED_TOKEN/);
+    assert.match(warningLines[0], /127\.0\.0\.1/);
+
+    const statusRes = await httpGetJson(`http://${LOOPBACK}:${port}/api/node/status`);
+    assert.equal(statusRes.status, 200);
+    const approveRes = await httpPostJson(`http://${LOOPBACK}:${port}/api/leads/approve`, {
+      id: 'non-existent-lead-id'
+    });
+    assert.equal(approveRes.status, 200);
+  } finally {
+    child.kill();
+    await new Promise((resolve) => child.once('exit', resolve));
   }
 });

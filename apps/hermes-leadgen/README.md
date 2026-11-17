@@ -16,6 +16,6 @@ npm start
 ## Constraints
 - No Paperclip. No second Mission Control. No :3130 binding.
 - T5500 (`$env:T5500_HOST`) owns Mission Control (read-only at `:3130/live`).
-- OmniRoute at `http://$T5500_HOST:20128/v1` (called, not relocated).
-- Worker health at `http://127.0.0.1:8391/health`.
+- OmniRoute at `http://192.168.0.15:20128/v1` (called, not relocated).
+- Worker health at `http://192.168.0.40:8391/health`.
 - 4-hour strike interval between publishes. Hard ceiling 59s on shorts.

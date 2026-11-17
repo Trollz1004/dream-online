@@ -1,16 +1,85 @@
+import { timingSafeEqual } from "node:crypto";
 import http from "node:http";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { compactMemory, handleDialogue, handleWorldEvent, readAiFailures, readMemory } from "./npcEngine.js";
+import { getAllowedNodeHosts, getServiceBindHost, getServicePort } from "../../../../ops/fleet/fleet-map.mjs";
 
-const HOST = process.env.DREAM_LIVE_NPC_HOST || "127.0.0.1";
-const PORT = Number(process.env.DREAM_LIVE_NPC_PORT || 9127);
+const DEFAULT_PORT = getServicePort("live-npc-lab");
 const CONTRACTS_DIR = path.resolve(process.cwd(), "data");
 const SAMPLES_DIR = path.join(CONTRACTS_DIR, "samples");
 const NPC_PROFILES_FILE = "npc-profiles.json";
 const ZONES_BY_ID = new Map([
   ["first-gate", "first-zone.seed.json"]
 ]);
+
+export function resolveLiveNpcTokens(env = process.env) {
+  const candidates = [
+    String(env.DREAM_LIVE_NPC_TOKEN || "").trim(),
+    String(env.FLEET_SHARED_TOKEN || "").trim()
+  ].filter(Boolean);
+  return Array.from(new Set(candidates));
+}
+
+export function resolveLiveNpcBindHost(env = process.env) {
+  const explicit = String(env.DREAM_LIVE_NPC_HOST || "").trim();
+  const allowedLanHosts = getAllowedNodeHosts();
+  if (explicit === "127.0.0.1" || explicit === "0.0.0.0" || allowedLanHosts.includes(explicit)) {
+    return explicit;
+  }
+  if (resolveLiveNpcTokens(env).length === 0) {
+    return "127.0.0.1";
+  }
+  return getServiceBindHost("live-npc-lab");
+}
+
+export function resolveLiveNpcPort(env = process.env) {
+  const raw = String(env.DREAM_LIVE_NPC_PORT || env.PORT || "").trim();
+  if (raw === "0") return 0;
+  return getServicePort("live-npc-lab", raw);
+}
+
+export function validateLiveNpcBindConfig(env = process.env) {
+  const host = resolveLiveNpcBindHost(env);
+  const tokens = resolveLiveNpcTokens(env);
+  const token = tokens[0] || "";
+  if (host !== "127.0.0.1" && !token) {
+    throw new Error(
+      `Refusing to start live-npc-lab on ${host} without DREAM_LIVE_NPC_TOKEN or FLEET_SHARED_TOKEN: set a non-empty DREAM_LIVE_NPC_TOKEN / FLEET_SHARED_TOKEN or bind to 127.0.0.1.`
+    );
+  }
+  const explicit = String(env.DREAM_LIVE_NPC_HOST || "").trim();
+  const configuredPort = getServicePort("live-npc-lab", env.DREAM_LIVE_NPC_PORT || env.PORT);
+  const warning =
+    !token && explicit !== "127.0.0.1"
+      ? `[live-npc-lab] WARNING: DREAM_LIVE_NPC_TOKEN or FLEET_SHARED_TOKEN is not set; binding 127.0.0.1 on port ${configuredPort} (this machine only).`
+      : null;
+  return { host, token, warning };
+}
+
+function matchesAnyTokenTimingSafe(providedToken, expectedTokens) {
+  if (!providedToken || !Array.isArray(expectedTokens) || expectedTokens.length === 0) {
+    return false;
+  }
+  const providedBuf = Buffer.from(String(providedToken), "utf8");
+  let matched = false;
+  for (const expected of expectedTokens) {
+    const expectedBuf = Buffer.from(String(expected), "utf8");
+    if (expectedBuf.length === providedBuf.length && timingSafeEqual(expectedBuf, providedBuf)) {
+      matched = true;
+    }
+  }
+  return matched;
+}
+
+function hasValidLiveNpcAuth(req, expectedTokens) {
+  const authHeader = String(req.headers.authorization || "").trim();
+  const match = /^Bearer\s+(\S+)$/i.exec(authHeader);
+  const fleetHeader = String(req.headers["x-fleet-token"] || "").trim();
+  const providedToken = match ? match[1] : fleetHeader;
+  return matchesAnyTokenTimingSafe(providedToken, expectedTokens);
+}
 
 function sendJson(res, status, body) {
   const payload = JSON.stringify(body, null, 2);
@@ -60,8 +129,22 @@ async function readSampleIndex() {
   return readSampleJson("sample-index.json");
 }
 
-async function router(req, res) {
-  const url = new URL(req.url || "/", `http://${req.headers.host || `${HOST}:${PORT}`}`);
+async function router(req, res, options = {}) {
+  const activeEnv = options.env || process.env;
+  const bindHost = options.bindHost || resolveLiveNpcBindHost(activeEnv);
+  const url = new URL(req.url || "/", `http://${req.headers.host || `${bindHost}:${DEFAULT_PORT}`}`);
+
+  if (req.method === "POST" && url.pathname.startsWith("/npc/") && bindHost !== "127.0.0.1") {
+    const expectedTokens = resolveLiveNpcTokens(activeEnv);
+    if (!hasValidLiveNpcAuth(req, expectedTokens)) {
+      sendJson(res, 401, {
+        ok: false,
+        error: "unauthorized",
+        message: "Valid Authorization Bearer token or X-Fleet-Token required when bound beyond loopback."
+      });
+      return;
+    }
+  }
 
   try {
     if (req.method === "GET" && url.pathname === "/health") {
@@ -216,10 +299,34 @@ async function router(req, res) {
   }
 }
 
-const server = http.createServer((req, res) => {
-  router(req, res);
-});
+export function createLiveNpcServer(options = {}) {
+  return http.createServer((req, res) => {
+    router(req, res, options);
+  });
+}
 
-server.listen(PORT, HOST, () => {
-  console.log(`dream-live-npc-lab listening on http://${HOST}:${PORT}`);
-});
+export function startLiveNpcServer(opts = {}) {
+  const env = opts.env || process.env;
+  const { host, warning } = validateLiveNpcBindConfig(env);
+  if (warning) {
+    console.warn(warning);
+  }
+  const port = opts.port !== undefined ? opts.port : resolveLiveNpcPort(env);
+  const server = createLiveNpcServer({ env, bindHost: host });
+  return server.listen(port, host, () => {
+    const addr = server.address();
+    const actualPort = addr && typeof addr === "object" ? addr.port : port;
+    console.log(`dream-live-npc-lab listening on http://${host}:${actualPort}`);
+    if (typeof opts.onListening === "function") opts.onListening();
+  });
+}
+
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMain) {
+  try {
+    startLiveNpcServer();
+  } catch (error) {
+    console.error(`[live-npc-lab] ${error instanceof Error ? error.message : String(error)}`);
+    process.exit(1);
+  }
+}

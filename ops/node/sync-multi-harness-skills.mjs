@@ -145,7 +145,7 @@ Follow the \`tdd\` skill: RED (write test) -> GREEN (implement & pass 100% of su
 
 ## Protocol
 - Store every architectural and session checkpoint with \`vikingUri\` (\`viking://dream/<scope>/<slug>\`), \`l0Abstract\` (1-sentence summary), \`l1Overview\` (metadata & verification), and \`l2Markdown\` (full Obsidian Markdown with \`[[Wikilinks]]\`).
-- Backed by \`POST http://127.0.0.1:9180/api/memory/store\` and Shared \`ai-memory\` (\`:49374\`).
+- Backed by \`POST http://192.168.0.40:9180/api/memory/store\` and Shared \`ai-memory\` (\`:49374\`).
 `
   },
   {
@@ -154,7 +154,7 @@ Follow the \`tdd\` skill: RED (write test) -> GREEN (implement & pass 100% of su
     body: `# Supabase pgvector & SQL Backup Skill (2026-11-01)
 
 ## Protocol
-- Mirrors Obsidian Vault session entries and \`agent-workflow-graphy.json\` checkpoints into the \`supabase-pgvector\` tier via \`http://127.0.0.1:9180/api/memory/store\`.
+- Mirrors Obsidian Vault session entries and \`agent-workflow-graphy.json\` checkpoints into the \`supabase-pgvector\` tier via \`http://192.168.0.40:9180/api/memory/store\`.
 - If Supabase experiences rate-limiting, automatic zero-loss failover promotes Obsidian + Viking (\`/api/memory/failover-test\`).
 `
   },
@@ -188,9 +188,9 @@ const ROOTS = [
   'C:/DREAM/dream-online/.claude/skills',
   'C:/DREAM/dream-online/agent/skills',
   'C:/DREAM/dream-online/ops/node/skills',
-  path.join(process.env.USERPROFILE || 'C:/Users/joshl', '.gemini/skills'),
-  path.join(process.env.USERPROFILE || 'C:/Users/joshl', '.agents/skills'),
-  path.join(process.env.USERPROFILE || 'C:/Users/joshl', '.claude/skills')
+  path.join(process.env.USERPROFILE || '%USERPROFILE%', '.gemini/skills'),
+  path.join(process.env.USERPROFILE || '%USERPROFILE%', '.agents/skills'),
+  path.join(process.env.USERPROFILE || '%USERPROFILE%', '.claude/skills')
 ];
 
 function writeFileIfChanged(filePath, newContent) {

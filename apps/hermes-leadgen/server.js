@@ -6,6 +6,12 @@ const path = require('path');
 const net = require('net');
 const crypto = require('crypto');
 const { execFile, spawn } = require('child_process');
+const {
+  getNodeHost,
+  getAllowedNodeHosts,
+  getServiceBindHost,
+  getServicePort
+} = require('../../ops/fleet/fleet-map.cjs');
 
 const VALID_IDENTIFIER_REGEX = /^[a-z0-9_-]{1,32}$/i;
 const STATE_CHANGING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -14,26 +20,53 @@ function isValidAgentOrProfile(value) {
   return typeof value === 'string' && VALID_IDENTIFIER_REGEX.test(value);
 }
 
+function resolveLeadgenTokens(env = process.env) {
+  const candidates = [
+    String(env.HERMES_LEADGEN_TOKEN || '').trim(),
+    String(env.FLEET_SHARED_TOKEN || '').trim()
+  ].filter(Boolean);
+  return Array.from(new Set(candidates));
+}
+
 function resolveBindHost(env = process.env) {
-  return String(env.HERMES_LEADGEN_BIND || '').trim() === '0.0.0.0' ? '0.0.0.0' : '127.0.0.1';
+  const explicit = String(env.HERMES_LEADGEN_BIND || '').trim();
+  const alienwareHost = getNodeHost('alienware');
+  if (explicit === '127.0.0.1' || explicit === '0.0.0.0' || explicit === alienwareHost) {
+    return explicit;
+  }
+  if (resolveLeadgenTokens(env).length === 0) {
+    return '127.0.0.1';
+  }
+  return getServiceBindHost('hermes-leadgen');
 }
 
 function validateBindConfig(env = process.env) {
   const host = resolveBindHost(env);
-  const token = String(env.HERMES_LEADGEN_TOKEN || '').trim();
-  if (host === '0.0.0.0' && !token) {
+  const tokens = resolveLeadgenTokens(env);
+  const token = tokens[0] || '';
+  if (host !== '127.0.0.1' && !token) {
     throw new Error(
-      'Refusing to start HermesLeadGen on 0.0.0.0 without HERMES_LEADGEN_TOKEN: set a non-empty HERMES_LEADGEN_TOKEN or bind to 127.0.0.1.'
+      `Refusing to start HermesLeadGen on ${host} without HERMES_LEADGEN_TOKEN or FLEET_SHARED_TOKEN: set a non-empty HERMES_LEADGEN_TOKEN / FLEET_SHARED_TOKEN or bind to 127.0.0.1.`
     );
   }
-  return { host, token };
+  const explicit = String(env.HERMES_LEADGEN_BIND || '').trim();
+  const port = getServicePort('hermes-leadgen', env.PORT);
+  const warning =
+    !token && explicit !== '127.0.0.1'
+      ? `[hermes-leadgen] WARNING: HERMES_LEADGEN_TOKEN or FLEET_SHARED_TOKEN is not set; binding 127.0.0.1 on port ${port} (this machine only).`
+      : null;
+  return { host, token, warning };
 }
 
-const PORT = Number(process.env.PORT || 8392);
+const PORT =
+  String(process.env.PORT || '').trim() === '0'
+    ? 0
+    : getServicePort('hermes-leadgen', process.env.PORT);
 const ROOT = __dirname;
 const USER_HOME = process.env.USERPROFILE || os.homedir();
-const SABRETOOTH_HOST = process.env.SABRETOOTH_HOST || '127.0.0.1';
-const T5500_HOST = process.env.T5500_HOST || 'localhost';
+const ALIENWARE_HOST = process.env.ALIENWARE_HOST || getNodeHost('alienware');
+const SABRETOOTH_HOST = process.env.SABRETOOTH_HOST || ALIENWARE_HOST;
+const T5500_HOST = process.env.T5500_HOST || getNodeHost('t5500');
 const REPO_ROOT_FALLBACK = fs.existsSync(path.join(ROOT, '..', 'AGENTS.md'))
   ? path.resolve(ROOT, '..')
   : path.resolve(ROOT, '..', '..');
@@ -79,7 +112,7 @@ const terminalLogs = [
     profile: 'default',
     cmd: 'agy --dangerously-skip-permissions (Sabretooth :8392 OPSis Orchestrator Ready)',
     status: 'ok',
-    output: `Sabretooth Command Studio online at http://${SABRETOOTH_HOST}:8392/ | Default Hermes OPSis Session: http://127.0.0.1:9119/chat?profile=default&resume=local-profile | Free Claude Code: http://127.0.0.1:8082/admin`
+    output: `Sabretooth Command Studio online at http://${SABRETOOTH_HOST}:8392/ | Default Hermes OPSis Session: http://${ALIENWARE_HOST}:9119/chat?profile=default&resume=local-profile | Free Claude Code: http://${ALIENWARE_HOST}:8082/admin`
   },
   {
     id: 'boot-2',
@@ -400,7 +433,7 @@ const PROFILE_DEFINITIONS = [
     name: 'Default Research & Master Orchestrator (OPSis)',
     role: 'Master Research & Multi-Profile Orchestrator',
     hermesProfile: 'default',
-    hermesUrl: 'http://127.0.0.1:9119/chat?profile=default&resume=local-profile',
+    hermesUrl: `http://${ALIENWARE_HOST}:9119/chat?profile=default&resume=local-profile`,
     proxyUrl: '/proxy/hermes/chat?profile=default&resume=local-profile',
     cli: 'agy --dangerously-skip-permissions',
     auth: 'agy (Google AI Ultra Gemini 4 Argon High Reasoning)',
@@ -426,7 +459,7 @@ const PROFILE_DEFINITIONS = [
     name: 'Harvey — 3-Type Lead Gen & Outbound Specialist',
     role: 'Grok X Prospecting + 3-Type Lead Conversion',
     hermesProfile: 'harvey',
-    hermesUrl: 'http://127.0.0.1:9119/chat?profile=harvey',
+    hermesUrl: `http://${ALIENWARE_HOST}:9119/chat?profile=harvey`,
     proxyUrl: '/proxy/hermes/chat?profile=harvey',
     cli: 'grok + agy --dangerously-skip-permissions',
     auth: 'grok auth (X/Social) + agy auth',
@@ -453,7 +486,7 @@ const PROFILE_DEFINITIONS = [
     name: 'YouTube Shorts (<= 59.0s) & Podcast Strategist',
     role: 'Multi-Channel YouTube Automation & Natural Female Voices',
     hermesProfile: 'youtube',
-    hermesUrl: 'http://127.0.0.1:9119/chat?profile=youtube',
+    hermesUrl: `http://${ALIENWARE_HOST}:9119/chat?profile=youtube`,
     proxyUrl: '/proxy/hermes/chat?profile=youtube',
     cli: 'agy --dangerously-skip-permissions',
     auth: 'agy auth + youtube-data-api-v3',
@@ -478,7 +511,7 @@ const PROFILE_DEFINITIONS = [
     name: 'Kanban & Circular Webhook Task Manager',
     role: 'Task Breakdown, TDD Gate & GitHub Judge PR Routing',
     hermesProfile: 'kanban',
-    hermesUrl: 'http://127.0.0.1:9119/chat?profile=kanban',
+    hermesUrl: `http://${ALIENWARE_HOST}:9119/chat?profile=kanban`,
     proxyUrl: '/proxy/hermes/chat?profile=kanban',
     cli: 'agy --dangerously-skip-permissions',
     auth: 'agy auth',
@@ -497,7 +530,7 @@ const PROFILE_DEFINITIONS = [
     name: 'Editor — CapCut REA Clean-Room & Media Validator',
     role: '6-Stage Timeline Assembly, Thumbnails & Screenshot Proof',
     hermesProfile: 'editor',
-    hermesUrl: 'http://127.0.0.1:9119/chat?profile=editor',
+    hermesUrl: `http://${ALIENWARE_HOST}:9119/chat?profile=editor`,
     proxyUrl: '/proxy/hermes/chat?profile=editor',
     cli: 'agy --dangerously-skip-permissions + rea-agents mcp',
     auth: 'agy auth + Sabretooth GPU :8391',
@@ -515,7 +548,7 @@ const PROFILE_DEFINITIONS = [
     name: 'Free Claude Code (:8082/admin) Wrapper & MCP Agent',
     role: 'Claude Code Wrapper Chat + Hermes Profile Bridge',
     hermesProfile: 'fcc',
-    hermesUrl: 'http://127.0.0.1:8082/admin',
+    hermesUrl: `http://${ALIENWARE_HOST}:8082/admin`,
     proxyUrl: '/proxy/fcc/admin',
     cli: 'fcc-claude / fcc-agy / agy --dangerously-skip-permissions',
     auth: 'Free Claude Code :8082 + OmniRoute :20128',
@@ -534,7 +567,7 @@ const PROFILE_DEFINITIONS = [
     name: 'Notes, Dual Graphy & 6-Layer Obsidian Custodian',
     role: 'Obsidian Vault Sync + T5500 ai-memory + Dual Graphy',
     hermesProfile: 'notes',
-    hermesUrl: 'http://127.0.0.1:9119/chat?profile=notes',
+    hermesUrl: `http://${ALIENWARE_HOST}:9119/chat?profile=notes`,
     proxyUrl: '/proxy/hermes/chat?profile=notes',
     cli: 'agy --dangerously-skip-permissions',
     auth: 'Obsidian :27123 + T5500 ai-memory :49374',
@@ -656,12 +689,12 @@ function checkTcpPort(host, port, timeoutMs = 1500) {
 
 async function getSabretoothNodeStatus() {
   const definitions = [
-    { id: 'gui-8392', name: 'Sabretooth GUI Studio (:8392)', host: '127.0.0.1', port: 8392, url: `http://${SABRETOOTH_HOST}:8392/` },
-    { id: 'hermes-9119', name: 'Hermes OPSis Orchestrator (:9119)', host: '127.0.0.1', port: 9119, url: 'http://127.0.0.1:9119/chat?profile=default&resume=local-profile' },
-    { id: 'fcc-8082', name: 'Free Claude Code Admin (:8082/admin)', host: '127.0.0.1', port: 8082, url: `http://${SABRETOOTH_HOST}:8392/proxy/fcc/admin` },
-    { id: 'gpu-8391', name: 'Sabretooth GPU Media & TTS Worker (:8391)', host: '127.0.0.1', port: 8391, url: 'http://127.0.0.1:8391/health' },
-    { id: 'ollama-11434', name: 'Ollama 16GB AMD GPU Offload (:11434)', host: '127.0.0.1', port: 11434, url: 'http://127.0.0.1:11434/api/tags' },
-    { id: 'obsidian-27123', name: 'Obsidian Local REST API & Sync (:27123)', host: '127.0.0.1', port: 27123, url: 'http://127.0.0.1:27123/' },
+    { id: 'gui-8392', name: 'Sabretooth GUI Studio (:8392)', host: ALIENWARE_HOST, port: 8392, url: `http://${SABRETOOTH_HOST}:8392/` },
+    { id: 'hermes-9119', name: 'Hermes OPSis Orchestrator (:9119)', host: ALIENWARE_HOST, port: 9119, url: `http://${ALIENWARE_HOST}:9119/chat?profile=default&resume=local-profile` },
+    { id: 'fcc-8082', name: 'Free Claude Code Admin (:8082/admin)', host: ALIENWARE_HOST, port: 8082, url: `http://${SABRETOOTH_HOST}:8392/proxy/fcc/admin` },
+    { id: 'gpu-8391', name: 'Sabretooth GPU Media & TTS Worker (:8391)', host: ALIENWARE_HOST, port: 8391, url: `http://${ALIENWARE_HOST}:8391/health` },
+    { id: 'ollama-11434', name: 'Ollama 16GB AMD GPU Offload (:11434)', host: ALIENWARE_HOST, port: 11434, url: `http://${ALIENWARE_HOST}:11434/api/tags` },
+    { id: 'obsidian-27123', name: 'Obsidian Local REST API & Sync (:27123)', host: '127.0.0.1', port: 27123, url: 'obsidian://vault/27123' },
     { id: 't5500-memory-49374', name: 'T5500 Shared ai-memory MCP (:49374)', host: T5500_HOST, port: 49374, url: `http://${T5500_HOST}:49374/health` },
     { id: 't5500-omniroute-20128', name: 'T5500 OmniRoute AI Router (:20128)', host: T5500_HOST, port: 20128, url: `http://${T5500_HOST}:20128/v1/models` }
   ];
@@ -814,7 +847,7 @@ function syncObsidianAndMemory({ agent = 'gemini', useCase = 'Sabretooth :8392 S
     '',
     `## ${stamp} | node: Sabretooth | agent: ${agent} | use case: ${useCase}`,
     `- **Summary**: ${summary || 'Synchronized Sabretooth :8392 GUI, OPSis Default Orchestrator (:9119), Free Claude Code (:8082/admin), Dual Graphies, and Harvey 3-Type Lead Gen.'}`,
-    `- **Proof / Validation**: ${proof || `http://${SABRETOOTH_HOST}:8392/ + http://127.0.0.1:9119/chat?profile=default&resume=local-profile + http://127.0.0.1:8082/admin`}`,
+    `- **Proof / Validation**: ${proof || `http://${SABRETOOTH_HOST}:8392/ + http://${ALIENWARE_HOST}:9119/chat?profile=default&resume=local-profile + http://${ALIENWARE_HOST}:8082/admin`}`,
     `- **CLI Enforced**: \`agy --dangerously-skip-permissions\` (never \`gemini\` CLI)`,
     `- **Memory Fallbacks Synced**: Obsidian Vault (\`Sabretooth/*-to-*.md\`) -> T5500 \`ai-memory\` (\`http://${T5500_HOST}:49374\`) -> Graphy -> OpenViking -> Supabase -> Supermemory`,
     ''
@@ -835,13 +868,13 @@ function syncObsidianAndMemory({ agent = 'gemini', useCase = 'Sabretooth :8392 S
 // ============================================================================
 function proxyHttpRequest(req, res, targetPort, prefixToStrip) {
   const targetPath = req.url.slice(prefixToStrip.length) || '/';
-  const headers = { ...req.headers, host: `127.0.0.1:${targetPort}` };
+  const headers = { ...req.headers, host: `${ALIENWARE_HOST}:${targetPort}` };
   delete headers['x-forwarded-for'];
   delete headers['x-real-ip'];
 
   const proxyReq = http.request(
     {
-      hostname: '127.0.0.1',
+      hostname: ALIENWARE_HOST,
       port: targetPort,
       path: targetPath,
       method: req.method,
@@ -856,7 +889,7 @@ function proxyHttpRequest(req, res, targetPort, prefixToStrip) {
 
   proxyReq.on('error', (err) => {
     res.writeHead(502, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: false, error: `Upstream 127.0.0.1:${targetPort} unreachable: ${err.message}` }));
+    res.end(JSON.stringify({ ok: false, error: `Upstream ${ALIENWARE_HOST}:${targetPort} unreachable: ${err.message}` }));
   });
 
   req.pipe(proxyReq);
@@ -907,7 +940,9 @@ function sendJson(res, status, payload) {
 }
 
 function buildAllowedAddresses() {
-  const addrs = new Set(['127.0.0.1', 'localhost']);
+  const addrs = new Set(['127.0.0.1', 'localhost', ...getAllowedNodeHosts()]);
+  if (ALIENWARE_HOST) addrs.add(String(ALIENWARE_HOST).toLowerCase());
+  if (T5500_HOST) addrs.add(String(T5500_HOST).toLowerCase());
   if (SABRETOOTH_HOST) addrs.add(String(SABRETOOTH_HOST).toLowerCase());
   const nets = os.networkInterfaces();
   for (const list of Object.values(nets)) {
@@ -953,29 +988,47 @@ function isAllowedOrigin(req) {
 // ============================================================================
 // HTTP SERVER & API ROUTES
 // ============================================================================
+function matchesAnyTokenTimingSafe(providedToken, expectedTokens) {
+  if (!providedToken || !Array.isArray(expectedTokens) || expectedTokens.length === 0) {
+    return false;
+  }
+  const providedBuf = Buffer.from(String(providedToken), 'utf8');
+  let matched = false;
+  for (const expected of expectedTokens) {
+    const expectedBuf = Buffer.from(String(expected), 'utf8');
+    if (
+      expectedBuf.length === providedBuf.length &&
+      crypto.timingSafeEqual(expectedBuf, providedBuf)
+    ) {
+      matched = true;
+    }
+  }
+  return matched;
+}
+
 function requireApiAuth(req, res, next) {
-  if (resolveBindHost(process.env) !== '0.0.0.0') {
+  if (resolveBindHost(process.env) === '127.0.0.1') {
     if (typeof next === 'function') next();
     return true;
   }
-  const expectedToken = String(process.env.HERMES_LEADGEN_TOKEN || '').trim();
-  if (!expectedToken) {
+  const expectedTokens = resolveLeadgenTokens(process.env);
+  if (expectedTokens.length === 0) {
     sendJson(res, 401, {
       ok: false,
-      error: 'Unauthorized: HERMES_LEADGEN_TOKEN is required when HERMES_LEADGEN_BIND=0.0.0.0'
+      error:
+        'Unauthorized: HERMES_LEADGEN_TOKEN or FLEET_SHARED_TOKEN is required when HERMES_LEADGEN_BIND=0.0.0.0'
     });
     return false;
   }
   const authHeader = String((req && req.headers && req.headers.authorization) || '').trim();
   const match = /^Bearer\s+(\S+)$/i.exec(authHeader);
-  const providedToken = match ? match[1] : '';
-  const expectedBuf = Buffer.from(expectedToken, 'utf8');
-  const providedBuf = Buffer.from(providedToken, 'utf8');
-  const valid =
-    expectedBuf.length === providedBuf.length &&
-    crypto.timingSafeEqual(expectedBuf, providedBuf);
-  if (!valid) {
-    sendJson(res, 401, { ok: false, error: 'Unauthorized: valid Authorization Bearer token required' });
+  const fleetHeader = String((req && req.headers && req.headers['x-fleet-token']) || '').trim();
+  const providedToken = match ? match[1] : fleetHeader;
+  if (!matchesAnyTokenTimingSafe(providedToken, expectedTokens)) {
+    sendJson(res, 401, {
+      ok: false,
+      error: 'Unauthorized: valid Authorization Bearer token or X-Fleet-Token required'
+    });
     return false;
   }
   if (typeof next === 'function') next();
@@ -992,7 +1045,7 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 403, { ok: false, error: 'Forbidden origin' });
     }
 
-    const parsedUrl = new URL(req.url, `http://${req.headers.host || '127.0.0.1:8392'}`);
+    const parsedUrl = new URL(req.url, `http://${req.headers.host || `${ALIENWARE_HOST}:${PORT}`}`);
     const pathname = parsedUrl.pathname;
 
     if (
@@ -1000,7 +1053,10 @@ const server = http.createServer(async (req, res) => {
       pathname === '/proxy' ||
       pathname.startsWith('/proxy/') ||
       pathname === '/api/memory' ||
-      pathname.startsWith('/api/memory/')
+      pathname.startsWith('/api/memory/') ||
+      pathname === '/api/orchestrate' ||
+      pathname === '/api/fcc' ||
+      pathname.startsWith('/api/fcc/')
     ) {
       if (!requireApiAuth(req, res)) return;
     }
@@ -1056,7 +1112,7 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/profiles' && req.method === 'GET') {
       return sendJson(res, 200, {
         ok: true,
-        defaultSessionUrl: 'http://127.0.0.1:9119/chat?profile=default&resume=local-profile',
+        defaultSessionUrl: `http://${ALIENWARE_HOST}:9119/chat?profile=default&resume=local-profile`,
         cliCommand: 'agy --dangerously-skip-permissions',
         profiles: getProfilesWithSouls()
       });
@@ -1139,7 +1195,7 @@ const server = http.createServer(async (req, res) => {
 
       if (!aiReply) {
         aiReply = [
-          `**Outcome**: OPSis Default Orchestrator (\`http://127.0.0.1:9119/chat?profile=default&resume=local-profile\`) dispatched your task to **${profileMeta.name}** using \`${cliInvoked}\`.`,
+          `**Outcome**: OPSis Default Orchestrator (\`http://${ALIENWARE_HOST}:9119/chat?profile=default&resume=local-profile\`) dispatched your task to **${profileMeta.name}** using \`${cliInvoked}\`.`,
           `- **Active Skills**: ${profileMeta.mandatorySkills.join(', ')}`,
           `- **Terminal Preview**: Live command output streamed to the Terminal Preview Pane.`,
           `- **Circular Judge Loop**: Run \`/api/hooks/push-pr\` to push \`sabretooth/hermes-leadgen\` and open a verified GitHub PR for review (\`Gemini / Jules / Claude / Codex\`); merge goes through Josh or the signed-in Claude judge lane.`,
@@ -1383,7 +1439,7 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/youtube/studio' && req.method === 'GET') {
       let workerHealth = null;
       try {
-        const wRes = await fetch('http://127.0.0.1:8391/health', { signal: AbortSignal.timeout(2500) });
+        const wRes = await fetch(`http://${ALIENWARE_HOST}:8391/health`, { signal: AbortSignal.timeout(2500) });
         if (wRes.ok) workerHealth = await wRes.json();
       } catch (_) {}
 
@@ -1391,7 +1447,7 @@ const server = http.createServer(async (req, res) => {
         ok: true,
         studioChannelId: 'UCJnFUOdEfSOJiXLnx6lXSzg',
         studioUrl: 'https://studio.youtube.com/channel/UCJnFUOdEfSOJiXLnx6lXSzg',
-        workerHealthUrl: 'http://127.0.0.1:8391/health',
+        workerHealthUrl: `http://${ALIENWARE_HOST}:8391/health`,
         workerHealth: workerHealth?.worker || null,
         splitRules: {
           harveyLeadGenerator: {
@@ -1555,10 +1611,10 @@ const server = http.createServer(async (req, res) => {
       const bridgeProfile = String(body.profile || 'default');
       appendTerminalLog('fcc', `fcc-claude (:8082) <-> Hermes [${bridgeProfile}]`, `Prompt: "${message.slice(0, 120)}"`);
 
-      let fccStatus = await checkTcpPort('127.0.0.1', 8082);
+      let fccStatus = await checkTcpPort(ALIENWARE_HOST, 8082);
       const reply = [
         `**Free Claude Code (\`:8082/admin\`) MCP Wrapper -> Bridged to Hermes Profile \`${bridgeProfile}\`**:`,
-        `- **Port \`:8082\` Status**: ${fccStatus ? 'GREEN (http://127.0.0.1:8082/admin online)' : 'HEALING'}`,
+        `- **Port \`:8082\` Status**: ${fccStatus ? `GREEN (http://${ALIENWARE_HOST}:8082/admin online)` : 'HEALING'}`,
         `- **CLI Harness**: \`fcc-claude\` + \`agy --dangerously-skip-permissions\``,
         `- **Action Executed**: Processed "${message}" with clean-room verification and synced state to \`Sabretooth/claude-to-claude.md\` & \`Sabretooth/gemini-to-gemini.md\`.`
       ].join('\n');
@@ -1695,9 +1751,14 @@ const server = http.createServer(async (req, res) => {
 });
 
 function startServer(port = PORT, env = process.env, onListening) {
-  const { host } = validateBindConfig(env);
+  const { host, warning } = validateBindConfig(env);
+  if (warning) {
+    console.warn(warning);
+  }
   return server.listen(port, host, () => {
-    console.log(`[Sabretooth Command Studio] Listening on http://${host}:${port} (http://${SABRETOOTH_HOST}:${port}/)`);
+    const addr = server.address();
+    const actualPort = addr && typeof addr === 'object' ? addr.port : port;
+    console.log(`[Sabretooth Command Studio] Listening on http://${host}:${actualPort} (http://${SABRETOOTH_HOST}:${actualPort}/)`);
     if (typeof onListening === 'function') onListening();
   });
 }

@@ -10,7 +10,7 @@
 # - :9133  DreamOps Bridge (game/server/dreamops-bridge/src/server.js)
 # - :8765  Panda Router (scheduled task DreamPandaRouter; started through the task only)
 # - inbox runner (scheduled task DreamRouterInbox; started through the task only, never a second runner)
-# - :8000  Swarm Command page and API from backend (%USERPROFILE%\antigravity\tools\swarm-command), 127.0.0.1 only
+# - :8000  Swarm Command page and API from backend (%USERPROFILE%\antigravity\tools\swarm-command), 192.168.0.40:8000
 # - 13/13 multi-harness skills sync.
 # Repeat runs never open a window or a browser tab. Every start writes one line to %LOCALAPPDATA%\dream-boot\boot.log.
 # Tests: powershell -NoProfile -Command "Import-Module Pester -RequiredVersion 3.4.0; Invoke-Pester -Path ops/node/boot-alienware-services.Tests.ps1"
@@ -34,10 +34,10 @@ $vaultZipsDir = Join-Path $bootLogDir "vault-zips"
 
 # Panda Router and inbox runner are owned by their own scheduled tasks. This script only asks those tasks to start.
 $pandaRouterTask = "DreamPandaRouter"
-$pandaRouterHealthUrl = "http://127.0.0.1:8765/health"
+$pandaRouterHealthUrl = "http://192.168.0.40:8765/health"
 $inboxRunnerTask = "DreamRouterInbox"
 
-# Swarm Command: FastAPI backend (server.py binds 127.0.0.1 only, port 8000; serves its page and its API;
+# Swarm Command: FastAPI backend (server.py binds 0.0.0.0 on port 8000, reached at 192.168.0.40:8000; serves its page and its API;
 # no database needed, it falls back to in-memory).
 $swarmRoot = "$env:USERPROFILE\antigravity\tools\swarm-command"
 $swarmBackendDir = Join-Path $swarmRoot "backend"
@@ -105,7 +105,7 @@ function Invoke-PandaRouterCheck {
     $state = Get-DreamTaskState $pandaRouterTask
     if ($state -eq 'Missing' -or $state -eq 'Running' -or $state -eq 'Disabled') { return $false }
     Start-DreamTask $pandaRouterTask
-    Write-BootLog "Panda Router (task $pandaRouterTask, 127.0.0.1:8765)" "$pandaRouterHealthUrl did not answer 200; task state was $state"
+    Write-BootLog "Panda Router (task $pandaRouterTask, 192.168.0.40:8765)" "$pandaRouterHealthUrl did not answer 200; task state was $state"
     return $true
 }
 
@@ -134,9 +134,9 @@ function Invoke-SwarmCommandCheck {
     $py = Get-SwarmPython
     if (-not $py) { return $started }
     if (-not (Test-TcpPort "127.0.0.1" $swarmBackendPort) -and (Test-Path -LiteralPath (Join-Path $swarmBackendDir "server.py"))) {
-        # run_server() refuses any bind address but 127.0.0.1; the port is passed in so a stray PORT value cannot move it.
+        # run_server() binds 0.0.0.0 from ops/fleet/fleet-map.json; the port is passed in so a stray PORT value cannot move it.
         Start-DetachedService "`"$py`" -c `"import server; server.run_server(port=$swarmBackendPort)`"" $swarmBackendDir 0
-        Write-BootLog "Swarm Command backend (127.0.0.1:$swarmBackendPort)" "port $swarmBackendPort not listening"
+        Write-BootLog "Swarm Command backend (192.168.0.40:$swarmBackendPort)" "port $swarmBackendPort not listening"
         $started += 'backend'
     }
     return $started
@@ -210,19 +210,19 @@ function Invoke-BootAll {
     if (-not (Test-TcpPort "127.0.0.1" 8082) -and (Test-Path $fccPythonExe)) {
         $fccCmd = "`"$fccPythonExe`" -c `"import sys; sys.path.insert(0, r'$fccSitePackages'); from free_claude_code.cli.entrypoints import serve; serve(['--auto-started'])`""
         Start-DetachedService $fccCmd $repoRoot 0
-        Write-BootLog "Free Claude Code (127.0.0.1:8082)" "port 8082 not listening"
+        Write-BootLog "Free Claude Code (192.168.0.40:8082)" "port 8082 not listening"
     }
 
     # 3. OPSis Cut & Reach Studio (:8390)
     if (-not (Test-TcpPort "127.0.0.1" 8390) -and (Test-Path "$repoRoot\ops\opsis-cut-and-reach-studio\server.mjs")) {
         Start-DetachedService "`"$nodeExe`" `"$repoRoot\ops\opsis-cut-and-reach-studio\server.mjs`"" $repoRoot 0
-        Write-BootLog "OPSis Cut and Reach Studio (127.0.0.1:8390)" "port 8390 not listening"
+        Write-BootLog "OPSis Cut and Reach Studio (192.168.0.40:8390)" "port 8390 not listening"
     }
 
     # 4. Hermes Leadgen Command Studio (:8392)
     if (-not (Test-TcpPort "127.0.0.1" 8392) -and (Test-Path "$repoRoot\apps\hermes-leadgen\server.js")) {
         Start-DetachedService "`"$nodeExe`" `"$repoRoot\apps\hermes-leadgen\server.js`"" "$repoRoot\apps\hermes-leadgen" 0
-        Write-BootLog "Hermes Leadgen Command Studio (127.0.0.1:8392)" "port 8392 not listening"
+        Write-BootLog "Hermes Leadgen Command Studio (192.168.0.40:8392)" "port 8392 not listening"
     }
 
     # 5. DREAM Dev Engine Server (:9180) — OpenUI Lang 1.0 + REA City + Remake 98.8% Cloud Studio
@@ -236,19 +236,19 @@ function Invoke-BootAll {
     }
     if (-not (Test-TcpPort "127.0.0.1" 9180)) {
         Start-DetachedService "`"$nodeExe`" --import tsx `"$repoRoot\server.ts`"" $repoRoot 0
-        Write-BootLog "DREAM Dev Engine (127.0.0.1:9180)" "port 9180 not listening"
+        Write-BootLog "DREAM Dev Engine (192.168.0.40:9180)" "port 9180 not listening"
     }
 
     # 6. Live NPC Lab (:9127)
     if (-not (Test-TcpPort "127.0.0.1" 9127) -and (Test-Path "$repoRoot\game\server\live-npc-lab\src\server.js")) {
         Start-DetachedService "`"$nodeExe`" `"$repoRoot\game\server\live-npc-lab\src\server.js`"" "$repoRoot\game\server\live-npc-lab" 0
-        Write-BootLog "Live NPC Lab (127.0.0.1:9127)" "port 9127 not listening"
+        Write-BootLog "Live NPC Lab (192.168.0.40:9127)" "port 9127 not listening"
     }
 
     # 7. DreamOps Bridge (:9133)
     if (-not (Test-TcpPort "127.0.0.1" 9133) -and (Test-Path "$repoRoot\game\server\dreamops-bridge\src\server.js")) {
         Start-DetachedService "`"$nodeExe`" `"$repoRoot\game\server\dreamops-bridge\src\server.js`"" "$repoRoot\game\server\dreamops-bridge" 0
-        Write-BootLog "DreamOps Bridge (127.0.0.1:9133)" "port 9133 not listening"
+        Write-BootLog "DreamOps Bridge (192.168.0.40:9133)" "port 9133 not listening"
     }
 
     # 8. Panda Router (:8765), inbox runner and Swarm Command (:8000)
@@ -265,17 +265,17 @@ function Invoke-BootAll {
         Copy-Item "$repoRoot\workflow_api.json" "$vaultRoot\workflow_api.json" -Force -ErrorAction SilentlyContinue
     }
 
-    # 10. Open DREAM Dev Engine Studio (http://127.0.0.1:9180) and Free Claude Code Admin (http://127.0.0.1:8082/admin)
+    # 10. Open DREAM Dev Engine Studio (http://192.168.0.40:9180) and Free Claude Code Admin (http://192.168.0.40:8082/admin)
     #     on the first run after a boot only. Waits up to 30 seconds for 9180; if it is still down, no tab opens this boot.
     if ($isFirstRun) {
         $deadline = (Get-Date).AddSeconds(30)
         while (-not (Test-TcpPort "127.0.0.1" 9180) -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 2 }
         if (Test-TcpPort "127.0.0.1" 9180) {
-            Start-Process "http://127.0.0.1:9180" -ErrorAction SilentlyContinue
-            Write-BootLog "browser tab http://127.0.0.1:9180" "first run after boot"
+            Start-Process "http://192.168.0.40:9180" -ErrorAction SilentlyContinue
+            Write-BootLog "browser tab http://192.168.0.40:9180" "first run after boot"
             if (Test-TcpPort "127.0.0.1" 8082) {
-                Start-Process "http://127.0.0.1:8082/admin" -ErrorAction SilentlyContinue
-                Write-BootLog "browser tab http://127.0.0.1:8082/admin" "first run after boot"
+                Start-Process "http://192.168.0.40:8082/admin" -ErrorAction SilentlyContinue
+                Write-BootLog "browser tab http://192.168.0.40:8082/admin" "first run after boot"
             }
         }
     }

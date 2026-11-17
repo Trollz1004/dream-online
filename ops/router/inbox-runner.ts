@@ -663,7 +663,7 @@ export function buildCookbookCommonRulesPreamble(options?: {
     'Use your highest reasoning level. Read docs/standards/AGENT-STANDARD.md before anything else.',
     `PR only: work on branch ${branchName} and open a pull request with gh against base ${prBase}; never push to main or master, never merge, never use --no-verify or --force, never rewrite history.`,
     'No user folder names: never type a Windows user folder name in any file; write %USERPROFILE% and %LOCALAPPDATA%.',
-    'No secrets: this repo is public; no private LAN addresses, no secrets, never print an environment value.',
+    'No secrets: this repo is public; no secrets, never print an environment value, and follow docs/house/ADDRESS-DOCTRINE.md for 192.168.0.40 and 192.168.0.15 reach addresses.',
     'Proof pasted: a passing exit code is not proof; paste real command output in the PR description.',
     'Obsidian note: finish with a caveman Obsidian note under %USERPROFILE%\\Obsidian\\Alienware\\ with DID, BROKE, NEXT, BLOCKED, FILES, and paste its path.',
     `Code map: read the code map at ${codemapPath} first, then the task.`,

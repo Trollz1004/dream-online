@@ -86,7 +86,7 @@ nothing: no installs, no sign-ins, no files, no state.
 Once the `HealthScheduledTask` step runs, `t5500-health.ps1` runs every 30
 minutes and writes `C:\DREAM\ops-state\t5500\health.json`. It probes four
 things by identity, not just an open port: the marketing gateway at
-`http://127.0.0.1:8377/health` (checked for the `"platform":"hermes-agent"`
+`http://192.168.0.15:8377/health` (checked for the `"platform":"hermes-agent"`
 identity its own health route returns), OmniRoute on this T5500 at
 `http://$T5500_HOST:20128/v1/models` (address from the node env file; checked for a `"data":[` models
 array — only ever reported, never healed by this script), `gh

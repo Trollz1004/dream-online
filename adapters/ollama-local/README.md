@@ -4,7 +4,7 @@ Paperclip alias: `ollama-local`
 
 CLI: `opencode` (delegates to ollama-local provider)
 
-Provider separation: Maps to `ollama-local` block in `opencode/opencode.json`. Base: http://localhost:11434/v1 . Unlimited free local inference for supported models (qwen2.5-coder, gemma*, etc.).
+Provider separation: Maps to `ollama-local` block in `opencode/opencode.json`. Base: http://192.168.0.40:11434/v1 . Unlimited free local inference for supported models (qwen2.5-coder, gemma*, etc.).
 
 Agents using this adapter (example):
 - Low-cost batch / dev workers

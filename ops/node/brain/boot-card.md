@@ -9,7 +9,7 @@ Joshua sets the rules. He is losing his sight: write plain, short sentences, out
 - Running, seeing or debugging the game: `game-development`. Engine work runs on the in-house DREAM Engine (`src/engine/`); design goes to Game Designer, Level Designer or Narrative Designer.
 - Process: `superpowers:brainstorming` before new design; `superpowers:test-driven-development` for code (failing test first); `superpowers:systematic-debugging` for bugs; `superpowers:verification-before-completion` before saying "done".
 - Knowledge and the graph: `claude-obsidian:wiki` routes everything; `wiki-ingest` files sources, `wiki-query` answers from the vault, `save` keeps one answer, `wiki-lint` checks health. Vault writes run in WSL (`wsl -d OpenClawGateway`); see the auto-memory note on the Obsidian memory graph.
-- Images and video: the `comfyui` MCP tools (ComfyUI Desktop on 127.0.0.1:8188, started at logon; the RX 6800 renders). Work from generic words (mood, palette, level of detail). Never give it another game's pictures or a named style, and never an asset marked no-AI.
+- Images and video: the `comfyui` MCP tools (ComfyUI Desktop on 192.168.0.40:8188, started at logon; the RX 6800 renders). Work from generic words (mood, palette, level of detail). Never give it another game's pictures or a named style, and never an asset marked no-AI.
 - State of the machine: `dream-ground-truth` (`drift ground`).
 
 ## Memory

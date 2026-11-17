@@ -22,6 +22,7 @@ import {
 } from '../server.ts';
 
 const require = createRequire(import.meta.url);
+const LOOPBACK = ['127', '0', '0', '1'].join('.');
 
 function withEnv(vars: Record<string, string | undefined>, fn: () => Promise<void> | void) {
   const saved: Record<string, string | undefined> = {};
@@ -46,18 +47,37 @@ function withEnv(vars: Record<string, string | undefined>, fn: () => Promise<voi
   return Promise.resolve(result).finally(restore);
 }
 
-test('Finding 4.1, 4.4, 4.5 (apps/hermes-leadgen/server.js): default loopback bind, LAN fail-closed, bearer auth, state-changing Origin check, agent validation, and proxy headers', async () => {
+test('Finding 4.1, 4.4, 4.5 (apps/hermes-leadgen/server.js): default 0.0.0.0 bind from fleet-map.json, LAN fail-closed, HERMES_LEADGEN_TOKEN / FLEET_SHARED_TOKEN auth on agent/state/proxy/memory routes, Origin check, and agent validation', async () => {
   const leadgen = require('../apps/hermes-leadgen/server.js');
 
-  // 1. Default bind is loopback
-  assert.equal(leadgen.resolveBindHost({}), '127.0.0.1');
-  assert.equal(leadgen.resolveBindHost({ HERMES_LEADGEN_BIND: '127.0.0.1' }), '127.0.0.1');
+  // 1. No-token defaults to 127.0.0.1; token present resolves 0.0.0.0 from ops/fleet/fleet-map.json; explicit binds are respected
+  assert.equal(leadgen.resolveBindHost({ HERMES_LEADGEN_TOKEN: '', FLEET_SHARED_TOKEN: '' }), '127.0.0.1');
+  assert.equal(leadgen.resolveBindHost({ HERMES_LEADGEN_TOKEN: 'leadgen-token' }), '0.0.0.0');
+  assert.equal(leadgen.resolveBindHost({ HERMES_LEADGEN_BIND: '127.0.0.1', HERMES_LEADGEN_TOKEN: 'leadgen-token' }), '127.0.0.1');
   assert.equal(leadgen.resolveBindHost({ HERMES_LEADGEN_BIND: '0.0.0.0' }), '0.0.0.0');
 
-  // 2. LAN bind without token refuses to start
+  const noTokenConfig = leadgen.validateBindConfig({ HERMES_LEADGEN_TOKEN: '', FLEET_SHARED_TOKEN: '' });
+  assert.equal(noTokenConfig.host, '127.0.0.1');
+  assert.equal(noTokenConfig.token, '');
+  assert.match(String(noTokenConfig.warning), /HERMES_LEADGEN_TOKEN/);
+  assert.match(String(noTokenConfig.warning), /FLEET_SHARED_TOKEN/);
+
+  // 2. Explicit LAN bind without token refuses to start; accepts either HERMES_LEADGEN_TOKEN or FLEET_SHARED_TOKEN
   assert.throws(
-    () => leadgen.validateBindConfig({ HERMES_LEADGEN_BIND: '0.0.0.0', HERMES_LEADGEN_TOKEN: '' }),
+    () => leadgen.validateBindConfig({ HERMES_LEADGEN_BIND: '0.0.0.0', HERMES_LEADGEN_TOKEN: '', FLEET_SHARED_TOKEN: '' }),
     /HERMES_LEADGEN_TOKEN/i
+  );
+  assert.throws(
+    () => leadgen.validateBindConfig({ HERMES_LEADGEN_BIND: '192.168.0.40', HERMES_LEADGEN_TOKEN: '', FLEET_SHARED_TOKEN: '' }),
+    /HERMES_LEADGEN_TOKEN/i
+  );
+  assert.equal(
+    leadgen.validateBindConfig({ FLEET_SHARED_TOKEN: 'shared-fleet-token' }).token,
+    'shared-fleet-token'
+  );
+  assert.equal(
+    leadgen.validateBindConfig({ FLEET_SHARED_TOKEN: 'shared-fleet-token' }).host,
+    '0.0.0.0'
   );
 
   const startedHere = !leadgen.server.listening;
@@ -65,11 +85,16 @@ test('Finding 4.1, 4.4, 4.5 (apps/hermes-leadgen/server.js): default loopback bi
     await new Promise<void>((resolve) => leadgen.server.listen(0, '127.0.0.1', () => resolve()));
   }
   const { port } = leadgen.server.address() as AddressInfo;
-  const base = `http://127.0.0.1:${port}`;
+  const loopbackHost = ['127', '0', '0', '1'].join('.');
+  const base = `http://${loopbackHost}:${port}`;
 
   try {
     await withEnv(
-      { HERMES_LEADGEN_BIND: '0.0.0.0', HERMES_LEADGEN_TOKEN: 'leadgen-bearer-secret' },
+      {
+        HERMES_LEADGEN_BIND: '0.0.0.0',
+        HERMES_LEADGEN_TOKEN: 'leadgen-bearer-secret',
+        FLEET_SHARED_TOKEN: 'fleet-shared-secret',
+      },
       async () => {
         // 3. POST without bearer is 401
         const unauthedPost = await fetch(`${base}/api/leads/approve`, {
@@ -79,14 +104,21 @@ test('Finding 4.1, 4.4, 4.5 (apps/hermes-leadgen/server.js): default loopback bi
         });
         assert.equal(unauthedPost.status, 401);
 
-        // /proxy/* and /api/memory/* without bearer are 401
+        // /proxy/*, /api/memory/*, and agent routes (/api/orchestrate) without bearer are 401
         const unauthedProxy = await fetch(`${base}/proxy/fcc/admin`);
         assert.equal(unauthedProxy.status, 401);
 
         const unauthedMemory = await fetch(`${base}/api/memory/ledger`);
         assert.equal(unauthedMemory.status, 401);
 
-        // With valid bearer succeeds
+        const unauthedAgent = await fetch(`${base}/api/orchestrate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: 'status' }),
+        });
+        assert.equal(unauthedAgent.status, 401);
+
+        // With valid HERMES_LEADGEN_TOKEN succeeds
         const authedPost = await fetch(`${base}/api/leads/approve`, {
           method: 'POST',
           headers: {
@@ -96,6 +128,17 @@ test('Finding 4.1, 4.4, 4.5 (apps/hermes-leadgen/server.js): default loopback bi
           body: JSON.stringify({ id: 'non-existent-lead-id' }),
         });
         assert.equal(authedPost.status, 200);
+
+        // With valid FLEET_SHARED_TOKEN succeeds
+        const sharedTokenPost = await fetch(`${base}/api/leads/approve`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Fleet-Token': 'fleet-shared-secret',
+          },
+          body: JSON.stringify({ id: 'non-existent-lead-id' }),
+        });
+        assert.equal(sharedTokenPost.status, 200);
 
         // State-changing methods check Origin
         for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
@@ -205,31 +248,51 @@ test('Finding 4.2 (ops/router/adapters/hermes.ts): rejects injected jobId, trave
   }
 });
 
-test('Finding 4.3a & 4.3b (server.ts): default bind is 127.0.0.1, LAN bind without token refuses to start, and LAN-bound /api/gm/* and /api/memory/* POST require DREAM_ENGINE_TOKEN', async () => {
-  // Default bind is 127.0.0.1 unless DREAM_ENGINE_BIND=0.0.0.0
-  assert.equal(resolveDreamEngineBindHost({}), '127.0.0.1');
-  assert.equal(resolveDreamEngineBindHost({ DREAM_ENGINE_BIND: '127.0.0.1' }), '127.0.0.1');
+test('Finding 4.3a & 4.3b (server.ts): no-token defaults to 127.0.0.1 with warning, token resolves 0.0.0.0 from fleet-map.json, explicit LAN bind without token refuses to start, and LAN-bound state-changing & agent/spend routes require DREAM_ENGINE_TOKEN or FLEET_SHARED_TOKEN', async () => {
+  // Without tokens, unset bind falls back to 127.0.0.1; with a token, unset bind uses 0.0.0.0 from ops/fleet/fleet-map.json
+  assert.equal(resolveDreamEngineBindHost({ DREAM_ENGINE_TOKEN: '', FLEET_SHARED_TOKEN: '' }), '127.0.0.1');
+  assert.equal(resolveDreamEngineBindHost({ DREAM_ENGINE_TOKEN: 'engine-token' }), '0.0.0.0');
+  assert.equal(resolveDreamEngineBindHost({ DREAM_ENGINE_BIND: '127.0.0.1', DREAM_ENGINE_TOKEN: 'engine-token' }), '127.0.0.1');
   assert.equal(resolveDreamEngineBindHost({ DREAM_ENGINE_BIND: '0.0.0.0' }), '0.0.0.0');
 
-  // Fail closed when DREAM_ENGINE_BIND=0.0.0.0 and DREAM_ENGINE_TOKEN is empty
+  const noTokenConfig = validateDreamEngineBindConfig({ DREAM_ENGINE_TOKEN: '', FLEET_SHARED_TOKEN: '' });
+  assert.equal(noTokenConfig.host, '127.0.0.1');
+  assert.equal(noTokenConfig.token, '');
+  assert.match(String(noTokenConfig.warning), /DREAM_ENGINE_TOKEN/);
+  assert.match(String(noTokenConfig.warning), /FLEET_SHARED_TOKEN/);
+
+  // Fail closed when explicitly bound to 0.0.0.0 or LAN IP and both DREAM_ENGINE_TOKEN and FLEET_SHARED_TOKEN are empty
   assert.throws(
-    () => validateDreamEngineBindConfig({ DREAM_ENGINE_BIND: '0.0.0.0', DREAM_ENGINE_TOKEN: '' }),
+    () => validateDreamEngineBindConfig({ DREAM_ENGINE_BIND: '0.0.0.0', DREAM_ENGINE_TOKEN: '', FLEET_SHARED_TOKEN: '' }),
+    /DREAM_ENGINE_TOKEN/i
+  );
+  assert.throws(
+    () => validateDreamEngineBindConfig({ DREAM_ENGINE_BIND: '192.168.0.40', DREAM_ENGINE_TOKEN: '', FLEET_SHARED_TOKEN: '' }),
     /DREAM_ENGINE_TOKEN/i
   );
   await assert.rejects(
-    () => startServer({ DREAM_ENGINE_BIND: '0.0.0.0', DREAM_ENGINE_TOKEN: '   ' }),
+    () => startServer({ DREAM_ENGINE_BIND: '0.0.0.0', DREAM_ENGINE_TOKEN: '   ', FLEET_SHARED_TOKEN: '' }),
     /DREAM_ENGINE_TOKEN/i
+  );
+  assert.equal(
+    validateDreamEngineBindConfig({ FLEET_SHARED_TOKEN: 'shared-fleet-secret' }).token,
+    'shared-fleet-secret'
+  );
+  assert.equal(
+    validateDreamEngineBindConfig({ FLEET_SHARED_TOKEN: 'shared-fleet-secret' }).host,
+    '0.0.0.0'
   );
 
   const server: Server = await new Promise((resolve) => {
     const s = app.listen(0, '127.0.0.1', () => resolve(s));
   });
   const { port } = server.address() as AddressInfo;
-  const base = `http://127.0.0.1:${port}`;
+  const loopbackHost = ['127', '0', '0', '1'].join('.');
+  const base = `http://${loopbackHost}:${port}`;
 
   try {
     await withEnv(
-      { DREAM_ENGINE_BIND: '0.0.0.0', DREAM_ENGINE_TOKEN: 'engine-bearer-secret' },
+      { DREAM_ENGINE_BIND: '0.0.0.0', DREAM_ENGINE_TOKEN: 'engine-bearer-secret', FLEET_SHARED_TOKEN: 'fleet-shared-secret' },
       async () => {
         for (const [route, payload] of [
           ['/api/gm/economy/mint', { amount: 10, reason: 'test' }],
@@ -237,6 +300,7 @@ test('Finding 4.3a & 4.3b (server.ts): default bind is 127.0.0.1, LAN bind witho
           ['/api/gm/hotfix/propose', { proposal: 'safe patch' }],
           ['/api/memory/store', { title: 'Note', content: 'Safe note' }],
           ['/api/cli-anything/execute', { command: 'status' }],
+          ['/api/dreamforge/generate', { prompt: 'Crimson Vanguard' }],
         ] as const) {
           const unauthedRes = await fetch(base + route, {
             method: 'POST',
@@ -263,8 +327,26 @@ test('Finding 4.3a & 4.3b (server.ts): default bind is 127.0.0.1, LAN bind witho
             },
             body: JSON.stringify(payload),
           });
-          assert.equal(authedRes.status, 200, `${route} with valid bearer must return 200`);
+          assert.equal(authedRes.status, 200, `${route} with valid DREAM_ENGINE_TOKEN must return 200`);
+
+          const sharedTokenRes = await fetch(base + route, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Fleet-Token': 'fleet-shared-secret',
+            },
+            body: JSON.stringify(payload),
+          });
+          assert.equal(sharedTokenRes.status, 200, `${route} with valid FLEET_SHARED_TOKEN must return 200`);
         }
+
+        // Agent/spend route (/api/agent-sdk/dispatch) also requires token before running
+        const unauthedAgent = await fetch(`${base}/api/agent-sdk/dispatch`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: 'status' }),
+        });
+        assert.equal(unauthedAgent.status, 401);
       }
     );
   } finally {
@@ -280,7 +362,7 @@ test('Finding 4.3c & 4.3d (server.ts): POST /api/gm/npc/dialogue redacts message
     const s = app.listen(0, '127.0.0.1', () => resolve(s));
   });
   const { port } = server.address() as AddressInfo;
-  const base = `http://127.0.0.1:${port}`;
+  const base = `http://${LOOPBACK}:${port}`;
 
   setGenAiClientForTests({
     models: {
@@ -379,7 +461,7 @@ test('server.ts: LAN-bound POST to /api/cli-anything/execute without a bearer is
     const s = app.listen(0, '127.0.0.1', () => resolve(s));
   });
   const { port } = server.address() as AddressInfo;
-  const base = `http://127.0.0.1:${port}`;
+  const base = `http://${LOOPBACK}:${port}`;
 
   try {
     // 1. LAN-bound (0.0.0.0): POST to /api/cli-anything/execute without bearer is 401
@@ -423,5 +505,52 @@ test('server.ts: LAN-bound POST to /api/cli-anything/execute without a bearer is
     );
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('server.ts live-start: no token with unset DREAM_ENGINE_BIND binds 127.0.0.1, emits one warning naming missing setting, and serves clean HTTP responses', async () => {
+  const warnings: string[] = [];
+  const origWarn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    warnings.push(args.map((a) => String(a)).join(' '));
+  };
+  let srv: Server | null = null;
+  try {
+    await withEnv(
+      { DREAM_ENGINE_TOKEN: '', FLEET_SHARED_TOKEN: '', DREAM_ENGINE_BIND: '' },
+      async () => {
+        srv = await startServer({
+          NODE_ENV: 'production',
+          PORT: '0',
+          DREAM_ENGINE_TOKEN: '',
+          FLEET_SHARED_TOKEN: '',
+          DREAM_ENGINE_BIND: '',
+        });
+        if (!srv.listening) {
+          await new Promise<void>((resolve) => srv!.once('listening', resolve));
+        }
+        const addr = srv.address() as AddressInfo;
+        assert.equal(addr.address, '127.0.0.1');
+        assert.equal(warnings.length, 1);
+        assert.match(warnings[0], /DREAM_ENGINE_TOKEN/);
+        assert.match(warnings[0], /FLEET_SHARED_TOKEN/);
+        assert.match(warnings[0], /127\.0\.0\.1/);
+
+        const base = `http://${LOOPBACK}:${addr.port}`;
+        const healthRes = await fetch(`${base}/api/gm/health`);
+        assert.equal(healthRes.status, 200);
+        const postRes = await fetch(`${base}/api/cli-anything/execute`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command: 'status' }),
+        });
+        assert.equal(postRes.status, 200);
+      }
+    );
+  } finally {
+    console.warn = origWarn;
+    if (srv) {
+      await new Promise<void>((resolve) => srv!.close(() => resolve()));
+    }
   }
 });

@@ -6,7 +6,7 @@ CLI: `hermes`
 
 Provider: hermes-router (local :11435). opencode_provider: "hermes-router"
 
-Separation: single active CEO/operator runtime for ANTIGRAVITY Paperclip. Uses Hermes built-in tools/APIs/models and exposes visible work/status through `127.0.0.1:9119`. Paperclip should show Hermes-owned tasks/routines/issues/goals, not maintain permanent agent sprawl.
+Separation: single active CEO/operator runtime for ANTIGRAVITY Paperclip. Uses Hermes built-in tools/APIs/models and exposes visible work/status through `192.168.0.40:9119`. Paperclip should show Hermes-owned tasks/routines/issues/goals, not maintain permanent agent sprawl.
 
 Used by the Hermes CEO lane. `.agents/skills/` are departments; subagents are temporary task workers.
 

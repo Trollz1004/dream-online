@@ -32,7 +32,7 @@ function fetchWorkerHealth() {
     if (workerHealth && (now - workerHealthLastFetch) < 30000) {
       return resolve(workerHealth);
     }
-    http.get('http://127.0.0.1:8391/health', (res) => {
+    http.get('http://192.168.0.40:8391/health', (res) => {
       let body = '';
       res.on('data', (c) => body += c);
       res.on('end', () => {
@@ -50,7 +50,7 @@ function fetchWorkerHealth() {
 
 function ensureLocalServer() {
   return new Promise((resolve) => {
-    const req = http.get('http://127.0.0.1:8392/api/node/status', (res) => {
+    const req = http.get('http://192.168.0.40:8392/api/node/status', (res) => {
       res.resume();
       resolve();
     });
@@ -79,7 +79,7 @@ function createWindow() {
       nodeIntegration: false
     }
   });
-  win.loadURL('http://127.0.0.1:8392/');
+  win.loadURL('http://192.168.0.40:8392/');
   win.once('ready-to-show', () => {
     win.show();
     win.focus();
@@ -138,7 +138,7 @@ ipcMain.handle('dialog:openFile', async () => {
 });
 
 // IPC: OmniRoute call (proxy through main to avoid CORS)
-const T5500_HOST = process.env.T5500_HOST || 'localhost';
+const T5500_HOST = process.env.T5500_HOST || '192.168.0.15';
 ipcMain.handle('omniroute:chat', async (_e, { model, messages }) => {
   return new Promise((resolve) => {
     const postData = JSON.stringify({

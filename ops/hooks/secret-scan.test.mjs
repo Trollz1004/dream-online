@@ -27,9 +27,11 @@ const FAKES = Object.freeze({
   'paypal-secret-assignment': ['PAYPAL_CLIENT', '_SECRET=', FAKE].join(''),
   'generic-sk-key': ['sk', '-', 'proj', '-', FAKE].join(''),
   'windows-user-path': ['C', ':', '\\', 'Users', '\\', 'dummyuser'].join(''),
-  'private-ipv4': ['192', '.', '168', '.', '1', '.', '100'].join(''),
-  'private-ipv4 (10.)': ['10', '.', '0', '.', '0', '.', '1'].join(''),
-  'private-ipv4 (172.16-31)': ['172', '.', '16', '.', '0', '.', '1'].join(''),
+  'loopback-reach-address': ['http://', '127', '.', '0', '.', '0', '.', '1', ':8080'].join(''),
+  'loopback-reach-address (localhost)': ['https://', 'local', 'host', ':3000'].join(''),
+  'loopback-reach-address (ws)': ['ws://', '127', '.', '0', '.', '0', '.', '1', ':9127'].join(''),
+  'loopback-reach-address (host:port)': ['local', 'host', ':8765'].join(''),
+  'forbidden-test-node-ip': ['192', '.', '168', '.', '0', '.', '8'].join(''),
 });
 
 const CLEAN_TEXT = [
@@ -173,19 +175,27 @@ test('rule windows-user-path: blocks Windows user folder path without literal re
   assert.deepEqual(scanText(safeProfile), []);
 });
 
-test('rule private-ipv4: blocks 192.168, 10 and 172.16-31 ranges and permits public/docs IPs', () => {
-  const fake192 = ['http://', '192', '.', '168', '.', '1', '.', '42', ':8080'].join('');
-  const fake10 = ['10', '.', '200', '.', '0', '.', '1'].join('');
-  const fake172 = ['172', '.', '20', '.', '5', '.', '6'].join('');
-  const docIp = '192.0.2.1';
-  const public172 = '172.15.0.1';
-  const localhost = '127.0.0.1';
-  assert.ok(scanText(fake192).some((f) => f.rule === 'private-ipv4'));
-  assert.ok(scanText(fake10).some((f) => f.rule === 'private-ipv4'));
-  assert.ok(scanText(fake172).some((f) => f.rule === 'private-ipv4'));
-  assert.deepEqual(scanText(docIp), []);
-  assert.deepEqual(scanText(public172), []);
-  assert.deepEqual(scanText(localhost), []);
+test('rule loopback-reach-address and forbidden-test-node-ip: blocks loopback reach URLs and retired test-node IP while allowing bare 127.0.0.1 bind, fleet node IPs, archive/, and allow marker', () => {
+  const httpLoopback = ['http://', '127', '.', '0', '.', '0', '.', '1', ':8080'].join('');
+  const httpsLocalhost = ['https://', 'local', 'host', '/health'].join('');
+  const wssLoopback = ['wss://', 'local', 'host', ':9180'].join('');
+  const bareHostPort = ['127', '.', '0', '.', '0', '.', '1', ':9127'].join('');
+  const forbiddenNode = ['192', '.', '168', '.', '0', '.', '8'].join('');
+  const alienwareUrl = 'http://192.168.0.40:9180/api/gm/health';
+  const t5500Url = 'http://192.168.0.15:20128/v1/models';
+  const bareBind = 'const bind = "127.0.0.1";';
+
+  assert.ok(scanText(httpLoopback).some((f) => f.rule === 'loopback-reach-address'));
+  assert.ok(scanText(httpsLocalhost).some((f) => f.rule === 'loopback-reach-address'));
+  assert.ok(scanText(wssLoopback).some((f) => f.rule === 'loopback-reach-address'));
+  assert.ok(scanText(bareHostPort).some((f) => f.rule === 'loopback-reach-address'));
+  assert.ok(scanText(forbiddenNode).some((f) => f.rule === 'forbidden-test-node-ip'));
+
+  assert.deepEqual(scanText(alienwareUrl), []);
+  assert.deepEqual(scanText(t5500Url), []);
+  assert.deepEqual(scanText(bareBind), []);
+  assert.deepEqual(scanText(httpLoopback, { file: 'archive/legacy-notes.md' }), []);
+  assert.deepEqual(scanText(`${httpLoopback} // ${ALLOW_MARKER}`), []);
 });
 
 test('Finding 4.8: option-injection token rejected before any git call', () => {

@@ -28,7 +28,14 @@ $ErrorActionPreference = 'Continue'
 
 $script:Repo = 'C:\DREAM\dream-online'
 $script:VaultPath = 'C:\DREAM\dream-online\DREAM-ONLINE'
-$script:McpUrl = 'http://127.0.0.1:27123/mcp'
+$script:FleetMapPath = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) '..\fleet\fleet-map.json'
+if (Test-Path -LiteralPath $script:FleetMapPath) {
+  $fleetMap = Get-Content -LiteralPath $script:FleetMapPath -Raw | ConvertFrom-Json
+  $obsSvc = $fleetMap.services | Where-Object { $_.id -eq 'alienware-obsidian-rest' } | Select-Object -First 1
+  $script:McpUrl = "$($obsSvc.protocol)://$($obsSvc.host):$($obsSvc.port)$($obsSvc.healthPath)"
+} else {
+  $script:McpUrl = 'http://192.168.0.40:27200/health'
+}
 
 
 # Reads the newest dated "## 2026-09-21 ..." heading out of a records file. The

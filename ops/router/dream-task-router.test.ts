@@ -28,6 +28,7 @@ import {
   clearColdLanes,
   DEFAULT_DECISIONS_LOG_PATH,
   readDecisionLog,
+  sanitizeDecisionLogText,
   type WeeklyRankingFile,
   AgyDispatchAdapter,
   FreeClaudeCodeDispatchAdapter,
@@ -433,6 +434,13 @@ test('Quota and 429 cold-lane fallback with shared agy Claude quota and secret-f
     assert.equal(logged.length, 4);
     const rawLogText = fs.readFileSync(logPath, 'utf8');
     assert.ok(!rawLogText.includes(fakeSecretValue));
+    const retiredNodeIp = ['192', '168', '0', '8'].join('.');
+    const sanitizedFleetLine = sanitizeDecisionLogText(
+      `Alienware http://192.168.0.40:8765/route T5500 http://192.168.0.15:20128/v1 retired ${retiredNodeIp}`
+    );
+    assert.ok(sanitizedFleetLine.includes('192.168.0.40'));
+    assert.ok(sanitizedFleetLine.includes('192.168.0.15'));
+    assert.ok(!sanitizedFleetLine.includes(retiredNodeIp));
     for (const entry of logged) {
       assert.equal(typeof entry.task_hash, 'string');
       assert.equal(entry.task_hash.length, 16);

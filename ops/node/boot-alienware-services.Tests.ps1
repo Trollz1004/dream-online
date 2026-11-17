@@ -27,8 +27,8 @@ Describe 'Panda Router check' {
     Invoke-PandaRouterCheck | Should Be $false
     Assert-MockCalled Start-DreamTask -Times 0 -Exactly -Scope It
   }
-  It 'probes the health address on loopback port 8765' {
-    $pandaRouterHealthUrl | Should Be 'http://127.0.0.1:8765/health'
+  It 'probes the health address on Alienware LAN port 8765' {
+    $pandaRouterHealthUrl | Should Be 'http://192.168.0.40:8765/health'
   }
 }
 
@@ -67,7 +67,7 @@ Describe 'Swarm Command check' {
   Mock Start-DetachedService {}
   Mock Test-Path { $true } -ParameterFilter { $LiteralPath -like '*swarm-command*' }
 
-  It 'port 8000 down: starts backend once, hidden, on 127.0.0.1:8000 and never starts a separate server on 3001' {
+  It 'port 8000 down: starts backend once, hidden, on 192.168.0.40:8000 and never starts a separate server on 3001' {
     Mock Get-SwarmPython { 'X:\venv\Scripts\python.exe' }
     Mock Test-TcpPort { $false }
     $started = @(Invoke-SwarmCommandCheck)
@@ -100,10 +100,10 @@ Describe 'Write-BootLog' {
     $saved = $bootLogDir
     $script:bootLogDir = Join-Path $TestDrive 'dream-boot'
     $script:bootLog = Join-Path $script:bootLogDir 'boot.log'
-    Write-BootLog 'thing (127.0.0.1:1)' 'port 1 not listening'
+    Write-BootLog 'thing (192.168.0.40:1)' 'port 1 not listening'
     $lines = @(Get-Content -LiteralPath $script:bootLog)
     $lines.Count | Should Be 1
-    $lines[0] | Should Match '^\d{4}-\d{2}-\d{2}T.* \| started thing \(127\.0\.0\.1:1\) \| port 1 not listening$'
+    $lines[0] | Should Match '^\d{4}-\d{2}-\d{2}T.* \| started thing \(192\.168\.0\.40:1\) \| port 1 not listening$'
     $script:bootLogDir = $saved
     $script:bootLog = Join-Path $saved 'boot.log'
   }
@@ -206,12 +206,12 @@ Describe 'register-boot-task.ps1' {
   }
 }
 
-Describe 'New boot files carry no user folder path and no private LAN address' {
+Describe 'New boot files carry no user folder path and no loopback reach address' {
   $files = @('boot-alienware-services.ps1', 'boot-alienware-services.vbs', 'boot-alienware-services.Tests.ps1', 'register-boot-task.ps1', 'retire-old-boot-launchers.ps1', 'retire-old-boot-launchers.Tests.ps1') | ForEach-Object { Join-Path $here $_ }
   It 'names no Windows user folder' {
     @($files | ForEach-Object { Select-String -LiteralPath $_ -Pattern '(?i)[A-Z]:[\\/]+Users[\\/]+[^%\\/\s"]' }).Count | Should Be 0
   }
-  It 'names no private LAN address' {
-    @($files | ForEach-Object { Select-String -LiteralPath $_ -Pattern '\b(192\.168|10\.\d{1,3}|172\.(1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}\b' }).Count | Should Be 0
+  It 'names no loopback reach address (http(s)/ws(s) localhost or 127.0.0.1, or localhost/127.0.0.1:PORT)' {
+    @($files | ForEach-Object { Select-String -LiteralPath $_ -Pattern '(?i)(?:https?|wss?)://(?:localhost|127\.0\.0\.1)\b|\b(?:localhost|127\.0\.0\.1):\d{2,5}\b' }).Count | Should Be 0
   }
 }
