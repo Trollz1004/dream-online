@@ -1,7 +1,7 @@
-// Sabretooth (.8) Command Studio — Separated Tabs + Natural Female Neural Voice Renderer (Zero Robotic SAPI TTS)
+// Alienware Lead-Gen Command Studio — Separated Tabs + Natural Female Neural Voice Renderer (Zero Robotic SAPI TTS)
 let activeLeadType = 'ALL';
 let activeLeadSource = 'ALL';
-let lastOrchestratorReply = 'Welcome back Joshua. Sabretooth Studio is online with separated tabs and one hundred percent natural female neural voice narration.';
+let lastOrchestratorReply = 'Welcome back Joshua. Alienware Lead-Gen Command Studio is online with separated tabs and one hundred percent natural female neural voice narration.';
 
 function escapeHtml(str) {
   return String(str || '')
@@ -428,9 +428,9 @@ document.getElementById('btn-trigger-hook-loop')?.addEventListener('click', asyn
         runGitPushPr: true,
         agent: 'gemini',
         profile: 'default',
-        source: 'sabretooth-gui-8392',
+        source: 'alienware-gui-8392',
         repo: 'Trollz1004/ANTIGRAVITY',
-        summary: 'Mandatory Post-Work Auto-Commit, Branch Push (sabretooth/hermes-leadgen) & GitHub PR Creation for Cloud Judges (Gemini / Jules / Claude / Codex).'
+        summary: 'Mandatory Post-Work Auto-Commit, Branch Push (alienware/hermes-leadgen) & GitHub PR Creation for Cloud Judges (Gemini / Jules / Claude / Codex).'
       })
     });
     await refreshHookLoop();
@@ -600,7 +600,7 @@ async function triggerObsidianSync() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       agent: 'gemini',
-      useCase: 'Sabretooth :8392 Separated-Tabs Studio + :8391/health Rules + YouTube Studio UCJnFUOdEfSOJiXLnx6lXSzg + Gemini Notebook 9hNDPCQa3kw Remaster + Natural Female Voice',
+      useCase: 'Alienware Lead-Gen Command Studio (:8392) + :8391/health Rules + YouTube Studio UCJnFUOdEfSOJiXLnx6lXSzg + Gemini Notebook 9hNDPCQa3kw Remaster + Natural Female Voice',
       summary: 'Separated :8392 into 9 dedicated single-purpose tabs, banned robotic Windows SAPI/speechSynthesis in favor of server-side Natural Neural Female Voice (Aoede/AvaNeural), updated :8391/health with Official API Prospecting + YouTube Data API v3 Made-with-AI rules, and built Gemini Notebook remaster for 9hNDPCQa3kw.',
       proof: 'http://192.168.0.40:8392/ | http://192.168.0.40:8391/health | https://studio.youtube.com/channel/UCJnFUOdEfSOJiXLnx6lXSzg'
     })
@@ -616,8 +616,8 @@ async function loadObsidianLedgers() {
     const data = await res.json();
     const gBox = document.getElementById('ledger-gemini-box');
     const hBox = document.getElementById('ledger-hermes-box');
-    if (gBox) gBox.textContent = data.sabretoothGeminiLedger || 'No entries yet.';
-    if (hBox) hBox.textContent = data.sabretoothHermesLedger || 'No entries yet.';
+    if (gBox) gBox.textContent = data.alienwareGeminiLedger || 'No entries yet.';
+    if (hBox) hBox.textContent = data.alienwareHermesLedger || 'No entries yet.';
   } catch (_) {}
 }
 

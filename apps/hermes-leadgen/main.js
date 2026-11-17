@@ -72,7 +72,7 @@ function createWindow() {
     minWidth: 1000,
     minHeight: 700,
     show: false,
-    title: 'HermesLeadGen — Sabretooth',
+    title: 'Alienware Lead-Gen Command Studio',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -171,7 +171,7 @@ ipcMain.handle('omniroute:chat', async (_e, { model, messages }) => {
   });
 });
 
-// IPC: Mission control read-only
+// IPC: T5500 live status read-only
 ipcMain.handle('missioncontrol:live', async () => {
   return new Promise((resolve) => {
     http.get(`http://${T5500_HOST}:3130/live`, (res) => {

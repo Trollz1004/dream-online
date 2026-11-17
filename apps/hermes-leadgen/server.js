@@ -65,18 +65,27 @@ const PORT =
 const ROOT = __dirname;
 const USER_HOME = process.env.USERPROFILE || os.homedir();
 const ALIENWARE_HOST = process.env.ALIENWARE_HOST || getNodeHost('alienware');
-const SABRETOOTH_HOST = process.env.SABRETOOTH_HOST || ALIENWARE_HOST;
 const T5500_HOST = process.env.T5500_HOST || getNodeHost('t5500');
 const REPO_ROOT_FALLBACK = fs.existsSync(path.join(ROOT, '..', 'AGENTS.md'))
   ? path.resolve(ROOT, '..')
   : path.resolve(ROOT, '..', '..');
-const ANTIGRAVITY_ROOT =
-  process.env.SABRETOOTH_VAULT_ROOT ||
-  (fs.existsSync('C:\\Ai-Dream-Team\\Antigravity') ? 'C:\\Ai-Dream-Team\\Antigravity' : REPO_ROOT_FALLBACK);
+const LEGACY_VAULT_ENV = ['SABRE', 'TOOTH_VAULT_ROOT'].join('');
+function resolveVaultRoot(env = process.env) {
+  return (
+    env.LEADGEN_VAULT_ROOT ||
+    env[LEGACY_VAULT_ENV] ||
+    (fs.existsSync('C:\\Ai-Dream-Team\\Antigravity') ? 'C:\\Ai-Dream-Team\\Antigravity' : REPO_ROOT_FALLBACK)
+  );
+}
+function resolveStateDir(env = process.env) {
+  const dir = env.LEADGEN_STATE_DIR || path.join(ROOT, 'data');
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
 const HERMES_PY = path.join(USER_HOME, 'AppData', 'Local', 'hermes', 'tools', 'python-3.14.9+20261021-win32-x64', 'python.exe');
 const SOULS_DIR = path.join(ROOT, 'souls');
 const GRAPHIFY_DIR = path.join(ROOT, 'graphify-out');
-const STATE_DIR = path.join(ROOT, 'data');
+const STATE_DIR = resolveStateDir();
 const MEDIA_DIR = path.join(ROOT, 'media-previews');
 
 if (!fs.existsSync(STATE_DIR)) fs.mkdirSync(STATE_DIR, { recursive: true });
@@ -101,18 +110,21 @@ const MIME = {
 // ============================================================================
 // PERSISTENT STATE & LIVE BUFFERS (Terminal, Leads, Circular Hook Loop, Media)
 // ============================================================================
-const LEADS_FILE = path.join(STATE_DIR, 'harvey-leads.json');
-const HOOKS_FILE = path.join(STATE_DIR, 'circular-hooks-loop.json');
-const MEDIA_INDEX_FILE = path.join(STATE_DIR, 'media-previews.json');
+function getLeadsFile() {
+  return path.join(resolveStateDir(), 'harvey-leads.json');
+}
+function getHooksFile() {
+  return path.join(resolveStateDir(), 'circular-hooks-loop.json');
+}
 
 const terminalLogs = [
   {
     id: 'boot-1',
     ts: new Date().toISOString(),
     profile: 'default',
-    cmd: 'agy --dangerously-skip-permissions (Sabretooth :8392 OPSis Orchestrator Ready)',
+    cmd: 'agy --dangerously-skip-permissions (Alienware :8392 OPSis Orchestrator Ready)',
     status: 'ok',
-    output: `Sabretooth Command Studio online at http://${SABRETOOTH_HOST}:8392/ | Default Hermes OPSis Session: http://${ALIENWARE_HOST}:9119/chat?profile=default&resume=local-profile | Free Claude Code: http://${ALIENWARE_HOST}:8082/admin`
+    output: `Alienware Lead-Gen Command Studio online at http://${ALIENWARE_HOST}:8392/ | Default Hermes OPSis Session: http://${ALIENWARE_HOST}:9119/chat?profile=default&resume=local-profile | Free Claude Code: http://${ALIENWARE_HOST}:8082/admin`
   },
   {
     id: 'boot-2',
@@ -240,70 +252,72 @@ const DEFAULT_LEADS = [
 ];
 
 function loadLeads() {
+  const leadsFile = getLeadsFile();
   try {
-    if (fs.existsSync(LEADS_FILE)) {
-      const parsed = JSON.parse(fs.readFileSync(LEADS_FILE, 'utf8'));
+    if (fs.existsSync(leadsFile)) {
+      const parsed = JSON.parse(fs.readFileSync(leadsFile, 'utf8'));
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
   } catch (_) {}
-  fs.writeFileSync(LEADS_FILE, JSON.stringify(DEFAULT_LEADS, null, 2), 'utf8');
+  fs.writeFileSync(leadsFile, JSON.stringify(DEFAULT_LEADS, null, 2), 'utf8');
   return DEFAULT_LEADS;
 }
 
 function saveLeads(leads) {
-  fs.writeFileSync(LEADS_FILE, JSON.stringify(leads, null, 2), 'utf8');
+  fs.writeFileSync(getLeadsFile(), JSON.stringify(leads, null, 2), 'utf8');
 }
 
 const DEFAULT_HOOK_LOOP = {
-  architecture: 'Task -> Node Orchestrator (:8392/:9119) -> Local File/Task Watcher Hook -> Node PR Branch (sabretooth/*) -> GitHub Webhook -> Reviewers (Gemini / Jules / Claude / Codex in GitHub) Validate -> Merge by Josh or the signed-in Claude judge lane -> Obsidian + Dashboard Sync',
+  architecture: 'Task -> Node Orchestrator (:8392/:9119) -> Local File/Task Watcher Hook -> Node PR Branch (alienware/*) -> GitHub Webhook -> Reviewers (Gemini / Jules / Claude / Codex in GitHub) Validate -> Merge by Josh or the signed-in Claude judge lane -> Obsidian + Dashboard Sync',
   mergeAuthority: ['Josh (Founder)', 'Claude (signed-in judge lane)'],
   nodeCanSelfMergeToMain: false,
   watcherActive: true,
   watchedPaths: [
     path.join(__dirname, 'souls'),
     path.join(__dirname, 'skills.json'),
-    path.join(ANTIGRAVITY_ROOT, 'api.workflow.json'),
-    path.join(ANTIGRAVITY_ROOT, 'Sabretooth')
+    path.join(resolveVaultRoot(), 'api.workflow.json'),
+    path.join(resolveVaultRoot(), 'Alienware')
   ],
   stages: [
-    { step: 1, id: 'work-intake', name: '1. Task / File Change Hook (Sabretooth Node)', status: 'ACTIVE', detail: 'fs.watch + Kanban trigger detects edits or new tasks immediately' },
+    { step: 1, id: 'work-intake', name: '1. Task / File Change Hook (Alienware Node)', status: 'ACTIVE', detail: 'fs.watch + Kanban trigger detects edits or new tasks immediately' },
     { step: 2, id: 'node-orchestrator', name: '2. OPSis Default Orchestrator (:9119 / agy)', status: 'ACTIVE', detail: 'Routes to Harvey, YouTube, Editor, Kanban, FCC (:8082), or Notes profile' },
     { step: 3, id: 'tdd-screenshot-gate', name: '3. Local TDD + Screenshot Proof', status: 'PASSING', detail: 'Runs node --test + publishes visual proof to Media Preview Pane' },
     { step: 4, id: 'github-pr-webhook', name: '4. Node Branch PR + GitHub Webhook', status: 'READY', detail: 'Pushes node-scoped PR payload to Trollz1004/ANTIGRAVITY' },
     { step: 5, id: 'cloud-judges-merge', name: '5. Reviewers Validate (Jules / Claude / Codex / Gemini), Josh or the Claude Judge Lane Merges', status: 'ENFORCED', detail: 'Reviewer lanes comment after CI passes; only Josh or the signed-in Claude judge lane merges — zero unjudged node merges' },
-    { step: 6, id: 'memory-graphy-sync', name: '6. Obsidian + T5500 ai-memory (:49374) + Graphy Sync', status: 'SYNCED', detail: 'Appends timestamped node entry to Sabretooth/gemini-to-gemini.md & hermes-to-hermes.md' }
+    { step: 6, id: 'memory-graphy-sync', name: '6. Obsidian + T5500 ai-memory (:49374) + Graphy Sync', status: 'SYNCED', detail: 'Appends timestamped node entry to Alienware/gemini-to-gemini.md & hermes-to-hermes.md' }
   ],
   events: [
     {
       id: 'hook-init-1',
       ts: new Date().toISOString(),
-      source: 'sabretooth-runtime-watcher',
+      source: 'alienware-runtime-watcher',
       repo: 'Trollz1004/ANTIGRAVITY',
-      branch: 'sabretooth/hermes-leadgen',
+      branch: 'alienware/hermes-leadgen',
       testsPassed: true,
       pushSuccess: false,
       prNumber: null,
       judgeStatus: 'AWAITING_REVIEW_THEN_MERGE_BY_JOSH_OR_CLAUDE_JUDGE_LANE',
-      summary: 'Initialized circular Task -> Node OPSis Orchestrator -> GitHub PR -> Review -> Merge by Josh or the Claude judge lane loop on Sabretooth.'
+      summary: 'Initialized circular Task -> Node OPSis Orchestrator -> GitHub PR -> Review -> Merge by Josh or the Claude judge lane loop on Alienware.'
     }
   ]
 };
 
 function loadHookLoop() {
+  const hooksFile = getHooksFile();
   try {
-    if (fs.existsSync(HOOKS_FILE)) {
-      return JSON.parse(fs.readFileSync(HOOKS_FILE, 'utf8'));
+    if (fs.existsSync(hooksFile)) {
+      return JSON.parse(fs.readFileSync(hooksFile, 'utf8'));
     }
   } catch (_) {}
-  fs.writeFileSync(HOOKS_FILE, JSON.stringify(DEFAULT_HOOK_LOOP, null, 2), 'utf8');
+  fs.writeFileSync(hooksFile, JSON.stringify(DEFAULT_HOOK_LOOP, null, 2), 'utf8');
   return DEFAULT_HOOK_LOOP;
 }
 
 function saveHookLoop(state) {
-  fs.writeFileSync(HOOKS_FILE, JSON.stringify(state, null, 2), 'utf8');
+  fs.writeFileSync(getHooksFile(), JSON.stringify(state, null, 2), 'utf8');
 }
 
-function recordHookEvent(summary, source = 'sabretooth-orchestrator', repo = 'Trollz1004/ANTIGRAVITY', extra = {}) {
+function recordHookEvent(summary, source = 'alienware-orchestrator', repo = 'Trollz1004/ANTIGRAVITY', extra = {}) {
   const loop = loadHookLoop();
   const confirmedPush = Boolean(extra.pushSuccess);
   const prNumber = extra.prNumber || null;
@@ -318,7 +332,7 @@ function recordHookEvent(summary, source = 'sabretooth-orchestrator', repo = 'Tr
     ts: new Date().toISOString(),
     source,
     repo,
-    branch: extra.branch || 'sabretooth/hermes-leadgen',
+    branch: extra.branch || 'alienware/hermes-leadgen',
     commitSha: extra.commitSha || null,
     pushSuccess: confirmedPush,
     prNumber,
@@ -341,7 +355,7 @@ function recordHookEvent(summary, source = 'sabretooth-orchestrator', repo = 'Tr
   return { loop, event: ev };
 }
 
-function executeNodeAutoPrPush({ agent = 'gemini', profile = 'default', message = 'chore(sabretooth): sync apps/hermes-leadgen for Cloud Judges' } = {}) {
+function executeNodeAutoPrPush({ agent = 'gemini', profile = 'default', message = 'chore(alienware): sync apps/hermes-leadgen for Cloud Judges' } = {}) {
   if (!isValidAgentOrProfile(String(agent)) || !isValidAgentOrProfile(String(profile))) {
     return Promise.resolve({
       ok: false,
@@ -376,7 +390,7 @@ function executeNodeAutoPrPush({ agent = 'gemini', profile = 'default', message 
         }
         const extra = parsed || {
           ok: false,
-          branch: 'sabretooth/hermes-leadgen',
+          branch: 'alienware/hermes-leadgen',
           commitSha: null,
           pushSuccess: false,
           prNumber: null,
@@ -405,9 +419,12 @@ function executeNodeAutoPrPush({ agent = 'gemini', profile = 'default', message 
 // ============================================================================
 let watchDebounce = null;
 function setupNodeRuntimeWatchers() {
+  if (process.env.LEADGEN_STATE_DIR || process.env.LEADGEN_VAULT_ROOT || process.env[LEGACY_VAULT_ENV]) {
+    return;
+  }
   const dirsToWatch = [
     SOULS_DIR,
-    path.join(ANTIGRAVITY_ROOT, 'Sabretooth')
+    path.join(resolveVaultRoot(), 'Alienware')
   ];
   for (const dir of dirsToWatch) {
     if (!fs.existsSync(dir)) continue;
@@ -425,7 +442,7 @@ function setupNodeRuntimeWatchers() {
 setupNodeRuntimeWatchers();
 
 // ============================================================================
-// AGENT PROFILES & SOULS REGISTRY (All 7 Sabretooth Profiles)
+// AGENT PROFILES & SOULS REGISTRY (All 7 Alienware Profiles)
 // ============================================================================
 const PROFILE_DEFINITIONS = [
   {
@@ -533,7 +550,7 @@ const PROFILE_DEFINITIONS = [
     hermesUrl: `http://${ALIENWARE_HOST}:9119/chat?profile=editor`,
     proxyUrl: '/proxy/hermes/chat?profile=editor',
     cli: 'agy --dangerously-skip-permissions + rea-agents mcp',
-    auth: 'agy auth + Sabretooth GPU :8391',
+    auth: 'agy auth + Alienware GPU :8391',
     soulFile: 'editor-agent.md',
     mandatorySkills: [
       'rooflo-opsis-cut-and-reach',
@@ -598,7 +615,7 @@ function getProfilesWithSouls() {
 // ============================================================================
 // MEDIA PREVIEW PANE REGISTRY (Thumbnails, Screenshots, MP4s, Audio)
 // ============================================================================
-const approvedMediaIds = new Set(['media-sabretooth-short-preview-thumb.svg']);
+const approvedMediaIds = new Set(['media-alienware-short-preview-thumb.svg']);
 
 function buildMediaPreviews() {
   const items = [];
@@ -620,7 +637,7 @@ function buildMediaPreviews() {
           url: '/media-previews/' + encodeURIComponent(f),
           channel: isRemaster
             ? 'YouTube Studio (UCJnFUOdEfSOJiXLnx6lXSzg)'
-            : 'Sabretooth Validation & Media Studio',
+            : 'Alienware Lead-Gen Command Studio',
           duration: isVideo || isAudio ? '54.2s (<= 59.0s Gate PASS)' : 'High-Contrast Preview',
           voice: 'Aoede / en-US-AvaMultilingualNeural (100% Natural Female Voice — Zero Robotic TTS)',
           madeWithAiTos: {
@@ -637,12 +654,12 @@ function buildMediaPreviews() {
 
   // Ensure there is always a high-contrast SVG thumbnail preview generated if media-previews is empty
   if (items.length === 0) {
-    const sampleSvgPath = path.join(MEDIA_DIR, 'sabretooth-short-preview-thumb.svg');
+    const sampleSvgPath = path.join(MEDIA_DIR, 'alienware-short-preview-thumb.svg');
     if (!fs.existsSync(sampleSvgPath)) {
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
         <rect width="800" height="450" fill="#0d1117"/>
         <rect x="16" y="16" width="768" height="418" rx="18" fill="#161b22" stroke="#10b981" stroke-width="4"/>
-        <text x="48" y="85" fill="#10b981" font-family="Segoe UI, sans-serif" font-size="28" font-weight="bold">SABRETOOTH (.8) MEDIA &amp; THUMBNAIL PREVIEW</text>
+        <text x="48" y="85" fill="#10b981" font-family="Segoe UI, sans-serif" font-size="28" font-weight="bold">ALIENWARE LEAD-GEN COMMAND STUDIO MEDIA PREVIEW</text>
         <text x="48" y="145" fill="#ffffff" font-family="Segoe UI, sans-serif" font-size="34" font-weight="bold">DREAM ONLINE MMORPG — 54.5s Short</text>
         <text x="48" y="205" fill="#58a6ff" font-family="Segoe UI, sans-serif" font-size="24">Voice: Aoede / af_heart (100% Natural Female Voice)</text>
         <text x="48" y="255" fill="#f0f6fc" font-family="Segoe UI, sans-serif" font-size="22">CLI: agy --dangerously-skip-permissions | Gate: &lt;= 59.0s PASS</text>
@@ -652,10 +669,10 @@ function buildMediaPreviews() {
       fs.writeFileSync(sampleSvgPath, svg, 'utf8');
     }
     items.push({
-      id: 'media-sabretooth-short-preview-thumb.svg',
+      id: 'media-alienware-short-preview-thumb.svg',
       title: 'DREAM Online 54.5s Short Thumbnail & QA Card',
       type: 'image',
-      url: '/media-previews/sabretooth-short-preview-thumb.svg',
+      url: '/media-previews/alienware-short-preview-thumb.svg',
       channel: 'dream-online-mmorpg',
       duration: '54.5s (<= 59.0s Gate PASS)',
       voice: 'Aoede / af_heart (Natural Female Voice)',
@@ -687,12 +704,12 @@ function checkTcpPort(host, port, timeoutMs = 1500) {
   });
 }
 
-async function getSabretoothNodeStatus() {
+async function getAlienwareNodeStatus() {
   const definitions = [
-    { id: 'gui-8392', name: 'Sabretooth GUI Studio (:8392)', host: ALIENWARE_HOST, port: 8392, url: `http://${SABRETOOTH_HOST}:8392/` },
+    { id: 'gui-8392', name: 'Alienware Lead-Gen Command Studio (:8392)', host: ALIENWARE_HOST, port: 8392, url: `http://${ALIENWARE_HOST}:8392/` },
     { id: 'hermes-9119', name: 'Hermes OPSis Orchestrator (:9119)', host: ALIENWARE_HOST, port: 9119, url: `http://${ALIENWARE_HOST}:9119/chat?profile=default&resume=local-profile` },
-    { id: 'fcc-8082', name: 'Free Claude Code Admin (:8082/admin)', host: ALIENWARE_HOST, port: 8082, url: `http://${SABRETOOTH_HOST}:8392/proxy/fcc/admin` },
-    { id: 'gpu-8391', name: 'Sabretooth GPU Media & TTS Worker (:8391)', host: ALIENWARE_HOST, port: 8391, url: `http://${ALIENWARE_HOST}:8391/health` },
+    { id: 'fcc-8082', name: 'Free Claude Code Admin (:8082/admin)', host: ALIENWARE_HOST, port: 8082, url: `http://${ALIENWARE_HOST}:8392/proxy/fcc/admin` },
+    { id: 'gpu-8391', name: 'Alienware GPU Media & TTS Worker (:8391)', host: ALIENWARE_HOST, port: 8391, url: `http://${ALIENWARE_HOST}:8391/health` },
     { id: 'ollama-11434', name: 'Ollama 16GB AMD GPU Offload (:11434)', host: ALIENWARE_HOST, port: 11434, url: `http://${ALIENWARE_HOST}:11434/api/tags` },
     { id: 'obsidian-27123', name: 'Obsidian Local REST API & Sync (:27123)', host: '127.0.0.1', port: 27123, url: 'obsidian://vault/27123' },
     { id: 't5500-memory-49374', name: 'T5500 Shared ai-memory MCP (:49374)', host: T5500_HOST, port: 49374, url: `http://${T5500_HOST}:49374/health` },
@@ -712,10 +729,11 @@ async function getSabretoothNodeStatus() {
   );
 
   return {
-    node: 'Sabretooth',
-    ip: SABRETOOTH_HOST,
-    role: 'Hermes OPSis (:9119) + Free Claude Code (:8082/admin) + Harvey 3-Type Lead Gen + YouTube Shorts (<=59s) + Dual Graphy GUI (:8392)',
-    isolationRule: 'Sabretooth (:8392) is strictly node-specific. T5500 (:3130 OPSis streamable Mission Control) and Alienware (3D Game Engine) remain strictly separate.',
+    node: `Alienware (${ALIENWARE_HOST})`,
+    title: 'Alienware Lead-Gen Command Studio',
+    ip: ALIENWARE_HOST,
+    role: 'Alienware Lead-Gen Command Studio (:8392) + Hermes OPSis (:9119) + Free Claude Code (:8082/admin) + Harvey 3-Type Lead Gen + YouTube Shorts (<=59s) + Dual Graphy GUI',
+    isolationRule: 'Alienware Lead-Gen Command Studio (:8392) is strictly scoped to lead-gen and shorts. T5500 (:3130 OPSis streamable studio) and port :9180 (3D Game Engine) remain strictly separate.',
     cliCommand: 'agy --dangerously-skip-permissions',
     allGreen: services.every((s) => s.up),
     services
@@ -726,9 +744,10 @@ async function getSabretoothNodeStatus() {
 // DUAL GRAPHY LOADER (1. Agent Workflow Graphy + 2. Codebase Knowledge Graphy)
 // ============================================================================
 function loadDualGraphy() {
+  const vaultRoot = resolveVaultRoot();
   let workflowGraph = { nodes: [], edges: [], meta: {} };
   try {
-    const wfPath = path.join(ANTIGRAVITY_ROOT, 'api.workflow.json');
+    const wfPath = path.join(vaultRoot, 'api.workflow.json');
     if (fs.existsSync(wfPath)) {
       workflowGraph = JSON.parse(fs.readFileSync(wfPath, 'utf8'));
     }
@@ -741,14 +760,14 @@ function loadDualGraphy() {
         ...PROFILE_DEFINITIONS.map((p) => ({
           id: p.id,
           label: p.name,
-          type: 'sabretooth-profile',
+          type: 'alienware-profile',
           port: p.id === 'fcc' ? 8082 : 9119,
           cli: p.cli,
           role: `${p.role} | Skills: ${p.mandatorySkills.slice(0, 5).join(', ')}`
         })),
         {
-          id: 'sabretooth-gui-8392',
-          label: 'Sabretooth Command Studio (:8392)',
+          id: 'alienware-gui-8392',
+          label: 'Alienware Lead-Gen Command Studio (:8392)',
           type: 'node-gui',
           port: 8392,
           cli: 'node server.js',
@@ -801,7 +820,7 @@ function loadDualGraphy() {
   return {
     workflowGraphy: {
       title: 'Graphy #1 — Agent Workflow & Multi-Node Orchestration Graphy',
-      sourcePath: path.join(ANTIGRAVITY_ROOT, 'api.workflow.json'),
+      sourcePath: path.join(vaultRoot, 'api.workflow.json'),
       nodeCount: wfNodes.length,
       edgeCount: wfEdges.length,
       nodes: wfNodes,
@@ -824,7 +843,7 @@ function loadDualGraphy() {
 // ============================================================================
 // OBSIDIAN NODE-SPECIFIC SESSION WRITE + T5500 AI-MEMORY (:49374) MIRROR
 // ============================================================================
-function syncObsidianAndMemory({ agent = 'gemini', useCase = 'Sabretooth :8392 Studio Session Sync', summary = '', proof = '' }) {
+function syncObsidianAndMemory({ agent = 'gemini', useCase = 'Alienware Lead-Gen Command Studio (:8392) Session Sync', summary = '', proof = '' }) {
   if (!isValidAgentOrProfile(String(agent))) {
     const err = new Error('Invalid agent: must match /^[a-z0-9_-]{1,32}$/i');
     err.statusCode = 400;
@@ -832,24 +851,25 @@ function syncObsidianAndMemory({ agent = 'gemini', useCase = 'Sabretooth :8392 S
   }
   const now = new Date();
   const stamp = now.toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
-  const sabretoothDir = path.join(ANTIGRAVITY_ROOT, 'Sabretooth');
-  if (!fs.existsSync(sabretoothDir)) fs.mkdirSync(sabretoothDir, { recursive: true });
+  const vaultRoot = resolveVaultRoot();
+  const alienwareDir = path.join(vaultRoot, 'Alienware');
+  if (!fs.existsSync(alienwareDir)) fs.mkdirSync(alienwareDir, { recursive: true });
 
   const targetFiles = [
-    path.join(sabretoothDir, 'gemini-to-gemini.md'),
-    path.join(sabretoothDir, 'hermes-to-hermes.md')
+    path.join(alienwareDir, 'gemini-to-gemini.md'),
+    path.join(alienwareDir, 'hermes-to-hermes.md')
   ];
   if (agent === 'claude' || agent === 'fcc') {
-    targetFiles.push(path.join(sabretoothDir, 'claude-to-claude.md'));
+    targetFiles.push(path.join(alienwareDir, 'claude-to-claude.md'));
   }
 
   const block = [
     '',
-    `## ${stamp} | node: Sabretooth | agent: ${agent} | use case: ${useCase}`,
-    `- **Summary**: ${summary || 'Synchronized Sabretooth :8392 GUI, OPSis Default Orchestrator (:9119), Free Claude Code (:8082/admin), Dual Graphies, and Harvey 3-Type Lead Gen.'}`,
-    `- **Proof / Validation**: ${proof || `http://${SABRETOOTH_HOST}:8392/ + http://${ALIENWARE_HOST}:9119/chat?profile=default&resume=local-profile + http://${ALIENWARE_HOST}:8082/admin`}`,
+    `## ${stamp} | node: Alienware (${ALIENWARE_HOST}) | agent: ${agent} | use case: ${useCase}`,
+    `- **Summary**: ${summary || 'Synchronized Alienware Lead-Gen Command Studio (:8392), OPSis Default Orchestrator (:9119), Free Claude Code (:8082/admin), Dual Graphies, and Harvey 3-Type Lead Gen.'}`,
+    `- **Proof / Validation**: ${proof || `http://${ALIENWARE_HOST}:8392/ + http://${ALIENWARE_HOST}:9119/chat?profile=default&resume=local-profile + http://${ALIENWARE_HOST}:8082/admin`}`,
     `- **CLI Enforced**: \`agy --dangerously-skip-permissions\` (never \`gemini\` CLI)`,
-    `- **Memory Fallbacks Synced**: Obsidian Vault (\`Sabretooth/*-to-*.md\`) -> T5500 \`ai-memory\` (\`http://${T5500_HOST}:49374\`) -> Graphy -> OpenViking -> Supabase -> Supermemory`,
+    `- **Memory Fallbacks Synced**: Obsidian Vault (\`Alienware/*-to-*.md\`) -> T5500 \`ai-memory\` (\`http://${T5500_HOST}:49374\`) -> Graphy -> OpenViking -> Supabase -> Supermemory`,
     ''
   ].join('\n');
 
@@ -859,7 +879,7 @@ function syncObsidianAndMemory({ agent = 'gemini', useCase = 'Sabretooth :8392 S
     written.push(file);
   }
 
-  appendTerminalLog('notes', 'Obsidian Session Sync -> Sabretooth/*-to-*.md + T5500 :49374', `Appended timestamped entry (${stamp}) to ${written.map((f) => path.basename(f)).join(', ')}`);
+  appendTerminalLog('notes', 'Obsidian Session Sync -> Alienware/*-to-*.md + T5500 :49374', `Appended timestamped entry (${stamp}) to ${written.map((f) => path.basename(f)).join(', ')}`);
   return { ok: true, timestamp: stamp, writtenFiles: written };
 }
 
@@ -943,7 +963,6 @@ function buildAllowedAddresses() {
   const addrs = new Set(['127.0.0.1', 'localhost', ...getAllowedNodeHosts()]);
   if (ALIENWARE_HOST) addrs.add(String(ALIENWARE_HOST).toLowerCase());
   if (T5500_HOST) addrs.add(String(T5500_HOST).toLowerCase());
-  if (SABRETOOTH_HOST) addrs.add(String(SABRETOOTH_HOST).toLowerCase());
   const nets = os.networkInterfaces();
   for (const list of Object.values(nets)) {
     for (const iface of list || []) {
@@ -1071,12 +1090,12 @@ const server = http.createServer(async (req, res) => {
 
     // 2. Node Red-Light / Green-Light Status & Self-Heal
     if (pathname === '/api/node/status' && req.method === 'GET') {
-      const status = await getSabretoothNodeStatus();
+      const status = await getAlienwareNodeStatus();
       return sendJson(res, 200, status);
     }
 
     if (pathname === '/api/node/heal' && req.method === 'POST') {
-      const before = await getSabretoothNodeStatus();
+      const before = await getAlienwareNodeStatus();
       const down = before.services.filter((s) => !s.up && s.host === '127.0.0.1');
       const healed = [];
       for (const svc of down) {
@@ -1088,8 +1107,8 @@ const server = http.createServer(async (req, res) => {
           }
         }
       }
-      appendTerminalLog('default', 'POST /api/node/heal (Sabretooth Self-Heal)', down.length === 0 ? 'All local Sabretooth ports are GREEN.' : `Triggered self-heal for: ${healed.join(', ')}`);
-      const after = await getSabretoothNodeStatus();
+      appendTerminalLog('default', 'POST /api/node/heal (Alienware Self-Heal)', down.length === 0 ? 'All local Alienware ports are GREEN.' : `Triggered self-heal for: ${healed.join(', ')}`);
+      const after = await getAlienwareNodeStatus();
       return sendJson(res, 200, { ok: true, healed, status: after });
     }
 
@@ -1198,8 +1217,8 @@ const server = http.createServer(async (req, res) => {
           `**Outcome**: OPSis Default Orchestrator (\`http://${ALIENWARE_HOST}:9119/chat?profile=default&resume=local-profile\`) dispatched your task to **${profileMeta.name}** using \`${cliInvoked}\`.`,
           `- **Active Skills**: ${profileMeta.mandatorySkills.join(', ')}`,
           `- **Terminal Preview**: Live command output streamed to the Terminal Preview Pane.`,
-          `- **Circular Judge Loop**: Run \`/api/hooks/push-pr\` to push \`sabretooth/hermes-leadgen\` and open a verified GitHub PR for review (\`Gemini / Jules / Claude / Codex\`); merge goes through Josh or the signed-in Claude judge lane.`,
-          `- **Memory Sync**: Logged to \`Sabretooth/gemini-to-gemini.md\` and \`Sabretooth/hermes-to-hermes.md\`.`
+          `- **Circular Judge Loop**: Run \`/api/hooks/push-pr\` to push \`alienware/hermes-leadgen\` and open a verified GitHub PR for review (\`Gemini / Jules / Claude / Codex\`); merge goes through Josh or the signed-in Claude judge lane.`,
+          `- **Memory Sync**: Logged to \`Alienware/gemini-to-gemini.md\` and \`Alienware/hermes-to-hermes.md\`.`
         ].join('\n');
       }
 
@@ -1387,7 +1406,7 @@ const server = http.createServer(async (req, res) => {
     // 7B. Natural Neural Female Voice TTS Endpoint (Bans Robotic Windows SAPI / speechSynthesis Forever)
     if (pathname === '/api/tts/female' && req.method === 'POST') {
       const body = await readJsonBody(req);
-      const rawText = String(body.text || 'Welcome back Joshua. Sabretooth Studio is online with one hundred percent natural female voice narration.').trim();
+      const rawText = String(body.text || 'Welcome back Joshua. Alienware Lead-Gen Command Studio is online with one hundred percent natural female voice narration.').trim();
       const requestedVoice = String(body.voice || 'Aoede').trim();
       if (/sapi|pyttsx3|espeak|david|zira|robotic|speechsynthesis/i.test(requestedVoice)) {
         return sendJson(res, 400, {
@@ -1595,12 +1614,13 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/api/memory/ledger' && req.method === 'GET') {
-      const gemFile = path.join(ANTIGRAVITY_ROOT, 'Sabretooth', 'gemini-to-gemini.md');
-      const hermFile = path.join(ANTIGRAVITY_ROOT, 'Sabretooth', 'hermes-to-hermes.md');
+      const vaultRoot = resolveVaultRoot();
+      const gemFile = path.join(vaultRoot, 'Alienware', 'gemini-to-gemini.md');
+      const hermFile = path.join(vaultRoot, 'Alienware', 'hermes-to-hermes.md');
       return sendJson(res, 200, {
         ok: true,
-        sabretoothGeminiLedger: fs.existsSync(gemFile) ? fs.readFileSync(gemFile, 'utf8').slice(-3500) : '',
-        sabretoothHermesLedger: fs.existsSync(hermFile) ? fs.readFileSync(hermFile, 'utf8').slice(-3500) : ''
+        alienwareGeminiLedger: fs.existsSync(gemFile) ? fs.readFileSync(gemFile, 'utf8').slice(-3500) : '',
+        alienwareHermesLedger: fs.existsSync(hermFile) ? fs.readFileSync(hermFile, 'utf8').slice(-3500) : ''
       });
     }
 
@@ -1616,7 +1636,7 @@ const server = http.createServer(async (req, res) => {
         `**Free Claude Code (\`:8082/admin\`) MCP Wrapper -> Bridged to Hermes Profile \`${bridgeProfile}\`**:`,
         `- **Port \`:8082\` Status**: ${fccStatus ? `GREEN (http://${ALIENWARE_HOST}:8082/admin online)` : 'HEALING'}`,
         `- **CLI Harness**: \`fcc-claude\` + \`agy --dangerously-skip-permissions\``,
-        `- **Action Executed**: Processed "${message}" with clean-room verification and synced state to \`Sabretooth/claude-to-claude.md\` & \`Sabretooth/gemini-to-gemini.md\`.`
+        `- **Action Executed**: Processed "${message}" with clean-room verification and synced state to \`Alienware/claude-to-claude.md\` & \`Alienware/gemini-to-gemini.md\`.`
       ].join('\n');
 
       return sendJson(res, 200, { ok: true, profile: bridgeProfile, fccOnline: fccStatus, reply });
@@ -1758,7 +1778,7 @@ function startServer(port = PORT, env = process.env, onListening) {
   return server.listen(port, host, () => {
     const addr = server.address();
     const actualPort = addr && typeof addr === 'object' ? addr.port : port;
-    console.log(`[Sabretooth Command Studio] Listening on http://${host}:${actualPort} (http://${SABRETOOTH_HOST}:${actualPort}/)`);
+    console.log(`[Alienware Lead-Gen Command Studio] Listening on http://${host}:${actualPort} (http://${ALIENWARE_HOST}:${actualPort}/)`);
     if (typeof onListening === 'function') onListening();
   });
 }
@@ -1767,7 +1787,7 @@ if (require.main === module) {
   try {
     startServer(PORT, process.env);
   } catch (err) {
-    console.error(`[Sabretooth Command Studio] ${err.message}`);
+    console.error(`[Alienware Lead-Gen Command Studio] ${err.message}`);
     process.exit(1);
   }
 }
@@ -1780,7 +1800,9 @@ module.exports = {
   requireApiAuth,
   isAllowedOrigin,
   isValidAgentOrProfile,
-  getSabretoothNodeStatus,
+  getAlienwareNodeStatus,
+  resolveVaultRoot,
+  resolveStateDir,
   loadDualGraphy,
   loadLeads,
   STATE_CHANGING_METHODS

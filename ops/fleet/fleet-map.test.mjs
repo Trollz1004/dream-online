@@ -159,6 +159,7 @@ test('PowerShell fleet scripts print [DRY RUN] by default without modifying the 
     'firewall-allowlist.ps1',
     'tunnel-targets.ps1',
     'configure-lan-binds.ps1',
+    'remove-yt-dlp.ps1',
   ]) {
     const scriptPath = path.join(__dirname, scriptName);
     const res = spawnSync(

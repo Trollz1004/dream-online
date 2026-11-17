@@ -2,7 +2,7 @@
   "name": "hermes-leadgen",
   "version": "1.0.0",
   "private": true,
-  "description": "HermesLeadGen - YouTube shorts and marketing lead-gen Command Studio for Sabretooth",
+  "description": "HermesLeadGen - Alienware Lead-Gen Command Studio (http://192.168.0.40:8392/) for YouTube shorts and marketing lead-gen",
   "main": "main.js",
   "scripts": {
     "start": "node server.js",
