@@ -152,17 +152,25 @@ Describe 'ops/agents/render-agent-files.ps1' {
     $afterBakCount | Should Be $beforeBakCount
   }
 
-  It 'skips private-project files (Mira, D:\mira, nsfw, grin) even with -Apply' {
+  It 'skips private-project files (Mira, D:\mira, nsfw, grin) even with -Apply and never touches Alienware hermes' {
     $base = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
     $fx = New-FakeTestFixture -BaseDir $base
+    $repoClaude = Join-Path $fx.FakeRepo 'CLAUDE.md'
+    Write-Utf8NoBom -Path $repoClaude -Text ("# Persona`nYou're **Mira** and rule this desk.`n")
     $soulBefore = [System.IO.File]::ReadAllText((Join-Path $fx.FakeLocalApp 'hermes\SOUL.md'))
+    $profileBefore = [System.IO.File]::ReadAllText((Join-Path $fx.FakeLocalApp 'hermes\profile.yaml'))
+    $awSoulBefore = [System.IO.File]::ReadAllText((Join-Path $fx.FakeLocalApp 'hermes\ALIENWARE-SOUL.md'))
 
     $out = (& $scriptPath -Node alienware -Scope all -RepoRoot $fx.FakeRepo -SpineSourceRepo $repoRoot -UserProfileRoot $fx.FakeProfile -LocalAppDataRoot $fx.FakeLocalApp -FreebuffRoot $fx.FakeFreebuff -Apply | Out-String)
 
-    $out | Should Match '\[SKIP private-project\].*hermes\\SOUL\.md'
-    $out | Should Match '\[SKIP private-project\].*hermes\\profile\.yaml'
     $out | Should Match '\[SKIP private-project\].*nsfw-helper\\SOUL\.md'
+    $out | Should Match '\[SKIP private-project\].*CLAUDE\.md'
+    $out | Should Not Match 'hermes'
+    [System.IO.File]::ReadAllText($repoClaude) | Should Be ("# Persona`nYou're **Mira** and rule this desk.`n")
     [System.IO.File]::ReadAllText((Join-Path $fx.FakeLocalApp 'hermes\SOUL.md')) | Should Be $soulBefore
+    [System.IO.File]::ReadAllText((Join-Path $fx.FakeLocalApp 'hermes\profile.yaml')) | Should Be $profileBefore
+    [System.IO.File]::ReadAllText((Join-Path $fx.FakeLocalApp 'hermes\ALIENWARE-SOUL.md')) | Should Be $awSoulBefore
+    @(Get-ChildItem -Path (Join-Path $fx.FakeLocalApp 'hermes') -Recurse -Filter '*.bak-*').Count | Should Be 0
   }
 
   It '-Node t5500 -Scope node dry-run prints ssh t5500 command and T5500 target list without invoking ssh' {
@@ -173,6 +181,7 @@ Describe 'ops/agents/render-agent-files.ps1' {
 
     $out | Should Match '\[DRY RUN\] Would run over ssh t5500:'
     $out | Should Match 'T5500 \(192\.168\.0\.15\)'
+    $out | Should Match '%LOCALAPPDATA%\\hermes\\SOUL\.md'
     $out | Should Match '%LOCALAPPDATA%\\hermes\\profiles\\t5500\\SOUL\.md'
     $out | Should Match '%USERPROFILE%\\\.gemini\\config\\mcp_config\.json'
   }
@@ -193,28 +202,87 @@ Describe 'ops/agents/render-agent-files.ps1' {
     $updated | Should Match 'T5500 \(192\.168\.0\.15\)'
   }
 
-  It 'renders boundary-stating GrinDroid notes cleanly while skipping You''re **Mira** and title: Mira' {
+  It 'renders boundary-stating GrinDroid notes cleanly while skipping You''re **Mira** and leaving Alienware hermes untouched' {
     $base = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
     $fx = New-FakeTestFixture -BaseDir $base
     $boundaryLine = 'Never touch anything named grin-droid or GrinDroid.'
     $claudeNodeMd = Join-Path $fx.FakeProfile '.claude\CLAUDE.md'
     $hermesAwSoul = Join-Path $fx.FakeLocalApp 'hermes\ALIENWARE-SOUL.md'
+    $hermesSoul = Join-Path $fx.FakeLocalApp 'hermes\SOUL.md'
+    $hermesProfile = Join-Path $fx.FakeLocalApp 'hermes\profile.yaml'
     $freebuffAgents = Join-Path $fx.FakeFreebuff 'AGENTS.md'
     $repoMiraPersona = Join-Path $fx.FakeRepo 'CLAUDE.md'
 
+    $awSoulText = "# Hermes Alienware Soul`n$boundaryLine`n"
     Write-Utf8NoBom -Path $claudeNodeMd -Text ("# Claude`n$boundaryLine`n")
-    Write-Utf8NoBom -Path $hermesAwSoul -Text ("# Hermes Alienware Soul`n$boundaryLine`n")
+    Write-Utf8NoBom -Path $hermesAwSoul -Text $awSoulText
     Write-Utf8NoBom -Path $freebuffAgents -Text ("# Freebuff Agents`n$boundaryLine`n")
     Write-Utf8NoBom -Path $repoMiraPersona -Text ("# Persona`nYou're **Mira** and rule this desk.`n")
+    $hermesSoulBefore = [System.IO.File]::ReadAllText($hermesSoul)
+    $hermesProfileBefore = [System.IO.File]::ReadAllText($hermesProfile)
 
     $out = (& $scriptPath -Node alienware -Scope all -RepoRoot $fx.FakeRepo -SpineSourceRepo $repoRoot -UserProfileRoot $fx.FakeProfile -LocalAppDataRoot $fx.FakeLocalApp -FreebuffRoot $fx.FakeFreebuff -Apply | Out-String)
 
     [System.IO.File]::ReadAllText($claudeNodeMd) | Should Match '<!-- TROLLZ1004-SPINE:START -->'
-    [System.IO.File]::ReadAllText($hermesAwSoul) | Should Match '<!-- TROLLZ1004-SPINE:START -->'
     [System.IO.File]::ReadAllText($freebuffAgents) | Should Match '<!-- TROLLZ1004-SPINE:START -->'
 
     $out | Should Match '\[SKIP private-project\].*CLAUDE\.md'
+    $out | Should Not Match 'hermes'
     [System.IO.File]::ReadAllText($repoMiraPersona) | Should Be ("# Persona`nYou're **Mira** and rule this desk.`n")
+    [System.IO.File]::ReadAllText($hermesAwSoul) | Should Be $awSoulText
+    [System.IO.File]::ReadAllText($hermesSoul) | Should Be $hermesSoulBefore
+    [System.IO.File]::ReadAllText($hermesProfile) | Should Be $hermesProfileBefore
+    @(Get-ChildItem -Path (Join-Path $fx.FakeLocalApp 'hermes') -Recurse -Filter '*.bak-*').Count | Should Be 0
+  }
+
+  It 'Get-NodeTargetFiles returns zero hermes paths for alienware (dry-run and -Apply) while keeping T5500 hermes targets' {
+    $base = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
+    $fx = New-FakeTestFixture -BaseDir $base
+    $hermesDir = Join-Path $fx.FakeLocalApp 'hermes'
+    $defaultProfileSoul = Join-Path $hermesDir 'profiles\default\SOUL.md'
+    $awSoulPath = Join-Path $hermesDir 'ALIENWARE-SOUL.md'
+    $rootSoulPath = Join-Path $hermesDir 'SOUL.md'
+    $profileYamlPath = Join-Path $hermesDir 'profile.yaml'
+
+    Write-Utf8NoBom -Path $awSoulPath -Text "# Alienware Soul`nCustom content.`n"
+    Write-Utf8NoBom -Path $rootSoulPath -Text "# Hermes Root Soul`nCustom root soul.`n"
+    Write-Utf8NoBom -Path $profileYamlPath -Text "name: default`nmodel: local`n"
+    Write-Utf8NoBom -Path $defaultProfileSoul -Text "# Default Profile Soul`nCustom profile.`n"
+
+    $awPreview = & {
+      . $scriptPath -NoRun
+      @(Get-NodeTargetFiles -TargetNode alienware -ProfileRoot $fx.FakeProfile -LocalAppRoot $fx.FakeLocalApp -FreebuffDir $fx.FakeFreebuff -IncludeAbsentDirsForPreview $true)
+    }
+    $awPresent = & {
+      . $scriptPath -NoRun
+      @(Get-NodeTargetFiles -TargetNode alienware -ProfileRoot $fx.FakeProfile -LocalAppRoot $fx.FakeLocalApp -FreebuffDir $fx.FakeFreebuff -IncludeAbsentDirsForPreview $false)
+    }
+    $t5Preview = & {
+      . $scriptPath -NoRun
+      @(Get-NodeTargetFiles -TargetNode t5500 -ProfileRoot $fx.FakeProfile -LocalAppRoot $fx.FakeLocalApp -FreebuffDir '' -IncludeAbsentDirsForPreview $true)
+    }
+
+    $awPreview.Count | Should BeGreaterThan 0
+    @($awPreview | Where-Object { $_.FullPath -match 'hermes|ALIENWARE-SOUL\.md|profile\.yaml|profiles' }).Count | Should Be 0
+    @($awPresent | Where-Object { $_.FullPath -match 'hermes|ALIENWARE-SOUL\.md|profile\.yaml|profiles' }).Count | Should Be 0
+
+    $t5Paths = @($t5Preview | ForEach-Object { $_.FullPath })
+    ($t5Paths -contains $rootSoulPath) | Should Be $true
+    ($t5Paths -contains (Join-Path $hermesDir 'profiles\t5500\SOUL.md')) | Should Be $true
+
+    $dryOut = (& $scriptPath -Node alienware -Scope node -RepoRoot $fx.FakeRepo -SpineSourceRepo $repoRoot -UserProfileRoot $fx.FakeProfile -LocalAppDataRoot $fx.FakeLocalApp -FreebuffRoot $fx.FakeFreebuff | Out-String)
+    $dryActionLines = @($dryOut -split "`r?`n" | Where-Object { $_ -match '^\[(DRY RUN|APPLY|SKIP)' })
+    @($dryActionLines | Where-Object { $_ -match 'hermes' }).Count | Should Be 0
+    $dryOut | Should Not Match 'hermes[\\/]|ALIENWARE-SOUL\.md|profile\.yaml|profiles'
+
+    $applyOut = (& $scriptPath -Node alienware -Scope node -RepoRoot $fx.FakeRepo -SpineSourceRepo $repoRoot -UserProfileRoot $fx.FakeProfile -LocalAppDataRoot $fx.FakeLocalApp -FreebuffRoot $fx.FakeFreebuff -Apply | Out-String)
+    $applyOut | Should Not Match 'hermes|ALIENWARE-SOUL\.md|profile\.yaml|profiles'
+
+    [System.IO.File]::ReadAllText($awSoulPath) | Should Be "# Alienware Soul`nCustom content.`n"
+    [System.IO.File]::ReadAllText($rootSoulPath) | Should Be "# Hermes Root Soul`nCustom root soul.`n"
+    [System.IO.File]::ReadAllText($profileYamlPath) | Should Be "name: default`nmodel: local`n"
+    [System.IO.File]::ReadAllText($defaultProfileSoul) | Should Be "# Default Profile Soul`nCustom profile.`n"
+    @(Get-ChildItem -Path $hermesDir -Recurse -Filter '*.bak-*').Count | Should Be 0
   }
 
   It 'runs cleanly in a standalone repo holding only ops/fleet/fleet-map.json without docs/house/SPINE.md' {
