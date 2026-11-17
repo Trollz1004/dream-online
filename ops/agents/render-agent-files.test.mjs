@@ -323,7 +323,7 @@ test('render-agent-files.ps1 renders boundary-stating GrinDroid notes, skips gen
 });
 
 test('render-agent-files.ps1 never targets or modifies Alienware hermes folder while keeping T5500 hermes targets', { skip: !PS_EXE }, () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'render-agent-hermes-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'render-agent-aw-node-'));
   try {
     const repo = path.join(root, 'repo');
     const profile = path.join(root, 'UserProfile');
@@ -374,7 +374,10 @@ test('render-agent-files.ps1 never targets or modifies Alienware hermes folder w
     for (const targetList of [parsedTargets.alienwarePreview, parsedTargets.alienwarePresent]) {
       assert.ok(Array.isArray(targetList) && targetList.length > 0);
       assert.equal(
-        targetList.some((p) => /hermes|ALIENWARE-SOUL\.md|profile\.yaml|profiles/i.test(p)),
+        targetList.some((p) => {
+          const rel = path.relative(root, p);
+          return /hermes|ALIENWARE-SOUL\.md|profile\.yaml|profiles/i.test(rel);
+        }),
         false,
         `Get-NodeTargetFiles for alienware must return zero hermes paths; got: ${targetList.join(', ')}`,
       );
