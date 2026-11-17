@@ -917,19 +917,9 @@ function Get-NodeTargetFiles {
     }
   }
 
-  $hermesDir = Join-Path $LocalAppRoot 'hermes'
-  if ($IncludeAbsentDirsForPreview -or (Test-Path -LiteralPath $hermesDir)) {
-    if ($TargetNode -eq 'alienware') {
-      $targets.Add([PSCustomObject]@{ FullPath = (Join-Path $hermesDir 'ALIENWARE-SOUL.md'); Kind = 'md' })
-      $hermesSoul = Join-Path $hermesDir 'SOUL.md'
-      if (Test-Path -LiteralPath $hermesSoul) {
-        $targets.Add([PSCustomObject]@{ FullPath = $hermesSoul; Kind = 'md' })
-      }
-      $hermesProfile = Join-Path $hermesDir 'profile.yaml'
-      if (Test-Path -LiteralPath $hermesProfile) {
-        $targets.Add([PSCustomObject]@{ FullPath = $hermesProfile; Kind = 'yaml' })
-      }
-    } else {
+  if ($TargetNode -eq 't5500') {
+    $hermesDir = Join-Path $LocalAppRoot 'hermes'
+    if ($IncludeAbsentDirsForPreview -or (Test-Path -LiteralPath $hermesDir)) {
       $targets.Add([PSCustomObject]@{ FullPath = (Join-Path $hermesDir 'SOUL.md'); Kind = 'md' })
       $targets.Add([PSCustomObject]@{ FullPath = (Join-Path $hermesDir 'profiles\t5500\SOUL.md'); Kind = 'md' })
     }

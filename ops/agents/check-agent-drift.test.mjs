@@ -37,13 +37,15 @@ function makeDriftFixture() {
   fs.mkdirSync(path.join(profile, '.gemini', 'config'), { recursive: true });
   fs.mkdirSync(path.join(profile, '.codex'), { recursive: true });
   fs.mkdirSync(path.join(profile, '.claude'), { recursive: true });
-  fs.mkdirSync(path.join(localApp, 'hermes'), { recursive: true });
+  fs.mkdirSync(path.join(localApp, 'hermes', 'profiles', 'default'), { recursive: true });
+  fs.mkdirSync(path.join(localApp, 'hermes', 'profiles', 't5500'), { recursive: true });
   fs.mkdirSync(freebuff, { recursive: true });
 
   const hr = '- House rules: `docs/house/HOUSE-MOTION-RULE.md`, `docs/house/THE-HOUSE.md` and `docs/house/PAYMENT-ACCOUNTS-RULE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.';
   const cb = '- Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports (`ops/handoffs/FABLE-HANDOFFS-2026-11-06.md` section 0).';
 
   fs.writeFileSync(path.join(repo, 'AGENTS.md'), `# AGENTS\n\nBody.\n${hr}\n${cb}\n`, 'utf8');
+  fs.writeFileSync(path.join(repo, 'CLAUDE.md'), 'Workspace D:\\mira — Legal NSFW only.\n', 'utf8');
   fs.writeFileSync(
     path.join(repo, '.agents', 'skills', 'demo', 'skill.json'),
     JSON.stringify({ house_rules: 'docs/house/HOUSE-MOTION-RULE.md', name: 'demo' }, null, 2) + '\n',
@@ -74,8 +76,11 @@ function makeDriftFixture() {
   fs.writeFileSync(path.join(profile, '.codex', 'config.toml'), 'model = "gpt-6-astra"\n', 'utf8');
   fs.writeFileSync(path.join(profile, '.codex', 'AGENTS.md'), '# Codex Agents\n', 'utf8');
   fs.writeFileSync(path.join(profile, '.claude', 'CLAUDE.md'), '# Claude\n', 'utf8');
-  fs.writeFileSync(path.join(localApp, 'hermes', 'ALIENWARE-SOUL.md'), '# Alienware Soul\n', 'utf8');
+  fs.writeFileSync(path.join(localApp, 'hermes', 'ALIENWARE-SOUL.md'), '# Alienware Soul\n<!-- TROLLZ1004-SPINE:START -->\nSTALE\n<!-- TROLLZ1004-SPINE:END -->\n', 'utf8');
   fs.writeFileSync(path.join(localApp, 'hermes', 'SOUL.md'), 'Workspace D:\\mira — Legal NSFW only.\n', 'utf8');
+  fs.writeFileSync(path.join(localApp, 'hermes', 'profile.yaml'), 'name: default\nmodel: local\n', 'utf8');
+  fs.writeFileSync(path.join(localApp, 'hermes', 'profiles', 'default', 'SOUL.md'), '# Default Profile Soul\n', 'utf8');
+  fs.writeFileSync(path.join(localApp, 'hermes', 'profiles', 't5500', 'SOUL.md'), '# T5500 Soul\n', 'utf8');
   fs.writeFileSync(path.join(freebuff, 'AGENTS.md'), '# Freebuff Agents\n', 'utf8');
   fs.writeFileSync(path.join(freebuff, 'CLAUDE.md'), '# Freebuff Claude\n', 'utf8');
   fs.writeFileSync(path.join(freebuff, 'GEMINI.md'), '# Freebuff Gemini\n', 'utf8');
@@ -113,7 +118,9 @@ test('check-agent-drift.ps1 classifies missing, missing-block, and drifted files
       { encoding: 'utf8' },
     );
     assert.match(cleanOut, /light=green/);
-    assert.match(cleanOut, /\[SKIP private-project\]/);
+    assert.match(cleanOut, /skippedPrivate=1/);
+    assert.match(cleanOut, /\[SKIP private-project\]\s+CLAUDE\.md/);
+    assert.doesNotMatch(cleanOut, /hermes|ALIENWARE-SOUL\.md|profile\.yaml|profiles/i);
 
     const cleanBuf = fs.readFileSync(fx.statusJson);
     assert.equal(cleanBuf[0] === 0xef && cleanBuf[1] === 0xbb && cleanBuf[2] === 0xbf, false, 'Status JSON must not have UTF-8 BOM');
@@ -145,6 +152,7 @@ test('check-agent-drift.ps1 classifies missing, missing-block, and drifted files
     );
     assert.equal(driftedNoWrite.status, 1, 'Drifted check without -SoftExit must exit 1');
     assert.equal(driftedNoWrite.stdout.includes(fx.profile), false, 'Output must not leak literal UserProfileRoot');
+    assert.doesNotMatch(driftedNoWrite.stdout, /hermes|ALIENWARE-SOUL\.md|profile\.yaml|profiles/i);
     assert.match(driftedNoWrite.stdout, /AGENTS\.md/);
     assert.match(driftedNoWrite.stdout, /%USERPROFILE%\\\.claude\\CLAUDE\.md/);
     assert.match(driftedNoWrite.stdout, /%USERPROFILE%\\\.codex\\AGENTS\.md/);
@@ -164,6 +172,7 @@ test('check-agent-drift.ps1 classifies missing, missing-block, and drifted files
       { encoding: 'utf8' },
     );
     assert.equal(softRun.status, 0, '-SoftExit must exit 0 even when drifted');
+    assert.doesNotMatch(softRun.stdout, /hermes|ALIENWARE-SOUL\.md|profile\.yaml|profiles/i);
     const driftedJson = JSON.parse(fs.readFileSync(fx.statusJson, 'utf8'));
     assert.equal(driftedJson.ok, false);
     assert.equal(driftedJson.light, 'amber');
@@ -174,6 +183,72 @@ test('check-agent-drift.ps1 classifies missing, missing-block, and drifted files
     assert.equal(byFile.get('AGENTS.md'), 'drifted');
     assert.equal(byFile.get('%USERPROFILE%\\.claude\\CLAUDE.md'), 'missing-block');
     assert.equal(byFile.get('%USERPROFILE%\\.codex\\AGENTS.md'), 'missing');
+    assert.equal(fs.readFileSync(path.join(fx.repo, 'CLAUDE.md'), 'utf8'), 'Workspace D:\\mira — Legal NSFW only.\n');
+  } finally {
+    fs.rmSync(fx.root, { recursive: true, force: true });
+  }
+});
+
+test('check-agent-drift.ps1 -Node alienware -Scope all never scans, skips, or flags %LOCALAPPDATA%\\hermes while -Node t5500 -Scope node still flags %LOCALAPPDATA%\\hermes\\profiles\\t5500\\SOUL.md', { skip: !PS_EXE }, () => {
+  const fx = makeDriftFixture();
+  const t5StatusJson = path.join(fx.root, 'status', 't5500-drift.json');
+  try {
+    execFileSync(
+      PS_EXE,
+      [
+        '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', RENDER_SCRIPT,
+        '-Node', 'alienware', '-Scope', 'all',
+        '-RepoRoot', fx.repo, '-SpineSourceRepo', REPO_ROOT,
+        '-UserProfileRoot', fx.profile, '-LocalAppDataRoot', fx.localApp,
+        '-FreebuffRoot', fx.freebuff, '-Apply',
+      ],
+      { encoding: 'utf8' },
+    );
+
+    const awOut = execFileSync(
+      PS_EXE,
+      [
+        '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', DRIFT_SCRIPT,
+        '-Node', 'alienware', '-Scope', 'all',
+        '-RepoRoot', fx.repo, '-SpineSourceRepo', REPO_ROOT,
+        '-UserProfileRoot', fx.profile, '-LocalAppDataRoot', fx.localApp,
+        '-FreebuffRoot', fx.freebuff, '-StatusJsonPath', fx.statusJson,
+      ],
+      { encoding: 'utf8' },
+    );
+    assert.match(awOut, /light=green/);
+    assert.match(awOut, /drifted=0/);
+    assert.match(awOut, /skippedPrivate=1/);
+    assert.match(awOut, /\[SKIP private-project\]\s+CLAUDE\.md/);
+    assert.doesNotMatch(awOut, /hermes|ALIENWARE-SOUL\.md|profile\.yaml|profiles/i);
+
+    const awJson = JSON.parse(fs.readFileSync(fx.statusJson, 'utf8'));
+    assert.equal(awJson.driftedCount, 0);
+    assert.deepEqual(awJson.driftedFiles, []);
+
+    const t5Out = execFileSync(
+      PS_EXE,
+      [
+        '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', DRIFT_SCRIPT,
+        '-Node', 't5500', '-Scope', 'node',
+        '-RepoRoot', fx.repo, '-SpineSourceRepo', REPO_ROOT,
+        '-UserProfileRoot', fx.profile, '-LocalAppDataRoot', fx.localApp,
+        '-FreebuffRoot', fx.freebuff, '-StatusJsonPath', t5StatusJson,
+        '-SoftExit',
+      ],
+      { encoding: 'utf8' },
+    );
+    assert.match(t5Out, /light=amber/);
+    assert.match(t5Out, /\[DRIFT\] \(missing-block\) %LOCALAPPDATA%\\hermes\\profiles\\t5500\\SOUL\.md/);
+
+    const t5Json = JSON.parse(fs.readFileSync(t5StatusJson, 'utf8'));
+    assert.equal(t5Json.node, 't5500');
+    assert.equal(t5Json.light, 'amber');
+    assert.ok(
+      t5Json.driftedFiles.some(
+        (d) => d.file === '%LOCALAPPDATA%\\hermes\\profiles\\t5500\\SOUL.md' && d.reason === 'missing-block',
+      ),
+    );
   } finally {
     fs.rmSync(fx.root, { recursive: true, force: true });
   }
