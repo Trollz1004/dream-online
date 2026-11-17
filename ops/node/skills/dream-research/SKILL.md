@@ -35,7 +35,7 @@ A live repository is authoritative over any article about it. A number that deci
 
 ## 2. The social sweep, and its pre-flight
 
-`last30days` is installed and reads communities, not engines. It answers "what are people running into" and it is weak at "how does this system work". Two runs on Godot networking on 2026-09-20 returned general community chatter because the question was an architecture question; the documentation answered it in one fetch.
+`last30days` (locked strictly to the trusted three: `Claude Opus 5.5 / Fable`, `Gemini 4 Carbon`, `GPT-6 Astra / GPT-6.1 Sol / Codex`) reads communities, not engines. It answers "what are people running into" and it is weak at "how does this system work". Two runs on engine networking returned general community chatter because the question was an architecture question; the documentation answered it in one fetch.
 
 When a sweep is right, run it properly:
 
@@ -43,7 +43,7 @@ When a sweep is right, run it properly:
 - **Write the query plan yourself** and pass it with `--plan <file>`. The engine's fallback planner produced one generic subquery and junk results. Three subqueries with real search terms and per-source targeting is the difference between a useful run and a wasted five minutes.
 - **Hand it the targeting you already know**: `--subreddits`, `--github-repo`, `--github-user`. Do not make it guess.
 - **Bound it.** `--quick` unless the question is worth more. A single unbounded scout run cost about 150 thousand tokens on 2026-09-20.
-- **No credentials.** It runs on Reddit, Hacker News, GitHub, Polymarket and YouTube with no account. `yt-dlp` is installed at `%USERPROFILE%\.local\bin`, so YouTube transcripts work. Do not hand it cookies or tokens; there is no need.
+- **No credentials & YouTube scraping stays off.** It runs on public community feeds (Reddit, Hacker News, GitHub, Polymarket) with no account. YouTube scraping and `yt-dlp` stay disabled across all research tools (`docs/house/TRUSTED-MODELS.md`, `ops/fleet/remove-yt-dlp.ps1`). Do not hand it cookies or tokens; there is no need.
 - **Expect thin.** If the evidence is thin, say so plainly and go to the primary source. Thin evidence honestly reported beats a confident summary of noise.
 
 Saved runs land in `C:\DREAM\recon\last30days\`.
@@ -86,3 +86,12 @@ His usage is the scarce resource. One authoritative fetch beats five vague searc
 Chat is not storage. A finding that changes a decision goes into the repository the same session: a `docs/gdd/` document for design, `ops/node/JOURNAL.md` for node work, `C:\DREAM\recon\QUEUE.md` for anything the next session must pick up, and the auto-memory for a durable rule about how he wants to work.
 - House rules: `docs/house/HOUSE-MOTION-RULE.md`, `docs/house/THE-HOUSE.md` and `docs/house/PAYMENT-ACCOUNTS-RULE.md`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
 - Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports (`ops/handoffs/FABLE-HANDOFFS-2026-11-06.md` section 0).
+
+<!-- TROLLZ1004-SPINE:START -->
+- `Repo: dream-online | Fleet: Alienware (192.168.0.40, workshop) & T5500 (192.168.0.15, front-of-house) | GitHub: Trollz1004 (ops/fleet/fleet-map.json).`
+- `Spine: Trollz1004/dream-online docs/house/SPINE.md (pointers: ADDRESS-DOCTRINE.md, NODES.md, PIPELINE.md, TRUSTED-MODELS.md, THE-HOUSE.md).`
+- `Address doctrine: use 192.168.0.40 and 192.168.0.15 from ops/fleet/fleet-map.json; never use loopback reach URLs; Postgres (port 5432), Redis (port 6379), and Obsidian REST (port 27123) bind "127.0.0.1" on their own machine only.`
+- `Trusted three: Claude Opus 5.5 / Fable (Claude Code), Gemini 4 Carbon (agy), and GPT-6 Astra / GPT-6.1 Sol / Codex (Codex CLI); superpowers is in every kit on demand, while REA, remake, Agent-Reach, and last30days are locked to the trusted three.`
+- `Pipeline: brainstorm first, route role + <=2 skills, build [A]/[B] with failing test first, expediter rubric + 5 stacked add-on PRs, Carbon + Codex judge, Fable / rotating trusted-three merges green checks.`
+- `Starter kit MCP ("kit"): cmd.exe /d /c node "%USERPROFILE%\antigravity\DREAM-Engine-runner\ops\kit\server.mjs" (tools: map_search, map_section, memory_search, memory_add, role_get, method_get).`
+<!-- TROLLZ1004-SPINE:END -->

@@ -12,5 +12,34 @@
     "hermes",
     "opencode",
     "agy"
-  ]
+  ],
+  "_trollz1004_spine_start": "managed-by-render-agent-files",
+  "trollz1004_spine": {
+    "scope": "repo",
+    "repo": "dream-online",
+    "spine": "docs/house/SPINE.md",
+    "fleetMap": "ops/fleet/fleet-map.json",
+    "nodes": {
+      "alienware": "192.168.0.40",
+      "t5500": "192.168.0.15"
+    },
+    "trustedThree": [
+      "claude-opus-5.5",
+      "fable",
+      "gemini-4-carbon",
+      "gpt-6-astra",
+      "gpt-6.1-sol",
+      "codex"
+    ],
+    "mcpKit": {
+      "command": "cmd.exe",
+      "args": [
+        "/d",
+        "/c",
+        "node",
+        "%USERPROFILE%\\antigravity\\DREAM-Engine-runner\\ops\\kit\\server.mjs"
+      ]
+    }
+  },
+  "_trollz1004_spine_end": "managed-by-render-agent-files"
 }

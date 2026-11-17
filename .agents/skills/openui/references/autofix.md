@@ -43,7 +43,7 @@ export const autofix = createAutofix({ apiKey: process.env.THESYS_API_KEY!, libr
 ```ts
 // OpenAI SDK route; the browser reads it with openAIAdapter()
 const source = await openai.chat.completions.create(
-  { model: "gpt-5.5", messages: [{ role: "system", content: systemPrompt }, ...messages], stream: true },
+  { model: "gpt-6-astra", messages: [{ role: "system", content: systemPrompt }, ...messages], stream: true },
   { signal: request.signal },
 );
 return autofix.completions.stream({ stream: source, messages, signal: request.signal }).toResponse();

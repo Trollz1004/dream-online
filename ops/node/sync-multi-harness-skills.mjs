@@ -1,6 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+const HOUSE_RULES_POINTER =
+  'docs/house/HOUSE-MOTION-RULE.md, docs/house/THE-HOUSE.md and docs/house/PAYMENT-ACCOUNTS-RULE.md. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.';
+const CURRENT_BEATS_EXISTING_POINTER =
+  'Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports (ops/handoffs/FABLE-HANDOFFS-2026-11-06.md section 0).';
+
 const SKILLS = [
   {
     name: 'caveman',
@@ -24,7 +29,7 @@ const SKILLS = [
     body: `# I-Have-ADHD & Low-Vision Accessibility Skill (2026-11-01)
 
 ## Who This Is For
-Founder Joshua Coleman (electrician founder, gradually losing his vision, fast context switching across 3 hardware nodes and multiple business streams).
+Founder Joshua Coleman (electrician founder, gradually losing his vision, fast context switching across 2 hardware nodes — Alienware \`192.168.0.40\` & T5500 \`192.168.0.15\` — and multiple business streams).
 
 ## Non-Negotiable Formatting Rules
 1. **Outcome First**: State the result in the very first sentence before any background.
@@ -51,7 +56,7 @@ Before improvising a manual workaround or claiming a capability is missing:
   },
   {
     name: 'create-skills',
-    description: 'Author and synchronize new skills across all harness formats (SKILL.md, agents/openai.yaml, agents/gemini.toml, skill.json) on Alienware (.40) and Sabretooth (.8) so zero drift occurs.',
+    description: 'Author and synchronize new skills across all harness formats (SKILL.md, agents/openai.yaml, agents/gemini.toml, skill.json) on Alienware (.40) and T5500 (.15) so zero drift occurs.',
     body: `# Create-Skills Multi-Harness Synchronizer (2026-11-01)
 
 ## Mandatory Multi-Harness Rule (Zero Drift)
@@ -61,7 +66,7 @@ Whenever you create or update a skill:
 2. Write \`agents/openai.yaml\` (\`name\`, \`description\`, \`model\`, \`instructions_file: ../SKILL.md\`).
 3. Write \`agents/gemini.toml\` (\`name\`, \`description\`, \`instructions = "../SKILL.md"\`).
 4. Write \`skill.json\` (\`name\`, \`description\`, \`version\`, \`entry: "SKILL.md"\`).
-5. Run \`node ops/node/sync-multi-harness-skills.mjs\` to mirror the skill across \`.agents/skills/\`, \`.claude/skills/\`, \`agent/skills/\`, \`ops/node/skills/\`, and user home skill roots without dirtying unchanged files.
+5. Run \`node ops/node/sync-multi-harness-skills.mjs --repo-only\` to mirror the skill across \`.agents/skills/\`, \`.claude/skills/\`, \`agent/skills/\`, and \`ops/node/skills/\` without dirtying unchanged files or overwriting Spine pointers.
 `
   },
   {
@@ -72,7 +77,7 @@ Whenever you create or update a skill:
 ## Protocol
 1. **Restate Goal & Lens Check**: Frame who the real human viewer is (Rule One), evaluate Person, Technical, WCAG AAA Accessibility, and Long-Term zero-vendor-lock-in lenses.
 2. **Compare 2-3 Clean-Room Approaches**:
-   - Use **REA (\`reverse-engineer-anything\`)** to study existing implementations, binaries, or protocols as clean-room evidence, then author a **100% in-house implementation** (zero Unreal, zero Unity, zero Godot runtime lock-in, zero Paperclip).
+   - Use **REA (\`reverse-engineer-anything\`)** to study existing implementations, binaries, or protocols as clean-room evidence, then author a **100% in-house implementation** in \`src/engine/\` (zero Unreal, zero Unity, zero external game-engine runtime lock-in, zero Paperclip).
    - Enforce the **Remake (\`remake\`) \`100% Yours\` Validation Gate**: every slot, copy token, palette, asset, and gameplay system must be 100% swapped to world-native DREAM / platform ownership with zero source-brand residue; the gate passes on features matched, a clear visual difference from the source, and our own code, and never on likeness.
 3. **Select & Plan**: Pick the simplest deterministic design that costs $0 marginal spend and passes TDD.
 `
@@ -83,13 +88,13 @@ Whenever you create or update a skill:
     body: `# Superpowers Autonomous Execution Skill (2026-11-01)
 
 ## The 7-Step Superpowers Loop
-1. **SPEC**: Read \`AGENTS.md\`, \`CLAUDE.md\`, \`GEMINI.md\`, \`docs/standards/AGENT-STANDARD.md\`, \`api.workflow.json\`, and the node's \`gemini-to-gemini.md\` / \`claude-to-claude.md\` in the single synced Obsidian vault.
+1. **SPEC**: Read \`docs/house/SPINE.md\`, \`AGENTS.md\`, \`CLAUDE.md\`, \`GEMINI.md\`, \`docs/standards/AGENT-STANDARD.md\`, \`api.workflow.json\`, and the node's \`gemini-to-gemini.md\` / \`claude-to-claude.md\` in the single synced Obsidian vault.
 2. **PLAN**: Brainstorm 2-3 clean-room approaches using **REA (\`reverse-engineer-anything\`)** evidence and break the work into small, deterministic in-house modules.
-3. **TDD (Mandatory)**: Write the failing test first (\`node --test\` / \`npm test\` / \` npm run lint\`), then implement until 100% green.
+3. **TDD (Mandatory)**: Write the failing test first (\`node --test\` / \`npm test\` / \`npm run lint\`), then implement until 100% green.
 4. **IMPLEMENT & 100% YOURS VALIDATION (\`remake\`)**: Author complete production code with zero placeholders or TODO stubs, and pass the **Remake \`100% Yours\` Validation Gate** (100% world-native copy/assets, zero source-brand leaks; it passes on features matched, a clear visual difference from the source, and our own code, and never on likeness).
 5. **VERIFY (Rule One)**: Prove with real HTTP/process probes and a real screenshot for any front-facing HTML/UI. Ensure all background watchdogs run 100% headless (\`wscript.exe //B\`, \`Hidden: True\`) so nothing ever steals keyboard focus.
-6. **COMMIT**: Commit to the PR branch so work is never stranded uncommitted in the preview pane. Never push to \`main\` and never merge; merges go through Josh or the signed-in Claude judge lane.
-7. **MEMORY SYNC**: Append session findings to the single $5/mo synced Obsidian Vault (\`<NODE>/<agent>-to-<agent>.md\`), Shared \`ai-memory\` on T5500 (\`:49374\`), Dual Graphies (\`/api/graphy/codebase\` + \`api.workflow.json\`), OpenViking, Supabase, and Supermemory.
+6. **COMMIT**: Commit to the PR branch so work is never stranded uncommitted in the preview pane. Never push to \`main\` and never merge; merges go through Josh or Fable / rotating trusted-three once checks are green.
+7. **MEMORY SYNC**: Append session findings to the single $5/mo synced Obsidian Vault (\`<NODE>/<agent>-to-<agent>.md\`), Shared \`ai-memory\` on T5500 (\`192.168.0.15:49374\`), Dual Graphies (\`/api/graphy/codebase\` + \`api.workflow.json\`), OpenViking, Supabase, and Supermemory.
 `
   },
   {
@@ -100,7 +105,7 @@ Whenever you create or update a skill:
 ## Non-Negotiable Gate
 1. **RED**: Write or extend an automated test (\`node --test\`, \`npm test\`, \`npm run lint\`, or \`pytest\`) that reproduces the bug or specifies the new capability (including REA clean-room and Remake \`100% Yours\` ownership checks).
 2. **GREEN**: Write the minimal clean-room implementation to pass the test suite (100% pass required).
-3. **REFACTOR**: Clean up duplication while keeping all tests green, then commit immediately to \`main\`.
+3. **REFACTOR**: Clean up duplication while keeping all tests green, then commit immediately to the PR branch.
 `
   },
   {
@@ -108,7 +113,7 @@ Whenever you create or update a skill:
     description: 'Alias for mandatory TDD skill (RED -> GREEN -> REFACTOR) ensuring compatibility with harnesses expecting test-driven-development.',
     body: `# Test-Driven Development (TDD Mandatory) Skill (2026-11-01)
 
-Follow the \`tdd\` skill: RED (write test) -> GREEN (implement & pass 100% of suite) -> REFACTOR -> COMMIT to \`main\`. Never push or present untested code.
+Follow the \`tdd\` skill: RED (write test) -> GREEN (implement & pass 100% of suite) -> REFACTOR -> COMMIT to PR branch. Never push or present untested code.
 `
   },
   {
@@ -118,9 +123,9 @@ Follow the \`tdd\` skill: RED (write test) -> GREEN (implement & pass 100% of su
 
 ## Before Calling Anything Done, Working, Fixed, or Verified:
 1. **State the Human Viewer**: Say who the person is (e.g., Founder Joshua Coleman reading on his screen with tired eyes; a player in DREAM Online; a customer on \`onlinerecycle.net\` or \`youandinotai.com\`).
-2. **Run Real Test Suites & Live Probes**: Run \`npm run lint\` and \`npm test\` AND probe the live HTTP endpoint.
+2. **Run Real Test Suites & Live Probes**: Run \`npm run lint\` and \`npm test\` AND probe the live HTTP endpoint (using LAN node addresses from \`ops/fleet/fleet-map.json\`).
 3. **Pass the Remake \`100% Yours\` & REA Clean-Room Gate**: Verify 100% of slots, copy, fonts, colours, and 3D assets are clean-room owned with zero competitor or source-site residue.
-4. **Capture & Critique Real Screenshots**: For any front-facing HTML/UI, capture the real screenshot, list any flaws from the human viewer's perspective, fix them, and commit to \`main\`.
+4. **Capture & Critique Real Screenshots**: For any front-facing HTML/UI, capture the real screenshot, list any flaws from the human viewer's perspective, fix them, and commit to the PR branch.
 `
   },
   {
@@ -130,11 +135,11 @@ Follow the \`tdd\` skill: RED (write test) -> GREEN (implement & pass 100% of su
 
 ## Mandatory Session Protocol (Every Agent, Every Node, Every Session)
 1. **Session Start**:
-   - Read \`<NODE>/<agent>-to-<agent>.md\` (\`Alienware\`, \`T5500\`, \`Sabretooth\`) in the single $5/mo synced Obsidian vault (\`C:/DREAM/Antigravity\` on Alienware, \`C:/ANTIGRAVITY/Antigravity\` on T5500, \`C:/Ai-Dream-Team/Antigravity\` on Sabretooth, mirrored to \`memory/obsidian-vault/\` in git).
-   - Query Shared \`ai-memory\` MCP on T5500 (\`:49374\`, \`scope: "global"\`) and Codebase Graphy (\`/api/graphy/codebase\`).
+   - Read \`<NODE>/<agent>-to-<agent>.md\` (\`Alienware\`, \`T5500\`) in the single $5/mo synced Obsidian vault (\`C:/DREAM/Antigravity\` on Alienware \`192.168.0.40\`, \`C:/ANTIGRAVITY/Antigravity\` on T5500 \`192.168.0.15\`, mirrored to \`memory/obsidian-vault/\` in git).
+   - Query Shared \`ai-memory\` MCP on T5500 (\`192.168.0.15:49374\`, \`scope: "global"\`) and Codebase Graphy (\`/api/graphy/codebase\`).
 2. **Session End**:
    - Append a timestamped caveman-style entry (\`DID / BROKE / NEXT / BLOCKED / FILES\`) to \`<NODE>/<agent>-to-<agent>.md\` inside the single synced vault (never create a second paid vault and never store \`.zip\` archives in the vault).
-   - Mirror to Shared \`ai-memory\` (\`:49374\`), Dual Graphies (\`/api/graphy/codebase\` + \`api.workflow.json\`), OpenViking (\`viking://dream/...\`), Supabase pgvector, and Supermemory.
+   - Mirror to Shared \`ai-memory\` (\`192.168.0.15:49374\`), Dual Graphies (\`/api/graphy/codebase\` + \`api.workflow.json\`), OpenViking (\`viking://dream/...\`), Supabase pgvector, and Supermemory.
    - Never write raw secrets, API keys, or tokens (always redact as \`XXXX\`).
 `
   },
@@ -145,7 +150,7 @@ Follow the \`tdd\` skill: RED (write test) -> GREEN (implement & pass 100% of su
 
 ## Protocol
 - Store every architectural and session checkpoint with \`vikingUri\` (\`viking://dream/<scope>/<slug>\`), \`l0Abstract\` (1-sentence summary), \`l1Overview\` (metadata & verification), and \`l2Markdown\` (full Obsidian Markdown with \`[[Wikilinks]]\`).
-- Backed by \`POST http://192.168.0.40:9180/api/memory/store\` and Shared \`ai-memory\` (\`:49374\`).
+- Backed by \`POST http://192.168.0.40:9180/api/memory/store\` and Shared \`ai-memory\` (\`192.168.0.15:49374\`).
 `
   },
   {
@@ -160,41 +165,105 @@ Follow the \`tdd\` skill: RED (write test) -> GREEN (implement & pass 100% of su
   },
   {
     name: 'agent-workflow',
-    description: 'Master multi-agent orchestration workflow across Claude (Opus 5.5 / Fable), Gemini 4 High Reasoning (Trust Level Max Judges), OpenAI (Codex), Free Claude Code (:8082), and Hermes (OPSis) with Remake 100% Yours validation and REA clean-room engineering.',
+    description: 'Master multi-agent orchestration workflow across Claude (Opus 5.5 / Fable), Gemini 4 Carbon (High Reasoning Judges), OpenAI (GPT-6 Astra / GPT-6.1 Sol / Codex), Free Claude Code (:8082), and Hermes (OPSis) with Remake 100% Yours validation and REA clean-room engineering.',
     body: `# Agent Workflow & Trust Level Max Orchestration (2026-11-01)
 
-## Authority & Workflow (\`api.workflow.json\` & \`docs/standards/AGENT-STANDARD.md\`)
+## Authority & Workflow (\`docs/house/SPINE.md\`, \`api.workflow.json\` & \`docs/standards/AGENT-STANDARD.md\`)
 1. **Sole Human Authority**: Founder Joshua Coleman (\`CLAUDE's N Joshua's · #TeamClaudeForLife\`).
-2. **GM #1 Lead GMs (Claude Opus 5.5 / Fable as the judge lane & Google Gemini 4 High Reasoning)**:
-   - Hold permission from Joshua Coleman to judge what is used/not used, author full-stack 3D engine and platform code, review the work of all other AI lanes (OpenAI Codex, Hermes OPSis, Free Claude Code :8082, OpenCode, Emergent), and stage outreach drafts (\`cost_usd === 0\` enforced until Joshua says finalize). Merges go through Josh or the signed-in Claude judge lane; when AI lanes disagree the Claude judge lane decides and states its reason in one line; Josh can overrule any call.
-   - Always run at **ultrathink / highest reasoning effort** across every model.
+2. **Trusted Three Families (Claude Opus 5.5 / Fable, Gemini 4 Carbon, GPT-6 Astra / GPT-6.1 Sol / Codex)**:
+   - Hold permission from Joshua Coleman to judge what is used/not used, author full-stack 3D engine and platform code, review the work of all other AI lanes (Hermes OPSis, Free Claude Code \`192.168.0.40:8082\`, OpenCode, Emergent), and stage outreach drafts (\`cost_usd === 0\` enforced until Joshua says finalize). Carbon and Codex judge primary and stacked PRs; merges go through Josh or Fable / rotating trusted-three once CI checks are green.
+   - Always run at **highest reasoning effort** across trusted models.
 3. **Mandatory Skills & Clean-Room Gates**:
-   - Load mandatory skills: \`caveman\`, \`i-have-adhd\`, \`find-skills\`, \`create-skills\`, \`brainstorming\`, \`superpowers\`, \`tdd\`, \`verification-before-completion\`, \`obsidian-save\`, \`openviking\`, \`supabase\`, **\`remake\` (Mandatory \`100% Yours\` Clean-Room & Swap-Board Ownership Validation Gate)**, and **\`reverse-engineer-anything\` (\`rea\` Clean-Room Binary/Protocol Evidence)**.
+   - Load mandatory skills: \`caveman\`, \`i-have-adhd\`, \`find-skills\`, \`create-skills\`, \`brainstorming\`, \`superpowers\`, \`tdd\`, \`verification-before-completion\`, \`obsidian-save\`, \`openviking\`, \`supabase\`, **\`remake\` (Locked to trusted three; Mandatory \`100% Yours\` Clean-Room & Swap-Board Ownership Validation Gate)**, and **\`reverse-engineer-anything\` (\`rea\`, locked to trusted three)**.
    - **REA + Remake \`100% Yours\` Rule**: Study reference implementations or binaries with \`reverse-engineer-anything\` (\`rea\`), build 100% in-house clean-room code in the DREAM Engine (\`src/engine/\`), and pass the \`remake\` **\`100% Yours\` validation gate** (zero source-brand residue and 100% world-native DREAM tokens; it passes on features matched, a clear visual difference from the source, and our own code, and never on likeness).
-   - **Headless Watchdogs & Zero Scraping Rule**: Every scheduled task, hook, and watchdog on Alienware, T5500, and Sabretooth must run 100% headless (\`wscript.exe //B\`, \`Hidden: True\`, \`ShowWindow = 0\`) so nothing ever opens a console window or steals keyboard focus. Never scrape YouTube or any Google site by any tool (official YouTube Data/Analytics API only on Joshua's channel, uploads always \`private\`).
+   - **Headless Watchdogs & Zero Scraping Rule**: Every scheduled task, hook, and watchdog on Alienware (\`192.168.0.40\`) and T5500 (\`192.168.0.15\`) must run 100% headless (\`wscript.exe //B\`, \`Hidden: True\`, \`ShowWindow = 0\`) so nothing ever opens a console window or steals keyboard focus. Never scrape YouTube or any Google site by any tool (official YouTube Data/Analytics API only on Joshua's channel, uploads always \`private\`).
    - Execute \`SPEC -> PLAN (REA + Brainstorming) -> TDD -> IMPLEMENT -> VERIFY (Rule One + Remake 100% Yours) -> COMMIT -> 6-LAYER MEMORY SYNC\`.
 `
   }
 ];
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..', '..');
+const REPO_ONLY = process.argv.includes('--repo-only');
 
-const ROOTS = [
+const REPO_ROOTS = [
   path.join(REPO_ROOT, '.agents/skills'),
   path.join(REPO_ROOT, '.claude/skills'),
   path.join(REPO_ROOT, 'agent/skills'),
   path.join(REPO_ROOT, 'ops/node/skills'),
-  'C:/DREAM/dream-online/.agents/skills',
-  'C:/DREAM/dream-online/.claude/skills',
-  'C:/DREAM/dream-online/agent/skills',
-  'C:/DREAM/dream-online/ops/node/skills',
-  path.join(process.env.USERPROFILE || '%USERPROFILE%', '.gemini/skills'),
-  path.join(process.env.USERPROFILE || '%USERPROFILE%', '.agents/skills'),
-  path.join(process.env.USERPROFILE || '%USERPROFILE%', '.claude/skills')
 ];
 
-function writeFileIfChanged(filePath, newContent) {
+const ROOTS = REPO_ONLY
+  ? REPO_ROOTS
+  : [
+      ...REPO_ROOTS,
+      'C:/DREAM/dream-online/.agents/skills',
+      'C:/DREAM/dream-online/.claude/skills',
+      'C:/DREAM/dream-online/agent/skills',
+      'C:/DREAM/dream-online/ops/node/skills',
+      path.join(process.env.USERPROFILE || '%USERPROFILE%', '.gemini/skills'),
+      path.join(process.env.USERPROFILE || '%USERPROFILE%', '.agents/skills'),
+      path.join(process.env.USERPROFILE || '%USERPROFILE%', '.claude/skills'),
+    ];
+
+function extractManagedMarkerBlock(text, startMarker, endMarker) {
+  const norm = text.replace(/\r\n/g, '\n');
+  const s = norm.indexOf(startMarker);
+  const e = norm.indexOf(endMarker);
+  if (s !== -1 && e > s) {
+    return norm.slice(s, e + endMarker.length);
+  }
+  return '';
+}
+
+function mergePreservingManagedBlock(filePath, newContent) {
   const normalizedNew = newContent.replace(/\r\n/g, '\n');
+  if (!fs.existsSync(filePath)) return normalizedNew;
+
+  const existingRaw = fs.readFileSync(filePath, 'utf8');
+  const ext = path.extname(filePath).toLowerCase();
+
+  if (ext === '.md') {
+    const existingBlock = extractManagedMarkerBlock(
+      existingRaw,
+      '<!-- TROLLZ1004-SPINE:START -->',
+      '<!-- TROLLZ1004-SPINE:END -->',
+    );
+    if (existingBlock && !normalizedNew.includes('<!-- TROLLZ1004-SPINE:START -->')) {
+      return normalizedNew.trimEnd() + '\n\n' + existingBlock + '\n';
+    }
+  } else if (ext === '.toml' || ext === '.yaml' || ext === '.yml') {
+    const existingBlock = extractManagedMarkerBlock(
+      existingRaw,
+      '# --- TROLLZ1004-SPINE:START ---',
+      '# --- TROLLZ1004-SPINE:END ---',
+    );
+    if (existingBlock && !normalizedNew.includes('# --- TROLLZ1004-SPINE:START ---')) {
+      return normalizedNew.trimEnd() + '\n\n' + existingBlock + '\n';
+    }
+  } else if (ext === '.json') {
+    try {
+      const existingObj = JSON.parse(existingRaw);
+      const nextObj = JSON.parse(normalizedNew);
+      if (existingObj && typeof existingObj === 'object' && Object.hasOwn(existingObj, 'trollz1004_spine')) {
+        if (Object.hasOwn(existingObj, '_trollz1004_spine_start')) {
+          nextObj._trollz1004_spine_start = existingObj._trollz1004_spine_start;
+        }
+        nextObj.trollz1004_spine = existingObj.trollz1004_spine;
+        if (Object.hasOwn(existingObj, '_trollz1004_spine_end')) {
+          nextObj._trollz1004_spine_end = existingObj._trollz1004_spine_end;
+        }
+        return JSON.stringify(nextObj, null, 2) + '\n';
+      }
+    } catch {
+      // Keep generated JSON if existing file is invalid
+    }
+  }
+
+  return normalizedNew;
+}
+
+function writeFileIfChanged(filePath, newContent) {
+  const normalizedNew = mergePreservingManagedBlock(filePath, newContent);
   if (fs.existsSync(filePath)) {
     const existingRaw = fs.readFileSync(filePath, 'utf8');
     const normalizedExisting = existingRaw.replace(/\r\n/g, '\n');
@@ -245,32 +314,41 @@ version: 2.1.0
 platforms: [windows, linux, macos]
 ---
 
-${skill.body}`;
+${skill.body.trimEnd()}
+- House rules: \`docs/house/HOUSE-MOTION-RULE.md\`, \`docs/house/THE-HOUSE.md\` and \`docs/house/PAYMENT-ACCOUNTS-RULE.md\`. Read before any design, site, dashboard or header job. Pointers only; do not restate rules here.
+- Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports (\`ops/handoffs/FABLE-HANDOFFS-2026-11-06.md\` section 0).
+`;
 
     const openaiYaml = `name: ${skill.name}
 description: "${skill.description}"
 version: 2.1.0
-model: gpt-5.5
+model: gpt-6-astra
 instructions_file: ../SKILL.md
+house_rules: "${HOUSE_RULES_POINTER}"
+current_beats_existing: "${CURRENT_BEATS_EXISTING_POINTER}"
 `;
 
     const geminiToml = `name = "${skill.name}"
 description = "${skill.description}"
 version = "2.1.0"
-model = "gemini-4-high-reasoning"
+model = "gemini-4-carbon-high"
 instructions = "../SKILL.md"
+house_rules = "${HOUSE_RULES_POINTER}"
+current_beats_existing = "${CURRENT_BEATS_EXISTING_POINTER}"
 `;
 
     const skillJson = JSON.stringify(
       {
+        house_rules: HOUSE_RULES_POINTER,
+        current_beats_existing: CURRENT_BEATS_EXISTING_POINTER,
         name: skill.name,
         description: skill.description,
         version: '2.1.0',
         entry: 'SKILL.md',
-        harnesses: ['claude', 'gemini', 'codex', 'hermes', 'opencode', 'agy']
+        harnesses: ['claude', 'gemini', 'codex', 'hermes', 'opencode', 'agy'],
       },
       null,
-      2
+      2,
     ) + '\n';
 
     if (writeFileIfChanged(path.join(skillDir, 'SKILL.md'), skillMd)) updatedCount++;

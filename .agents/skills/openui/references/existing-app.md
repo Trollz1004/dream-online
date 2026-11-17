@@ -50,7 +50,7 @@ Regenerate the spec whenever the library changes, for example from a `prebuild` 
 - **The app calls a model with the OpenAI client:** keep it and change three things: the key, the base URL, and the model id.
 - **The app uses another client** (Anthropic SDK, LangChain, Vercel AI SDK with another provider): switch the model call to the OpenAI client, or to the framework's OpenAI-compatible model with a custom base URL:
   - LangChain: `new ChatOpenAI({ model, apiKey, configuration: { baseURL } })`.
-  - Vercel AI SDK: `createOpenAI({ apiKey, baseURL }).chat("openai/gpt-5")`. Use `.chat(...)`: calling the provider directly uses the Responses API.
+  - Vercel AI SDK: `createOpenAI({ apiKey, baseURL }).chat("openai/gpt-6-astra")`. Use `.chat(...)`: calling the provider directly uses the Responses API.
 - **The app has no backend route:** write one with the OpenAI client in the app's framework.
 
 ```ts
@@ -65,7 +65,7 @@ const gateway = new OpenAI({
 });
 
 const completion = await gateway.chat.completions.create({
-  model: "openai/gpt-5",
+  model: "openai/gpt-6-astra",
   messages: [
     {
       role: "system",
@@ -82,7 +82,7 @@ const completion = await gateway.chat.completions.create({
 });
 ```
 
-- Model ids are `{provider}/{model}`: `gpt-5` becomes `openai/gpt-5`. An env var holding a bare id needs the prefix too.
+- Model ids are `{provider}/{model}`: `gpt-6-astra` becomes `openai/gpt-6-astra`. An env var holding a bare id needs the prefix too.
 - If the app already has a system prompt, pass it as `instructions` (`appPrompt` above). Remove lines that ask for Markdown or plain-prose answers; they conflict with OpenUI Lang.
 - Keep the existing message history, streaming, and tool loop. If the route did not stream, make it stream, so the UI builds up as it arrives.
 - If the route wraps the stream with Autofix (`createAutofix`), remove the wrapper: Gateway corrects the output while it streams. `toResponse()` returned Chat Completions SSE; return the same format yourself (see [gateway.md](gateway.md#stream-to-the-browser)), so the browser's adapter keeps working.

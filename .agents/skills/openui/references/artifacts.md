@@ -32,7 +32,7 @@ import { z } from "zod";
 const gateway = createOpenAI({ apiKey: process.env.THESYS_API_KEY, baseURL: "https://api.thesys.dev/v1/embed" });
 
 const result = streamText({
-  model: gateway.chat("openai/gpt-5"),
+  model: gateway.chat("openai/gpt-6-astra"),
   system: systemPrompt,
   messages,
   tools: {
