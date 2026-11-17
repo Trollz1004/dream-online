@@ -215,7 +215,7 @@ test('fleet-status-server CLI live-start without FLEET_SHARED_TOKEN binds 127.0.
 
   let stdout = '';
   let stderr = '';
-  const listenRe = new RegExp(`Listening on http:\\/\\/${LOOPBACK.replace(/\./g, '\\.')}:(\\d+)`);
+  const listenRe = /Listening on http:\/\/127\.0\.0\.1:(\d+)/;
 
   try {
     const port = await new Promise((resolve, reject) => {
@@ -254,6 +254,69 @@ test('fleet-status-server CLI live-start without FLEET_SHARED_TOKEN binds 127.0.
       child.kill();
       await new Promise((r) => child.once('exit', r));
     }
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('fleet-status-server sanitizes HTTP 500 error responses without leaking internal error text', async () => {
+  const mod = await import('./fleet-status-server.mjs');
+  const leakedDetail = 'internal-probe-stack-secret-detail-9911';
+  const { server } = mod.createFleetStatusServer({
+    node: 'alienware',
+    probeServices: async () => {
+      throw new Error(leakedDetail);
+    },
+  });
+  await new Promise((r) => server.listen(0, LOOPBACK, r));
+  const port = server.address().port;
+  try {
+    const res = await fetch(`http://${LOOPBACK}:${port}/health`);
+    assert.equal(res.status, 500);
+    const bodyText = await res.text();
+    assert.equal(bodyText.includes(leakedDetail), false, 'HTTP 500 must not leak internal error message or stack');
+    const json = JSON.parse(bodyText);
+    assert.deepEqual(json, { ok: false, error: 'Internal server error' });
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('fleet-status-server omits internal parse error in readAgentDrift and uses safe error codes on probe failures', async () => {
+  const mod = await import('./fleet-status-server.mjs');
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fleet-status-sanitize-'));
+  const badDriftPath = path.join(tmpDir, 'bad-agent-drift.json');
+  fs.writeFileSync(badDriftPath, '{ invalid json !!!', 'utf8');
+
+  try {
+    const driftRes = mod.readAgentDrift(badDriftPath);
+    assert.deepEqual(driftRes, {
+      present: true,
+      driftedFiles: [{ file: 'bad-agent-drift.json', reason: 'drifted' }],
+    });
+    assert.equal('error' in driftRes, false, 'readAgentDrift must not expose internal parse error strings');
+
+    const closedHttp = await makeMockService((req, res) => { res.writeHead(200); res.end('ok'); });
+    const closedHttpPort = closedHttp.port;
+    await closeServer(closedHttp.server);
+
+    const closedTcp = await makeMockService((req, res) => { res.writeHead(200); res.end('ok'); });
+    const closedTcpPort = closedTcp.port;
+    await closeServer(closedTcp.server);
+
+    const status = await mod.computeNodeStatus({
+      node: 'alienware',
+      agentDriftPath: path.join(tmpDir, 'missing.json'),
+      targets: [
+        { id: 'closed-http', name: 'Closed HTTP', host: LOOPBACK, port: closedHttpPort, protocol: 'http', healthPath: '/health' },
+        { id: 'closed-tcp', name: 'Closed TCP', host: LOOPBACK, port: closedTcpPort, protocol: 'tcp' },
+      ],
+    });
+    for (const svc of status.services) {
+      assert.equal(svc.up, false);
+      assert.equal(svc.detail.includes(LOOPBACK), false, `probe detail must not leak raw socket message with IP: ${svc.detail}`);
+      assert.match(svc.detail, /^[A-Z0-9_]+$|^unreachable$/);
+    }
+  } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });

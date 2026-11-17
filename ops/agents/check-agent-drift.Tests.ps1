@@ -25,6 +25,7 @@ function New-DriftTestFixture {
   New-Item -ItemType Directory -Path (Join-Path $fakeProfile '.gemini\config') -Force | Out-Null
   New-Item -ItemType Directory -Path (Join-Path $fakeProfile '.codex') -Force | Out-Null
   New-Item -ItemType Directory -Path (Join-Path $fakeProfile '.claude') -Force | Out-Null
+  New-Item -ItemType Directory -Path (Join-Path $fakeLocalApp 'hermes\profiles\default') -Force | Out-Null
   New-Item -ItemType Directory -Path (Join-Path $fakeLocalApp 'hermes\profiles\t5500') -Force | Out-Null
   New-Item -ItemType Directory -Path $fakeFreebuff -Force | Out-Null
 
@@ -32,6 +33,7 @@ function New-DriftTestFixture {
   $cbBullet = '- Current beats existing: fetch and pull main first; origin main wins over clone, cache, journal and definition file; a clone that cannot fast-forward stops and reports (`ops/handoffs/FABLE-HANDOFFS-2026-11-06.md` section 0).'
 
   Write-Utf8NoBom -Path (Join-Path $fakeRepo 'AGENTS.md') -Text ("# AGENTS`n`nBody.`n$hrBullet`n$cbBullet`n")
+  Write-Utf8NoBom -Path (Join-Path $fakeRepo 'CLAUDE.md') -Text ("Workspace at D:\mira " + [char]0x2014 + " Legal NSFW only.`n")
   Write-Utf8NoBom -Path (Join-Path $fakeRepo '.agents\skills\demo\SKILL.md') -Text ("---`nname: demo`n---`nBody.`n$hrBullet`n$cbBullet`n")
   Write-Utf8NoBom -Path (Join-Path $fakeRepo '.agents\skills\demo\skill.json') -Text ("{`n  `"house_rules`": `"docs/house/HOUSE-MOTION-RULE.md`",`n  `"name`": `"demo`"`n}`n")
   Write-Utf8NoBom -Path (Join-Path $fakeRepo '.agents\skills\demo\agents\gemini.toml') -Text ("name = `"demo`"`nhouse_rules = `"docs/house/HOUSE-MOTION-RULE.md`"`n")
@@ -44,8 +46,11 @@ function New-DriftTestFixture {
   Write-Utf8NoBom -Path (Join-Path $fakeProfile '.codex\config.toml') -Text "model = `"gpt-6-astra`"`n"
   Write-Utf8NoBom -Path (Join-Path $fakeProfile '.codex\AGENTS.md') -Text "# Codex Agents`n"
   Write-Utf8NoBom -Path (Join-Path $fakeProfile '.claude\CLAUDE.md') -Text "# Claude`n"
-  Write-Utf8NoBom -Path (Join-Path $fakeLocalApp 'hermes\ALIENWARE-SOUL.md') -Text "# Alienware Soul`n"
-  Write-Utf8NoBom -Path (Join-Path $fakeLocalApp 'hermes\SOUL.md') -Text "Workspace at D:\mira — Legal NSFW only.`n"
+  Write-Utf8NoBom -Path (Join-Path $fakeLocalApp 'hermes\ALIENWARE-SOUL.md') -Text "# Alienware Soul`n<!-- TROLLZ1004-SPINE:START -->`nSTALE`n<!-- TROLLZ1004-SPINE:END -->`n"
+  Write-Utf8NoBom -Path (Join-Path $fakeLocalApp 'hermes\SOUL.md') -Text ("Workspace at D:\mira " + [char]0x2014 + " Legal NSFW only.`n")
+  Write-Utf8NoBom -Path (Join-Path $fakeLocalApp 'hermes\profile.yaml') -Text "name: default`nmodel: local`n"
+  Write-Utf8NoBom -Path (Join-Path $fakeLocalApp 'hermes\profiles\default\SOUL.md') -Text "# Default Profile Soul`n"
+  Write-Utf8NoBom -Path (Join-Path $fakeLocalApp 'hermes\profiles\t5500\SOUL.md') -Text "# T5500 Soul`n"
   Write-Utf8NoBom -Path (Join-Path $fakeFreebuff 'AGENTS.md') -Text "# Freebuff Agents`n"
   Write-Utf8NoBom -Path (Join-Path $fakeFreebuff 'CLAUDE.md') -Text "# Freebuff Claude`n"
   Write-Utf8NoBom -Path (Join-Path $fakeFreebuff 'GEMINI.md') -Text "# Freebuff Gemini`n"
@@ -73,7 +78,9 @@ Describe 'ops/agents/check-agent-drift.ps1' {
     $out = (& $driftScript -Node alienware -Scope all -RepoRoot $fx.FakeRepo -SpineSourceRepo $repoRoot -UserProfileRoot $fx.FakeProfile -LocalAppDataRoot $fx.FakeLocalApp -FreebuffRoot $fx.FakeFreebuff -StatusJsonPath $fx.StatusPath | Out-String)
     $LASTEXITCODE | Should Be 0
     $out | Should Match 'light=green'
-    $out | Should Match '\[SKIP private-project\].*hermes\\SOUL\.md'
+    $out | Should Match 'skippedPrivate=1'
+    $out | Should Match '\[SKIP private-project\].*CLAUDE\.md'
+    $out | Should Not Match 'hermes|ALIENWARE-SOUL\.md|profile\.yaml|profiles'
 
     $bytes = [System.IO.File]::ReadAllBytes($fx.StatusPath)
     ($bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) | Should Be $false
@@ -116,17 +123,20 @@ Describe 'ops/agents/check-agent-drift.ps1' {
 
     & $renderScript -Node alienware -Scope all -RepoRoot $fx.FakeRepo -SpineSourceRepo $repoRoot -UserProfileRoot $fx.FakeProfile -LocalAppDataRoot $fx.FakeLocalApp -FreebuffRoot $fx.FakeFreebuff -Apply | Out-Null
 
-    $privateBefore = [System.IO.File]::ReadAllText((Join-Path $fx.FakeLocalApp 'hermes\SOUL.md'))
+    $repoClaudeBefore = [System.IO.File]::ReadAllText((Join-Path $fx.FakeRepo 'CLAUDE.md'))
+    $hermesPrivateBefore = [System.IO.File]::ReadAllText((Join-Path $fx.FakeLocalApp 'hermes\SOUL.md'))
     Remove-Item -LiteralPath (Join-Path $fx.FakeProfile '.codex\AGENTS.md') -Force
     Write-Utf8NoBom -Path (Join-Path $fx.FakeProfile '.claude\CLAUDE.md') -Text "# Claude bare`n"
-    $aliSoulPath = Join-Path $fx.FakeLocalApp 'hermes\ALIENWARE-SOUL.md'
-    $staleSoul = ([System.IO.File]::ReadAllText($aliSoulPath)).Replace('192.168.0.40', '192.168.0.99')
-    Write-Utf8NoBom -Path $aliSoulPath -Text $staleSoul
+    $agentsPath = Join-Path $fx.FakeRepo 'AGENTS.md'
+    $staleAgents = ([System.IO.File]::ReadAllText($agentsPath)).Replace('192.168.0.40', '192.168.0.99')
+    Write-Utf8NoBom -Path $agentsPath -Text $staleAgents
 
     $out = (& $driftScript -Node alienware -Scope all -RepoRoot $fx.FakeRepo -SpineSourceRepo $repoRoot -UserProfileRoot $fx.FakeProfile -LocalAppDataRoot $fx.FakeLocalApp -FreebuffRoot $fx.FakeFreebuff -StatusJsonPath $fx.StatusPath | Out-String)
     $LASTEXITCODE | Should Be 1
     $out | Should Not Match ([regex]::Escape($fx.FakeProfile))
-    [System.IO.File]::ReadAllText((Join-Path $fx.FakeLocalApp 'hermes\SOUL.md')) | Should Be $privateBefore
+    $out | Should Not Match 'hermes|ALIENWARE-SOUL\.md|profile\.yaml|profiles'
+    [System.IO.File]::ReadAllText((Join-Path $fx.FakeRepo 'CLAUDE.md')) | Should Be $repoClaudeBefore
+    [System.IO.File]::ReadAllText((Join-Path $fx.FakeLocalApp 'hermes\SOUL.md')) | Should Be $hermesPrivateBefore
 
     $parsed = ([System.IO.File]::ReadAllText($fx.StatusPath)) | ConvertFrom-Json
     $parsed.ok | Should Be $false
@@ -134,7 +144,7 @@ Describe 'ops/agents/check-agent-drift.ps1' {
     $parsed.driftedCount | Should Be 3
     ($parsed.driftedFiles | Where-Object { $_.file -eq '%USERPROFILE%\.codex\AGENTS.md' }).reason | Should Be 'missing'
     ($parsed.driftedFiles | Where-Object { $_.file -eq '%USERPROFILE%\.claude\CLAUDE.md' }).reason | Should Be 'missing-block'
-    ($parsed.driftedFiles | Where-Object { $_.file -eq '%LOCALAPPDATA%\hermes\ALIENWARE-SOUL.md' }).reason | Should Be 'drifted'
+    ($parsed.driftedFiles | Where-Object { $_.file -eq 'AGENTS.md' }).reason | Should Be 'drifted'
   }
 
   It 'supports -NoRun dot-sourcing and checks -Node t5500 -Scope node locally without ssh' {
@@ -147,5 +157,36 @@ Describe 'ops/agents/check-agent-drift.ps1' {
     $report.node | Should Be 't5500'
     $report.light | Should Be 'amber'
     (@($report.driftedFiles | Where-Object { $_.file -eq '%LOCALAPPDATA%\hermes\profiles\t5500\SOUL.md' }).Count) | Should Be 1
+  }
+
+  It 'never scans, skips, or flags %LOCALAPPDATA%\hermes for -Node alienware -Scope all while -Node t5500 -Scope node still flags %LOCALAPPDATA%\hermes\profiles\t5500\SOUL.md' {
+    $base = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
+    $fx = New-DriftTestFixture -BaseDir $base
+    $t5StatusPath = Join-Path $base 't5500-drift.json'
+
+    & $renderScript -Node alienware -Scope all -RepoRoot $fx.FakeRepo -SpineSourceRepo $repoRoot -UserProfileRoot $fx.FakeProfile -LocalAppDataRoot $fx.FakeLocalApp -FreebuffRoot $fx.FakeFreebuff -Apply | Out-Null
+
+    $awOut = (& $driftScript -Node alienware -Scope all -RepoRoot $fx.FakeRepo -SpineSourceRepo $repoRoot -UserProfileRoot $fx.FakeProfile -LocalAppDataRoot $fx.FakeLocalApp -FreebuffRoot $fx.FakeFreebuff -StatusJsonPath $fx.StatusPath | Out-String)
+    $LASTEXITCODE | Should Be 0
+    $awOut | Should Match 'light=green'
+    $awOut | Should Match 'drifted=0'
+    $awOut | Should Match 'skippedPrivate=1'
+    $awOut | Should Match '\[SKIP private-project\].*CLAUDE\.md'
+    $awOut | Should Not Match 'hermes|ALIENWARE-SOUL\.md|profile\.yaml|profiles'
+
+    . $driftScript -NoRun
+    $awReport = Get-AgentDriftReport -Node alienware -Scope all -RepoRoot $fx.FakeRepo -SpineSourceRepo $repoRoot -UserProfileRoot $fx.FakeProfile -LocalAppDataRoot $fx.FakeLocalApp -FreebuffRoot $fx.FakeFreebuff
+    $awReport.driftedCount | Should Be 0
+    @($awReport.skippedPrivateFiles | Where-Object { $_ -match 'hermes' }).Count | Should Be 0
+
+    $t5Out = (& $driftScript -Node t5500 -Scope node -RepoRoot $fx.FakeRepo -SpineSourceRepo $repoRoot -UserProfileRoot $fx.FakeProfile -LocalAppDataRoot $fx.FakeLocalApp -FreebuffRoot $fx.FakeFreebuff -StatusJsonPath $t5StatusPath -SoftExit | Out-String)
+    $LASTEXITCODE | Should Be 0
+    $t5Out | Should Match 'light=amber'
+    $t5Out | Should Match '%LOCALAPPDATA%\\hermes\\profiles\\t5500\\SOUL\.md'
+
+    $t5Parsed = ([System.IO.File]::ReadAllText($t5StatusPath)) | ConvertFrom-Json
+    $t5Parsed.node | Should Be 't5500'
+    $t5Parsed.light | Should Be 'amber'
+    (@($t5Parsed.driftedFiles | Where-Object { $_.file -eq '%LOCALAPPDATA%\hermes\profiles\t5500\SOUL.md' }).Count) | Should Be 1
   }
 }
