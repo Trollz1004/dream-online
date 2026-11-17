@@ -181,3 +181,113 @@ test('env-names-check.ps1 parses synthetic .env fixtures strictly by names, hono
     fs.rmSync(fx.root, { recursive: true, force: true });
   }
 });
+
+test('env-names-check.ps1 handles export KEY="super-secret-value", inline # comments, = inside values, and empty keys without leaking any value substring', { skip: !PS_EXE }, () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'env-names-hardening-'));
+  const repo = path.join(root, 'repo');
+  const envRoot = path.join(root, 'env-root');
+  fs.mkdirSync(repo, { recursive: true });
+  fs.mkdirSync(envRoot, { recursive: true });
+
+  const forbiddenSubstrings = [
+    'super-secret-value',
+    'super-secret',
+    'secret-value',
+    'inline-secret-token',
+    'inline-comment-do-not-leak',
+    'postgres://',
+    'u:pw=123@host/db',
+    'pw=123',
+    '123@host',
+    'host/db',
+    'comment-after-equals-secret',
+    'unlisted-top-secret',
+    '=xyz',
+  ];
+
+  try {
+    fs.writeFileSync(
+      path.join(repo, 'env.required.json'),
+      JSON.stringify({
+        service: 'hardening-svc',
+        node: 'alienware',
+        envFile: '.env',
+        required: ['KEY', 'INLINE_VAL', 'DATABASE_URL', 'EMPTY_KEY', 'EMPTY_COMMENT', 'MISSING_KEY'],
+      }),
+      'utf8',
+    );
+
+    fs.writeFileSync(
+      path.join(envRoot, '.env'),
+      [
+        'export KEY="super-secret-value"',
+        'INLINE_VAL=inline-secret-token # inline-comment-do-not-leak',
+        'DATABASE_URL=postgres://u:pw=123@host/db',
+        'EMPTY_KEY=',
+        'EMPTY_COMMENT=# comment-after-equals-secret',
+        'UNLISTED_TOKEN="unlisted-top-secret=xyz"',
+      ].join('\n') + '\n',
+      'utf8',
+    );
+
+    const textRun = spawnSync(
+      PS_EXE,
+      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', CHECK_SCRIPT, '-RepoRoot', repo, '-EnvRoot', envRoot],
+      { encoding: 'utf8' },
+    );
+    assert.equal(textRun.status, 1);
+    const textCombined = `${textRun.stdout}\n${textRun.stderr}`;
+    for (const sub of forbiddenSubstrings) {
+      assert.equal(textCombined.includes(sub), false, `stdout/stderr must never leak value substring: ${sub}`);
+    }
+    assert.match(
+      textRun.stdout,
+      /\[MISSING\] hardening-svc \(\.env\): missing required setting names: EMPTY_KEY, EMPTY_COMMENT, MISSING_KEY\r?\n?$/,
+    );
+
+    const jsonRun = spawnSync(
+      PS_EXE,
+      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', CHECK_SCRIPT, '-RepoRoot', repo, '-EnvRoot', envRoot, '-SoftExit', '-Json'],
+      { encoding: 'utf8' },
+    );
+    assert.equal(jsonRun.status, 0);
+    const jsonCombined = `${jsonRun.stdout}\n${jsonRun.stderr}`;
+    for (const sub of forbiddenSubstrings) {
+      assert.equal(jsonCombined.includes(sub), false, `-Json output must never leak value substring: ${sub}`);
+    }
+    const parsed = JSON.parse(jsonRun.stdout);
+    assert.equal(parsed.ok, false);
+    assert.equal(parsed.missingCount, 1);
+    assert.equal(parsed.services.length, 1);
+    assert.equal(parsed.services[0].status, 'MISSING');
+    assert.deepEqual(parsed.services[0].missingEnv, ['EMPTY_KEY', 'EMPTY_COMMENT', 'MISSING_KEY']);
+
+    // When only KEY, INLINE_VAL, DATABASE_URL are required, all 3 satisfy [OK] with zero leaks
+    fs.writeFileSync(
+      path.join(repo, 'env.required.json'),
+      JSON.stringify({
+        service: 'hardening-svc',
+        node: 'alienware',
+        envFile: '.env',
+        required: ['KEY', 'INLINE_VAL', 'DATABASE_URL'],
+      }),
+      'utf8',
+    );
+    const okRun = spawnSync(
+      PS_EXE,
+      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', CHECK_SCRIPT, '-RepoRoot', repo, '-EnvRoot', envRoot, '-Json'],
+      { encoding: 'utf8' },
+    );
+    assert.equal(okRun.status, 0);
+    const okCombined = `${okRun.stdout}\n${okRun.stderr}`;
+    for (const sub of forbiddenSubstrings) {
+      assert.equal(okCombined.includes(sub), false, `OK -Json output must never leak value substring: ${sub}`);
+    }
+    const okParsed = JSON.parse(okRun.stdout);
+    assert.equal(okParsed.ok, true);
+    assert.equal(okParsed.missingCount, 0);
+    assert.deepEqual(okParsed.services[0].missingEnv, []);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
