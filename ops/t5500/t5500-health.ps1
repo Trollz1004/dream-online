@@ -115,6 +115,45 @@ function Test-FreeDisk {
     }
 }
 
+function Get-T5500AgentDriftPath {
+    if (-not [string]::IsNullOrWhiteSpace($env:AGENT_DRIFT_PATH)) { return $env:AGENT_DRIFT_PATH }
+    return (Join-Path $env:LOCALAPPDATA 'dream-boot\agent-drift.json')
+}
+
+function Test-AgentDrift {
+    param([string]$Path = (Get-T5500AgentDriftPath))
+    if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path)) {
+        return @{ Healthy = $true; Ok = $true; Light = 'green'; DriftedFiles = @(); Detail = 'no agent-drift.json (assumed clean)' }
+    }
+    try {
+        $raw = [System.IO.File]::ReadAllText($Path, [System.Text.Encoding]::UTF8)
+        if ([string]::IsNullOrWhiteSpace($raw)) {
+            return @{ Healthy = $true; Ok = $true; Light = 'green'; DriftedFiles = @(); Detail = 'empty agent-drift.json' }
+        }
+        $parsed = $raw | ConvertFrom-Json
+        $files = @()
+        if ($null -ne $parsed.driftedFiles) {
+            $files = @($parsed.driftedFiles | ForEach-Object {
+                if ($_ -is [string]) {
+                    @{ file = $_; reason = 'drifted' }
+                } else {
+                    @{ file = [string]$_.file; reason = [string]$_.reason }
+                }
+            })
+        }
+        $isOk = ($files.Count -eq 0)
+        if ($null -ne $parsed.PSObject.Properties['ok']) {
+            $isOk = [bool]$parsed.ok -and ($files.Count -eq 0)
+        }
+        $light = if (-not $isOk -or $files.Count -gt 0) { 'amber' } else { 'green' }
+        $names = @($files | ForEach-Object { $_.file }) -join ', '
+        $detail = if ($light -eq 'amber') { "drifted files: $names" } else { 'all agent files match spine' }
+        return @{ Healthy = ($light -eq 'green'); Ok = $isOk; Light = $light; DriftedFiles = $files; Detail = $detail }
+    } catch {
+        return @{ Healthy = $true; Ok = $true; Light = 'green'; DriftedFiles = @(); Detail = "could not parse agent-drift.json: $($_.Exception.Message)" }
+    }
+}
+
 function Invoke-MarketingGatewayHeal {
     try {
         & hermes -p marketing gateway start 2>$null | Out-Null
@@ -131,18 +170,23 @@ function Invoke-MarketingGatewayHeal {
 
 function Get-T5500HealthStatus {
     <#
-        RED  — the local marketing gateway is still down after a heal
-               attempt, or free disk is below the floor. Either one is a
-               this-machine problem that needs a human.
+        RED    — the local marketing gateway is still down after a heal
+                 attempt, or free disk is below the floor. Either one is a
+                 this-machine problem that needs a human.
+        AMBER  — agent-drift.json reports drifted agent files, while local
+                 gateway and disk are fine.
         YELLOW — OmniRoute is unreachable (this T5500's own service, never
-               healed from here) or gh is not signed in, but the gateway
-               and disk are fine.
-        GREEN — every check passes.
+                 healed from here) or gh is not signed in, but the gateway
+                 and disk are fine.
+        GREEN  — every check passes.
     #>
     param([Parameter(Mandatory)][hashtable]$Checks)
 
     if (-not $Checks.MarketingGateway.Healthy -or -not $Checks.FreeDisk.Healthy) {
         return 'RED'
+    }
+    if ($Checks.ContainsKey('AgentDrift') -and $null -ne $Checks.AgentDrift -and (-not $Checks.AgentDrift.Healthy)) {
+        return 'AMBER'
     }
     if (-not $Checks.OmniRoute.Healthy -or -not $Checks.GhAuth.Healthy) {
         return 'YELLOW'
@@ -165,10 +209,20 @@ function Write-T5500HealthJson {
     if ($dir -and -not (Test-Path -LiteralPath $dir)) {
         New-Item -ItemType Directory -Path $dir -Force | Out-Null
     }
+    $agentDriftObj = if ($Checks.ContainsKey('AgentDrift') -and $null -ne $Checks.AgentDrift) {
+        @{
+            ok = [bool]$Checks.AgentDrift.Ok
+            light = [string]$Checks.AgentDrift.Light
+            driftedFiles = @($Checks.AgentDrift.DriftedFiles)
+        }
+    } else {
+        @{ ok = $true; light = 'green'; driftedFiles = @() }
+    }
     $payload = @{
         status = $Status
         time = (Get-Date).ToString('o')
         healed = $Healed
+        agent_drift = $agentDriftObj
         checks = @{
             marketing_gateway = @{ healthy = $Checks.MarketingGateway.Healthy; detail = $Checks.MarketingGateway.Detail }
             omniroute          = @{ healthy = $Checks.OmniRoute.Healthy; detail = $Checks.OmniRoute.Detail; note = 'reported, never healed by this script' }
@@ -194,11 +248,19 @@ function Write-T5500HealthLogLine {
 
 function Show-T5500HealthTable {
     param([Parameter(Mandatory)][hashtable]$Checks, [Parameter(Mandatory)][string]$Status)
-    Write-Host ("Overall status: {0}" -f $Status)
+    $statusDisplay = $Status
+    if ($Status -eq 'AMBER' -and $Checks.ContainsKey('AgentDrift') -and $null -ne $Checks.AgentDrift -and @($Checks.AgentDrift.DriftedFiles).Count -gt 0) {
+        $names = @($Checks.AgentDrift.DriftedFiles | ForEach-Object { if ($_ -is [string]) { $_ } else { $_.file } }) -join ', '
+        $statusDisplay = "AMBER (agent drift: $names)"
+    }
+    Write-Host ("Overall status: {0}" -f $statusDisplay)
     Write-Host ("  Marketing gateway (192.168.0.15:8377): {0} - {1}" -f (Get-HealthWord $Checks.MarketingGateway.Healthy), $Checks.MarketingGateway.Detail)
     Write-Host ("  OmniRoute (T5500_HOST:20128, reported, never healed): {0} - {1}" -f (Get-HealthWord $Checks.OmniRoute.Healthy), $Checks.OmniRoute.Detail)
     Write-Host ("  GitHub CLI sign-in: {0} - {1}" -f (Get-HealthWord $Checks.GhAuth.Healthy), $Checks.GhAuth.Detail)
     Write-Host ("  Free disk space: {0} - {1}" -f (Get-HealthWord $Checks.FreeDisk.Healthy), $Checks.FreeDisk.Detail)
+    if ($Checks.ContainsKey('AgentDrift') -and $null -ne $Checks.AgentDrift) {
+        Write-Host ("  Agent files drift: {0} - {1}" -f (Get-HealthWord $Checks.AgentDrift.Healthy), $Checks.AgentDrift.Detail)
+    }
 }
 
 function Get-HealthWord {
@@ -222,6 +284,7 @@ function Invoke-T5500Health {
         OmniRoute        = Test-OmniRoute
         GhAuth           = Test-GhAuth
         FreeDisk         = Test-FreeDisk
+        AgentDrift       = Test-AgentDrift
     }
 
     $healed = $false

@@ -206,6 +206,96 @@ Describe 'register-boot-task.ps1' {
   }
 }
 
+Describe 'Agent drift check' {
+  Context 'when drifted files are reported in agent-drift.json' {
+    It 'runs check-agent-drift.ps1 with -SoftExit and logs agent drift AMBER with drifted file names' {
+      Mock Test-Path { $true } -ParameterFilter { $LiteralPath -like '*check-agent-drift.ps1*' }
+      Mock Invoke-AgentDriftScript {}
+      Mock Read-AgentDriftJson {
+        [pscustomobject]@{
+          ok = $false
+          light = 'amber'
+          driftedCount = 2
+          driftedFiles = @(
+            [pscustomobject]@{ file = 'AGENTS.md'; reason = 'drifted' },
+            [pscustomobject]@{ file = '%USERPROFILE%\.claude\CLAUDE.md'; reason = 'missing-block' }
+          )
+        }
+      }
+      Mock Write-BootLog {}
+
+      Invoke-AgentDriftCheck | Should Be $true
+      Assert-MockCalled Invoke-AgentDriftScript -Times 1 -Exactly
+      Assert-MockCalled Write-BootLog -Times 1 -Exactly -ParameterFilter {
+        $What -eq 'agent drift AMBER' -and $Why -like '*AGENTS.md*' -and $Why -like '*CLAUDE.md*'
+      }
+    }
+  }
+
+  Context 'when agent-drift.json is clean' {
+    It 'runs check-agent-drift.ps1 and writes zero drift logs' {
+      Mock Test-Path { $true } -ParameterFilter { $LiteralPath -like '*check-agent-drift.ps1*' }
+      Mock Invoke-AgentDriftScript {}
+      Mock Read-AgentDriftJson {
+        [pscustomobject]@{
+          ok = $true
+          light = 'green'
+          driftedCount = 0
+          driftedFiles = @()
+        }
+      }
+      Mock Write-BootLog {}
+
+      Invoke-AgentDriftCheck | Should Be $false
+      Assert-MockCalled Invoke-AgentDriftScript -Times 1 -Exactly
+      Assert-MockCalled Write-BootLog -Times 0 -Exactly
+    }
+  }
+
+  Context 'when check-agent-drift.ps1 is missing' {
+    It 'does nothing and returns false' {
+      Mock Test-Path { $false } -ParameterFilter { $LiteralPath -like '*check-agent-drift.ps1*' }
+      Mock Invoke-AgentDriftScript {}
+      Mock Write-BootLog {}
+
+      Invoke-AgentDriftCheck | Should Be $false
+      Assert-MockCalled Invoke-AgentDriftScript -Times 0 -Exactly
+      Assert-MockCalled Write-BootLog -Times 0 -Exactly
+    }
+  }
+}
+
+Describe 'Fleet Status check' {
+  Mock Write-BootLog {}
+  Mock Start-DetachedService {}
+  Mock Test-Path { $true } -ParameterFilter { $LiteralPath -like '*fleet-status-server.mjs*' }
+
+  It 'port 9165 down: starts fleet-status-server hidden (ShowWindow 0) and logs it' {
+    Mock Test-TcpPort { $false }
+    Invoke-FleetStatusCheck | Should Be $true
+    Assert-MockCalled Start-DetachedService -Times 1 -Exactly -Scope It -ParameterFilter {
+      $CommandLine -like '*fleet-status-server.mjs*' -and $ShowWindow -eq 0
+    }
+    Assert-MockCalled Write-BootLog -Times 1 -Exactly -Scope It -ParameterFilter {
+      $What -eq 'Fleet Status (192.168.0.40:9165)' -and $Why -eq 'port 9165 not listening'
+    }
+  }
+
+  It 'port 9165 up: calls nothing' {
+    Mock Test-TcpPort { $true }
+    Invoke-FleetStatusCheck | Should Be $false
+    Assert-MockCalled Start-DetachedService -Times 0 -Exactly -Scope It
+    Assert-MockCalled Write-BootLog -Times 0 -Exactly -Scope It
+  }
+
+  It 'Invoke-BootAll wires both Invoke-FleetStatusCheck and Invoke-AgentDriftCheck' {
+    $src = Get-Content -LiteralPath (Join-Path $here 'boot-alienware-services.ps1') -Raw
+    $src | Should Match 'Invoke-FleetStatusCheck'
+    $src | Should Match 'Invoke-AgentDriftCheck'
+    $src | Should Match '-SoftExit'
+  }
+}
+
 Describe 'New boot files carry no user folder path and no loopback reach address' {
   $files = @('boot-alienware-services.ps1', 'boot-alienware-services.vbs', 'boot-alienware-services.Tests.ps1', 'register-boot-task.ps1', 'retire-old-boot-launchers.ps1', 'retire-old-boot-launchers.Tests.ps1') | ForEach-Object { Join-Path $here $_ }
   It 'names no Windows user folder' {

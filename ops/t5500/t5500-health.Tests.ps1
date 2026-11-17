@@ -64,6 +64,60 @@ Describe 'Get-T5500HealthStatus' {
         }
         Get-T5500HealthStatus -Checks $checks | Should Be 'YELLOW'
     }
+
+    It 'is AMBER when services and disk are healthy and AgentDrift has drifted files' {
+        $checks = @{
+            MarketingGateway = New-HealthyCheck
+            OmniRoute        = New-HealthyCheck
+            GhAuth           = New-HealthyCheck
+            FreeDisk         = New-HealthyCheck
+            AgentDrift       = @{ Healthy = $false; Ok = $false; Light = 'amber'; DriftedFiles = @(@{ file = 'ops/t5500/AGENTS.t5500.md'; reason = 'drifted' }); Detail = 'drifted files: ops/t5500/AGENTS.t5500.md' }
+        }
+        Get-T5500HealthStatus -Checks $checks | Should Be 'AMBER'
+    }
+
+    It 'remains RED when marketing gateway is unhealthy even if AgentDrift has drifted files' {
+        $checks = @{
+            MarketingGateway = New-UnhealthyCheck
+            OmniRoute        = New-HealthyCheck
+            GhAuth           = New-HealthyCheck
+            FreeDisk         = New-HealthyCheck
+            AgentDrift       = @{ Healthy = $false; Ok = $false; Light = 'amber'; DriftedFiles = @(@{ file = 'AGENTS.md'; reason = 'drifted' }); Detail = 'drifted' }
+        }
+        Get-T5500HealthStatus -Checks $checks | Should Be 'RED'
+    }
+}
+
+Describe 'Test-AgentDrift and T5500 AMBER table/json' {
+    It 'reads drifted files from AGENT_DRIFT_PATH and reports AMBER with file names in Show-T5500HealthTable' {
+        $driftPath = Join-Path $TestDrive 't5500-agent-drift.json'
+        '{"checkedAt":"2026-11-16T00:00:00Z","node":"t5500","ok":false,"light":"amber","driftedCount":2,"driftedFiles":[{"file":"ops/t5500/AGENTS.t5500.md","reason":"drifted"},{"file":"%LOCALAPPDATA%\\hermes\\profiles\\t5500\\SOUL.md","reason":"missing-block"}]}' | Set-Content -LiteralPath $driftPath -Encoding UTF8
+        $saved = $env:AGENT_DRIFT_PATH
+        $env:AGENT_DRIFT_PATH = $driftPath
+        try {
+            (Get-T5500AgentDriftPath) | Should Be $driftPath
+            $drift = Test-AgentDrift
+            $drift.Healthy | Should Be $false
+            $drift.Ok | Should Be $false
+            $drift.Light | Should Be 'amber'
+            @($drift.DriftedFiles).Count | Should Be 2
+
+            $checks = @{
+                MarketingGateway = New-HealthyCheck
+                OmniRoute        = New-HealthyCheck
+                GhAuth           = New-HealthyCheck
+                FreeDisk         = New-HealthyCheck
+                AgentDrift       = $drift
+            }
+            Mock Write-Host {}
+            Show-T5500HealthTable -Checks $checks -Status 'AMBER'
+            Assert-MockCalled Write-Host -Times 1 -Exactly -Scope It -ParameterFilter {
+                $Object -like '*AMBER (agent drift: ops/t5500/AGENTS.t5500.md, %LOCALAPPDATA%\hermes\profiles\t5500\SOUL.md)*'
+            }
+        } finally {
+            if ($null -eq $saved) { Remove-Item Env:\AGENT_DRIFT_PATH -ErrorAction SilentlyContinue } else { $env:AGENT_DRIFT_PATH = $saved }
+        }
+    }
 }
 
 Describe 'Test-FreeDisk' {
@@ -103,6 +157,7 @@ Describe 'Invoke-T5500Health self-heal' {
             Mock Test-OmniRoute { New-HealthyCheck }
             Mock Test-GhAuth { New-HealthyCheck }
             Mock Test-FreeDisk { New-HealthyCheck }
+            Mock Test-AgentDrift { @{ Healthy = $true; Ok = $true; Light = 'green'; DriftedFiles = @(); Detail = 'ok' } }
 
             $result = Invoke-T5500Health -JsonPath $script:jsonPath -LogPath $script:logPath
             $result.Status | Should Be 'GREEN'
@@ -124,6 +179,7 @@ Describe 'Invoke-T5500Health self-heal' {
             Mock Test-OmniRoute { New-HealthyCheck }
             Mock Test-GhAuth { New-HealthyCheck }
             Mock Test-FreeDisk { New-HealthyCheck }
+            Mock Test-AgentDrift { @{ Healthy = $true; Ok = $true; Light = 'green'; DriftedFiles = @(); Detail = 'ok' } }
 
             Invoke-T5500Health -JsonPath $script:jsonPath -LogPath $script:logPath | Out-Null
             Assert-MockCalled Invoke-MarketingGatewayHeal -Times 0 -Exactly
@@ -141,6 +197,7 @@ Describe 'Invoke-T5500Health self-heal' {
             Mock Test-OmniRoute { New-UnhealthyCheck 'remote down' }
             Mock Test-GhAuth { New-HealthyCheck }
             Mock Test-FreeDisk { New-HealthyCheck }
+            Mock Test-AgentDrift { @{ Healthy = $true; Ok = $true; Light = 'green'; DriftedFiles = @(); Detail = 'ok' } }
 
             $result = Invoke-T5500Health -JsonPath $script:jsonPath -LogPath $script:logPath
             $result.Status | Should Be 'YELLOW'
@@ -160,10 +217,42 @@ Describe 'Invoke-T5500Health self-heal' {
             Mock Test-OmniRoute { New-HealthyCheck }
             Mock Test-GhAuth { New-HealthyCheck }
             Mock Test-FreeDisk { New-HealthyCheck }
+            Mock Test-AgentDrift { @{ Healthy = $true; Ok = $true; Light = 'green'; DriftedFiles = @(); Detail = 'ok' } }
 
             $result = Invoke-T5500Health -JsonPath $script:jsonPath -LogPath $script:logPath
             $result.Status | Should Be 'RED'
             $result.Healed | Should Be $false
+        }
+    }
+
+    Context 'agent drift is detected while services are healthy' {
+        BeforeEach {
+            $script:jsonPath = Join-Path $TestDrive 'health5.json'
+            $script:logPath = Join-Path $TestDrive 'health5.log'
+        }
+
+        It 'reports AMBER and writes agent_drift into health.json' {
+            Mock Test-MarketingGateway { New-HealthyCheck }
+            Mock Test-OmniRoute { New-HealthyCheck }
+            Mock Test-GhAuth { New-HealthyCheck }
+            Mock Test-FreeDisk { New-HealthyCheck }
+            Mock Test-AgentDrift {
+                @{
+                    Healthy = $false
+                    Ok = $false
+                    Light = 'amber'
+                    DriftedFiles = @(@{ file = 'ops/t5500/AGENTS.t5500.md'; reason = 'drifted' })
+                    Detail = 'drifted files: ops/t5500/AGENTS.t5500.md'
+                }
+            }
+
+            $result = Invoke-T5500Health -JsonPath $script:jsonPath -LogPath $script:logPath
+            $result.Status | Should Be 'AMBER'
+            $parsed = Get-Content $script:jsonPath -Raw | ConvertFrom-Json
+            $parsed.status | Should Be 'AMBER'
+            $parsed.agent_drift.ok | Should Be $false
+            $parsed.agent_drift.light | Should Be 'amber'
+            @($parsed.agent_drift.driftedFiles)[0].file | Should Be 'ops/t5500/AGENTS.t5500.md'
         }
     }
 }

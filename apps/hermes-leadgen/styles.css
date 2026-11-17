@@ -113,6 +113,12 @@ code {
   color: #fef2f2;
 }
 
+.light-pill.amber {
+  background: #fffbeb;
+  border-color: #f59e0b;
+  color: #111827;
+}
+
 .led {
   width: 14px;
   height: 14px;
@@ -128,6 +134,11 @@ code {
 .light-pill.red .led {
   background: #ef4444;
   box-shadow: 0 0 12px #ef4444;
+}
+
+.light-pill.amber .led {
+  background: #f59e0b;
+  box-shadow: 0 0 10px #f59e0b;
 }
 
 /* NAVIGATION TABS */
