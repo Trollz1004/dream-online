@@ -55,7 +55,7 @@ function New-FakeTestFixture {
 
   # Private-project files that MUST be skipped
   Write-Utf8NoBom -Path (Join-Path $fakeLocalApp 'hermes\SOUL.md') -Text "Workspace at D:\mira — Legal NSFW only.`n"
-  Write-Utf8NoBom -Path (Join-Path $fakeLocalApp 'hermes\profile.yaml') -Text "project: mira`n"
+  Write-Utf8NoBom -Path (Join-Path $fakeLocalApp 'hermes\profile.yaml') -Text "title: Mira`n"
   Write-Utf8NoBom -Path (Join-Path $fakeLocalApp 'hermes\ALIENWARE-SOUL.md') -Text "# Hermes Alienware Soul`n"
   Write-Utf8NoBom -Path (Join-Path $fakeRepo 'nsfw-helper\SOUL.md') -Text "# Private path skip`n"
 
@@ -191,5 +191,55 @@ Describe 'ops/agents/render-agent-files.ps1' {
     $updated | Should Match 'Footer line\.'
     $updated | Should Not Match 'OLD STALE LINE'
     $updated | Should Match 'T5500 \(192\.168\.0\.15\)'
+  }
+
+  It 'renders boundary-stating GrinDroid notes cleanly while skipping You''re **Mira** and title: Mira' {
+    $base = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
+    $fx = New-FakeTestFixture -BaseDir $base
+    $boundaryLine = 'Never touch anything named grin-droid or GrinDroid.'
+    $claudeNodeMd = Join-Path $fx.FakeProfile '.claude\CLAUDE.md'
+    $hermesAwSoul = Join-Path $fx.FakeLocalApp 'hermes\ALIENWARE-SOUL.md'
+    $freebuffAgents = Join-Path $fx.FakeFreebuff 'AGENTS.md'
+    $repoMiraPersona = Join-Path $fx.FakeRepo 'CLAUDE.md'
+
+    Write-Utf8NoBom -Path $claudeNodeMd -Text ("# Claude`n$boundaryLine`n")
+    Write-Utf8NoBom -Path $hermesAwSoul -Text ("# Hermes Alienware Soul`n$boundaryLine`n")
+    Write-Utf8NoBom -Path $freebuffAgents -Text ("# Freebuff Agents`n$boundaryLine`n")
+    Write-Utf8NoBom -Path $repoMiraPersona -Text ("# Persona`nYou're **Mira** and rule this desk.`n")
+
+    $out = (& $scriptPath -Node alienware -Scope all -RepoRoot $fx.FakeRepo -SpineSourceRepo $repoRoot -UserProfileRoot $fx.FakeProfile -LocalAppDataRoot $fx.FakeLocalApp -FreebuffRoot $fx.FakeFreebuff -Apply | Out-String)
+
+    [System.IO.File]::ReadAllText($claudeNodeMd) | Should Match '<!-- TROLLZ1004-SPINE:START -->'
+    [System.IO.File]::ReadAllText($hermesAwSoul) | Should Match '<!-- TROLLZ1004-SPINE:START -->'
+    [System.IO.File]::ReadAllText($freebuffAgents) | Should Match '<!-- TROLLZ1004-SPINE:START -->'
+
+    $out | Should Match '\[SKIP private-project\].*CLAUDE\.md'
+    [System.IO.File]::ReadAllText($repoMiraPersona) | Should Be ("# Persona`nYou're **Mira** and rule this desk.`n")
+  }
+
+  It 'runs cleanly in a standalone repo holding only ops/fleet/fleet-map.json without docs/house/SPINE.md' {
+    $base = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
+    $standaloneRepo = Join-Path $base 'standalone-ci-repo'
+    $emptyProfile = Join-Path $base 'EmptyProfile'
+    $emptyLocal = Join-Path $emptyProfile 'AppData\Local'
+    $emptyFreebuff = Join-Path $base 'empty-freebuff'
+    New-Item -ItemType Directory -Path (Join-Path $standaloneRepo 'ops\fleet') -Force | Out-Null
+    New-Item -ItemType Directory -Path $emptyLocal -Force | Out-Null
+    New-Item -ItemType Directory -Path $emptyFreebuff -Force | Out-Null
+
+    [System.IO.File]::Copy((Join-Path $repoRoot 'ops\fleet\fleet-map.json'), (Join-Path $standaloneRepo 'ops\fleet\fleet-map.json'), $true)
+    $agentsPath = Join-Path $standaloneRepo 'AGENTS.md'
+    Write-Utf8NoBom -Path $agentsPath -Text "# Standalone Repo`n"
+
+    # Without -SpineSourceRepo and isolated -UserProfileRoot (no DREAM-Engine-runner)
+    & $scriptPath -Node alienware -Scope repo -RepoRoot $standaloneRepo -UserProfileRoot $emptyProfile -LocalAppDataRoot $emptyLocal -FreebuffRoot $emptyFreebuff -Apply | Out-Null
+    [System.IO.File]::ReadAllText($agentsPath) | Should Match '<!-- TROLLZ1004-SPINE:START -->'
+
+    # Reset and verify explicit standalone source repo lacking docs/house/SPINE.md
+    Write-Utf8NoBom -Path $agentsPath -Text "# Standalone Repo`n"
+    & $scriptPath -Node alienware -Scope repo -RepoRoot $standaloneRepo -SpineSourceRepo $standaloneRepo -UserProfileRoot $emptyProfile -LocalAppDataRoot $emptyLocal -FreebuffRoot $emptyFreebuff -Apply | Out-Null
+    $rendered = [System.IO.File]::ReadAllText($agentsPath)
+    $rendered | Should Match '<!-- TROLLZ1004-SPINE:START -->'
+    $rendered | Should Match 'ADDRESS-DOCTRINE\.md, NODES\.md, PIPELINE\.md, TRUSTED-MODELS\.md, THE-HOUSE\.md'
   }
 }

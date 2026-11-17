@@ -196,3 +196,107 @@ test('render-agent-files.ps1 exists and passes PowerShell end-to-end JSON/TOML/Y
     fs.rmSync(fx.root, { recursive: true, force: true });
   }
 });
+
+test('render-agent-files.ps1 renders boundary-stating GrinDroid notes, skips genuine Mira persona markers, and works standalone with fleet-map.json only', { skip: !PS_EXE }, () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'render-agent-standalone-'));
+  try {
+    const repo = path.join(root, 'standalone-repo');
+    const profile = path.join(root, 'EmptyProfile');
+    const localApp = path.join(profile, 'AppData', 'Local');
+    const freebuff = path.join(root, 'freebuff-leadgen');
+
+    fs.mkdirSync(path.join(repo, 'ops', 'fleet'), { recursive: true });
+    fs.mkdirSync(path.join(profile, '.claude'), { recursive: true });
+    fs.mkdirSync(path.join(localApp, 'hermes'), { recursive: true });
+    fs.mkdirSync(freebuff, { recursive: true });
+
+    fs.copyFileSync(
+      path.join(REPO_ROOT, 'ops', 'fleet', 'fleet-map.json'),
+      path.join(repo, 'ops', 'fleet', 'fleet-map.json'),
+    );
+
+    const hr = '- House rules: `docs/house/HOUSE-MOTION-RULE.md`, `docs/house/THE-HOUSE.md` and `docs/house/PAYMENT-ACCOUNTS-RULE.md`.';
+    const cb = '- Current beats existing: fetch and pull main first.';
+    fs.writeFileSync(path.join(repo, 'AGENTS.md'), `# Standalone\n${hr}\n${cb}\n`, 'utf8');
+    fs.writeFileSync(path.join(repo, 'CLAUDE.md'), "# Persona File\nYou're **Mira** in private mode.\n", 'utf8');
+
+    const boundaryNote = 'Never touch anything named grin-droid or GrinDroid.\n';
+    fs.writeFileSync(path.join(profile, '.claude', 'CLAUDE.md'), `# Claude\n${boundaryNote}`, 'utf8');
+    fs.writeFileSync(path.join(localApp, 'hermes', 'ALIENWARE-SOUL.md'), `# Alienware Soul\n${boundaryNote}`, 'utf8');
+    fs.writeFileSync(path.join(freebuff, 'AGENTS.md'), `# Freebuff\n${boundaryNote}`, 'utf8');
+    fs.writeFileSync(path.join(localApp, 'hermes', 'SOUL.md'), 'Workspace D:\\mira — Legal NSFW only.\n', 'utf8');
+    fs.writeFileSync(path.join(localApp, 'hermes', 'profile.yaml'), 'title: Mira\n', 'utf8');
+
+    // Run without -SpineSourceRepo and without docs/house/SPINE.md
+    const withoutExplicit = execFileSync(
+      PS_EXE,
+      [
+        '-NoProfile',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-File',
+        SCRIPT_PATH,
+        '-Node',
+        'alienware',
+        '-Scope',
+        'repo',
+        '-RepoRoot',
+        repo,
+        '-UserProfileRoot',
+        profile,
+        '-LocalAppDataRoot',
+        localApp,
+        '-FreebuffRoot',
+        freebuff,
+        '-Apply',
+      ],
+      { encoding: 'utf8' },
+    );
+    assert.match(withoutExplicit, /AGENTS\.md/);
+    assert.match(withoutExplicit, /\[SKIP private-project\].*CLAUDE\.md/);
+
+    // Reset AGENTS.md and force standalone fleet-map.json-only path via -SpineSourceRepo repo (no SPINE.md)
+    fs.writeFileSync(path.join(repo, 'AGENTS.md'), `# Standalone\n${hr}\n${cb}\n`, 'utf8');
+    const standaloneOut = execFileSync(
+      PS_EXE,
+      [
+        '-NoProfile',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-File',
+        SCRIPT_PATH,
+        '-Node',
+        'alienware',
+        '-Scope',
+        'all',
+        '-RepoRoot',
+        repo,
+        '-SpineSourceRepo',
+        repo,
+        '-UserProfileRoot',
+        profile,
+        '-LocalAppDataRoot',
+        localApp,
+        '-FreebuffRoot',
+        freebuff,
+        '-Apply',
+      ],
+      { encoding: 'utf8' },
+    );
+
+    const renderedAgents = fs.readFileSync(path.join(repo, 'AGENTS.md'), 'utf8');
+    assert.match(renderedAgents, /<!-- TROLLZ1004-SPINE:START -->/);
+    assert.match(renderedAgents, /ADDRESS-DOCTRINE\.md, NODES\.md, PIPELINE\.md, TRUSTED-MODELS\.md, THE-HOUSE\.md/);
+    assert.equal(fs.readFileSync(path.join(repo, 'CLAUDE.md'), 'utf8'), "# Persona File\nYou're **Mira** in private mode.\n");
+
+    assert.match(fs.readFileSync(path.join(profile, '.claude', 'CLAUDE.md'), 'utf8'), /<!-- TROLLZ1004-SPINE:START -->/);
+    assert.match(fs.readFileSync(path.join(localApp, 'hermes', 'ALIENWARE-SOUL.md'), 'utf8'), /<!-- TROLLZ1004-SPINE:START -->/);
+    assert.match(fs.readFileSync(path.join(freebuff, 'AGENTS.md'), 'utf8'), /<!-- TROLLZ1004-SPINE:START -->/);
+
+    assert.match(standaloneOut, /\[SKIP private-project\].*hermes\\SOUL\.md/);
+    assert.match(standaloneOut, /\[SKIP private-project\].*hermes\\profile\.yaml/);
+    assert.equal(fs.readFileSync(path.join(localApp, 'hermes', 'profile.yaml'), 'utf8'), 'title: Mira\n');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

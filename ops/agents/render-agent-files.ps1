@@ -82,7 +82,7 @@ function Test-PrivateProjectFile {
     return $true
   }
   if (-not [string]::IsNullOrEmpty($ExistingText)) {
-    $privContentPattern = '(?i)(\bD:[\\/]mira\b|\bmira\b|Legal NSFW only|Grindroid|mira\s+' + $EmDash + ')'
+    $privContentPattern = '(?i)(\bD:[\\/]mira\b|Legal NSFW only|You''re\s+\*\*Mira\*\*|(?m)^\s*title:\s*Mira\b)'
     if ($ExistingText -match $privContentPattern) {
       return $true
     }
@@ -105,15 +105,18 @@ function Resolve-SpineSourceRepoPath {
       $parent = Split-Path -Parent $TargetRepo
       if ($parent) {
         $candidates.Add((Join-Path $parent 'dream-online'))
+        $candidates.Add((Join-Path $parent 'wt-af-do-e1'))
+        $candidates.Add((Join-Path $parent 'wt-af-do-e2'))
       }
     }
+    $candidates.Add('C:\DREAM\dream-online')
     if (-not [string]::IsNullOrWhiteSpace($ProfileRoot)) {
       $candidates.Add((Join-Path $ProfileRoot 'antigravity\DREAM-Engine-runner'))
     }
   }
 
   foreach ($cand in $candidates) {
-    if (-not (Test-Path -LiteralPath $cand)) { continue }
+    if ([string]::IsNullOrWhiteSpace($cand) -or -not (Test-Path -LiteralPath $cand)) { continue }
     $fm = Join-Path $cand 'ops\fleet\fleet-map.json'
     $sp = Join-Path $cand 'docs\house\SPINE.md'
     if ((Test-Path -LiteralPath $fm) -and (Test-Path -LiteralPath $sp)) {
@@ -121,7 +124,21 @@ function Resolve-SpineSourceRepoPath {
     }
   }
 
-  throw 'Could not locate spine source repository containing ops/fleet/fleet-map.json and docs/house/SPINE.md.'
+  $standaloneCandidates = New-Object System.Collections.Generic.List[string]
+  if (-not [string]::IsNullOrWhiteSpace($Explicit)) {
+    $standaloneCandidates.Add($Explicit)
+  } elseif (-not [string]::IsNullOrWhiteSpace($TargetRepo)) {
+    $standaloneCandidates.Add($TargetRepo)
+  }
+  foreach ($cand in $standaloneCandidates) {
+    if ([string]::IsNullOrWhiteSpace($cand) -or -not (Test-Path -LiteralPath $cand)) { continue }
+    $fm = Join-Path $cand 'ops\fleet\fleet-map.json'
+    if (Test-Path -LiteralPath $fm) {
+      return (Resolve-Path -LiteralPath $cand).Path
+    }
+  }
+
+  throw 'Could not locate spine source repository containing ops/fleet/fleet-map.json.'
 }
 
 function Resolve-CanonicalRepoName {
@@ -155,17 +172,28 @@ function Get-SpineContext {
 
   $fleetRaw = [System.IO.File]::ReadAllText($fleetPath, $Utf8NoBom)
   $fleet = $fleetRaw | ConvertFrom-Json
-  $spineRaw = [System.IO.File]::ReadAllText($spinePath, $Utf8NoBom)
+
+  $spineDocPath = 'docs/house/SPINE.md'
+  if ($fleet.PSObject.Properties['spine'] -and -not [string]::IsNullOrWhiteSpace([string]$fleet.spine)) {
+    $spineDocPath = [string]$fleet.spine
+  }
 
   $pointerNames = @('ADDRESS-DOCTRINE.md', 'NODES.md', 'PIPELINE.md', 'TRUSTED-MODELS.md', 'THE-HOUSE.md')
   $foundPointers = New-Object System.Collections.Generic.List[string]
-  foreach ($p in $pointerNames) {
-    if ($spineRaw -match [regex]::Escape($p)) {
+  if (Test-Path -LiteralPath $spinePath) {
+    $spineRaw = [System.IO.File]::ReadAllText($spinePath, $Utf8NoBom)
+    foreach ($p in $pointerNames) {
+      if ($spineRaw -match [regex]::Escape($p)) {
+        $foundPointers.Add($p)
+      }
+    }
+    if ($foundPointers.Count -eq 0) {
+      throw "docs/house/SPINE.md at $SourceRepo did not list expected doctrine pointers."
+    }
+  } else {
+    foreach ($p in $pointerNames) {
       $foundPointers.Add($p)
     }
-  }
-  if ($foundPointers.Count -eq 0) {
-    throw "docs/house/SPINE.md at $SourceRepo did not list expected doctrine pointers."
   }
 
   $aw = $fleet.nodes.alienware
@@ -191,6 +219,7 @@ function Get-SpineContext {
     T5500 = $t5
     NodeMeta = $nodeObj
     RepoName = $TargetRepoName
+    SpineDocPath = $spineDocPath
     PointersText = ($foundPointers -join ', ')
     PostgresPort = $pgPort
     RedisPort = $rdPort
@@ -231,7 +260,7 @@ function Build-MarkdownManagedBlock {
   } else {
     $lines.Add(('- `Repo: {0} | Fleet: {1} ({2}, {3}) & {4} ({5}, {6}) | GitHub: {7} (ops/fleet/fleet-map.json).`' -f $Ctx.RepoName, $Ctx.Alienware.name, $Ctx.Alienware.ip, $Ctx.Alienware.role, $Ctx.T5500.name, $Ctx.T5500.ip, $Ctx.T5500.role, $Ctx.Alienware.githubAccount))
   }
-  $lines.Add(('- `Spine: Trollz1004/dream-online docs/house/SPINE.md (pointers: {0}).`' -f $Ctx.PointersText))
+  $lines.Add(('- `Spine: Trollz1004/dream-online {0} (pointers: {1}).`' -f $Ctx.SpineDocPath, $Ctx.PointersText))
   $lines.Add(('- `Address doctrine: use {0} and {1} from ops/fleet/fleet-map.json; never use loopback reach URLs; Postgres (port {2}), Redis (port {3}), and Obsidian REST (port {4}) bind "127.0.0.1" on their own machine only.`' -f $Ctx.Alienware.ip, $Ctx.T5500.ip, $Ctx.PostgresPort, $Ctx.RedisPort, $Ctx.ObsidianPort))
   $lines.Add('- `Trusted three: Claude Opus 5.5 / Fable (Claude Code), Gemini 4 Carbon (agy), and GPT-6 Astra / GPT-6.1 Sol / Codex (Codex CLI); superpowers is in every kit on demand, while REA, remake, Agent-Reach, and last30days are locked to the trusted three.`')
   $lines.Add('- `Pipeline: brainstorm first, route role + <=2 skills, build [A]/[B] with failing test first, expediter rubric + 5 stacked add-on PRs, Carbon + Codex judge, Fable / rotating trusted-three merges green checks.`')
@@ -262,7 +291,7 @@ function Build-TomlManagedBlock {
     $lines.Add(('alienware_ip = "{0}"' -f $Ctx.Alienware.ip))
     $lines.Add(('t5500_ip = "{0}"' -f $Ctx.T5500.ip))
   }
-  $lines.Add('spine = "docs/house/SPINE.md"')
+  $lines.Add(('spine = "{0}"' -f $Ctx.SpineDocPath))
   $lines.Add('fleet_map = "ops/fleet/fleet-map.json"')
   $lines.Add('trusted_three = ["claude-opus-5.5", "fable", "gemini-4-carbon", "gpt-6-astra", "gpt-6.1-sol", "codex"]')
   $lines.Add('')
@@ -296,7 +325,7 @@ function Build-YamlManagedBlock {
   } else {
     $lines.Add(('  repo: "{0}"' -f $Ctx.RepoName))
   }
-  $lines.Add('  spine: "docs/house/SPINE.md"')
+  $lines.Add(('  spine: "{0}"' -f $Ctx.SpineDocPath))
   $lines.Add('  fleet_map: "ops/fleet/fleet-map.json"')
   $lines.Add('  nodes:')
   $lines.Add(('    alienware: "{0}"' -f $Ctx.Alienware.ip))
@@ -367,7 +396,7 @@ function Build-JsonManagedPropertiesText {
   } else {
     $lines.Add($i2 + ('"repo": "{0}",' -f $Ctx.RepoName))
   }
-  $lines.Add($i2 + '"spine": "docs/house/SPINE.md",')
+  $lines.Add($i2 + ('"spine": "{0}",' -f $Ctx.SpineDocPath))
   $lines.Add($i2 + '"fleetMap": "ops/fleet/fleet-map.json",')
   $lines.Add($i2 + '"nodes": {')
   $lines.Add($i3 + ('"alienware": "{0}",' -f $Ctx.Alienware.ip))
