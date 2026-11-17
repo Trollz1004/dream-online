@@ -86,16 +86,19 @@ try {
   });
 
   const warningLines = stderr.trim().split(/\r?\n/).filter(Boolean);
-  assert.equal(warningLines.length, 1);
+  assert.equal(warningLines.length, 2);
   assert.match(warningLines[0], /DREAM_LIVE_NPC_TOKEN/);
   assert.match(warningLines[0], /FLEET_SHARED_TOKEN/);
   assert.match(warningLines[0], /127\.0\.0\.1/);
+  assert.match(warningLines[1], /\[live-npc-lab\] Startup env check: missing required setting names: DREAM_LIVE_NPC_TOKEN/);
 
   const base = `http://${LOOPBACK}:${port}`;
   const healthRes = await fetch(`${base}/health`);
   assert.equal(healthRes.status, 200);
   const health = await healthRes.json();
   assert.equal(health.ok, true);
+  assert.equal(health.service, "dream-live-npc-lab");
+  assert.deepEqual(health.missingEnv, ["DREAM_LIVE_NPC_TOKEN"]);
 
   const dialogueRes = await fetch(`${base}/npc/dialogue`, {
     method: "POST",
@@ -137,7 +140,21 @@ try {
   process.env.DREAM_ENABLE_CLOUD_AI = "";
   process.env.DREAM_AI_PROVIDER = "mock";
 
-  assert.equal((await fetch(`${lanBase}/health`)).status, 200);
+  const lanHealthRes = await fetch(`${lanBase}/health`);
+  assert.equal(lanHealthRes.status, 200);
+  const lanHealthText = await lanHealthRes.text();
+  assert.equal(lanHealthText.includes("npc-lan-secret"), false);
+  assert.equal(lanHealthText.includes("fleet-shared-secret"), false);
+  const lanHealth = JSON.parse(lanHealthText);
+  assert.equal(lanHealth.service, "dream-live-npc-lab");
+  assert.deepEqual(lanHealth.missingEnv, []);
+
+  const manifestRaw = await fs.readFile(path.resolve(process.cwd(), "env.required.json"), "utf8");
+  const manifest = JSON.parse(manifestRaw);
+  assert.equal(manifest.service, "live-npc-lab");
+  assert.deepEqual(manifest.required, ["DREAM_LIVE_NPC_TOKEN"]);
+  assert.deepEqual(manifest.alternatives, { DREAM_LIVE_NPC_TOKEN: ["FLEET_SHARED_TOKEN"] });
+  assert.deepEqual(manifest.optional, ["ONEMINAI_API_KEY", "NPC_HERMES_WEBHOOK_URL"]);
 
   const payload = JSON.stringify({
     npcId: "sup-guide",

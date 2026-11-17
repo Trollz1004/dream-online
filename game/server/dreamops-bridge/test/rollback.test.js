@@ -149,16 +149,19 @@ test("no-token defaults bind to 127.0.0.1 with warning, explicit LAN without tok
     });
 
     const warningLines = stderr.trim().split(/\r?\n/).filter(Boolean);
-    assert.equal(warningLines.length, 1);
+    assert.equal(warningLines.length, 2);
     assert.match(warningLines[0], /DREAMOPS_TOKEN/);
     assert.match(warningLines[0], /FLEET_SHARED_TOKEN/);
     assert.match(warningLines[0], /127\.0\.0\.1/);
+    assert.match(warningLines[1], /\[dreamops-bridge\] Startup env check: missing required setting names: DREAMOPS_TOKEN/);
 
     const liveBase = `http://${loopback}:${port}`;
     const healthRes = await fetch(`${liveBase}/health`);
     assert.equal(healthRes.status, 200);
     const health = await healthRes.json();
+    assert.equal(health.service, "dreamops-bridge");
     assert.equal(health.localOnly, true);
+    assert.deepEqual(health.missingEnv, ["DREAMOPS_TOKEN"]);
 
     const postRes = await fetch(`${liveBase}/hotfix/propose`, {
       method: "POST",
@@ -179,8 +182,22 @@ test("no-token defaults bind to 127.0.0.1 with warning, explicit LAN without tok
   await new Promise((resolve) => lanServer.listen(0, loopback, resolve));
   try {
     const lanBase = `http://${loopback}:${lanServer.address().port}`;
-    const lanHealth = await (await fetch(`${lanBase}/health`)).json();
+    const lanHealthRes = await fetch(`${lanBase}/health`);
+    const lanHealthRaw = await lanHealthRes.text();
+    assert.equal(lanHealthRaw.includes("dreamops-lan-secret"), false);
+    assert.equal(lanHealthRaw.includes("fleet-shared-secret"), false);
+    const lanHealth = JSON.parse(lanHealthRaw);
+    assert.equal(lanHealth.service, "dreamops-bridge");
     assert.equal(lanHealth.localOnly, false);
+    assert.deepEqual(lanHealth.missingEnv, []);
+
+    const { readFileSync, existsSync } = await import("node:fs");
+    const manifestUrl = new URL("../env.required.json", import.meta.url);
+    assert.equal(existsSync(manifestUrl), true, "game/server/dreamops-bridge/env.required.json must exist");
+    const manifest = JSON.parse(readFileSync(manifestUrl, "utf8"));
+    assert.equal(manifest.service, "dreamops-bridge");
+    assert.deepEqual(manifest.required, ["DREAMOPS_TOKEN"]);
+    assert.deepEqual(manifest.alternatives, { DREAMOPS_TOKEN: ["FLEET_SHARED_TOKEN"] });
 
     assert.equal((await fetch(`${lanBase}/hotfix/propose`, {
       method: "POST",

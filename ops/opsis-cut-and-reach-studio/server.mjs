@@ -1,7 +1,8 @@
 import http from 'node:http';
+import path from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { TimelineStore } from './timeline-engine.mjs';
 import {
   scoreLead,
@@ -17,6 +18,12 @@ import {
   getServiceBindHost,
   getServicePort,
 } from '../fleet/fleet-map.mjs';
+import {
+  checkRequiredEnv,
+  logStartupEnvCheck,
+} from '../agents/env-required.mjs';
+
+const STUDIO_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 const html = await readFile(new URL('./public/index.html', import.meta.url));
 const partners = JSON.parse(
@@ -146,6 +153,14 @@ export function createStudioServer(options = {}) {
     const isLanBound = bindHost !== '127.0.0.1';
     const expectedTokens = resolveStudioTokens(activeEnv);
 
+    if (req.method === 'GET' && req.url === '/health') {
+      const envCheck = checkRequiredEnv(STUDIO_DIR, activeEnv);
+      res
+        .writeHead(200, { 'Content-Type': 'application/json' })
+        .end(JSON.stringify({ ok: true, service: 'opsis-studio', missingEnv: envCheck.missingEnv }));
+      return;
+    }
+
     if (req.method === 'GET' && req.url === '/api/session') {
       if (isLanBound && !hasValidStudioFleetAuth(req, expectedTokens)) {
         res
@@ -153,7 +168,10 @@ export function createStudioServer(options = {}) {
           .end(JSON.stringify({ error: 'Unauthorized: valid Authorization Bearer token or X-Fleet-Token required' }));
         return;
       }
-      res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ token }));
+      const envCheck = checkRequiredEnv(STUDIO_DIR, activeEnv);
+      res.writeHead(200, { 'Content-Type': 'application/json' }).end(
+        JSON.stringify({ token, missingEnv: envCheck.missingEnv })
+      );
       return;
     }
     const routes = [
@@ -221,6 +239,7 @@ export function startStudioServer(env = process.env, onListening) {
   if (warning) {
     console.warn(warning);
   }
+  logStartupEnvCheck(STUDIO_DIR, env);
   const port = resolveStudioPort(env);
   const server = createStudioServer({ env });
   return server.listen(port, host, () => {

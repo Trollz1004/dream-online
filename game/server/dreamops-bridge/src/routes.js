@@ -1,6 +1,11 @@
 import { timingSafeEqual } from "node:crypto";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { audit } from "./audit.js";
 import { dreamRoot, listCheckpoints, readJson, writeJson } from "./storage.js";
+import { checkRequiredEnv } from "../../../../ops/agents/env-required.mjs";
+
+const DREAMOPS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 export function resolveDreamOpsTokens(env = process.env) {
   const candidates = [
@@ -89,11 +94,13 @@ export async function route(req, res, options = {}) {
   }
 
   if (req.method === "GET" && path === "/health") {
+    const envCheck = checkRequiredEnv(DREAMOPS_DIR, activeEnv);
     return ok(res, {
       status: "ok",
       service: "dreamops-bridge",
       dreamRoot: dreamRoot(),
-      localOnly: bindHost === "127.0.0.1"
+      localOnly: bindHost === "127.0.0.1",
+      missingEnv: envCheck.missingEnv
     });
   }
 

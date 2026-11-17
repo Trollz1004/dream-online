@@ -66,9 +66,14 @@ import {
   getServiceBindHost,
   getServicePort,
 } from './ops/fleet/fleet-map.mjs';
+import {
+  checkRequiredEnv,
+  logStartupEnvCheck,
+} from './ops/agents/env-required.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+let activeServerEnv: NodeJS.ProcessEnv = process.env;
 
 export const MAX_SERVER_STATE_ITEMS = 200;
 
@@ -330,12 +335,15 @@ function appendAudit(kind: string, msg: string, ok = true) {
 // ============================================================================
 
 app.get('/api/gm/health', (_req, res) => {
+  const envCheck = checkRequiredEnv(__dirname, activeServerEnv);
   res.json({
     status: 'ok',
     node: 'mission-control-3130',
     alienwareNode: '192.168.0.40:9180',
     t5500Worker: '192.168.0.15:9127',
     mission: '#UntilNoKidInNeed',
+    missingEnv: envCheck.missingEnv,
+    light: envCheck.missingEnv.length > 0 ? 'amber' : 'green',
   });
 });
 
@@ -943,9 +951,11 @@ app.post('/api/dreamforge/generate', (req, res) => {
 
 export async function startServer(env: NodeJS.ProcessEnv = process.env) {
   const { host, warning } = validateDreamEngineBindConfig(env);
+  activeServerEnv = env;
   if (warning) {
     console.warn(warning);
   }
+  logStartupEnvCheck(__dirname, env);
   const PORT = String(env.PORT || '').trim() === '0' ? 0 : getServicePort('dream-engine', env.PORT);
   const isProd = env.NODE_ENV === 'production';
 

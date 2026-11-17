@@ -48,6 +48,8 @@ test('fleet-status-server reports green, amber (drift & missingEnv), red (flashi
   const mod = await import('./fleet-status-server.mjs');
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fleet-status-test-'));
   const driftPath = path.join(tmpDir, 'agent-drift.json');
+  const envStatusPath = path.join(tmpDir, 'env-status.json');
+  const healthyEnv = { FLEET_SHARED_TOKEN: 'test-fleet-secret', ENV_STATUS_PATH: envStatusPath };
 
   const healthySvc = await makeMockService((req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -67,6 +69,7 @@ test('fleet-status-server reports green, amber (drift & missingEnv), red (flashi
     );
     const { server: s1 } = mod.createFleetStatusServer({
       node: 'alienware',
+      env: healthyEnv,
       agentDriftPath: driftPath,
       targets: [{ id: 'mock-svc', name: 'Mock Service', host: LOOPBACK, port: healthySvc.port, healthPath: '/health', expectedIdentity: 'mock-svc' }],
     });
@@ -113,6 +116,7 @@ test('fleet-status-server reports green, amber (drift & missingEnv), red (flashi
     );
     const { server: s2 } = mod.createFleetStatusServer({
       node: 'alienware',
+      env: healthyEnv,
       agentDriftPath: driftPath,
       targets: [{ id: 'mock-svc', name: 'Mock Service', host: LOOPBACK, port: healthySvc.port, healthPath: '/health', expectedIdentity: 'mock-svc' }],
     });
@@ -137,6 +141,7 @@ test('fleet-status-server reports green, amber (drift & missingEnv), red (flashi
     );
     const { server: s3 } = mod.createFleetStatusServer({
       node: 'alienware',
+      env: healthyEnv,
       agentDriftPath: driftPath,
       serviceMissingEnv: ['FLEET_SHARED_TOKEN'],
       targets: [{ id: 'env-svc', name: 'Env Service', host: LOOPBACK, port: missingEnvSvc.port, healthPath: '/health', expectedIdentity: 'env-svc' }],
@@ -161,6 +166,7 @@ test('fleet-status-server reports green, amber (drift & missingEnv), red (flashi
 
     const { server: s4 } = mod.createFleetStatusServer({
       node: 't5500',
+      env: healthyEnv,
       agentDriftPath: driftPath,
       targets: [{ id: 'down-svc', name: 'Down Service', host: LOOPBACK, port: closedPort, healthPath: '/health', expectedIdentity: 'ok' }],
     });
@@ -238,9 +244,10 @@ test('fleet-status-server CLI live-start without FLEET_SHARED_TOKEN binds 127.0.
     });
 
     const warnings = stderr.trim().split(/\r?\n/).filter(Boolean);
-    assert.equal(warnings.length, 1);
+    assert.equal(warnings.length, 2);
     assert.match(warnings[0], /FLEET_SHARED_TOKEN/);
     assert.match(warnings[0], /127\.0\.0\.1/);
+    assert.match(warnings[1], /\[fleet-status\] Startup env check: missing required setting names: FLEET_SHARED_TOKEN/);
 
     const res = await fetch(`http://${LOOPBACK}:${port}/health`);
     assert.equal(res.status, 200);
@@ -249,11 +256,60 @@ test('fleet-status-server CLI live-start without FLEET_SHARED_TOKEN binds 127.0.
     assert.equal(json.light, 'amber');
     assert.equal(json.flashing, false);
     assert.deepEqual(json.driftedFiles, [{ file: 'GEMINI.md', reason: 'drifted' }]);
+    assert.deepEqual(json.missingEnv, ['FLEET_SHARED_TOKEN']);
+    assert.deepEqual(json.serviceMissingEnv, ['FLEET_SHARED_TOKEN']);
   } finally {
     if (child.exitCode === null && child.signalCode === null) {
       child.kill();
       await new Promise((r) => child.once('exit', r));
     }
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('Stage E4 (fleet-status): env.required.json exists and missing FLEET_SHARED_TOKEN automatically sets amber + missingEnv + serviceMissingEnv', async () => {
+  const manifestPath = path.join(__dirname, 'env.required.json');
+  assert.equal(fs.existsSync(manifestPath), true, 'ops/fleet/env.required.json must exist');
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  assert.deepEqual(manifest.required, ['FLEET_SHARED_TOKEN']);
+
+  const mod = await import('./fleet-status-server.mjs');
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fleet-status-e4-'));
+  const driftPath = path.join(tmpDir, 'agent-drift.json');
+  const envStatusPath = path.join(tmpDir, 'env-status.json');
+  fs.writeFileSync(
+    driftPath,
+    JSON.stringify({ checkedAt: '2026-11-16T00:00:00Z', node: 'alienware', ok: true, light: 'green', driftedCount: 0, driftedFiles: [] }),
+    'utf8',
+  );
+  const healthySvc = await makeMockService((_req, res) => {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, service: 'mock-svc', missingEnv: [] }));
+  });
+
+  const { server } = mod.createFleetStatusServer({
+    node: 'alienware',
+    env: { FLEET_SHARED_TOKEN: '', ENV_STATUS_PATH: envStatusPath },
+    agentDriftPath: driftPath,
+    targets: [{ id: 'mock-svc', name: 'Mock Service', host: LOOPBACK, port: healthySvc.port, healthPath: '/health', expectedIdentity: 'mock-svc' }],
+  });
+  await new Promise((r) => server.listen(0, LOOPBACK, r));
+  try {
+    const port = server.address().port;
+    const hJson = await (await fetch(`http://${LOOPBACK}:${port}/health`)).json();
+    assert.equal(hJson.light, 'amber');
+    assert.equal(hJson.flashing, false);
+    assert.deepEqual(hJson.missingEnv, ['FLEET_SHARED_TOKEN']);
+    assert.deepEqual(hJson.serviceMissingEnv, ['FLEET_SHARED_TOKEN']);
+    assert.ok(hJson.reasons.some((r) => r.includes('FLEET_SHARED_TOKEN')));
+
+    const sJson = await (await fetch(`http://${LOOPBACK}:${port}/api/status`)).json();
+    assert.equal(sJson.light, 'amber');
+    assert.deepEqual(sJson.missingEnv, ['FLEET_SHARED_TOKEN']);
+    assert.deepEqual(sJson.serviceMissingEnv, ['FLEET_SHARED_TOKEN']);
+  } finally {
+    await closeServer(server);
+    await closeServer(healthySvc.server);
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
