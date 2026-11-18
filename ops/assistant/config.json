@@ -1,0 +1,9 @@
+{
+  "monthly_cap_usd": 90,
+  "daily_cap_usd": 8,
+  "max_turns": 200,
+  "kitchen_dir": "%USERPROFILE%\\antigravity\\.fable-kitchen",
+  "build_dir": "%USERPROFILE%\\antigravity\\build",
+  "ledger_path": "%USERPROFILE%\\antigravity\\.fable-kitchen\\assistant\\ledger.jsonl",
+  "run_log_path": "%USERPROFILE%\\antigravity\\.fable-kitchen\\assistant\\runs.log"
+}
