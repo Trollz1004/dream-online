@@ -33,6 +33,7 @@ const REQUIRED_SERVICE_KEYS = [
   'name',
   'node',
   'host',
+  'address',
   'port',
   'protocol',
   'scope',
@@ -41,6 +42,9 @@ const REQUIRED_SERVICE_KEYS = [
   'healthPath',
   'expectedIdentity',
   'ownerLane',
+  'ownerTask',
+  'ownerTaskName',
+  'status',
 ];
 
 const FORBIDDEN_OLD_IP = ['192', '168', '0', '8'].join('.');
@@ -83,7 +87,8 @@ test('Postgres 5432, Redis 6379, and Obsidian REST 27123 are marked "this machin
   assert.deepEqual(ports, [5432, 6379, 27123, 27123]);
   for (const svc of localOnly) {
     assert.equal(svc.bind, '127.0.0.1', `${svc.id} must bind 127.0.0.1`);
-    assert.equal(svc.host, '127.0.0.1', `${svc.id} must have host 127.0.0.1`);
+    assert.equal(svc.host, getNodeHost(svc.node), `${svc.id} must have node 192.168.0.x host`);
+    assert.equal(svc.address, getNodeHost(svc.node), `${svc.id} must have node 192.168.0.x address`);
   }
 });
 
@@ -301,4 +306,56 @@ test('Stage E1: ESM and CJS loaders export getSpinePath, getNodeRepos, getNodeHa
 
   assert.throws(() => esmFleet.getNodeRepos('unknown-node'), /Unknown fleet node/);
   assert.throws(() => cjsFleet.getNodeHarnesses('unknown-node'), /Unknown fleet node/);
+});
+
+test('loader test: every service in fleet-map.json has node, 192.168.0.x address, port, owner task name, and unconfirmed 2026-11-20 markers', () => {
+  const map = loadFleetMap();
+  assert.equal(map.updated, '2026-11-20');
+  assert.equal(map.services.length, 31, 'all 31 existing services must be retained without deletion');
+
+  const forbiddenEntryRe = /sabretooth|sabertooth|grin-droid|grindroid|mira|trolly/i;
+  for (const svc of map.services) {
+    assert.ok(!forbiddenEntryRe.test(svc.id) && !forbiddenEntryRe.test(svc.name), `forbidden entry ${svc.id}`);
+    assert.ok(svc.node === 'alienware' || svc.node === 't5500', `${svc.id} must declare valid node`);
+
+    const expectedIp = svc.node === 'alienware' ? '192.168.0.40' : '192.168.0.15';
+    assert.equal(svc.host, expectedIp, `${svc.id} host must be ${expectedIp}, never localhost or loopback`);
+    assert.equal(svc.address, expectedIp, `${svc.id} address must be ${expectedIp}, never localhost or loopback`);
+    assert.match(svc.address, /^192\.168\.0\.(40|15)$/, `${svc.id} address must be 192.168.0.40 or 192.168.0.15`);
+
+    assert.equal(typeof svc.port, 'number', `${svc.id} port must be a number`);
+    assert.ok(Number.isInteger(svc.port) && svc.port > 0 && svc.port <= 65535, `${svc.id} port must be valid TCP port`);
+
+    assert.equal(typeof svc.ownerTask, 'string', `${svc.id} must have ownerTask string`);
+    assert.ok(svc.ownerTask.trim().length > 0, `${svc.id} ownerTask must be non-empty`);
+    assert.equal(typeof svc.ownerTaskName, 'string', `${svc.id} must have ownerTaskName string`);
+    assert.equal(svc.ownerTaskName, svc.ownerTask, `${svc.id} ownerTaskName must match ownerTask`);
+
+    assert.ok(
+      svc.status === 'confirmed' || svc.status === 'unconfirmed (2026-11-20)',
+      `${svc.id} status must be confirmed or unconfirmed (2026-11-20), got "${svc.status}"`
+    );
+  }
+
+  const expectedUnconfirmedIds = [
+    'media-worker',
+    'alienware-hermes-dashboard',
+    'airi-dashboard',
+    'alienware-fleet-status',
+    'crosslisting',
+    'alienware-ollama',
+    'alienware-obsidian-rest',
+    'alienware-obsidian-mcp',
+    't5500-marketing-gateway',
+    't5500-hermes-dashboard',
+    't5500-live-npc-lab',
+    't5500-fleet-status',
+    'ai-memory',
+    't5500-obsidian-rest',
+  ];
+  for (const id of expectedUnconfirmedIds) {
+    const svc = getService(id);
+    assert.equal(svc.status, 'unconfirmed (2026-11-20)', `${id} must be marked unconfirmed (2026-11-20)`);
+    assert.equal(svc.unconfirmed, '2026-11-20', `${id} must carry unconfirmed date 2026-11-20`);
+  }
 });
