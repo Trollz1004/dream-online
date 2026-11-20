@@ -122,6 +122,11 @@ function getServiceHealthUrl(serviceIdOrPort, map = loadFleetMap()) {
   return getServiceUrl(svc.id, svc.healthPath || '/health', map);
 }
 
+function getServiceOwnerTask(serviceIdOrPort, nodeId = null, map = loadFleetMap()) {
+  const svc = getService(serviceIdOrPort, nodeId, map);
+  return svc.ownerTaskName || svc.ownerTask || '';
+}
+
 function getServicesByNode(nodeId, map = loadFleetMap()) {
   const key = String(nodeId || '').trim().toLowerCase();
   return ((map && map.services) || []).filter((s) => s.node === key);
@@ -146,6 +151,7 @@ module.exports = {
   getServicePort,
   getServiceUrl,
   getServiceHealthUrl,
+  getServiceOwnerTask,
   getServicesByNode,
   getServicesByScope,
   load_fleet_map: loadFleetMap,
@@ -158,4 +164,5 @@ module.exports = {
   get_service: getService,
   get_service_url: getServiceUrl,
   get_service_health_url: getServiceHealthUrl,
+  get_service_owner_task: getServiceOwnerTask,
 };

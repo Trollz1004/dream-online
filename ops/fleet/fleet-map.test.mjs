@@ -358,4 +358,9 @@ test('loader test: every service in fleet-map.json has node, 192.168.0.x address
     assert.equal(svc.status, 'unconfirmed (2026-11-20)', `${id} must be marked unconfirmed (2026-11-20)`);
     assert.equal(svc.unconfirmed, '2026-11-20', `${id} must carry unconfirmed date 2026-11-20`);
   }
+
+  assert.equal(esmFleet.getServiceOwnerTask('dream-engine'), 'DREAM-Alienware-BootAll');
+  assert.equal(cjsFleet.getServiceOwnerTask('panda-router'), 'DreamPandaRouter');
+  assert.equal(esmFleet.get_service_owner_task('omniroute'), 'ANTIGRAVITY OmniRoute');
+  assert.equal(cjsFleet.get_service_owner_task('date-app-web'), 'ANTIGRAVITY T5500 Keepalive');
 });
