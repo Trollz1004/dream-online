@@ -14,6 +14,19 @@ import { loadGlbFromUrl } from '../engine/assets/glb-loader.ts';
 import { SkeletonAnimationMixer } from '../engine/animation/skeleton-mixer.ts';
 import { PbrTextureData } from '../engine/scene/mesh.ts';
 import {
+  generateInHouseStoneFlaggingPbrMaps,
+  buildWornStoneFlaggingGround,
+  buildThreePointMoodLightingRig,
+  buildContactAndCastShadowGroup,
+  tuneCharacterMaterialsForLighting,
+  buildBrokenMasonryAndBandedBarrels,
+  buildAtmosphereHazeLightShaftsAndLitEmbers,
+  updateLookPass2Atmosphere,
+  LOOK_PASS_2_TONE_MAPPING_CONFIG,
+  type LookQualityPreset,
+  type ShadowAnchorSpec,
+} from '../engine/scene/look-pass-2-light-shadow-ground.ts';
+import {
   UnifiedAntigravityWorkspaceShell,
   type WorkspaceCenterView,
 } from './UnifiedAntigravityWorkspaceShell.tsx';
@@ -74,6 +87,10 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
   const initialYawParam = params.get('yaw') ? parseFloat(params.get('yaw')!) : null;
   const initialPitchParam = params.get('pitch') ? parseFloat(params.get('pitch')!) : null;
   const initialDistParam = params.get('dist') ? parseFloat(params.get('dist')!) : null;
+  const rawQualityParam = params.get('quality');
+  const initialQuality: LookQualityPreset =
+    rawQualityParam === 'balanced' || rawQualityParam === 'performance' ? rawQualityParam : 'high';
+  const [qualityPreset, setQualityPreset] = useState<LookQualityPreset>(initialQuality);
 
   const [bossHp, setBossHp] = useState<number>(2400);
   const maxBossHp = 2400;
@@ -102,24 +119,29 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
     const width = container.clientWidth || window.innerWidth;
     const height = container.clientHeight || window.innerHeight;
 
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
     const renderer = new THREE.WebGLRenderer({
-      antialias: true,
+      antialias: qualityPreset !== 'performance',
       powerPreference: 'high-performance',
       preserveDrawingBuffer: true,
     });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const maxDpr = qualityPreset === 'high' ? 2 : qualityPreset === 'balanced' ? 1.5 : 1;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxDpr));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.08;
+    renderer.toneMapping = LOOK_PASS_2_TONE_MAPPING_CONFIG.toneMapping;
+    renderer.toneMappingExposure = LOOK_PASS_2_TONE_MAPPING_CONFIG.exposure;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x18141c, 0.016);
 
     const camera = new THREE.PerspectiveCamera(46, width / height, 0.15, 220);
 
@@ -127,14 +149,14 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
     composer.addPass(new RenderPass(scene, camera));
     const bloomPass = new UnrealBloomPass(
       new THREE.Vector2(width, height),
-      0.32, // controlled bloom strength
-      0.28, // tight radius
-      0.88  // high threshold
+      LOOK_PASS_2_TONE_MAPPING_CONFIG.bloomStrength,
+      LOOK_PASS_2_TONE_MAPPING_CONFIG.bloomRadius,
+      LOOK_PASS_2_TONE_MAPPING_CONFIG.bloomThreshold
     );
     composer.addPass(bloomPass);
 
     // ---------------------------------------------------------------------------
-    // 1. REAL TILED CC0 PBR TEXTURES (Verified filenames in public/assets/third_party/textures/)
+    // 1. PBR TEXTURES (In-House Stone Flagging + CC0 Crag Rock & Ruin Architecture)
     // ---------------------------------------------------------------------------
     const texLoader = new THREE.TextureLoader();
     const loadPbrTex = (url: string, rx: number, ry: number, isColor = true) => {
@@ -147,27 +169,13 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
       return t;
     };
 
-    const flagstoneDiff = loadPbrTex('/assets/third_party/textures/facade/concrete_wall_003_diff_1k.jpg', 7, 7, true);
-    const flagstoneNor = loadPbrTex('/assets/third_party/textures/facade/concrete_wall_003_nor_gl_1k.jpg', 7, 7, false);
-    const flagstoneArm = loadPbrTex('/assets/third_party/textures/facade/concrete_wall_003_arm_1k.jpg', 7, 7, false);
-
-    const earthDiff = loadPbrTex('/assets/third_party/textures/ground/aerial_grass_rock_diff_1k.jpg', 14, 14, true);
-    const earthNor = loadPbrTex('/assets/third_party/textures/ground/aerial_grass_rock_nor_gl_1k.jpg', 14, 14, false);
-    const earthRough = loadPbrTex('/assets/third_party/textures/ground/aerial_grass_rock_rough_1k.jpg', 14, 14, false);
-
+    const _archFacadeDiff = loadPbrTex('/assets/third_party/textures/facade/concrete_wall_003_diff_1k.jpg', 7, 7, true);
     const cragDiff = loadPbrTex('/assets/third_party/textures/rock/rock_face_03_diff_1k.jpg', 6, 6, true);
     const cragNor = loadPbrTex('/assets/third_party/textures/rock/rock_face_03_nor_gl_1k.jpg', 6, 6, false);
     const cragArm = loadPbrTex('/assets/third_party/textures/rock/rock_face_03_arm_1k.jpg', 6, 6, false);
 
-    const dirtDiff = loadPbrTex('/assets/third_party/textures/dirt/dirt_diff_1k.jpg', 6, 6, true);
-    const dirtNor = loadPbrTex('/assets/third_party/textures/dirt/dirt_nor_gl_1k.jpg', 6, 6, false);
-    const dirtArm = loadPbrTex('/assets/third_party/textures/dirt/dirt_arm_1k.jpg', 6, 6, false);
-
-    const armorMetalDiff = loadPbrTex('/assets/third_party/textures/armor/metal_plate_02_diff_1k.jpg', 3, 3, true);
-    const armorMetalNor = loadPbrTex('/assets/third_party/textures/armor/metal_plate_02_nor_gl_1k.jpg', 3, 3, false);
-
     // ---------------------------------------------------------------------------
-    // 2. SKY, HDRI-STYLE IBL ENVIRONMENT, SHADOW KEY LIGHT & RIM LIGHT
+    // 2. SKY, CALIBRATED IBL ENVIRONMENT & THREE-POINT MOOD LIGHTING RIG (Look Pass 2)
     // ---------------------------------------------------------------------------
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
     const envScene = new THREE.Scene();
@@ -185,18 +193,22 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
         void main() {
           vec3 d = normalize(vPos);
           float h = d.y;
-          vec3 zenith = vec3(0.14, 0.18, 0.30);
-          vec3 horizon = vec3(0.82, 0.48, 0.24);
-          vec3 ground = vec3(0.16, 0.12, 0.10);
+          vec3 zenith = vec3(0.03, 0.05, 0.11);
+          vec3 horizon = vec3(0.24, 0.15, 0.10);
+          vec3 ground = vec3(0.02, 0.02, 0.03);
           vec3 col = h >= 0.0
-            ? mix(horizon, zenith, pow(h, 0.52))
+            ? mix(horizon, zenith, pow(h, 0.55))
             : mix(horizon, ground, clamp(-h * 3.0, 0.0, 1.0));
-          gl_FragColor = vec4(col * 1.45, 1.0);
+          gl_FragColor = vec4(col * 0.46, 1.0);
         }
       `,
     });
     envScene.add(new THREE.Mesh(new THREE.SphereGeometry(40, 32, 16), envMat));
     scene.environment = pmremGenerator.fromScene(envScene, 0.04).texture;
+
+    const lightingRig = buildThreePointMoodLightingRig(qualityPreset);
+    scene.add(lightingRig.root);
+    const torchSprites = lightingRig.torchSprites;
 
     const skyDome = new THREE.Mesh(
       new THREE.SphereGeometry(180, 48, 24),
@@ -204,7 +216,7 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
         side: THREE.BackSide,
         depthWrite: false,
         uniforms: {
-          uSunDir: { value: new THREE.Vector3(0.38, 0.26, -0.88).normalize() },
+          uSunDir: { value: lightingRig.keyLight.position.clone().normalize() },
         },
         vertexShader: `
           varying vec3 vDir;
@@ -218,16 +230,16 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
           uniform vec3 uSunDir;
           void main() {
             float y = vDir.y;
-            vec3 zenith = vec3(0.08, 0.11, 0.19);
-            vec3 midSky = vec3(0.24, 0.20, 0.28);
-            vec3 horizon = vec3(0.72, 0.39, 0.20);
-            vec3 ground = vec3(0.09, 0.07, 0.08);
+            vec3 zenith = vec3(0.025, 0.04, 0.09);
+            vec3 midSky = vec3(0.06, 0.09, 0.16);
+            vec3 horizon = vec3(0.22, 0.13, 0.09);
+            vec3 ground = vec3(0.02, 0.02, 0.035);
             vec3 col = y > 0.0
-              ? mix(horizon, mix(midSky, zenith, clamp(y * 1.4, 0.0, 1.0)), pow(y, 0.45))
+              ? mix(horizon, mix(midSky, zenith, clamp(y * 1.5, 0.0, 1.0)), pow(y, 0.48))
               : mix(horizon, ground, clamp(-y * 3.5, 0.0, 1.0));
             float sun = max(dot(normalize(vDir), uSunDir), 0.0);
-            col += vec3(0.95, 0.62, 0.32) * pow(sun, 24.0) * 0.42;
-            col += vec3(1.0, 0.84, 0.58) * pow(sun, 320.0) * 0.95;
+            col += vec3(0.85, 0.48, 0.20) * pow(sun, 18.0) * 0.28;
+            col += vec3(1.0, 0.78, 0.46) * pow(sun, 240.0) * 0.55;
             gl_FragColor = vec4(col, 1.0);
           }
         `,
@@ -235,110 +247,23 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
     );
     scene.add(skyDome);
 
-    const hemiLight = new THREE.HemisphereLight(0xffd6ad, 0x2e262e, 1.25);
-    scene.add(hemiLight);
-
-    const keyLight = new THREE.DirectionalLight(0xffe2b8, 2.9);
-    keyLight.position.set(16, 26, 14);
-    keyLight.castShadow = true;
-    keyLight.shadow.mapSize.width = 2048;
-    keyLight.shadow.mapSize.height = 2048;
-    keyLight.shadow.camera.near = 1;
-    keyLight.shadow.camera.far = 85;
-    const shadowBounds = 22;
-    keyLight.shadow.camera.left = -shadowBounds;
-    keyLight.shadow.camera.right = shadowBounds;
-    keyLight.shadow.camera.top = shadowBounds;
-    keyLight.shadow.camera.bottom = -shadowBounds;
-    keyLight.shadow.bias = -0.0005;
-    scene.add(keyLight);
-
-    const rimLight = new THREE.DirectionalLight(0x60a5fa, 1.65);
-    rimLight.position.set(-18, 14, -18);
-    scene.add(rimLight);
-
     // ---------------------------------------------------------------------------
-    // 3. ONE FILM-SET ARENA: "THE SUNKEN BASTION OF ASHFALL"
+    // 3. IN-HOUSE WORN STONE FLAGGING GROUND (Cracks, Moss & Puddles — Zero Flat Squares)
     // ---------------------------------------------------------------------------
     const cameraColliders: THREE.Object3D[] = [];
+    const stoneMaps = generateInHouseStoneFlaggingPbrMaps(qualityPreset === 'performance' ? 128 : 256);
+    const groundResult = buildWornStoneFlaggingGround(stoneMaps);
+    scene.add(groundResult.root);
+    cameraColliders.push(groundResult.outerGroundMesh);
 
-    const outerGroundGeo = new THREE.PlaneGeometry(160, 160, 96, 96);
-    outerGroundGeo.rotateX(-Math.PI / 2);
-    const gPos = outerGroundGeo.attributes.position;
-    for (let i = 0; i < gPos.count; i++) {
-      const vx = gPos.getX(i);
-      const vz = gPos.getZ(i);
-      const r = Math.hypot(vx, vz + 1.5);
-      const wave =
-        Math.sin(vx * 0.18) * Math.cos(vz * 0.16) * 0.18 +
-        Math.sin(vx * 0.45 + vz * 0.38) * 0.06;
-      const rimLift = r > 13.5 ? Math.min(6.5, Math.pow((r - 13.5) * 0.18, 1.45)) : 0;
-      gPos.setY(i, rimLift + (r > 10.5 ? wave : wave * 0.15));
-    }
-    outerGroundGeo.computeVertexNormals();
-    const outerGroundMat = new THREE.MeshStandardMaterial({
-      map: earthDiff,
-      normalMap: earthNor,
-      roughnessMap: earthRough,
-      roughness: 0.85,
-      metalness: 0.06,
-      color: new THREE.Color(0x968b7c),
-    });
-    const outerGround = new THREE.Mesh(outerGroundGeo, outerGroundMat);
-    outerGround.receiveShadow = true;
-    scene.add(outerGround);
-    cameraColliders.push(outerGround);
-
-    // Sunken Bastion Inner Flagstone Courtyard
-    const bastionFloorMat = new THREE.MeshStandardMaterial({
-      map: flagstoneDiff,
-      normalMap: flagstoneNor,
-      aoMap: flagstoneArm,
-      roughness: 0.64,
-      metalness: 0.18,
-      color: new THREE.Color(0x988e86),
-    });
-    const bastionCourtyard = new THREE.Mesh(
-      new THREE.CylinderGeometry(11.2, 11.8, 0.36, 48),
-      bastionFloorMat
-    );
-    bastionCourtyard.position.set(0, 0.08, -1.5);
-    bastionCourtyard.receiveShadow = true;
-    scene.add(bastionCourtyard);
-
-    // Weathered Stone Flagstone Slabs & Rubble Clusters Across the Courtyard (Zero flat circles!)
-    const slabMat = new THREE.MeshStandardMaterial({
-      map: cragDiff,
-      normalMap: cragNor,
-      aoMap: cragArm,
-      roughness: 0.82,
-      metalness: 0.08,
-      color: new THREE.Color(0x887d73),
-    });
-    const weatheredSlabs = [
-      [-3.4, -0.5, 2.2, 1.6, 0.4],
-      [3.8, -2.4, 2.5, 1.8, 1.1],
-      [-1.8, -4.8, 2.1, 1.5, 2.2],
-      [2.4, 2.6, 1.9, 1.4, 0.8],
-      [-4.4, 2.9, 2.3, 1.7, 1.7],
-    ];
-    for (const [sx, sz, sw, sd, rot] of weatheredSlabs) {
-      const slab = new THREE.Mesh(new THREE.BoxGeometry(sw, 0.09, sd), slabMat);
-      slab.rotation.y = rot;
-      slab.position.set(sx, 0.25, sz);
-      slab.castShadow = true;
-      slab.receiveShadow = true;
-      scene.add(slab);
-    }
-
-    // Scattered Crag Boulders & Rubble Rocks around the Bastion
+    // Scattered Crag Boulders around the outer rim of the Bastion
     const cragRockMat = new THREE.MeshStandardMaterial({
       map: cragDiff,
       normalMap: cragNor,
       aoMap: cragArm,
-      roughness: 0.72,
-      metalness: 0.12,
-      color: new THREE.Color(0x887f76),
+      roughness: 0.78,
+      metalness: 0.1,
+      color: new THREE.Color(0x4a505e),
     });
     const rockClusters = [
       [-9.8, 0.4, -7.2, 1.8, 1.2, 1.5, 0.4],
@@ -347,10 +272,6 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
       [10.4, 0.35, 2.0, 1.7, 1.1, 1.4, 0.2],
       [-6.5, 0.3, -10.8, 2.4, 1.6, 1.8, 0.8],
       [6.8, 0.3, -10.5, 2.2, 1.5, 1.7, -0.5],
-      [-4.2, 0.26, 0.8, 0.55, 0.32, 0.48, 0.9],
-      [4.5, 0.26, -0.6, 0.62, 0.35, 0.52, -0.4],
-      [-2.4, 0.26, 4.2, 0.48, 0.28, 0.42, 0.3],
-      [2.8, 0.26, 3.8, 0.52, 0.30, 0.45, -0.7],
     ];
     for (const [bx, by, bz, sx, sy, sz, ry] of rockClusters) {
       const rockGeo = new THREE.DodecahedronGeometry(1.0, 1);
@@ -372,39 +293,13 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
       if (sx > 1.2) cameraColliders.push(rock);
     }
 
-    // Torch Point Lights & Soft Flame Sprites on the Bastion Pillars
-    const flameSpriteTex = createSoftParticleTexture(
-      'rgba(255, 250, 210, 1.0)',
-      'rgba(255, 125, 25, 0.78)',
-      'rgba(255, 40, 0, 0.0)'
-    );
-    const torchSpriteMat = new THREE.SpriteMaterial({
-      map: flameSpriteTex,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      transparent: true,
-    });
-    const torchPositions = [
-      [-7.4, 3.4, -7.8],
-      [7.4, 3.4, -7.8],
-      [-8.8, 3.4, -1.8],
-      [8.8, 3.4, -1.8],
-    ];
-    const torchSprites: THREE.Sprite[] = [];
-    for (const [tx, ty, tz] of torchPositions) {
-      const tLight = new THREE.PointLight(0xff8429, 3.4, 14, 1.5);
-      tLight.position.set(tx, ty + 0.25, tz);
-      scene.add(tLight);
-
-      const sprite = new THREE.Sprite(torchSpriteMat);
-      sprite.position.set(tx, ty, tz);
-      sprite.scale.set(1.25, 1.65, 1.0);
-      scene.add(sprite);
-      torchSprites.push(sprite);
-    }
+    // Broken Gothic Masonry Rubble Clusters & Banded Wood-Grain Barrels (Look Pass 2)
+    const propsResult = buildBrokenMasonryAndBandedBarrels(lightingRig.keyLight.position);
+    scene.add(propsResult.root);
+    cameraColliders.push(...propsResult.colliders);
 
     // ---------------------------------------------------------------------------
-    // 4. LOAD MODULAR RUINS ARCHITECTURE & TREES
+    // 4. LOAD MODULAR RUINS GOTHIC ARCHES, COLUMNS & TREES
     // ---------------------------------------------------------------------------
     const gltfLoader = new GLTFLoader();
 
@@ -456,11 +351,11 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
             m.receiveShadow = true;
             if (applyStonePbr) {
               m.material = new THREE.MeshStandardMaterial({
-                map: cragDiff,
+                map: cragDiff || _archFacadeDiff,
                 normalMap: cragNor,
-                roughness: 0.62,
-                metalness: 0.2,
-                color: new THREE.Color(0x9a8f86),
+                roughness: 0.72,
+                metalness: 0.14,
+                color: new THREE.Color(0x5a6270),
               });
             }
           }
@@ -484,12 +379,6 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
       placePiece('Column_Round', 8.8, 0.24, -1.8, 3.2, 0, true);
       placePiece('Column_Round_Short', -6.8, 0.24, 2.8, 1.9, 0.2, true);
       placePiece('Column_Round_Short', 6.8, 0.24, 2.8, 1.9, -0.3, true);
-      placePiece('Bricks', -4.8, 0.24, -6.2, 0.9, 0.5, true);
-      placePiece('Bricks', 5.1, 0.24, -5.8, 0.9, -0.7, true);
-      placePiece('Barrel', -6.2, 0.26, -3.2, 1.05, 0.3, false);
-      placePiece('Crate', -5.4, 0.26, -3.6, 0.85, 0.8, false);
-      placePiece('Barrel', 6.4, 0.26, -2.8, 1.05, -0.4, false);
-      placePiece('Chest_Gold_Base', 0, 0.26, -9.6, 0.8, 0, false);
     });
 
     for (const treeUrl of [
@@ -530,8 +419,7 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
     }
 
     // ---------------------------------------------------------------------------
-    // 5. FOUR IN-HOUSE SCULPTED HEROES (Knight, Elf Archer, Mage, Dark Knight)
-    //    AND TOWERING BOSS ("Myth@s, the Crimson Sovereign") — Look Pass 1
+    // 5. FOUR IN-HOUSE SCULPTED HEROES & BOSS + PASS 2 MATERIAL & SHADOW CALIBRATION
     // ---------------------------------------------------------------------------
     const heroRoot = new THREE.Group();
     heroRoot.position.set(0.328, 0.26, -1.25);
@@ -543,27 +431,32 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
     scene.add(bossRoot);
 
     const bossRig: BuiltCharacterRig = buildMythosBossRig();
+    tuneCharacterMaterialsForLighting(bossRig);
     bossRoot.add(bossRig.root);
 
     // Build all 4 Hero Classes with distinct silhouettes, layered armor/cloth, capes & weapons
     const knightRig = buildHeroCharacterRig('knight');
+    tuneCharacterMaterialsForLighting(knightRig);
     knightRig.root.position.set(-2.72, 0.26, 0.42);
-    knightRig.root.rotation.y = 0.56; // 3/4 inward angle showing winged helm, lion shield, sword & blue cape
+    knightRig.root.rotation.y = 0.56;
     scene.add(knightRig.root);
 
     const archerRig = buildHeroCharacterRig('elf-archer');
+    tuneCharacterMaterialsForLighting(archerRig);
     archerRig.root.position.set(-1.55, 0.26, -0.58);
-    archerRig.root.rotation.y = 0.52; // 3/4 inward angle showing drawn longbow, glowing string/arrow, elf face & green cloak
+    archerRig.root.rotation.y = 0.52;
     scene.add(archerRig.root);
 
     const mageRig = buildHeroCharacterRig('mage');
+    tuneCharacterMaterialsForLighting(mageRig);
     mageRig.root.position.set(1.55, 0.26, -0.58);
-    mageRig.root.rotation.y = -0.52; // 3/4 inward angle showing purple robes, glowing runes, orb staff & blue spell rings
+    mageRig.root.rotation.y = -0.52;
     scene.add(mageRig.root);
 
     const darkKnightRig = buildHeroCharacterRig('dark-knight');
+    tuneCharacterMaterialsForLighting(darkKnightRig);
     darkKnightRig.root.position.set(2.72, 0.26, 0.42);
-    darkKnightRig.root.rotation.y = -0.58; // 3/4 inward angle showing horned helm, spiked crimson/black plate, torn red cape & halberd
+    darkKnightRig.root.rotation.y = -0.58;
     scene.add(darkKnightRig.root);
 
     const partyHeroRigs: BuiltCharacterRig[] = [
@@ -573,6 +466,32 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
       darkKnightRig,
     ];
     const heroWeaponTipObj: THREE.Object3D = knightRig.parts.weaponTip;
+
+    // Contact Ambient Occlusion & Directional Cast Shadows under all figures, props, and walls
+    const allShadowAnchors: ShadowAnchorSpec[] = [
+      { x: -2.72, z: 0.42, radiusX: 0.72, radiusZ: 0.68, height: 1.98, isBipedal: true, yawRad: 0.56 },
+      { x: -1.55, z: -0.58, radiusX: 0.65, radiusZ: 0.62, height: 1.88, isBipedal: true, yawRad: 0.52 },
+      { x: 1.55, z: -0.58, radiusX: 0.74, radiusZ: 0.72, height: 1.92, isBipedal: true, yawRad: -0.52 },
+      { x: 2.72, z: 0.42, radiusX: 0.78, radiusZ: 0.72, height: 2.12, isBipedal: true, yawRad: -0.58 },
+      { x: 0, z: -1.62, radiusX: 1.38, radiusZ: 1.25, height: 3.35, isBipedal: true, yawRad: 0.04 },
+      ...propsResult.shadowAnchors,
+      // Column & Gothic Arch base occlusion
+      { x: -7.4, z: -7.8, radiusX: 0.95, radiusZ: 0.95, height: 3.2 },
+      { x: 7.4, z: -7.8, radiusX: 0.95, radiusZ: 0.95, height: 3.2 },
+      { x: -8.8, z: -1.8, radiusX: 0.95, radiusZ: 0.95, height: 3.2 },
+      { x: 8.8, z: -1.8, radiusX: 0.95, radiusZ: 0.95, height: 3.2 },
+      { x: -6.8, z: 2.8, radiusX: 0.82, radiusZ: 0.82, height: 1.9 },
+      { x: 6.8, z: 2.8, radiusX: 0.82, radiusZ: 0.82, height: 1.9 },
+      { x: 0, z: -10.2, radiusX: 2.2, radiusZ: 1.2, height: 6.8 },
+      { x: -5.6, z: -8.8, radiusX: 1.8, radiusZ: 1.1, height: 5.8 },
+      { x: 5.6, z: -8.8, radiusX: 1.8, radiusZ: 1.1, height: 5.8 },
+    ];
+    const shadowGroundGroup = buildContactAndCastShadowGroup(
+      lightingRig.keyLight.position,
+      allShadowAnchors,
+      0.262
+    );
+    scene.add(shadowGroundGroup);
 
     // ---------------------------------------------------------------------------
     // 5B. IN-HOUSE GLB SKINNED HUMANOID TEST MODEL (test-rigged-humanoid-walk-not-game-art.glb)
@@ -647,6 +566,7 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
             metalnessMap: ormMap,
             roughness: 0.42,
             metalness: 0.72,
+            envMapIntensity: 0.62,
             color: new THREE.Color(0xdce3ed),
           });
           mat.customProgramCacheKey = () => `dream-inhouse-4bone-lbs-${idx}`;
@@ -713,58 +633,20 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
       });
 
     // ---------------------------------------------------------------------------
-    // 6. SOFT-TEXTURED PARTICLE SPRITES, RIBBON SLASH TRAILS & IMPACT FLASHES
+    // 6. ATMOSPHERE: HEIGHT FOG, ARCH LIGHT SHAFTS, 3D LIT EMBERS & SLASH TRAILS
     // ---------------------------------------------------------------------------
+    const atmosphereResult = buildAtmosphereHazeLightShaftsAndLitEmbers(
+      lightingRig.keyLight.position,
+      qualityPreset
+    );
+    scene.fog = atmosphereResult.fog;
+    scene.add(atmosphereResult.root);
+
     const emberTex = createSoftParticleTexture(
       'rgba(255, 245, 200, 1.0)',
       'rgba(255, 110, 20, 0.72)',
       'rgba(255, 30, 0, 0.0)'
     );
-    const smokeTex = createSoftParticleTexture(
-      'rgba(110, 100, 95, 0.32)',
-      'rgba(55, 50, 52, 0.14)',
-      'rgba(20, 18, 20, 0.0)'
-    );
-
-    const emberCount = 180;
-    const emberPositions = new Float32Array(emberCount * 3);
-    for (let i = 0; i < emberCount; i++) {
-      // Deterministic ring distribution outside the central character viewing corridor so embers never photobomb faces/shields
-      const ang = (i * 2.39996) % (Math.PI * 2);
-      const rad = 5.4 + ((i * 7) % 15) * 0.55;
-      emberPositions[i * 3] = Math.cos(ang) * rad;
-      emberPositions[i * 3 + 1] = 0.6 + ((i * 13) % 75) * 0.1;
-      emberPositions[i * 3 + 2] = Math.sin(ang) * rad - 2.2;
-    }
-    const emberGeo = new THREE.BufferGeometry();
-    emberGeo.setAttribute('position', new THREE.BufferAttribute(emberPositions, 3));
-    const emberParticles = new THREE.Points(
-      emberGeo,
-      new THREE.PointsMaterial({
-        map: emberTex,
-        size: 0.32,
-        transparent: true,
-        opacity: 0.85,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      })
-    );
-    scene.add(emberParticles);
-
-    for (let i = 0; i < 12; i++) {
-      const sMat = new THREE.SpriteMaterial({
-        map: smokeTex,
-        transparent: true,
-        opacity: 0.36,
-        depthWrite: false,
-      });
-      const sp = new THREE.Sprite(sMat);
-      const ang = (i / 12) * Math.PI * 2;
-      const rad = 5.2 + (i % 3) * 2.0;
-      sp.position.set(Math.cos(ang) * rad, 0.85 + (i % 2) * 0.4, Math.sin(ang) * rad - 1.5);
-      sp.scale.set(3.6, 2.0, 1.0);
-      scene.add(sp);
-    }
 
     // Tapered Ribbon Slash Trail
     const trailSegments = 16;
@@ -1067,11 +949,16 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
         trianglesPerCopy: 2688,
         bonesPerCopy: 16,
       };
-      const simTime = pinnedTimeParam !== null ? pinnedTimeParam : clock.getElapsedTime();
-      const dt = pinnedTimeParam !== null ? 0.016 : rawDt;
+      const simTime =
+        pinnedTimeParam !== null
+          ? pinnedTimeParam
+          : prefersReducedMotion
+          ? 2.2
+          : clock.getElapsedTime();
+      const dt = pinnedTimeParam !== null || prefersReducedMotion ? 0.016 : rawDt;
 
-      if (isCaptureMode || pinnedTimeParam !== null) {
-        const cycleT = pinnedTimeParam !== null ? pinnedTimeParam : simTime % 7.0;
+      if (isCaptureMode || pinnedTimeParam !== null || prefersReducedMotion) {
+        const cycleT = pinnedTimeParam !== null ? pinnedTimeParam : prefersReducedMotion ? 2.2 : simTime % 7.0;
         if (cycleT < 1.8) {
           const alpha = Math.min(1, cycleT / 1.8);
           heroRoot.position.set(0, 0.26, 4.2 - alpha * 5.2);
@@ -1215,17 +1102,10 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
         }
       }
 
-      const eAttr = emberGeo.attributes.position as THREE.BufferAttribute;
-      for (let i = 0; i < emberCount; i++) {
-        let ey = eAttr.getY(i) + dt * (1.1 + (i % 4) * 0.35);
-        const ex = eAttr.getX(i) + Math.sin(simTime * 1.5 + i) * 0.006;
-        if (ey > 8.5) ey = 0.25;
-        eAttr.setXY(i, ex, ey);
-      }
-      eAttr.needsUpdate = true;
+      updateLookPass2Atmosphere(atmosphereResult, simTime, dt, prefersReducedMotion);
 
       torchSprites.forEach((sp, idx) => {
-        const flicker = 1.2 + Math.sin(simTime * 11 + idx * 2.3) * 0.14;
+        const flicker = prefersReducedMotion ? 1.15 : 1.15 + Math.sin(simTime * 11 + idx * 2.3) * 0.12;
         sp.scale.set(flicker, flicker * 1.32, 1);
       });
 
@@ -1294,7 +1174,7 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
       window.removeEventListener('keyup', onKeyUp);
       renderer.dispose();
     };
-  }, []);
+  }, [qualityPreset]);
 
   const bossHpPct = Math.max(0, Math.min(100, (bossHp / maxBossHp) * 100));
 
@@ -1374,6 +1254,17 @@ export const AaaVisualWorldCanvas: React.FC<AaaVisualWorldCanvasProps> = ({
           </div>
 
           <div className="flex items-center gap-2 pointer-events-auto">
+            <button
+              onClick={() =>
+                setQualityPreset((prev) =>
+                  prev === 'high' ? 'balanced' : prev === 'balanced' ? 'performance' : 'high'
+                )
+              }
+              className="px-2.5 py-1.5 rounded-xl bg-neutral-950/88 border border-amber-500/35 text-amber-200 text-[11px] font-bold cursor-pointer shadow-lg uppercase"
+              title="Cycle 60 FPS Render Quality Preset (High / Balanced / Performance)"
+            >
+              Quality: {qualityPreset}
+            </button>
             <button
               onClick={() => setSkinnedCopyCount((prev) => (prev === 30 ? 1 : 30))}
               className="px-3 py-1.5 rounded-xl bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-400/60 text-emerald-100 text-xs font-bold cursor-pointer shadow-lg"
