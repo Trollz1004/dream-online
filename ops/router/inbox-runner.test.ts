@@ -902,7 +902,7 @@ function makePrAdapter(tmpRoot: string, seen: DispatchJobInput[]): DispatchAdapt
 
 test('Repo map (ops/router/repos.json): dream-online is the runner root and ANTIGRAVITY comes from ANTIGRAVITY_REPO_ROOT', () => {
   const map = loadRepoMap();
-  assert.deepEqual(Object.keys(map.repos).sort(), ['ANTIGRAVITY', 'dream-intake', 'dream-online']);
+  assert.deepEqual(Object.keys(map.repos).sort(), ['ANTIGRAVITY', 'dream-intake', 'dream-online', 'swarm-command']);
   const selfRoot = path.join(os.tmpdir(), 'jev-self-root');
   const fakeHome = path.join(os.tmpdir(), 'jev-fake-home');
   const siblingRoot = path.join(os.tmpdir(), 'jev-antigravity-sibling');
@@ -948,7 +948,7 @@ test('Repo map: an unknown repo is refused with a clear message', () => {
     const res = resolveRepoTarget(name, { map, env: {} });
     assert.equal(res.ok, false, `${name} must be refused`);
     assert.ok(!res.ok && res.reason.includes(`unknown repo "${name}"`));
-    assert.ok(!res.ok && res.reason.includes('Known repos: ANTIGRAVITY, dream-intake, dream-online'));
+    assert.ok(!res.ok && res.reason.includes('Known repos: ANTIGRAVITY, dream-intake, dream-online, swarm-command'));
   }
 });
 
@@ -1036,7 +1036,7 @@ test('Repo selector: an unknown repo is refused, never dispatched, and lands in 
     const res = await inboxRunner.tick();
     assert.equal(res.status, 'refused-unknown-repo');
     assert.ok(res.reason.includes('unknown repo "dream-offline"'));
-    assert.ok(res.reason.includes('Known repos: ANTIGRAVITY, dream-intake, dream-online'));
+    assert.ok(res.reason.includes('Known repos: ANTIGRAVITY, dream-intake, dream-online, swarm-command'));
     assert.equal(seen.length, 0, 'adapter must never be called');
     assert.equal(
       commands.filter((c) => c.command === 'git').length,
@@ -1121,6 +1121,79 @@ test('Repo selector: a task with repo: dream-intake resolves to that folder', as
     assert.ok(add);
     assert.deepEqual(add!.args, ['worktree', 'add', '-B', 'ai/inbox/intake-task', res.worktreePath, 'origin/main']);
     assert.equal(add!.cwd, path.resolve(intakeRoot));
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('Repo selector: a task with repo: swarm-command resolves to that folder', async () => {
+  const map = loadRepoMap();
+  const fakeHome = path.join(os.tmpdir(), 'jev-fake-home-swarm');
+  const customSwarm = path.join(os.tmpdir(), 'jev-swarm-custom');
+
+  // 1. Task file repo line parsing
+  assert.equal(parseInboxTaskFile('# Swarm\nrepo: swarm-command\n\nTask body.', 'c.md').repo, 'swarm-command');
+
+  // 2. Default root from %USERPROFILE%\\antigravity\\tools\\swarm-command
+  const resolvedDefault = resolveRepoTarget('swarm-command', {
+    map,
+    env: { USERPROFILE: fakeHome },
+  });
+  assert.ok(resolvedDefault.ok);
+  assert.equal(
+    resolvedDefault.ok && resolvedDefault.target.root,
+    path.resolve(path.join(fakeHome, 'antigravity', 'tools', 'swarm-command'))
+  );
+  assert.equal(resolvedDefault.ok && resolvedDefault.target.name, 'swarm-command');
+  assert.equal(resolvedDefault.ok && resolvedDefault.target.worktreePrefix, 'swarm-command-wt-inbox-');
+
+  // 3. Env variable SWARM_COMMAND_REPO_ROOT override
+  const resolvedEnv = resolveRepoTarget('swarm-command', {
+    map,
+    env: { SWARM_COMMAND_REPO_ROOT: customSwarm, USERPROFILE: fakeHome },
+  });
+  assert.ok(resolvedEnv.ok);
+  assert.equal(resolvedEnv.ok && resolvedEnv.target.root, path.resolve(customSwarm));
+  assert.equal(resolvedEnv.ok && resolvedEnv.target.name, 'swarm-command');
+
+  // 4. Inbox runner tick execution resolving repo: swarm-command to that folder
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-inbox-repo-swarm-'));
+  try {
+    const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+    const worktreeParentDir = path.join(tmpRoot, 'antigravity');
+    const swarmRoot = path.join(tmpRoot, 'antigravity', 'tools', 'swarm-command');
+    fs.mkdirSync(swarmRoot, { recursive: true });
+    const folders = ensureInboxFolders(inboxDir);
+    fs.writeFileSync(
+      path.join(folders.queued, 'swarm-task.md'),
+      ['# Update swarm dashboard', 'repo: swarm-command', '', 'Update dashboard route in swarm-command.'].join('\n'),
+      'utf8'
+    );
+
+    const seen: DispatchJobInput[] = [];
+    const { runner: cmdRunner, commands } = createMockInboxCommandRunner({ ghSignedIn: true });
+    const inboxRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir,
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      adapter: makePrAdapter(tmpRoot, seen),
+      commandRunner: cmdRunner,
+      env: { SWARM_COMMAND_REPO_ROOT: swarmRoot },
+      now: () => new Date('2026-11-20T03:00:00Z'),
+    });
+
+    const res = await inboxRunner.tick();
+    assert.equal(res.status, 'done');
+    assert.equal(res.repo, 'swarm-command');
+    assert.equal(res.repoRoot, path.resolve(swarmRoot));
+    assert.equal(res.branchName, 'ai/inbox/swarm-task');
+    assert.equal(res.worktreePath, path.join(worktreeParentDir, 'swarm-command-wt-inbox-swarm-task'));
+
+    // Verify git worktree and commands ran in swarm-command root
+    const add = commands.find((c) => c.command === 'git' && c.args[0] === 'worktree' && c.args[1] === 'add');
+    assert.ok(add);
+    assert.deepEqual(add!.args, ['worktree', 'add', '-B', 'ai/inbox/swarm-task', res.worktreePath, 'origin/main']);
+    assert.equal(add!.cwd, path.resolve(swarmRoot));
   } finally {
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   }

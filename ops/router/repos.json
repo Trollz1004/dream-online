@@ -14,6 +14,11 @@
       "rootEnv": "DREAM_INTAKE_REPO_ROOT",
       "defaultRoot": "%USERPROFILE%\\antigravity\\dream-intake",
       "worktreePrefix": "dream-intake-wt-inbox-"
+    },
+    "swarm-command": {
+      "rootEnv": "SWARM_COMMAND_REPO_ROOT",
+      "defaultRoot": "%USERPROFILE%\\antigravity\\tools\\swarm-command",
+      "worktreePrefix": "swarm-command-wt-inbox-"
     }
   }
 }
