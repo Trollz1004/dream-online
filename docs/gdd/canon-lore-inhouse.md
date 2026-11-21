@@ -90,6 +90,7 @@ DREAM ONLINE takes place in a single geography that transforms across the Day/Ni
 - **Field Gatherer (`field-gatherer`):** Warm, grounded artisan who teaches ore-node cooldowns, resource blooms, and tool durability discipline.
 - **Market Runner (`market-runner`) & Storage Runner:** Fast-striding logistics couriers who carry a single item or bundle between the field and town storage/marketplace without ever teleporting the player.
 - **Sunny Ledger:** Karma-gated merchant who trades rare curiosities only at sunrise and sunset based on the player's karma record, honoring in-world jokes like invisible-ink checks without ever touching real-world money.
+- **Jewls (`jewls-jeweler`):** Google and Gemini's jeweler NPC. Operates Jewls' Jewelry Box. Enhances accessories, unlocks sockets, crafts gem tiers, and sells gem chips for Sols. Zero destruction, zero downgrades, and zero cash sales.
 
 ---
 
@@ -110,6 +111,12 @@ Players begin at the Moon Gate choosing from five foundational action-combat pat
 At **Level 45** (working cap target: Level 50), Dreamers unlock a transformative visual and mechanical awakening—designed to feel five times more expressive and impactful through silhouette, trail effects, stance, and combo geometry while remaining balanced for PvP:
 - **Nightmare Class (Dark Melee / Assassin Awakening):** For non-mage paths. Focuses on shadow movement, close-range burst, execution windows, bleed/mark pressure, and sharp dark silhouettes.
 - **DREAM Class (Radiant Mage / Projectile Awakening):** For non-melee paths. Focuses on surreal projectile shaping, luminous floating accents, zone control, and high-visibility ranged combos.
+- **Top Character Reference & Awakened Dragon Form:** Character realism bar is set by `%USERPROFILE%\OneDrive\claude-to-claude\images\game-look\four-classes-nightfall-city-2026-11-12.jpg` (knight in plate with goggles, archer in fitted leather with compound bow, mage in purple/gold coat with glasses, and a dragon in evolving form with spiked crimson/black plate and glowing red eyes). Founder ruling: the fourth figure is an evolving dragon form that comes after awakening, not at character creation (human choices at creation are knight, guard or defense knight). Build to it; do not trace it.
+
+### End Game Rule (Founder Ruling 2026-11-12)
+- **No Solo Win:** No player can beat the end game solo.
+- **Group Barely Wins:** A coordinated group can barely beat it.
+- **No Healer Means No Chance:** A group with no healer has no chance of survival.
 
 ### Founder-Locked Pooled Party Damage Loot Rule
 - **Every drop in DREAM ONLINE** belongs to the party that dealt the highest **total pooled damage** (scaled by a party participation modifier)—never to whoever tapped first, held the ground, or rolled RNG. Solo players count as a party of one.
@@ -142,6 +149,12 @@ At **Level 45** (working cap target: Level 50), Dreamers unlock a transformative
 
 ### Storage Runner & Market Runner
 - Because DREAM ONLINE has no fast travel, **Storage Runners** (send one item or small bundle to town storage) and **Market Runners** (buy, list, or claim a single marketplace item remotely) provide cooldown-limited logistics convenience without ever teleporting the player or moving unlimited cargo.
+
+### Equipment Slots, Costumes, Crystals & Jewls' Gems (`docs/gdd/13`, `docs/gdd/14`)
+- **Equipment Slots:** Weapons (main hand, off hand, awakening), armor pieces, and jewelry with gem sockets.
+- **Costumes:** Visual appearance layer sitting over gear. Expensive costumes include weapon skins (main, off hand, awakening). Life-skill costumes cover chest and helm only. Players may freely mix and match parts (e.g. fish head with swimsuit bottom in PvP). Full set carries stat set effect (whole-set requirement pending Josh).
+- **Forge Crystals at Fable's:** Crystals never add attack or defense and never change rarity. Provide visual effects (weapons glow/flame/smoke; armor wing evolution from dark iron to diamond-inlaid platinum) and recovery stats (cooldown reduction, mana recovery, stamina, energy) across 15 stages. Earned by salvaging drops; tradeable for Sols; cash never buys crystals. (Open question: whether crystal effect shows on top of rarity aura or replaces it).
+- **Jewls' Jewelry Box & Gems:** Jewls offers 6 accessory slots (1 necklace centerpiece, 2 rings, 2 earrings, 1 bracelet) with up to 10 total sockets. Gems span 6 elements (Ruby/fire, Sapphire/water-ice, Emerald/earth-nature, Topaz/lightning, Amethyst/dream-shadow, Diamond/light). 4 guaranteed tiers (Chip, Cut, Flawless, Fossilized via Opal crushing). Caps at +30% element damage and resistance. Sols and Marketplace only; cash never buys gems or Sols.
 
 ---
 

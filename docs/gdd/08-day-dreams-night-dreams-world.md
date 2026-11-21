@@ -32,6 +32,16 @@ From the founder's reference pictures, described in words:
 
 Realistic proportions and ornate, readable high-fantasy gear: layered leathers, engraved plate, large signature weapons and shields. The same outfit must read well against warm ruins by day and against city light by night.
 
+### Top character reference (founder ruling, 2026-11-12)
+
+- **Reference:** `%USERPROFILE%\OneDrive\claude-to-claude\images\game-look\four-classes-nightfall-city-2026-11-12.jpg`
+- **Description:** Four panels, each showing one character walking a rain-wet neon city street at night:
+  1. A knight in dark engraved plate over tactical gear with goggles.
+  2. An archer in fitted dark leather with a compound bow on her back.
+  3. A mage in a long purple and gold embroidered coat with glasses.
+  4. A dragon in one of its evolving forms (spiked crimson and black plate with glowing red eyes; founder ruling: this is a dragon that evolves form, not a dark knight, and not chosen at character creation—the human choice is knight/guard/defense knight; this crimson dragon form comes after awakening and keeps evolving).
+- **The realism bar:** This is the realism bar for characters and for the Nightfall city. Build to it. Do not trace it.
+
 ### One outfit, both worlds (founder, 2026-09-24)
 
 A costume must never look out of era in either world. The style is a timeless fusion: medieval silhouettes made from sleek, modern-feeling materials, such as fine dark chainmail, matte fitted plate, clean leather and thin subtle light seams. The sword rides sheathed on the back outside combat and is drawn when a fight starts. A mage's orb floats near the shoulder. Round, big-headed, toy-like proportions are out.
@@ -104,3 +114,4 @@ Both use the same spawn point and the same playable character. `game/unreal/Open
 - Assets from Fab and from Epic's samples are local reference only. They are never committed to this public repository and never part of the game build; `game/unreal/DreamOnline/Content/` is git-ignored and rebuilt or re-imported locally.
 - An asset whose Fab page says "Allows usage with AI: No" is never given to an image or model generator.
 - Reference pictures from other studios' games are studied for generic qualities only (level of detail, mood) and never stored in this repository. No other game is named in player-facing copy.
+- **Equipment screenshot study-only rule (2026-11-12):** `%USERPROFILE%\OneDrive\claude-to-claude\images\game-look\STUDY-ONLY-bdo-equipment-window-2026-11-12.jpg` is a screenshot of Black Desert's equipment window. It is for study only. It shows the general layout idea: gear slots in an outer ring, appearance slots in an inner ring, extra slots in a row below, then attack and defense totals and tabs. Our window is designed new, in our own layout, icons and art. Nothing from that screenshot is copied.
