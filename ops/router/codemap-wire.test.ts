@@ -237,7 +237,7 @@ test('code map: a failing build does not stop the task; log line 1 says skipped 
     assert.equal(tick.status, 'done');
     const log = fs.readFileSync(path.join(folders.done, 'codemap-task.log'), 'utf8');
     const firstLine = log.split(/\r?\n/)[0];
-    assert.match(firstLine, / \| code map: skipped \(build failed, exit 2\)$/);
+    assert.match(firstLine, / \| code map: skipped \(build failed, exit 2\)(?: \| |$)/);
     assert.ok(log.includes('[codemap] dream-online: code map: skipped (build failed, exit 2)'));
   } finally {
     fs.rmSync(sb.tmpRoot, { recursive: true, force: true });
@@ -276,7 +276,7 @@ test('brief: every lane gets the code map line and the fleet memory line next to
     assert.ok(!codeMapLine!.includes(sb.tmpRoot), 'no real folder path');
     assert.ok(prompt.includes(FLEET_MEMORY_LINE));
     const log = fs.readFileSync(path.join(folders.done, 'codemap-task.log'), 'utf8');
-    assert.match(log.split(/\r?\n/)[0], / \| code map: rebuilt$/);
+    assert.match(log.split(/\r?\n/)[0], / \| code map: rebuilt(?: \| |$)/);
   } finally {
     fs.rmSync(sb.tmpRoot, { recursive: true, force: true });
   }

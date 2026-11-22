@@ -143,6 +143,24 @@ export const DEFAULT_CODEMAP_VAULT_DIR = path.join(os.homedir(), 'Obsidian', 'Al
 export const CODEMAP_BUILD_TIMEOUT_MS = 60_000;
 /** Portable path of the code map the brief points at (the runner fills in the repo). */
 export const CODEMAP_BRIEF_PATH_TEMPLATE = '%USERPROFILE%\\antigravity\\.fable-kitchen\\codemap\\<repo>.md';
+export const ROSTER_PATH_ENV = 'ROSTER_PATH';
+export const DEFAULT_ROSTER_PATH = path.join(
+  os.homedir(),
+  'antigravity',
+  '.fable-kitchen',
+  'roster',
+  'roster.json'
+);
+export const ROSTER_PORTABLE_PATH = '%USERPROFILE%\\antigravity\\.fable-kitchen\\roster\\roster.json';
+export const MAX_ROLE_COMPANION_SKILLS = 2;
+
+export type RolePickerSource = 'ticket' | 'lane';
+
+export interface RosterEntry {
+  id: string;
+  name?: string;
+  path: string;
+}
 
 export type CodemapState = 'fresh' | 'rebuilt' | 'skipped';
 
@@ -181,6 +199,8 @@ export interface ParsedInboxTask {
   title: string;
   forcedLane: string | null;
   forcedModel?: string | null;
+  role: string | null;
+  skills: string[];
   repo: string;
   baseOverride: string | null;
   inboxHeader: string | null;
@@ -225,6 +245,8 @@ export interface InboxTickResult {
   repoRoot: string | null;
   lane: string | null;
   modelPickedBy?: ModelPickerSource | null;
+  role?: string | null;
+  rolePickedBy?: RolePickerSource | null;
   jobClass: JevJobClass | null;
   decisionHash: string | null;
   reason: string;
@@ -288,6 +310,8 @@ export interface InboxRunnerOptions {
   codemapScriptPath?: string;
   /** Longest a code map build may take before the task goes on without it (default: 60000). */
   codemapTimeoutMs?: number;
+  /** Optional path to roster.json (overrides ROSTER_PATH env and default %USERPROFILE%\antigravity\.fable-kitchen\roster\roster.json). */
+  rosterPath?: string;
 }
 
 /**
@@ -562,6 +586,8 @@ export function parseInboxTaskFile(rawContent: string, fileName: string): Parsed
   let title = '';
   let forcedLane: string | null = null;
   let forcedModel: string | null = null;
+  let role: string | null = null;
+  let skills: string[] = [];
   let repo = DEFAULT_REPO_NAME;
   let baseOverride: string | null = null;
   let inboxHeader: string | null = null;
@@ -577,14 +603,21 @@ export function parseInboxTaskFile(rawContent: string, fileName: string): Parsed
         }
         continue;
       }
-      const kvMatch = trimmed.match(/^(title|lane|model|repo|base|inbox)\s*:\s*(.*)$/i);
+      const kvMatch = trimmed.match(/^(title|lane|model|repo|base|inbox|role|skills)\s*:\s*(.*)$/i);
       if (kvMatch) {
         const key = kvMatch[1].toLowerCase();
         const val = kvMatch[2].trim();
         if (key === 'title' && val) title = val;
         else if (key === 'lane') forcedLane = val || null;
         else if (key === 'model') forcedModel = val || null;
-        else if (key === 'repo' && val) repo = val;
+        else if (key === 'role') role = val || null;
+        else if (key === 'skills') {
+          skills = val
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .slice(0, MAX_ROLE_COMPANION_SKILLS);
+        } else if (key === 'repo' && val) repo = val;
         else if (key === 'base' && val) baseOverride = val;
         else if (key === 'inbox' && val) inboxHeader = val;
         continue;
@@ -611,6 +644,8 @@ export function parseInboxTaskFile(rawContent: string, fileName: string): Parsed
     title,
     forcedLane,
     forcedModel,
+    role,
+    skills,
     repo,
     baseOverride,
     inboxHeader,
@@ -648,18 +683,180 @@ export function isKnownLaneInTable(table: LaneTable, candidateLane: string): boo
 }
 
 /**
+ * Resolves the roster JSON file path from an explicit option, env ROSTER_PATH,
+ * or default %USERPROFILE%\antigravity\.fable-kitchen\roster\roster.json.
+ */
+export function resolveRosterPath(options?: {
+  rosterPath?: string;
+  env?: NodeJS.ProcessEnv;
+}): string {
+  const env = options?.env ?? process.env;
+  const explicit = options?.rosterPath?.trim();
+  if (explicit) {
+    return expandEnvPlaceholders(explicit, env) ?? explicit;
+  }
+  const fromEnv =
+    readEnvValue(env, ROSTER_PATH_ENV)?.trim() ||
+    readEnvValue(process.env, ROSTER_PATH_ENV)?.trim();
+  if (fromEnv) {
+    return expandEnvPlaceholders(fromEnv, env) ?? fromEnv;
+  }
+  const userProfile = readEnvValue(env, 'USERPROFILE')?.trim();
+  if (userProfile) {
+    const candidate = path.join(userProfile, 'antigravity', '.fable-kitchen', 'roster', 'roster.json');
+    if (fs.existsSync(candidate) || !fs.existsSync(DEFAULT_ROSTER_PATH)) {
+      return candidate;
+    }
+  }
+  return DEFAULT_ROSTER_PATH;
+}
+
+/**
+ * Resolves the portable file paths of requested roster entry IDs from roster.json.
+ * Paths only; never reads the referenced markdown files.
+ */
+export function resolveRosterEntryPaths(
+  requestedIds: string[],
+  options?: { rosterPath?: string; env?: NodeJS.ProcessEnv }
+): string[] {
+  const cleanIds = requestedIds.map((id) => id.trim()).filter(Boolean);
+  if (cleanIds.length === 0) return [];
+  const env = options?.env ?? process.env;
+  const rosterFilePath = resolveRosterPath(options);
+  if (!fs.existsSync(rosterFilePath)) return [];
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(fs.readFileSync(rosterFilePath, 'utf8'));
+  } catch {
+    return [];
+  }
+
+  const list: RosterEntry[] = Array.isArray(parsed)
+    ? (parsed as RosterEntry[])
+    : Array.isArray((parsed as { entries?: unknown })?.entries)
+      ? ((parsed as { entries: RosterEntry[] }).entries)
+      : Array.isArray((parsed as { roles?: unknown })?.roles)
+        ? ((parsed as { roles: RosterEntry[] }).roles)
+        : [];
+
+  const resolved: string[] = [];
+  for (const id of cleanIds) {
+    const lower = id.toLowerCase();
+    let rawPath: string | null = null;
+    if (list.length > 0) {
+      const hit = list.find(
+        (item) =>
+          item &&
+          typeof item === 'object' &&
+          (String(item.id ?? '').trim().toLowerCase() === lower ||
+            String(item.name ?? '').trim().toLowerCase() === lower)
+      );
+      if (hit && typeof hit.path === 'string' && hit.path.trim()) {
+        rawPath = hit.path.trim();
+      }
+    } else if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const record = parsed as Record<string, unknown>;
+      const matchKey = Object.keys(record).find((k) => k.trim().toLowerCase() === lower);
+      const val = matchKey ? record[matchKey] : undefined;
+      if (typeof val === 'string' && val.trim()) {
+        rawPath = val.trim();
+      } else if (val && typeof val === 'object' && typeof (val as { path?: unknown }).path === 'string') {
+        rawPath = ((val as { path: string }).path).trim();
+      }
+    }
+    if (rawPath) {
+      resolved.push(toPortablePath(rawPath, env));
+    }
+  }
+  return resolved;
+}
+
+/**
+ * Builds the single role instruction line prepended to the lane's instructions:
+ * - When a role header is present: one "read these first" line with the portable roster file paths (never file bodies).
+ * - When no role line is present: one line telling the lane to open the roster, pick one lead role and at most two companions, and name them in the PR's first line.
+ */
+export function buildRoleInstructionLine(
+  task?: Pick<ParsedInboxTask, 'role' | 'skills'> | null,
+  options?: { rosterPath?: string; env?: NodeJS.ProcessEnv }
+): string {
+  const env = options?.env ?? process.env;
+  const roleId = task?.role?.trim() || null;
+  if (roleId) {
+    const skillIds = (task?.skills ?? [])
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, MAX_ROLE_COMPANION_SKILLS);
+    const requestedIds = [roleId, ...skillIds];
+    const resolvedPaths = resolveRosterEntryPaths(requestedIds, options);
+    const pathsToRead = resolvedPaths.length > 0 ? resolvedPaths : requestedIds;
+    return `Role: read these first: ${pathsToRead.join(', ')}`;
+  }
+
+  const rawOverride =
+    options?.rosterPath?.trim() ||
+    readEnvValue(env, ROSTER_PATH_ENV)?.trim() ||
+    readEnvValue(process.env, ROSTER_PATH_ENV)?.trim();
+  const portableRoster = rawOverride
+    ? toPortablePath(expandEnvPlaceholders(rawOverride, env) ?? rawOverride, env)
+    : ROSTER_PORTABLE_PATH;
+  return `Role: open the roster at ${portableRoster}, pick one lead role and at most two companions for the task, and name them in the PR's first line.`;
+}
+
+/**
+ * Extracts a lane-picked role ID from lane output if present, otherwise null.
+ */
+export function parseRoleFromLaneOutput(output: string): string | null {
+  if (!output) return null;
+  for (const rawLine of output.split(/\r?\n/)) {
+    const trimmed = rawLine.trim();
+    if (/^role:\s*(?:open the roster|read these first)\b/i.test(trimmed)) {
+      continue;
+    }
+    const match = trimmed.match(/^(?:lead\s+)?role\s*:\s*([A-Za-z0-9._/-]+)(?:\s|$|,|\|)/i);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+  }
+  return null;
+}
+
+/**
+ * Formats the role segment for the first line of each task log: `role: <role> (picked by: <ticket|lane>)`.
+ */
+export function formatRoleLogSegment(
+  ticketRole: string | null | undefined,
+  laneOutput?: string
+): string {
+  const explicitRole = ticketRole?.trim() || null;
+  if (explicitRole) {
+    return `role: ${explicitRole} (picked by: ticket)`;
+  }
+  const fromLane = laneOutput ? parseRoleFromLaneOutput(laneOutput) : null;
+  return `role: ${fromLane ?? 'lane'} (picked by: lane)`;
+}
+
+/**
  * Builds the cookbook's common rules preamble prepended to every inbox task:
- * PR only, no user folder names, no secrets, proof pasted, Obsidian note.
+ * PR only, no user folder names, no secrets, proof pasted, Obsidian note, code map, fleet memory, and role instruction.
  */
 export function buildCookbookCommonRulesPreamble(options?: {
   branchName?: string;
   baseBranch?: string;
   /** Portable (%USERPROFILE%) path of the repo's code map. */
   codemapPath?: string;
+  task?: Pick<ParsedInboxTask, 'role' | 'skills'> | null;
+  rosterPath?: string;
+  env?: NodeJS.ProcessEnv;
 }): string {
   const branchName = options?.branchName ?? 'ai/inbox/<id>';
   const prBase = (options?.baseBranch ?? DEFAULT_BASE_BRANCH).replace(/^origin\//, '');
   const codemapPath = options?.codemapPath ?? CODEMAP_BRIEF_PATH_TEMPLATE;
+  const roleLine = buildRoleInstructionLine(options?.task, {
+    rosterPath: options?.rosterPath,
+    env: options?.env,
+  });
   return [
     'Use your highest reasoning level. Read docs/standards/AGENT-STANDARD.md before anything else.',
     `PR only: work on branch ${branchName} and open a pull request with gh against base ${prBase}; never push to main or master, never merge, never use --no-verify or --force, never rewrite history.`,
@@ -669,14 +866,21 @@ export function buildCookbookCommonRulesPreamble(options?: {
     'Obsidian note: finish with a caveman Obsidian note under %USERPROFILE%\\Obsidian\\Alienware\\ with DID, BROKE, NEXT, BLOCKED, FILES, and paste its path.',
     `Code map: read the code map at ${codemapPath} first, then the task.`,
     "Fleet memory: if the ai-memory tool is available, search it for the task's subject before you start. At the end store at most three lasting facts: what changed, where, what broke. Never a secret, never an env value, never anything from a vault file.",
+    roleLine,
   ].join('\n');
 }
 
 export function prependCookbookRulesToTask(
   task: ParsedInboxTask,
-  options?: { branchName?: string; baseBranch?: string; codemapPath?: string }
+  options?: {
+    branchName?: string;
+    baseBranch?: string;
+    codemapPath?: string;
+    rosterPath?: string;
+    env?: NodeJS.ProcessEnv;
+  }
 ): string {
-  const preamble = buildCookbookCommonRulesPreamble(options);
+  const preamble = buildCookbookCommonRulesPreamble({ ...options, task });
   return `${preamble}\n\n# ${task.title}\n\n${task.taskText}`;
 }
 
@@ -793,6 +997,7 @@ export class InboxRunner {
   private readonly codemapVaultDir: string;
   private readonly codemapScriptPath: string;
   private readonly codemapTimeoutMs: number;
+  private readonly rosterPath?: string;
 
   private isTickActive = false;
   private startupGhChecked = false;
@@ -859,6 +1064,7 @@ export class InboxRunner {
     this.codemapVaultDir = options?.codemapVaultDir ?? DEFAULT_CODEMAP_VAULT_DIR;
     this.codemapScriptPath = options?.codemapScriptPath ?? DEFAULT_CODEMAP_SCRIPT_PATH;
     this.codemapTimeoutMs = options?.codemapTimeoutMs ?? CODEMAP_BUILD_TIMEOUT_MS;
+    this.rosterPath = options?.rosterPath;
     this.adapter =
       options?.adapter ??
       new AgyDispatchAdapter({
@@ -2184,6 +2390,8 @@ export class InboxRunner {
           branchName,
           baseBranch: configuredBase,
           codemapPath: toPortablePath(codemapStatus.mapPath, this.env),
+          rosterPath: this.rosterPath,
+          env: this.env,
         });
 
         let currentPrompt = isLivenessRequeue
@@ -2445,7 +2653,10 @@ export class InboxRunner {
         }
 
         void lastPandaFallbackLogLine;
-        const firstLogLine = `${formatTaskLogFirstLine(decision.lane, modelPickedBy)} | ${formatCodemapStatus(codemapStatus)}`;
+        const rolePickedBy: RolePickerSource = parsed.role ? 'ticket' : 'lane';
+        const roleNameForResult =
+          parsed.role?.trim() || parseRoleFromLaneOutput(pollResult.output) || 'lane';
+        const firstLogLine = `${formatTaskLogFirstLine(decision.lane, modelPickedBy)} | ${formatCodemapStatus(codemapStatus)} | ${formatRoleLogSegment(parsed.role, pollResult.output)}`;
         const bodyLogContent = combinedLogs.filter(Boolean).join('\n--- attempt ---\n');
         const sanitizedLogContent = sanitizeDecisionLogText(
           bodyLogContent ? `${firstLogLine}\n${bodyLogContent}` : firstLogLine,
@@ -2556,6 +2767,8 @@ export class InboxRunner {
           repoRoot: repoTarget.root,
           lane: decision.lane,
           modelPickedBy,
+          role: roleNameForResult,
+          rolePickedBy,
           jobClass: decision.job_class,
           decisionHash: decision.task_hash,
           reason: succeeded

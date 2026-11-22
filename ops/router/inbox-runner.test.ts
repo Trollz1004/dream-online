@@ -1265,3 +1265,165 @@ test('Repo selector: the default stays dream-online at the runner root', async (
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
 });
+
+test('Wheel v2 roles (1 & 3): ticket with role: and skills: (at most two) prepends roster file paths from ROSTER_PATH with one "read these first" line (paths only, never bodies) and logs role picked by ticket on line 1', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-inbox-role-ticket-'));
+  try {
+    const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+    const worktreeParentDir = path.join(tmpRoot, 'antigravity');
+    const folders = ensureInboxFolders(inboxDir);
+
+    const roleMdPath = path.join(tmpRoot, 'antigravity', 'tools', 'agency-agents', 'engineering', 'engineering-backend-architect.md');
+    const skill1MdPath = path.join(tmpRoot, 'antigravity', 'skills', 'tdd', 'SKILL.md');
+    const skill2MdPath = path.join(tmpRoot, 'antigravity', 'skills', 'caveman', 'SKILL.md');
+    const skill3MdPath = path.join(tmpRoot, 'antigravity', 'skills', 'extra-ignored', 'SKILL.md');
+    for (const p of [roleMdPath, skill1MdPath, skill2MdPath, skill3MdPath]) {
+      fs.mkdirSync(path.dirname(p), { recursive: true });
+      fs.writeFileSync(p, 'SENTINEL_ROLE_FILE_BODY_NEVER_IN_PROMPT\n', 'utf8');
+    }
+
+    const rosterPath = path.join(tmpRoot, 'custom-roster.json');
+    fs.writeFileSync(
+      rosterPath,
+      JSON.stringify(
+        [
+          {
+            id: 'engineering-backend-architect',
+            name: 'Backend Architect',
+            path: '%USERPROFILE%\\antigravity\\tools\\agency-agents\\engineering\\engineering-backend-architect.md',
+          },
+          {
+            id: 'tdd',
+            name: 'tdd',
+            path: '%USERPROFILE%\\antigravity\\skills\\tdd\\SKILL.md',
+          },
+          {
+            id: 'caveman',
+            name: 'caveman',
+            path: '%USERPROFILE%\\antigravity\\skills\\caveman\\SKILL.md',
+          },
+          {
+            id: 'extra-ignored',
+            name: 'extra-ignored',
+            path: '%USERPROFILE%\\antigravity\\skills\\extra-ignored\\SKILL.md',
+          },
+        ],
+        null,
+        2
+      ),
+      'utf8'
+    );
+
+    const taskRaw = [
+      '# Wire role header in runner',
+      'role: engineering-backend-architect',
+      'skills: tdd, caveman, extra-ignored',
+      '',
+      'Update ops/router/inbox-runner.ts to prepend roster paths.',
+    ].join('\n');
+
+    const parsed = parseInboxTaskFile(taskRaw, 'role-ticket-task.md');
+    assert.equal(parsed.role, 'engineering-backend-architect');
+    assert.deepEqual(parsed.skills, ['tdd', 'caveman'], 'skills must be capped at most two');
+
+    fs.writeFileSync(path.join(folders.queued, 'role-ticket-task.md'), taskRaw, 'utf8');
+
+    const seen: DispatchJobInput[] = [];
+    const { runner: cmdRunner } = createMockInboxCommandRunner({ ghSignedIn: true });
+    const inboxRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir,
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      adapter: makePrAdapter(tmpRoot, seen),
+      commandRunner: cmdRunner,
+      env: { USERPROFILE: tmpRoot, ROSTER_PATH: rosterPath },
+    });
+
+    const res = await inboxRunner.tick();
+    assert.equal(res.status, 'done');
+    assert.equal(seen.length, 1);
+
+    const prompt = seen[0].prompt;
+    const promptLines = prompt.split(/\r?\n/);
+    const readFirstLine = promptLines.find((line) => /read these first/i.test(line));
+    assert.ok(readFirstLine, `Expected a "read these first" line in prompt, got:\n${prompt}`);
+    assert.ok(
+      readFirstLine!.includes(
+        '%USERPROFILE%\\antigravity\\tools\\agency-agents\\engineering\\engineering-backend-architect.md'
+      ),
+      readFirstLine
+    );
+    assert.ok(readFirstLine!.includes('%USERPROFILE%\\antigravity\\skills\\tdd\\SKILL.md'), readFirstLine);
+    assert.ok(readFirstLine!.includes('%USERPROFILE%\\antigravity\\skills\\caveman\\SKILL.md'), readFirstLine);
+    assert.ok(
+      !readFirstLine!.includes('extra-ignored'),
+      'third skill beyond the two-skill cap must not be included'
+    );
+    assert.ok(
+      !prompt.includes('SENTINEL_ROLE_FILE_BODY_NEVER_IN_PROMPT'),
+      'prompt must contain paths only, never file bodies'
+    );
+
+    const logText = fs.readFileSync(path.join(folders.done, 'role-ticket-task.log'), 'utf8');
+    const firstLogLine = logText.split(/\r?\n/)[0];
+    assert.match(firstLogLine, /role:\s*engineering-backend-architect\s*\(picked by:\s*ticket\)/);
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('Wheel v2 roles (2 & 3): when no role line is present, runner prepends one line telling the lane to open the roster, pick one lead role and at most two companions, and name them in the PR first line, and logs role picked by lane', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-inbox-role-lane-'));
+  try {
+    const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+    const worktreeParentDir = path.join(tmpRoot, 'antigravity');
+    const folders = ensureInboxFolders(inboxDir);
+
+    const taskRaw = [
+      '# Fix typo in router doc',
+      '',
+      'Fix a small typo in ops/router/INBOX.md.',
+    ].join('\n');
+
+    const parsed = parseInboxTaskFile(taskRaw, 'role-lane-task.md');
+    assert.equal(parsed.role, null);
+    assert.deepEqual(parsed.skills, []);
+
+    fs.writeFileSync(path.join(folders.queued, 'role-lane-task.md'), taskRaw, 'utf8');
+
+    const seen: DispatchJobInput[] = [];
+    const { runner: cmdRunner } = createMockInboxCommandRunner({ ghSignedIn: true });
+    const inboxRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir,
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      adapter: makePrAdapter(tmpRoot, seen),
+      commandRunner: cmdRunner,
+      env: { USERPROFILE: tmpRoot },
+    });
+
+    const res = await inboxRunner.tick();
+    assert.equal(res.status, 'done');
+    assert.equal(seen.length, 1);
+
+    const prompt = seen[0].prompt;
+    const promptLines = prompt.split(/\r?\n/);
+    const pickRoleLine = promptLines.find(
+      (line) =>
+        /open the roster/i.test(line) &&
+        /pick one lead role and at most two companions/i.test(line) &&
+        /name them in the PR's first line/i.test(line)
+    );
+    assert.ok(pickRoleLine, `Expected one-line role instruction in prompt, got:\n${prompt}`);
+    assert.ok(
+      pickRoleLine!.includes('%USERPROFILE%\\antigravity\\.fable-kitchen\\roster\\roster.json'),
+      pickRoleLine
+    );
+
+    const logText = fs.readFileSync(path.join(folders.done, 'role-lane-task.log'), 'utf8');
+    const firstLogLine = logText.split(/\r?\n/)[0];
+    assert.match(firstLogLine, /role:\s*\S+\s*\(picked by:\s*lane\)/);
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
