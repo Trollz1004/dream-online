@@ -4,8 +4,11 @@ import fs from "node:fs";
 import http from "node:http";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BOOKINGS_SCRIPT = path.join(__dirname, "bookings-watch.mjs");
@@ -25,7 +28,11 @@ function startFakeServer(handler) {
       resolve({
         server,
         baseUrl: `http://${TEST_BIND_HOST}:${addr.port}`,
-        close: () => new Promise((res) => server.close(res)),
+        close: () =>
+          new Promise((res) => {
+            server.closeAllConnections?.();
+            server.close(res);
+          }),
       });
     });
     server.on("error", reject);
@@ -64,7 +71,7 @@ test("bookings-watch: healthy response (bookingNotices off < 24h, unnotifiedBook
   });
 
   try {
-    execFileSync(
+    await execFileAsync(
       process.execPath,
       [BOOKINGS_SCRIPT, "--url", `${fake.baseUrl}/health`, "--out-dir", outDir],
       { encoding: "utf8" },
@@ -102,7 +109,7 @@ test("bookings-watch: failing page (HTTP 500) writes REPORT-SHAPE with needs the
   });
 
   try {
-    execFileSync(
+    await execFileAsync(
       process.execPath,
       [BOOKINGS_SCRIPT, "--url", `${fake.baseUrl}/health`, "--out-dir", outDir],
       { encoding: "utf8" },
@@ -137,7 +144,7 @@ test("bookings-watch: unnotifiedBookings above 0 writes REPORT-SHAPE with needs 
   });
 
   try {
-    execFileSync(
+    await execFileAsync(
       process.execPath,
       [BOOKINGS_SCRIPT, "--url", `${fake.baseUrl}/health`, "--out-dir", outDir],
       { encoding: "utf8" },
@@ -193,7 +200,7 @@ test("bookings-watch: bookingNotices not 'on' for more than 24 hours writes need
   });
 
   try {
-    execFileSync(
+    await execFileAsync(
       process.execPath,
       [BOOKINGS_SCRIPT, "--url", `${fake.baseUrl}/health`, "--out-dir", outDir],
       { encoding: "utf8" },
@@ -279,7 +286,7 @@ test("support-audit: healthy fake server writes REPORT-SHAPE with needs the judg
   const fake = await startFakeServer(createHealthySupportHandler());
 
   try {
-    execFileSync(
+    await execFileAsync(
       process.execPath,
       [
         SUPPORT_SCRIPT,
@@ -340,7 +347,7 @@ test("support-audit: missing expected heading on a support page sets needs the j
   );
 
   try {
-    execFileSync(
+    await execFileAsync(
       process.execPath,
       [
         SUPPORT_SCRIPT,
@@ -381,7 +388,7 @@ test("support-audit: failing page (HTTP 500 on booking route or health) sets nee
   );
 
   try {
-    execFileSync(
+    await execFileAsync(
       process.execPath,
       [
         SUPPORT_SCRIPT,
