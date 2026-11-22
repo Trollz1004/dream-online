@@ -1,7 +1,7 @@
 # Routine Definition: `onlinerecycle-bookings-watch`
 
 - **job**: `onlinerecycle-bookings-watch` — Poll OnlineRecycle public health endpoint and report booking notice state and any unnotified booking IDs.
-- **worker**: `fcc` (Free Claude Code on Alienware `192.168.0.40:8082`, writing to `%USERPROFILE%\antigravity\.fable-kitchen\loops\inbox\fcc\`)
+- **worker**: `hermes-t5500` (Hermes on T5500 `192.168.0.15:8643`, moved from Free Claude Code `fcc` because Free Claude Code has no lasting scheduler; writes to `C:\ANTIGRAVITY\logs\loop-reports\hermes-t5500\` for `%USERPROFILE%\antigravity\.fable-kitchen\loops\inbox\hermes-t5500\`)
 - **model class**: Plain model (`auto/best-coding` or default plain tier on `fcc`)
 - **schedule**: Hourly at minute `:05` (`5 * * * *`), staggered from other `fcc` routines to stay within `PROVIDER_MAX_CONCURRENCY = 2` and the 50-job `CronCreateTool` cap (`3` active `fcc` routines total).
 - **time limit**: `3 minutes` (`180 seconds`). Stops itself at the limit and writes a fail-safe report even on timeout or error.
