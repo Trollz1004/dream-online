@@ -1440,10 +1440,7 @@ export class JevRouter {
     this.lanesPath = config?.lanesPath ?? DEFAULT_LANES_PATH;
     this.rankingsDir = config?.rankingsDir ?? DEFAULT_RANKINGS_DIR;
     this.decisionsLogPath = config?.decisionsLogPath ?? DEFAULT_DECISIONS_LOG_PATH;
-    this.lanesStatePath =
-      config?.lanesStatePath === undefined
-        ? path.join(os.homedir(), 'antigravity', '.fable-kitchen', 'lanes-state.json')
-        : config.lanesStatePath;
+    this.lanesStatePath = config?.lanesStatePath ?? null;
   }
 
   /** Rewrites the cold-lanes summary the dashboard reads. One entry per lane still cold. */

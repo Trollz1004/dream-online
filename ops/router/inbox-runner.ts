@@ -1045,7 +1045,7 @@ export class InboxRunner {
         lanesPath: this.lanesPath,
         rankingsDir: this.rankingsDir,
         decisionsLogPath: this.decisionsLogPath,
-        lanesStatePath: path.join(path.dirname(this.decisionsLogPath), 'lanes-state.json'),
+        lanesStatePath: path.join(path.dirname(this.inboxDir), 'lanes-state.json'),
       });
     this.commandRunner = options?.commandRunner ?? defaultCommandRunner;
     this.now = options?.now ?? (() => new Date());
@@ -2496,13 +2496,11 @@ export class InboxRunner {
         let pollResult = await pollUntilDone(handle.poll);
         combinedLogs.push(pollResult.output);
 
-        // Check for quota or 429 error on first attempt
-        const quotaCheck = detectQuotaOr429Error(
-          pollResult.output,
-          pollResult.error,
-          pollResult.exitCode
-        );
-        if (quotaCheck.isQuotaError) {
+        // A quota error marks that lane (and its quota group) cold and does not
+        // count as an attempt. Keep walking the job class ladder until a lane
+        // runs the work or every rung is cold.
+        let quotaCheck = detectQuotaOr429Error(pollResult.output, pollResult.error, pollResult.exitCode);
+        while (quotaCheck.isQuotaError) {
           attempts.push({
             attemptNumber: attempts.length + 1,
             lane: decision.lane,
@@ -2519,7 +2517,6 @@ export class InboxRunner {
             exitCode: pollResult.exitCode,
           });
 
-          // Mark the lane cold through the core and re-queue the task once on the fallback lane
           const quotaReport = this.router.reportQuotaError(
             decision.lane,
             [pollResult.output, pollResult.error, quotaCheck.errorSummary].filter(Boolean).join('\n'),
@@ -2528,23 +2525,19 @@ export class InboxRunner {
           combinedLogs.push(quotaReport.logLine);
           quotaFallbackTriggered = true;
 
-          // Re-queue transition through queued/ -> running/
+          const nextLane = this.router.firstWarmRung(decision.job_class, this.now(), decision.lane);
+          if (!nextLane || nextLane === decision.lane) break;
+
           fs.renameSync(runningFilePath, queuedFilePath);
           transitions.push('running -> queued (quota fallback)');
           fs.renameSync(queuedFilePath, runningFilePath);
           transitions.push('queued -> running (quota fallback)');
 
-          activeRouted = this.routeTaskWithOptionalForcedLane(parsed);
-          selectedModel = await this.selectModelBeforeAgyRun(parsed, activeRouted);
-          decision = selectedModel.decision;
-          modelPickedBy = selectedModel.pickedBy;
-          lastPandaFallbackLogLine = selectedModel.pandaFallbackLogLine;
-          if (lastPandaFallbackLogLine) {
-            combinedLogs.push(lastPandaFallbackLogLine);
-          }
+          decision = { ...decision, lane: nextLane };
+          modelPickedBy = 'fallback';
 
           handle = await this.adapterFor(decision.lane).dispatch({
-            jobId: `${parsed.id}-fallback`,
+            jobId: `${parsed.id}-fallback-${attempts.length}`,
             prompt: currentPrompt,
             jobClass: decision.job_class,
             lane: decision.lane,
@@ -2555,6 +2548,7 @@ export class InboxRunner {
           });
           pollResult = await pollUntilDone(handle.poll);
           combinedLogs.push(pollResult.output);
+          quotaCheck = detectQuotaOr429Error(pollResult.output, pollResult.error, pollResult.exitCode);
         }
 
         // Judge evaluation helper (PR URL present, plus Eyes PASS for design-visual)
