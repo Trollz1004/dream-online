@@ -130,8 +130,10 @@ test('REMEMBER-COLD a lane marked cold stays cold for the next ticket including 
       commandRunner: cmdRunner,
       now: () => new Date('2026-11-23T20:00:00Z'),
       pandaPool: { 'openrouter-gemini-3.8-flash': 'gemini-3.8-flash' },
-      pandaTimeoutMs: 50,
-      pandaRoute: () => new Promise(() => {}),
+      // Panda is down, so the pick falls to the runner's own ladder walk.
+      pandaFetch: (async () => {
+        throw new Error('connect ECONNREFUSED 192.168.0.40:8765');
+      }) as unknown as typeof fetch,
     });
     const firstResult = await inboxRunner.tick();
     ticket = 1;
