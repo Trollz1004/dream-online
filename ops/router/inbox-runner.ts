@@ -683,6 +683,10 @@ export function isKnownLaneInTable(table: LaneTable, candidateLane: string): boo
       return true;
     }
   }
+  // A header "lane:" naming a model id listed in laneSettings is honoured as that model.
+  if (table.laneSettings && Object.prototype.hasOwnProperty.call(table.laneSettings, normalized)) {
+    return true;
+  }
   return false;
 }
 
@@ -1041,6 +1045,7 @@ export class InboxRunner {
         lanesPath: this.lanesPath,
         rankingsDir: this.rankingsDir,
         decisionsLogPath: this.decisionsLogPath,
+        lanesStatePath: path.join(path.dirname(this.decisionsLogPath), 'lanes-state.json'),
       });
     this.commandRunner = options?.commandRunner ?? defaultCommandRunner;
     this.now = options?.now ?? (() => new Date());

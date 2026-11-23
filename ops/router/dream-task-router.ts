@@ -1429,15 +1429,38 @@ export class JevRouter {
   private readonly lanesPath: string;
   private readonly rankingsDir: string;
   private readonly decisionsLogPath: string;
+  private readonly lanesStatePath: string | null;
 
   constructor(config?: {
     lanesPath?: string;
     rankingsDir?: string;
     decisionsLogPath?: string;
+    lanesStatePath?: string | null;
   }) {
     this.lanesPath = config?.lanesPath ?? DEFAULT_LANES_PATH;
     this.rankingsDir = config?.rankingsDir ?? DEFAULT_RANKINGS_DIR;
     this.decisionsLogPath = config?.decisionsLogPath ?? DEFAULT_DECISIONS_LOG_PATH;
+    this.lanesStatePath =
+      config?.lanesStatePath === undefined
+        ? path.join(os.homedir(), 'antigravity', '.fable-kitchen', 'lanes-state.json')
+        : config.lanesStatePath;
+  }
+
+  /** Rewrites the cold-lanes summary the dashboard reads. One entry per lane still cold. */
+  private writeLanesState(now: Date): void {
+    if (!this.lanesStatePath) return;
+    const active = this.getActiveColdLanes(now);
+    const lanes = Object.entries(active).map(([lane, info]) => ({
+      lane,
+      coldUntil: info.until,
+      reason: info.reason,
+    }));
+    try {
+      fs.mkdirSync(path.dirname(this.lanesStatePath), { recursive: true });
+      fs.writeFileSync(this.lanesStatePath, JSON.stringify({ updatedAt: now.toISOString(), lanes }, null, 2), 'utf8');
+    } catch {
+      // The summary is for the dashboard; a write failure must not stop routing.
+    }
   }
 
   /**
@@ -1506,6 +1529,7 @@ export class JevRouter {
       });
     }
 
+    this.writeLanesState(now);
     return { affectedLanes, hours, durationMs, until, quotaGroup, source, logLine };
   }
 

@@ -734,6 +734,54 @@ test('quota reset cooldown: parses Resets in 1h20m9s, 29m23s, and 45s (+5m), def
       longReset.until,
       new Date(now.getTime() + 127 * 3_600_000 + QUOTA_RESET_BUFFER_MS).toISOString()
     );
+
+    // The dashboard summary is rewritten on the change: lane, cold until, reason.
+    const statePath = path.join(tmpRoot, 'lanes-state.json');
+    const stateRouter = new JevRouter({
+      decisionsLogPath: path.join(tmpRoot, 'decisions-state.log'),
+      lanesStatePath: statePath,
+    });
+    stateRouter.reportQuotaError('gemini-4-argon', 'RESOURCE_EXHAUSTED: Resets in 3h.', now);
+    const state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+    assert.equal(state.lanes.length, 1);
+    assert.equal(state.lanes[0].lane, 'gemini-4-argon');
+    assert.equal(state.lanes[0].coldUntil, new Date(now.getTime() + 3 * 3_600_000 + QUOTA_RESET_BUFFER_MS).toISOString());
+    assert.match(state.lanes[0].reason, /RESOURCE_EXHAUSTED/);
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('a lane header naming a model id in laneSettings is honoured as that model', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-lane-model-header-'));
+  try {
+    const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+    const folders = ensureInboxFolders(inboxDir);
+    fs.writeFileSync(
+      path.join(folders.queued, '01-lane-is-a-model.md'),
+      ['# Tidy the logger', 'lane: claude-sonnet-5-5', '', 'Rename a variable in src/log.ts.'].join('\n'),
+      'utf8'
+    );
+
+    const seen: DispatchJobInput[] = [];
+    const { runner } = createMockInboxCommandRunner();
+    const inboxRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir: path.join(tmpRoot, 'antigravity'),
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      adapter: createFakeAdapter(tmpRoot, seen),
+      commandRunner: runner,
+      pandaPool: { ...DEFAULT_PANDA_POOL },
+      pandaFetch: (async () => {
+        throw new Error('connect ECONNREFUSED 192.168.0.40:8765');
+      }) as unknown as typeof fetch,
+    });
+
+    const tick = await inboxRunner.tick();
+    assert.equal(tick.status, 'done');
+    assert.equal(tick.lane, 'claude-sonnet-5-5');
+    assert.equal(tick.forcedLaneHonoured, true);
+    assert.equal(seen[0].lane, 'claude-sonnet-5-5');
   } finally {
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
