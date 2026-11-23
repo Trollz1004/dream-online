@@ -1672,8 +1672,9 @@ export class JevRouter {
       for (const candidate of ordered) {
         if (candidate === candidateLane || activeColdLanes[candidate]) continue;
         // Tonight's fact: Claude models inside agy share one quota separate from Gemini models,
-        // so a Claude fallback is always a Gemini lane and never another Claude lane in agy.
-        if (isAgyClaudeLane(candidateLane, row.harness) && !isGeminiLane(candidate)) continue;
+        // so a Claude fallback is never another Claude lane in agy.
+        // That rule skips other Claude lanes in agy only; the last-resort rung stays reachable.
+        if (isAgyClaudeLane(candidateLane, row.harness) && isAgyClaudeLane(candidate, row.harness)) continue;
         fallbackLane = candidate;
         break;
       }

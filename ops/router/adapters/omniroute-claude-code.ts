@@ -15,6 +15,7 @@ import {
   type DispatchHandle,
   type DispatchJobInput,
   parsePrUrlFromOutput,
+  scrubLaneEnv,
 } from './types.ts';
 
 export const LAST_RESORT_MODEL = 'auto';
@@ -28,6 +29,7 @@ const EXECUTOR_RULES = [
   'Work only inside this folder. Never open, print or edit any env file.',
   'Never use remake, reverse-engineer-anything, Agent-Reach or last30days. No web browsing or scraping.',
   'Failing test first, then make it pass.',
+  'Do the work with your tools now; a reply that says something was done when no tool ran is a failure.',
 ].join(' ');
 
 const ALLOWED_TOOLS = 'Bash Read Edit Write Glob Grep';
@@ -68,7 +70,13 @@ export function buildOmnirouteClaudeCodeCommand(input: {
   prompt: string;
   cwd?: string;
   baseUrl: string;
+  /** The environment the lane inherits. PATH and the rest must survive, or the program cannot start. */
+  env?: NodeJS.ProcessEnv;
 }): BuiltLastResortCommand {
+  // Start from the lane's scrubbed environment, then lay the four OmniRoute values over it.
+  // Any Anthropic key in the environment is dropped so nothing but the placeholder is ever sent.
+  const inherited = scrubLaneEnv(input.env ?? process.env);
+  delete inherited.ANTHROPIC_API_KEY;
   const prompt = `${EXECUTOR_RULES} ${LAST_RESORT_MARK}. ${input.prompt}`;
   return {
     command: 'claude',
@@ -84,6 +92,7 @@ export function buildOmnirouteClaudeCodeCommand(input: {
     ],
     cwd: input.cwd,
     env: {
+      ...inherited,
       ANTHROPIC_BASE_URL: input.baseUrl,
       ANTHROPIC_AUTH_TOKEN: LAST_RESORT_AUTH_TOKEN,
       ANTHROPIC_MODEL: LAST_RESORT_MODEL,
@@ -134,6 +143,7 @@ export class OmnirouteClaudeCodeAdapter {
       prompt: input.prompt,
       cwd: input.cwd,
       baseUrl: this.baseUrl,
+      env: input.env,
     });
     const logPath = path.join(this.kitchenDir, `${jobId}.log`);
     const req: CommandExecRequest = {

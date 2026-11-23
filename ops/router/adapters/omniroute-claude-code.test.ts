@@ -68,13 +68,9 @@ test('the adapter runs through a fake launcher, two at a time, and records the l
       setTimeout(() => {
         running -= 1;
         resolve({
-          command: req.command,
-          args: req.args,
-          cwd: req.cwd ?? null,
           exitCode: 0,
           stdout: 'Opened pull request https://github.com/Trollz1004/dream-online/pull/900',
           stderr: '',
-          timedOut: false,
         });
       }, 30);
     });
@@ -105,4 +101,16 @@ test('the adapter runs through a fake launcher, two at a time, and records the l
   assert.ok(polls.every((p) => p.exitCode === 0 && p.prUrl?.endsWith('/900')));
   const log = fs.readFileSync(path.join(tmp, 'one.log'), 'utf8');
   assert.match(log, /built by the last-resort lane/);
+});
+
+test('the command keeps the inherited environment, lays the OmniRoute values over it and drops any Anthropic key', () => {
+  const built = buildOmnirouteClaudeCodeCommand({
+    prompt: 'do it',
+    baseUrl: 'http://192.168.0.15:20128',
+    env: { PATH: 'C:\\tools', ANTHROPIC_API_KEY: 'should-not-pass', ANTHROPIC_BASE_URL: 'https://elsewhere' },
+  });
+  assert.equal(built.env.PATH, 'C:\\tools');
+  assert.equal(built.env.ANTHROPIC_API_KEY, undefined);
+  assert.equal(built.env.ANTHROPIC_BASE_URL, 'http://192.168.0.15:20128');
+  assert.equal(built.env.ANTHROPIC_AUTH_TOKEN, 'omniroute-local');
 });

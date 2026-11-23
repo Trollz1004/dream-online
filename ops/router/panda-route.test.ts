@@ -1052,3 +1052,25 @@ test('quota group warms again once reset time + 5m has passed and is then picked
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
 });
+
+test('route(): with the Claude lanes in agy and every Gemini lane cold, a code-hard task goes to last-resort, never back to a cold lane', () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-route-last-resort-'));
+  try {
+    const now = new Date('2026-11-23T03:30:00.000Z');
+    const router = new JevRouter({
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      lanesStatePath: path.join(tmpRoot, 'lanes-state.json'),
+    });
+    router.reportQuotaError('claude-opus-5-5', 'Individual quota reached. Resets in 53h', now);
+    router.reportQuotaError('gemini-4-argon', 'Individual quota reached. Resets in 127h', now);
+    router.reportQuotaError('gemini-3.8-flash', 'Individual quota reached. Resets in 127h', now);
+    router.reportQuotaError('claude-sonnet-5-5', 'Individual quota reached. Resets in 53h', now);
+
+    const decision = router.route('Fix the race in src/scheduler/queue.ts', { now, lane: 'code-hard' });
+    assert.equal(decision.job_class, 'code-hard');
+    assert.equal(decision.lane, 'last-resort');
+    assert.equal(router.isLaneCold(decision.lane, now), false);
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
