@@ -15,6 +15,8 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   AgyDispatchAdapter,
+  OmnirouteClaudeCodeAdapter,
+  resolveLastResortEnabled,
   type CommandExecRequest,
   type CommandExecResult,
   type CommandRunner,
@@ -137,6 +139,7 @@ export const LANE_LIVENESS_TIMEOUT_MS = 10 * 60 * 1000;
 export const LANE_PROCESS_MISSING_REASON = 'lane process missing';
 /** The code map script (task c1). The runner builds the map of each repo with it before a lane starts. */
 export const DEFAULT_CODEMAP_SCRIPT_PATH = path.resolve(ROUTER_DIR, '..', 'codemap', 'build-codemap.mjs');
+export const DEFAULT_FLEET_MAP_PATH = path.resolve(ROUTER_DIR, '..', 'fleet', 'fleet-map.json');
 /** Copy of each repo's code map in the synced vault: %USERPROFILE%\Obsidian\Alienware\codemap\<repo>.md */
 export const DEFAULT_CODEMAP_VAULT_DIR = path.join(os.homedir(), 'Obsidian', 'Alienware', 'codemap');
 /** A code map build that takes longer than this never blocks the task. */
@@ -277,6 +280,7 @@ export interface InboxRunnerOptions {
   configPath?: string;
   baseBranch?: string;
   lanesPath?: string;
+  fleetMapPath?: string;
   rankingsDir?: string;
   decisionsLogPath?: string;
   runnerRestartLogPath?: string;
@@ -983,6 +987,9 @@ export class InboxRunner {
   private readonly stoppedPollIntervalMs: number;
   private readonly router: JevRouter;
   private readonly adapter: DispatchAdapter;
+  private readonly lastResortAdapter: OmnirouteClaudeCodeAdapter;
+  /** True only when the caller handed in its own adapter, which then covers every lane including last-resort. */
+  private readonly adapterWasInjected: boolean;
   private readonly commandRunner: CommandRunner;
   private readonly now: () => Date;
   private readonly extraSecretsToRedact: string[];
@@ -1065,6 +1072,13 @@ export class InboxRunner {
     this.codemapScriptPath = options?.codemapScriptPath ?? DEFAULT_CODEMAP_SCRIPT_PATH;
     this.codemapTimeoutMs = options?.codemapTimeoutMs ?? CODEMAP_BUILD_TIMEOUT_MS;
     this.rosterPath = options?.rosterPath;
+    this.adapterWasInjected = Boolean(options?.adapter);
+    this.lastResortAdapter = new OmnirouteClaudeCodeAdapter({
+      commandRunner: this.commandRunner,
+      fleetMapPath: options?.fleetMapPath ?? DEFAULT_FLEET_MAP_PATH,
+      kitchenDir: path.dirname(this.inboxDir),
+      env: options?.env,
+    });
     this.adapter =
       options?.adapter ??
       new AgyDispatchAdapter({
@@ -1088,6 +1102,17 @@ export class InboxRunner {
 
   public getRouter(): JevRouter {
     return this.router;
+  }
+
+  /**
+   * The last-resort lane runs the Claude Code program against OmniRoute, and only when it is
+   * switched on. Every other lane keeps the configured adapter.
+   */
+  private adapterFor(lane: string): DispatchAdapter {
+    if (lane === 'last-resort' && resolveLastResortEnabled(this.env) && !this.adapterWasInjected) {
+      return this.lastResortAdapter;
+    }
+    return this.adapter;
   }
 
   public getGhConfigDir(): string {
@@ -2453,7 +2478,7 @@ export class InboxRunner {
         };
 
         // Run attempt
-        let handle = await this.adapter.dispatch({
+        let handle = await this.adapterFor(decision.lane).dispatch({
           jobId: isLivenessRequeue ? `${parsed.id}-requeue-1` : `${parsed.id}-attempt-1`,
           prompt: currentPrompt,
           jobClass: decision.job_class,
@@ -2513,7 +2538,7 @@ export class InboxRunner {
             combinedLogs.push(lastPandaFallbackLogLine);
           }
 
-          handle = await this.adapter.dispatch({
+          handle = await this.adapterFor(decision.lane).dispatch({
             jobId: `${parsed.id}-fallback`,
             prompt: currentPrompt,
             jobClass: decision.job_class,
@@ -2625,7 +2650,7 @@ export class InboxRunner {
             combinedLogs.push(lastPandaFallbackLogLine);
           }
 
-          handle = await this.adapter.dispatch({
+          handle = await this.adapterFor(decision.lane).dispatch({
             jobId: `${parsed.id}-requeue-1`,
             prompt: currentPrompt,
             jobClass: decision.job_class,

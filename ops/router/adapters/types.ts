@@ -124,7 +124,7 @@ export interface DispatchPollResult {
 
 export interface DispatchHandle {
   jobId: string;
-  adapter: 'agy' | 'free-claude-code' | 'hermes';
+  adapter: 'agy' | 'free-claude-code' | 'hermes' | 'omniroute-claude-code';
   lane: string;
   harness: string;
   promptPath: string;
@@ -142,7 +142,7 @@ export interface DispatchHandle {
 }
 
 export interface DispatchAdapter {
-  readonly name: 'agy' | 'free-claude-code' | 'hermes';
+  readonly name: 'agy' | 'free-claude-code' | 'hermes' | 'omniroute-claude-code';
   dispatch(input: DispatchJobInput): Promise<DispatchHandle>;
 }
 

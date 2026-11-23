@@ -8,6 +8,7 @@
     "claude-opus-5-5": { "effort": "high" },
     "claude-sonnet-5-5": { "effort": "high" },
     "gemini-3.8-flash": { "effort": "none", "note": "agy 1.5.0 rejects --effort for this model, so the adapter omits the flag." },
+    "last-resort": { "effort": "none", "note": "The Claude Code program pointed at OmniRoute with model auto. An executor lane: PR only, never merges, never the tools reserved for the trusted three. Takes a job only when every rung above it is cold. LAST_RESORT_ENABLED defaults to on." },
     "fable": { "effort": "none", "note": "agy 1.5.0 rejects --effort for this model; fable is a judge lane and never runs through agy." }
   },
   "quotaGroups": {
@@ -158,6 +159,21 @@
       "quotaGroup": "hermes-grok",
       "postGate": null,
       "officialOnly": true,
+      "neverModel": false,
+      "visibility": null,
+      "neverReceivesJobClasses": []
+    },
+    "last-resort": {
+      "jobClass": "mechanical",
+      "lane": "last-resort",
+      "ladder": ["last-resort"],
+      "node": "Alienware",
+      "harness": "omniroute-claude-code",
+      "headless": true,
+      "fallback": "last-resort",
+      "quotaGroup": "omniroute",
+      "postGate": null,
+      "officialOnly": false,
       "neverModel": false,
       "visibility": null,
       "neverReceivesJobClasses": []

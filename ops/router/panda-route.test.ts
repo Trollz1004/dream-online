@@ -503,7 +503,7 @@ test('cold pick from Panda: never runs a cold model; on lane engine with Argon c
     engineRunner.getRouter().reportQuotaError('claude-opus-5-5', 'HTTP 429 quota exceeded', now);
     nextPandaCard = 'openrouter-gemini-4-argon';
     const tick4 = await engineRunner.tick();
-    assert.equal(tick4.status, 'done');
+    assert.equal(tick4.status, 'done', tick4.reason ?? '');
     assert.equal(tick4.jobClass, 'engine');
     assert.equal(tick4.lane, 'last-resort');
     assert.equal(tick4.modelPickedBy, 'fallback');
