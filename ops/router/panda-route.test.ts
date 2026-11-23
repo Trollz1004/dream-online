@@ -498,15 +498,16 @@ test('cold pick from Panda: never runs a cold model; on lane engine with Argon c
     );
     assert.ok(log3.split(/\r?\n/)[0].startsWith('model: claude-opus-5-5 (picked by: floor) | code map: '), log3.split(/\r?\n/)[0]);
 
-    // 2c. Both floor models (gemini-4-argon and claude-opus-5-5) are cold -> behaves exactly as before this PR (gemini-3.8-flash)
+    // 2c. Both floor models (gemini-4-argon and claude-opus-5-5) are cold -> the engine ladder
+    // walks on to its next warm rung instead of stopping (claude-sonnet-5-5, then last-resort).
     engineRunner.getRouter().reportQuotaError('claude-opus-5-5', 'HTTP 429 quota exceeded', now);
     nextPandaCard = 'openrouter-gemini-4-argon';
     const tick4 = await engineRunner.tick();
     assert.equal(tick4.status, 'done');
     assert.equal(tick4.jobClass, 'engine');
-    assert.equal(tick4.lane, 'gemini-3.8-flash');
+    assert.equal(tick4.lane, 'last-resort');
     assert.equal(tick4.modelPickedBy, 'fallback');
-    assert.equal(seenEngine[2].lane, 'gemini-3.8-flash');
+    assert.equal(seenEngine[2].lane, 'last-resort');
   } finally {
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
@@ -616,7 +617,7 @@ test('fallback: when Panda is down, slow, returns malformed JSON or missing mode
   }
 });
 
-test('quota reset cooldown: parses Resets in 1h20m9s, 29m23s, and 45s (+5m), defaults to 2h constant on missing or nonsense time, clamps to [5m, 24h], and logs until + source', () => {
+test('quota reset cooldown: parses Resets in 1h20m9s, 29m23s, and 45s (+5m), defaults to 2h constant on missing or nonsense time, keeps a reset past a day, and logs until + source', () => {
   const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-quota-reset-parse-'));
   try {
     const now = new Date('2026-11-15T07:04:45.000Z');
@@ -626,7 +627,7 @@ test('quota reset cooldown: parses Resets in 1h20m9s, 29m23s, and 45s (+5m), def
     assert.equal(DEFAULT_QUOTA_COOLDOWN_MS, 2 * 3_600_000);
     assert.equal(QUOTA_RESET_BUFFER_MS, 5 * 60_000);
     assert.equal(MIN_QUOTA_COOLDOWN_MS, 5 * 60_000);
-    assert.equal(MAX_QUOTA_COOLDOWN_MS, 24 * 3_600_000);
+    assert.equal(MAX_QUOTA_COOLDOWN_MS, 14 * 24 * 3_600_000);
 
     // 1. Form 1: 'Resets in 1h20m9s' -> 1h20m9s (4,809,000 ms) + 5m (300,000 ms) = 1h25m9s (5,109,000 ms)
     const report1 = router.reportQuotaError(
@@ -699,14 +700,14 @@ test('quota reset cooldown: parses Resets in 1h20m9s, 29m23s, and 45s (+5m), def
       assert.ok(nonsenseReport.logLine.includes('default'), nonsenseReport.logLine);
     }
 
-    // Clamp > 24h to 24h max
+    // The message's own reset time is kept even past a day: 48h + the 5m buffer stays 48h5m.
     const tooLongReport = router.reportQuotaError(
       'claude-opus-5-5',
       'RESOURCE_EXHAUSTED (code 429): Resets in 48h.',
       now
     );
-    assert.equal(tooLongReport.durationMs, MAX_QUOTA_COOLDOWN_MS);
-    assert.equal(tooLongReport.hours, 24);
+    assert.equal(tooLongReport.durationMs, 48 * 3_600_000 + QUOTA_RESET_BUFFER_MS);
+    assert.equal(tooLongReport.hours, (48 * 3_600_000 + QUOTA_RESET_BUFFER_MS) / 3_600_000);
     assert.equal(tooLongReport.source, 'message');
 
     // Clamp < 5m to 5m min
@@ -719,6 +720,142 @@ test('quota reset cooldown: parses Resets in 1h20m9s, 29m23s, and 45s (+5m), def
     assert.equal(tooShortReport.hours, 5 / 60);
     assert.equal(tooShortReport.source, 'message');
     assert.equal(parseQuotaCooldown('Resets in 0s').durationMs, MIN_QUOTA_COOLDOWN_MS);
+
+    // The reset the harness actually sent (127h) is kept, plus the 5 minute buffer,
+    // and never shortened to one day.
+    const longReset = router.reportQuotaError(
+      'gemini-4-argon',
+      'RESOURCE_EXHAUSTED: Individual quota reached. Resets in 127h.',
+      now
+    );
+    assert.equal(longReset.source, 'message');
+    assert.equal(longReset.durationMs, 127 * 3_600_000 + QUOTA_RESET_BUFFER_MS);
+    assert.equal(
+      longReset.until,
+      new Date(now.getTime() + 127 * 3_600_000 + QUOTA_RESET_BUFFER_MS).toISOString()
+    );
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('a cold lane is never picked on any path: with Panda down and the first rung cold, the runner uses the next warm rung', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-panda-cold-skip-'));
+  try {
+    const now = new Date('2026-11-23T03:30:00.000Z');
+    const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+    const folders = ensureInboxFolders(inboxDir);
+
+    fs.writeFileSync(
+      path.join(folders.queued, '01-mechanical-cold-flash.md'),
+      ['# Rename a helper', 'lane: mechanical', '', 'Rename formatDate in src/util/dates.ts.'].join('\n'),
+      'utf8'
+    );
+    fs.writeFileSync(
+      path.join(folders.queued, '02-code-hard-cold-argon.md'),
+      ['# Fix the scheduler race', 'lane: code-hard', '', 'Fix the race in src/scheduler/queue.ts.'].join('\n'),
+      'utf8'
+    );
+
+    const seen: DispatchJobInput[] = [];
+    const { runner } = createMockInboxCommandRunner();
+    const inboxRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir: path.join(tmpRoot, 'antigravity'),
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      adapter: createFakeAdapter(tmpRoot, seen),
+      commandRunner: runner,
+      now: () => now,
+      pandaPool: { ...DEFAULT_PANDA_POOL },
+      pandaFetch: (async () => {
+        throw new Error('connect ECONNREFUSED 192.168.0.40:8765');
+      }) as unknown as typeof fetch,
+    });
+
+    // The first rung of each ladder is cold, so the fallback path must walk past it.
+    inboxRunner.getRouter().reportQuotaError('gemini-3.8-flash', 'HTTP 429 quota exceeded', now);
+    const tick1 = await inboxRunner.tick();
+    assert.equal(tick1.status, 'done');
+    assert.equal(tick1.jobClass, 'mechanical');
+    assert.notEqual(tick1.lane, 'gemini-3.8-flash');
+    assert.equal(tick1.modelPickedBy, 'fallback');
+    assert.equal(seen[0].lane, tick1.lane);
+
+    inboxRunner.getRouter().reportQuotaError('gemini-4-argon', 'HTTP 429 quota exceeded', now);
+    const tick2 = await inboxRunner.tick();
+    assert.equal(tick2.status, 'done');
+    assert.equal(tick2.jobClass, 'code-hard');
+    assert.notEqual(tick2.lane, 'gemini-4-argon');
+    assert.equal(tick2.modelPickedBy, 'fallback');
+    assert.equal(seen[1].lane, tick2.lane);
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('a quota error mid-run never retries on a lane that is already cold', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-panda-quota-retry-'));
+  try {
+    const now = new Date('2026-11-23T03:35:00.000Z');
+    const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+    const folders = ensureInboxFolders(inboxDir);
+    fs.writeFileSync(
+      path.join(folders.queued, '01-code-hard-quota.md'),
+      ['# Fix the scheduler race', 'lane: code-hard', '', 'Fix the race in src/scheduler/queue.ts.'].join('\n'),
+      'utf8'
+    );
+
+    const seen: DispatchJobInput[] = [];
+    const quotaOutput =
+      'RESOURCE_EXHAUSTED (code 429): Individual quota reached. Resets in 127h.';
+    const { runner } = createMockInboxCommandRunner();
+    const inboxRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir: path.join(tmpRoot, 'antigravity'),
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      adapter: {
+        name: 'agy',
+        async dispatch(input: DispatchJobInput): Promise<DispatchHandle> {
+          seen.push(input);
+          const exhausted = seen.length === 1;
+          return {
+            jobId: input.jobId ?? 'mock-job',
+            adapter: 'agy',
+            lane: input.lane,
+            harness: 'agy',
+            promptPath: path.join(tmpRoot, 'prompt.txt'),
+            sanitizedPrompt: input.prompt,
+            mode: 'headless-cli',
+            httpSessionSupported: false,
+            note: 'mock lane run without agy',
+            poll: async () => ({
+              done: true,
+              prUrl: exhausted ? null : parsePrUrlFromOutput(`Opened pull request ${MOCK_PR_URL}`),
+              output: exhausted ? quotaOutput : `Opened pull request ${MOCK_PR_URL}`,
+              error: exhausted ? quotaOutput : null,
+              exitCode: exhausted ? 1 : 0,
+            }),
+          };
+        },
+      },
+      commandRunner: runner,
+      now: () => now,
+      pandaPool: { ...DEFAULT_PANDA_POOL },
+      pandaFetch: (async () => {
+        throw new Error('connect ECONNREFUSED 192.168.0.40:8765');
+      }) as unknown as typeof fetch,
+    });
+
+    // claude-opus-5-5 is already cold, so the first attempt lands on gemini-4-argon and then
+    // that lane reports its own quota. The retry must not go back to the cold lane.
+    inboxRunner.getRouter().reportQuotaError('claude-opus-5-5', 'HTTP 429 quota exceeded', now);
+    const tick = await inboxRunner.tick();
+    assert.equal(tick.quotaFallbackTriggered, true);
+    assert.equal(seen.length, 2);
+    assert.equal(seen[0].lane, 'gemini-4-argon');
+    const cold = inboxRunner.getRouter().getActiveColdLanes(now);
+    assert.equal(Boolean(cold[seen[1].lane]), false, `retry used cold lane ${seen[1].lane}`);
+    assert.notEqual(seen[1].lane, seen[0].lane);
   } finally {
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   }

@@ -30,11 +30,11 @@
     "route": {
       "jobClass": "route",
       "lane": "gemini-3.8-flash",
-      "ladder": ["gemini-3.8-flash", "gemini-4-argon"],
+      "ladder": ["gemini-3.8-flash", "claude-sonnet-5-5", "gemini-4-argon", "last-resort"],
       "node": "Alienware",
       "harness": "agy",
       "headless": true,
-      "fallback": "gemini-4-argon",
+      "fallback": "claude-sonnet-5-5",
       "quotaGroup": "agy-gemini",
       "postGate": null,
       "officialOnly": true,
@@ -45,11 +45,11 @@
     "mechanical": {
       "jobClass": "mechanical",
       "lane": "gemini-3.8-flash",
-      "ladder": ["gemini-3.8-flash", "gemini-4-argon"],
+      "ladder": ["gemini-3.8-flash", "claude-sonnet-5-5", "gemini-4-argon", "last-resort"],
       "node": "Alienware",
       "harness": "agy",
       "headless": true,
-      "fallback": "gemini-4-argon",
+      "fallback": "claude-sonnet-5-5",
       "quotaGroup": "agy-gemini",
       "postGate": null,
       "officialOnly": true,
@@ -60,7 +60,7 @@
     "code-bulk": {
       "jobClass": "code-bulk",
       "lane": "claude-sonnet-5-5",
-      "ladder": ["claude-sonnet-5-5", "gemini-4-argon"],
+      "ladder": ["claude-sonnet-5-5", "gemini-4-argon", "claude-opus-5-5", "gemini-3.8-flash", "last-resort"],
       "node": "Alienware",
       "harness": "agy",
       "headless": true,
@@ -75,7 +75,7 @@
     "code-hard": {
       "jobClass": "code-hard",
       "lane": "claude-opus-5-5",
-      "ladder": ["claude-opus-5-5", "gemini-4-argon"],
+      "ladder": ["claude-opus-5-5", "gemini-4-argon", "claude-sonnet-5-5", "gemini-3.8-flash", "last-resort"],
       "node": "Alienware",
       "harness": "agy",
       "headless": true,
@@ -90,7 +90,7 @@
     "engine": {
       "jobClass": "engine",
       "lane": "gemini-4-argon",
-      "ladder": ["gemini-4-argon", "gemini-3.8-flash"],
+      "ladder": ["gemini-4-argon", "claude-opus-5-5", "claude-sonnet-5-5", "last-resort"],
       "node": "Alienware",
       "harness": "agy",
       "headless": true,
@@ -105,7 +105,7 @@
     "design-visual": {
       "jobClass": "design-visual",
       "lane": "claude-opus-5-5",
-      "ladder": ["claude-opus-5-5", "gemini-4-argon"],
+      "ladder": ["claude-opus-5-5", "gemini-4-argon", "claude-sonnet-5-5", "last-resort"],
       "node": "Alienware",
       "harness": "agy",
       "headless": false,
@@ -120,7 +120,7 @@
     "research": {
       "jobClass": "research",
       "lane": "claude-opus-5-5",
-      "ladder": ["claude-opus-5-5", "gemini-4-argon"],
+      "ladder": ["claude-opus-5-5", "gemini-4-argon", "claude-sonnet-5-5", "last-resort"],
       "node": "Alienware",
       "harness": "agy",
       "headless": true,

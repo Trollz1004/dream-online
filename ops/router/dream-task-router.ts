@@ -896,9 +896,10 @@ export const QUOTA_RESET_BUFFER_MS = 5 * 60_000;
 export const MIN_QUOTA_COOLDOWN_MS = 5 * 60_000;
 
 /**
- * Maximum allowed quota cooldown duration (24 hours).
+ * Maximum allowed quota cooldown duration (14 days). A reset the harness states itself
+ * is kept even past this; the cap only bounds a time that was not in the message.
  */
-export const MAX_QUOTA_COOLDOWN_MS = 24 * 3_600_000;
+export const MAX_QUOTA_COOLDOWN_MS = 14 * 24 * 3_600_000;
 
 export type QuotaCooldownSource = 'message' | 'default';
 
@@ -936,9 +937,10 @@ function parseResetsInTokenMs(token: string): number | null {
 
 /**
  * Parses the cooldown duration and source ('message' or 'default') from a quota or 429 error.
- * - Reads "Resets in 1h20m9s", "Resets in 29m23s", "Resets in 45s" and adds 5 minutes.
- * - When the text carries no valid time, defaults to DEFAULT_QUOTA_COOLDOWN_HOURS (2 hours).
- * - Clamps all durations to [MIN_QUOTA_COOLDOWN_MS (5m), MAX_QUOTA_COOLDOWN_MS (24h)].
+ * - Reads "Resets in 1h20m9s", "Resets in 29m23s", "Resets in 45s", "Resets in 127h" and adds 5 minutes.
+ * - A reset time the message states itself is kept as written, even past a day.
+ * - When the text carries no valid time, defaults to DEFAULT_QUOTA_COOLDOWN_HOURS (2 hours),
+ *   and a time that was not in the message is clamped to [5m, 14d].
  */
 export function parseQuotaCooldown(
   errorInput?: string | Error | { hours?: number; retryAfterHours?: number; message?: string; status?: number },
@@ -994,7 +996,8 @@ export function parseQuotaCooldown(
       const token = resetsMatches[i]?.[1] ?? '';
       const parsedResetMs = parseResetsInTokenMs(token);
       if (parsedResetMs !== null) {
-        const durationMs = clampQuotaCooldownMs(parsedResetMs + QUOTA_RESET_BUFFER_MS);
+        // The harness said when it resets, so that time wins even when it is longer than the cap.
+        const durationMs = Math.max(MIN_QUOTA_COOLDOWN_MS, parsedResetMs + QUOTA_RESET_BUFFER_MS);
         return {
           durationMs,
           hours: durationMs / 3_600_000,
@@ -1546,6 +1549,33 @@ export class JevRouter {
     return Boolean(active[lane]);
   }
 
+  /**
+   * First lane of the job class ladder that is not cold right now.
+   * The preferred lane leads when it is warm; a null result means every rung is cold.
+   */
+  public firstWarmRung(
+    jobClass: string,
+    now: Date = new Date(),
+    preferredLane?: string | null
+  ): string | null {
+    const table = loadLaneTable(this.lanesPath);
+    const row = table.lanes[jobClass as JevJobClass];
+    if (!row) return null;
+    const ordered = [
+      ...(preferredLane ? [preferredLane] : []),
+      row.lane,
+      ...(row.ladder ?? []),
+      row.fallback,
+    ];
+    const seen = new Set<string>();
+    for (const candidate of ordered) {
+      if (!candidate || seen.has(candidate)) continue;
+      seen.add(candidate);
+      if (!this.isLaneCold(candidate, now)) return candidate;
+    }
+    return null;
+  }
+
   public route(taskDescription: string, options?: RouteJevTaskOptions): DecisionRecord {
     const now = options?.now ?? new Date();
     const lanesPath = options?.lanesPath ?? this.lanesPath;
@@ -1613,15 +1643,19 @@ export class JevRouter {
 
     if (coldInfo) {
       quotaFallbackUsed = true;
-      let fallbackLane = row.fallback;
-
-      // Tonight's fact: Claude models inside agy share one quota separate from Gemini models,
-      // so a Claude fallback is always a Gemini lane and never another Claude lane in agy.
-      if (isAgyClaudeLane(candidateLane, row.harness) && !isGeminiLane(fallbackLane)) {
-        fallbackLane = 'gemini-4-argon';
+      const ordered = [row.lane, ...(row.ladder ?? []), row.fallback];
+      let fallbackLane: string | null = null;
+      for (const candidate of ordered) {
+        if (candidate === candidateLane || activeColdLanes[candidate]) continue;
+        // Tonight's fact: Claude models inside agy share one quota separate from Gemini models,
+        // so a Claude fallback is always a Gemini lane and never another Claude lane in agy.
+        if (isAgyClaudeLane(candidateLane, row.harness) && !isGeminiLane(candidate)) continue;
+        fallbackLane = candidate;
+        break;
       }
-
-      selectedLane = fallbackLane;
+      // Every rung cold: keep the cold lane only when nothing warm exists at all,
+      // and never substitute one cold lane for another.
+      selectedLane = fallbackLane ?? candidateLane;
       const sourceLabel = coldInfo.source ?? 'default';
       reasonParts.push(
         `Quota fallback: ${candidateLane} (${coldInfo.quotaGroup}) is cold for ${coldInfo.hours}h until ${coldInfo.until} (time from ${sourceLabel}), routed to fallback ${selectedLane}.`

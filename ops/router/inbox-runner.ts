@@ -1801,10 +1801,15 @@ export class InboxRunner {
       };
     }
 
-    // 3. Fallback when Panda is down, slow, or answers something not in the pool (or cold)
+    // 3. Fallback when Panda is down, slow, or answers something not in the pool (or cold).
+    // A cold lane is never picked on this path either: walk the ladder to the first warm rung.
+    const warmRung = this.router.firstWarmRung(routed.decision.job_class, now, routed.decision.lane);
+    const engineFloor = isEngineLane
+      ? this.resolveWarmEngineFloorModel(routed.decision.lane, now)
+      : null;
     const fallbackLane = isEngineLane
-      ? (this.resolveWarmEngineFloorModel(routed.decision.lane, now) ?? routed.decision.lane)
-      : routed.decision.lane;
+      ? (engineFloor ?? warmRung ?? routed.decision.lane)
+      : (warmRung ?? routed.decision.lane);
     const reasonText =
       pandaRes.model && this.router.isLaneCold(pandaRes.model, now)
         ? `Panda /route selected cold lane ${pandaRes.model}`
