@@ -21,6 +21,7 @@ One fact has one home. If the same fact sits in two places, keep the home, repla
 ## Rules
 
 - `docs/house/SPINE.md`: pointers to every rule file (the House, addresses, nodes, pipeline, trusted models, motion, payment accounts).
+- `docs/house/MOTION-GRAMMAR.md`: how the reference page moves, in numbers; read with the motion rule before any site or dashboard build.
 - `docs/standards/AGENT-STANDARD.md`: the standard every agent follows.
 - `AGENTS.md` and `CLAUDE.md`: the short routers each agent program loads.
 - Payments are settled and are not re-audited. The record is docs/PAYMENTS-TRUTH.md in the repository Trollz1004/ANTIGRAVITY.
