@@ -84,7 +84,8 @@ async function run(h: Harness, argv: string[], env: Record<string, string>): Pro
 }
 
 test('Console credit step 4: switched off prints one line, exits 0 and touches neither gh nor the API', async () => {
-  for (const env of [{ ROUTER_CONSOLE_ENABLED: 'false' }, {}]) {
+  const offEnvs: Array<Record<string, string>> = [{ ROUTER_CONSOLE_ENABLED: 'false' }, {}];
+  for (const env of offEnvs) {
     await withHarness(async (h) => {
       const code = await run(h, ['Trollz1004/dream-online', '42'], env);
       assert.equal(code, 0);
