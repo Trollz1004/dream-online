@@ -95,6 +95,7 @@ import {
   type PandaRouteResult,
   resolveAgyModelFromPool,
 } from './panda-route.ts';
+import { RoutineScheduler } from './routines.ts';
 
 export {
   askPandaRoute,
@@ -1009,6 +1010,8 @@ export class InboxRunner {
   private readonly codemapScriptPath: string;
   private readonly codemapTimeoutMs: number;
   private readonly rosterPath?: string;
+  /** Queues due routines from the kitchen folder's orders\routines (see routines.ts). */
+  private readonly routineScheduler: RoutineScheduler;
 
   private isTickActive = false;
   private startupGhChecked = false;
@@ -1078,6 +1081,16 @@ export class InboxRunner {
     this.codemapTimeoutMs = options?.codemapTimeoutMs ?? CODEMAP_BUILD_TIMEOUT_MS;
     this.rosterPath = options?.rosterPath;
     this.adapterWasInjected = Boolean(options?.adapter);
+    // Routines: the kitchen folder is the inbox's parent, so a test inbox in a temp folder never reaches the real kitchen.
+    this.routineScheduler = new RoutineScheduler({
+      kitchenDir: path.dirname(this.inboxDir),
+      queuedDir: path.join(this.inboxDir, 'queued'),
+      runningDir: path.join(this.inboxDir, 'running'),
+      now: this.now,
+      log: (line) => {
+        this.logSafetyDecision(line, 'routine-scheduler');
+      },
+    });
     this.lastResortAdapter = new OmnirouteClaudeCodeAdapter({
       commandRunner: this.commandRunner,
       fleetMapPath: options?.fleetMapPath ?? DEFAULT_FLEET_MAP_PATH,
@@ -1892,6 +1905,9 @@ export class InboxRunner {
     }
 
     const folders = ensureInboxFolders(this.inboxDir);
+
+    // Routines: queue any that are due and have no copy queued or running. Never stops the runner.
+    this.routineScheduler.runDue();
 
     // Concurrency guard and lane liveness check:
     // If a task sits in running\ for more than ten minutes with no agy child process under the runner,

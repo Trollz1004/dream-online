@@ -67,7 +67,7 @@ The live list is the session's own tool list. Used so far: the link to the Alien
 - The support agent on the T5500: a bookings watch every hour and a support audit every day. Both are defined in that agent's own profile on the T5500, and their reports land in the loop-reports folder under the platform's logs there.
 - The wheel runner on the Alienware, always on.
 - Grok on X: a weekly routine on Mondays about 08:00 Eastern from 2026-11-30, drafts only. It is defined as a saved task inside the founder's Grok account.
-- Head-of-kitchen passes: held since 2026-11-24. When they run, they run on Opus.
+- Routines: recurring tickets kept in the kitchen's orders folder under routines, run by the lanes and read by `ops/router/inbox-runner.ts`. The head of kitchen's scheduled time only checks that work.
 
 ## What was done, where, when and why
 
