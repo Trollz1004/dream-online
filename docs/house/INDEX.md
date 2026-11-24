@@ -8,7 +8,7 @@ Checked 2026-11-24 by Fable. Backticks mark a path in this repository and nothin
 
 1. The founder's preferences box is loaded by claude.ai and lives in no repository. It carries the laws and it wins over everything here.
 2. This page says where things live.
-3. Read the current state (next section), then only the files your task names. Do not read older files to be safe.
+3. Read the current state (next section), then only what your task needs: the files the task names and the code files the code map points you to. Do not read older state or ruling files to be safe.
 
 One fact has one home. If the same fact sits in two places, keep the home, replace the copy with a link, and send that by pull request the same day.
 
@@ -64,16 +64,16 @@ The live list is the session's own tool list. Used so far: the link to the Alien
 
 - claude.ai scheduled task, Pickup booking watch: 08:37, 12:37, 16:37 and 20:37 Eastern. It reads new pickup requests from the T5500.
 - T5500 Windows task, ANTIGRAVITY T5500 Keepalive, and the hourly pull that puts merged work live. Both are defined in Trollz1004/ANTIGRAVITY under ops/t5500.
-- The support agent on the T5500: a bookings watch every hour and a support audit every day.
+- The support agent on the T5500: a bookings watch every hour and a support audit every day. Both are defined in that agent's own profile on the T5500, and their reports land in the loop-reports folder under the platform's logs there.
 - The wheel runner on the Alienware, always on.
-- Grok on X: a weekly routine on Mondays about 08:00 Eastern from 2026-11-30, drafts only.
+- Grok on X: a weekly routine on Mondays about 08:00 Eastern from 2026-11-30, drafts only. It is defined as a saved task inside the founder's Grok account.
 - Head-of-kitchen passes: held since 2026-11-24. When they run, they run on Opus.
 
 ## What was done, where, when and why
 
 - Pull requests and their verdict comments are the record of what changed and why.
 - LOG.md and the session-logs folder in claude-to-claude are the record of each session.
-- `ops/router/decisions.log`: what the router decided.
+- The router's decisions log: written at run time into ops/router on the Alienware as decisions.log. It is not tracked in this repository.
 - `ops/node/JOURNAL.md`: the Alienware node's journal.
 
 ## Products
