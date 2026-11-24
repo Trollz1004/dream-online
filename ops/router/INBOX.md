@@ -85,3 +85,14 @@ Scheduled task registration (`DreamRouterInbox`) is performed by the judge or Jo
   ```powershell
   powershell -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\antigravity\DREAM-Engine\ops\node\unregister-inbox-runner.ps1" -Apply
   ```
+
+## 6. Routines (recurring tickets)
+
+Routine work is done by the lanes from routines written once. The head of kitchen only checks it.
+
+- A routine is a normal ticket file in the kitchen folder under `orders\routines\`, with one extra header line: `every: 6h` (units `m`, `h`, `d`) or `daily: 07:30` (local time).
+- On each tick the runner looks at that folder. When a routine is due and no copy of it is in `queued\` or `running\`, it copies the routine into `queued\` with the date and time added to the file name (for example `scout-20261124-0730.md`) and the `every` or `daily` line removed. Everything else in the ticket stays as written.
+- The last run of each routine is kept in `routines-state.json` in the kitchen folder, beside the inbox, never inside a repo. It survives a restart. A new routine with no last run is due at once; a `daily` routine with no last run is due once its time has passed that day.
+- No routine runs more often than every 30 minutes, whatever its header says.
+- A routine with no schedule line, a bad value, or two schedule lines is skipped with one line in `decisions.log` and never stops the runner. Fix the file and it is picked up on the next tick.
+- Code: `ops/router/routines.ts`. Tests: `ops/router/routines.test.ts`, which use a temp folder and never touch the real kitchen.
