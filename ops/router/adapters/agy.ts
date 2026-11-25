@@ -95,12 +95,39 @@ export const defaultCommandRunner: CommandRunner = (
   req: CommandExecRequest
 ): Promise<CommandExecResult> => {
   return new Promise((resolve) => {
-    const effectiveArgs =
+    let commandToRun = req.command;
+    let effectiveArgs =
       req.command === 'git' && req.args[0] === 'worktree'
         ? ['-c', 'core.longpaths=true', ...req.args]
         : req.args;
+
+    if (process.platform === 'win32' && /\.(?:cmd|bat)$/i.test(commandToRun)) {
+      let unwrappedScript: string | null = null;
+      try {
+        if (fs.existsSync(commandToRun)) {
+          const shimText = fs.readFileSync(commandToRun, 'utf8');
+          const m = shimText.match(/"%dp0%\\([^"\r\n]+\.(?:js|mjs|cjs))"/i);
+          if (m && m[1]) {
+            const candidateScript = path.join(path.dirname(commandToRun), m[1]);
+            if (fs.existsSync(candidateScript)) {
+              unwrappedScript = candidateScript;
+            }
+          }
+        }
+      } catch {
+        unwrappedScript = null;
+      }
+      if (unwrappedScript) {
+        commandToRun = process.execPath;
+        effectiveArgs = [unwrappedScript, ...effectiveArgs];
+      } else {
+        effectiveArgs = ['/d', '/s', '/c', commandToRun, ...effectiveArgs];
+        commandToRun = process.env.ComSpec || 'cmd.exe';
+      }
+    }
+
     execFile(
-      req.command,
+      commandToRun,
       effectiveArgs,
       {
         cwd: req.cwd,

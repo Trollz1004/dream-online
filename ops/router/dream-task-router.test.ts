@@ -132,6 +132,10 @@ test('Jev Task Profiler: classifies every one of the 10 fixed job classes with p
       description: 'Research and literature survey on WebRTC congestion control RFC whitepaper options',
     },
     {
+      expectedClass: 'review',
+      description: 'Read pull request #120 and leave one comment; never pushes, merges or approves',
+    },
+    {
       expectedClass: 'judge',
       description: 'AI lanes disagree on PR #61 architecture so Fable judge must issue final ruling',
     },

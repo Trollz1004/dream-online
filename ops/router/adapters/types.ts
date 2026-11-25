@@ -3,6 +3,7 @@
  * (agy headless, Free Claude Code outbox, Hermes over SSH/SCP, and Console-credit judge).
  */
 
+import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { JevJobClass } from '../dream-task-router.ts';
@@ -64,6 +65,70 @@ export function resolveLaneEffort(
 /** GitHub token variables that never reach a lane: gh uses its own stored sign-in instead. */
 export const LANE_SCRUBBED_ENV_NAMES = ['GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN'] as const;
 
+/** Provider API key/token variables stripped so signed-in CLIs use only their stored login. */
+export const PROVIDER_KEY_SCRUBBED_ENV_NAMES = [
+  'OPENAI_API_KEY',
+  'OPENAI_AUTH_TOKEN',
+  'OPENAI_BEARER_TOKEN',
+  'CODEX_API_KEY',
+  'GEMINI_API_KEY',
+  'GOOGLE_API_KEY',
+  'GOOGLE_GENAI_API_KEY',
+  'ANTHROPIC_API_KEY',
+] as const;
+
+/**
+ * Finds an executable on PATH from the given environment (falling back to process.env).
+ * Returns the resolved full path when found on disk, or null when no matching file exists on PATH.
+ */
+export function findExecutableOnPath(
+  binaryName: string,
+  env: NodeJS.ProcessEnv = process.env
+): string | null {
+  const trimmed = binaryName.trim();
+  if (!trimmed) return null;
+  if (path.isAbsolute(trimmed) && fs.existsSync(trimmed)) {
+    try {
+      if (fs.statSync(trimmed).isFile()) return trimmed;
+    } catch {
+      // ignore
+    }
+  }
+
+  const pathKey =
+    Object.keys(env).find((k) => k.toUpperCase() === 'PATH') ??
+    Object.keys(process.env).find((k) => k.toUpperCase() === 'PATH');
+  const rawPath = (pathKey ? env[pathKey] ?? process.env[pathKey] : process.env.PATH) ?? '';
+  const dirs = rawPath
+    .split(path.delimiter)
+    .map((d) => d.trim().replace(/^"+|"+$/g, ''))
+    .filter(Boolean);
+
+  const hasExt = Boolean(path.extname(trimmed));
+  const extensions =
+    process.platform === 'win32'
+      ? hasExt
+        ? ['']
+        : ['.exe', '.cmd', '.bat', '']
+      : hasExt
+        ? ['']
+        : ['', '.cmd', '.exe', '.sh'];
+
+  for (const dir of dirs) {
+    for (const ext of extensions) {
+      const candidate = path.join(dir, `${trimmed}${ext}`);
+      try {
+        if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+          return candidate;
+        }
+      } catch {
+        // ignore unreadable entries
+      }
+    }
+  }
+  return null;
+}
+
 /** Portable path for the runner's dedicated gh config folder so no other lane on the machine can switch its account. */
 export const RUNNER_GH_CONFIG_DIR_PORTABLE = '%USERPROFILE%\\antigravity\\.fable-kitchen\\gh-runner';
 
@@ -113,6 +178,32 @@ export function scrubLaneEnv(
   return clean;
 }
 
+/**
+ * Scrubs both GitHub tokens and provider API keys/tokens so official signed-in CLIs
+ * (codex-cli, gemini-cli) never use an environment key or copied token.
+ */
+export function scrubSignedInCliEnv(
+  env: NodeJS.ProcessEnv = process.env,
+  ghConfigDir?: string
+): NodeJS.ProcessEnv {
+  const clean = scrubLaneEnv(env, ghConfigDir);
+  const forbidden = new Set<string>(PROVIDER_KEY_SCRUBBED_ENV_NAMES);
+  for (const key of Object.keys(clean)) {
+    if (forbidden.has(key.toUpperCase())) {
+      delete clean[key];
+    }
+  }
+  return clean;
+}
+
+export type DispatchAdapterName =
+  | 'agy'
+  | 'codex-cli'
+  | 'gemini-cli'
+  | 'free-claude-code'
+  | 'hermes'
+  | 'omniroute-claude-code';
+
 export interface DispatchPollResult {
   done: boolean;
   prUrl: string | null;
@@ -124,7 +215,7 @@ export interface DispatchPollResult {
 
 export interface DispatchHandle {
   jobId: string;
-  adapter: 'agy' | 'free-claude-code' | 'hermes' | 'omniroute-claude-code';
+  adapter: DispatchAdapterName;
   lane: string;
   harness: string;
   promptPath: string;
@@ -142,7 +233,7 @@ export interface DispatchHandle {
 }
 
 export interface DispatchAdapter {
-  readonly name: 'agy' | 'free-claude-code' | 'hermes' | 'omniroute-claude-code';
+  readonly name: DispatchAdapterName;
   dispatch(input: DispatchJobInput): Promise<DispatchHandle>;
 }
 
@@ -260,7 +351,7 @@ export function detectQuotaOr429Error(
   }
 
   const quotaRegex =
-    /\b429\b|too many requests|quota exceeded|rate[ -]?limit(?:ed| reached| exceeded)?|resource_exhausted|5-hour cap|cooldown/i;
+    /\b429\b|\b401\b|too many requests|quota exceeded|exceeded your current quota|insufficient_quota|usage[ _-]?limit|hit your usage limit|plan limit|rate[ -]?limit(?:ed| reached| exceeded)?|resource_exhausted|5-hour cap|cooldown|not logged in|not signed in|please (?:sign|log) in|login required|sign-in required|run codex login|run gemini|authentication (?:failed|required)|unauthenticated|unauthorized|credentials not found|session expired/i;
   if (exitCode === 429 || quotaRegex.test(combined)) {
     const matchingLine =
       combined
@@ -274,4 +365,21 @@ export function detectQuotaOr429Error(
   }
 
   return { isQuotaError: false, errorSummary: '' };
+}
+
+/**
+ * Formats a CLI quota or sign-in failure in the same shape agy does so the router ladder walks on.
+ */
+export function formatCliQuotaOrSignInFailure(
+  cliName: string,
+  output: string,
+  errorText?: string | null,
+  exitCode?: number | null
+): string | null {
+  const detected = detectQuotaOr429Error(output, errorText, exitCode);
+  if (!detected.isQuotaError) return null;
+  if (/RESOURCE_EXHAUSTED\s*\(code 429\)/i.test(`${output}\n${errorText ?? ''}`)) {
+    return null;
+  }
+  return `AGY_ERROR: {"short_error":"RESOURCE_EXHAUSTED (code 429): ${cliName} quota or sign-in failure: ${detected.errorSummary.replace(/"/g, "'")}"}`;
 }

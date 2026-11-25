@@ -1063,6 +1063,7 @@ test('route(): with the Claude lanes in agy and every Gemini lane cold, a code-h
     });
     router.reportQuotaError('claude-opus-5-5', 'Individual quota reached. Resets in 53h', now);
     router.reportQuotaError('gemini-4-argon', 'Individual quota reached. Resets in 127h', now);
+    router.reportQuotaError('codex', 'Individual quota reached. Resets in 12h', now);
     router.reportQuotaError('gemini-3.8-flash', 'Individual quota reached. Resets in 127h', now);
     router.reportQuotaError('claude-sonnet-5-5', 'Individual quota reached. Resets in 53h', now);
 
