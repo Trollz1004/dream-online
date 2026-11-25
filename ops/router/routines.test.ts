@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
+  IDLE_ROUTINE_MIN_INTERVAL_MS,
+  idleRoutinesStatePath,
   parseRoutine,
   ROUTINE_MIN_INTERVAL_MS,
   RoutineScheduler,
@@ -22,6 +24,7 @@ interface Kitchen {
   kitchenDir: string;
   inboxDir: string;
   routinesDir: string;
+  topicsDir: string;
   queued: string;
   running: string;
 }
@@ -32,8 +35,14 @@ function makeKitchen(): Kitchen {
   const inboxDir = path.join(kitchenDir, 'inbox');
   const folders = ensureInboxFolders(inboxDir);
   const routinesDir = path.join(kitchenDir, 'orders', 'routines');
+  const topicsDir = path.join(kitchenDir, 'orders', 'topics');
   fs.mkdirSync(routinesDir, { recursive: true });
-  return { root, kitchenDir, inboxDir, routinesDir, queued: folders.queued, running: folders.running };
+  fs.mkdirSync(topicsDir, { recursive: true });
+  return { root, kitchenDir, inboxDir, routinesDir, topicsDir, queued: folders.queued, running: folders.running };
+}
+
+function writeTopics(kitchen: Kitchen, name: string, lines: string[]): void {
+  fs.writeFileSync(path.join(kitchen.topicsDir, name), lines.join('\n'), 'utf8');
 }
 
 function makeScheduler(kitchen: Kitchen, clock: { now: Date }, logs: string[]): RoutineScheduler {
@@ -299,6 +308,183 @@ test('the inbox runner queues a due routine on its tick and runs the copy like a
     const doneCopy = fs.readFileSync(path.join(kitchen.inboxDir, 'done', 'scout-20261124-0700.md'), 'utf8');
     assert.ok(doneCopy.includes('Read the code map and report one stale doc.'));
     assert.ok(fs.existsSync(routinesStatePath(kitchen.kitchenDir)));
+  } finally {
+    fs.rmSync(kitchen.root, { recursive: true, force: true });
+  }
+});
+
+test('idle routine does not fire while a ticket is queued or running, and fires when both are empty', () => {
+  const kitchen = makeKitchen();
+  try {
+    writeTopics(kitchen, 'recycle-towns.txt', ['Clermont', 'Leesburg']);
+    writeRoutine(kitchen, 'idle-recycle.md', [
+      '# OnlineRecycle post for {topic}',
+      'lane: mechanical',
+      'repo: ANTIGRAVITY',
+      'base: main',
+      'idle: recycle-towns.txt',
+      '',
+      'Write one blog post for {topic}.',
+    ]);
+    const clock = { now: new Date(2026, 10, 25, 7, 0, 0) };
+    const logs: string[] = [];
+    const scheduler = makeScheduler(kitchen, clock, logs);
+
+    // 1. Does not fire while a ticket is queued.
+    const queuedTicket = path.join(kitchen.queued, 'manual-task.md');
+    fs.writeFileSync(queuedTicket, '# Manual task\n\nDo work.\n', 'utf8');
+    assert.deepEqual(scheduler.runDue(), []);
+
+    // 2. Does not fire while a ticket is running.
+    const runningTicket = path.join(kitchen.running, 'manual-task.md');
+    fs.renameSync(queuedTicket, runningTicket);
+    assert.deepEqual(scheduler.runDue(), []);
+
+    // 3. Fires when both queued and running are empty.
+    fs.rmSync(runningTicket);
+    assert.deepEqual(scheduler.runDue(), ['idle-recycle-20261125-0700.md']);
+
+    const copy = fs.readFileSync(path.join(kitchen.queued, 'idle-recycle-20261125-0700.md'), 'utf8');
+    assert.ok(!/^\s*idle\s*:/im.test(copy), 'idle line must be removed from the queued ticket');
+    assert.ok(copy.includes('# OnlineRecycle post for Clermont'));
+    assert.ok(copy.includes('Write one blog post for Clermont.'));
+    assert.ok(!copy.includes('{topic}'));
+    assert.deepEqual(
+      fs.readFileSync(path.join(kitchen.topicsDir, 'recycle-towns.txt'), 'utf8'),
+      'Clermont\nLeesburg',
+      'topics file itself is never edited'
+    );
+    assert.deepEqual(logs, []);
+  } finally {
+    fs.rmSync(kitchen.root, { recursive: true, force: true });
+  }
+});
+
+test('idle routine uses each topic once in order, skips "skip, done", and stops when the list is used up', () => {
+  const kitchen = makeKitchen();
+  try {
+    const rawTopics = [
+      'Altamonte Springs: skip, done',
+      'Clermont',
+      'Sanford: skip, done',
+      'Leesburg',
+      'Apopka: skip, done',
+    ];
+    writeTopics(kitchen, 'recycle-towns.txt', rawTopics);
+    writeRoutine(kitchen, 'idle-towns.md', [
+      '# Post for {topic}',
+      'idle: recycle-towns.txt',
+      '',
+      'Cover {topic} in Central Florida.',
+    ]);
+
+    const clock = { now: new Date(2026, 10, 25, 7, 0, 0) };
+    const logs: string[] = [];
+    const scheduler = makeScheduler(kitchen, clock, logs);
+
+    // First usable topic: Clermont
+    assert.deepEqual(scheduler.runDue(), ['idle-towns-20261125-0700.md']);
+    const firstCopy = fs.readFileSync(path.join(kitchen.queued, 'idle-towns-20261125-0700.md'), 'utf8');
+    assert.ok(firstCopy.includes('Cover Clermont in Central Florida.'));
+    fs.rmSync(path.join(kitchen.queued, 'idle-towns-20261125-0700.md'));
+
+    // Ten minutes later, next usable topic: Leesburg (Sanford: skip, done is skipped)
+    clock.now = new Date(2026, 10, 25, 7, 10, 0);
+    assert.deepEqual(scheduler.runDue(), ['idle-towns-20261125-0710.md']);
+    const secondCopy = fs.readFileSync(path.join(kitchen.queued, 'idle-towns-20261125-0710.md'), 'utf8');
+    assert.ok(secondCopy.includes('Cover Leesburg in Central Florida.'));
+    fs.rmSync(path.join(kitchen.queued, 'idle-towns-20261125-0710.md'));
+    assert.deepEqual(logs, []);
+
+    // Ten minutes later, all remaining lines are used or 'skip, done': stops firing and logs one line
+    clock.now = new Date(2026, 10, 25, 7, 20, 0);
+    assert.deepEqual(scheduler.runDue(), []);
+    assert.equal(logs.length, 1);
+    assert.match(logs[0], /idle-towns\.md/i);
+    assert.match(logs[0], /ran out/i);
+
+    // Subsequent ticks do not fire and do not log again
+    clock.now = new Date(2026, 10, 25, 7, 30, 0);
+    assert.deepEqual(scheduler.runDue(), []);
+    assert.equal(logs.length, 1);
+
+    // Topics file on disk was never edited
+    assert.equal(
+      fs.readFileSync(path.join(kitchen.topicsDir, 'recycle-towns.txt'), 'utf8'),
+      rawTopics.join('\n')
+    );
+  } finally {
+    fs.rmSync(kitchen.root, { recursive: true, force: true });
+  }
+});
+
+test('idle routines take turns in a fixed order and respect the ten-minute gap', () => {
+  const kitchen = makeKitchen();
+  try {
+    writeTopics(kitchen, 'towns.txt', ['Clermont', 'Leesburg']);
+    writeTopics(kitchen, 'devices.txt', ['laptops and MacBooks', 'UPS battery backups']);
+    writeRoutine(kitchen, '01-towns.md', [
+      '# Town post: {topic}',
+      'idle: towns.txt',
+      '',
+      'Town body for {topic}.',
+    ]);
+    writeRoutine(kitchen, '02-devices.md', [
+      '# Device post: {topic}',
+      'idle: devices.txt',
+      '',
+      'Device body for {topic}.',
+    ]);
+
+    const clock = { now: new Date(2026, 10, 25, 7, 0, 0) };
+    const logs: string[] = [];
+    const scheduler = makeScheduler(kitchen, clock, logs);
+
+    // Turn 1 at 07:00 -> 01-towns.md with Clermont
+    assert.deepEqual(scheduler.runDue(), ['01-towns-20261125-0700.md']);
+    assert.ok(
+      fs.readFileSync(path.join(kitchen.queued, '01-towns-20261125-0700.md'), 'utf8').includes('Town body for Clermont.')
+    );
+    fs.rmSync(path.join(kitchen.queued, '01-towns-20261125-0700.md'));
+
+    // Inside the ten-minute gap (07:01, 07:09): neither idle routine fires even though inbox is empty
+    clock.now = new Date(2026, 10, 25, 7, 1, 0);
+    assert.deepEqual(scheduler.runDue(), []);
+    clock.now = new Date(2026, 10, 25, 7, 9, 59);
+    assert.deepEqual(scheduler.runDue(), []);
+
+    // Turn 2 at 07:10 -> 02-devices.md with laptops and MacBooks
+    clock.now = new Date(2026, 10, 25, 7, 10, 0);
+    assert.deepEqual(scheduler.runDue(), ['02-devices-20261125-0710.md']);
+    assert.ok(
+      fs
+        .readFileSync(path.join(kitchen.queued, '02-devices-20261125-0710.md'), 'utf8')
+        .includes('Device body for laptops and MacBooks.')
+    );
+    fs.rmSync(path.join(kitchen.queued, '02-devices-20261125-0710.md'));
+
+    // Turn 3 at 07:20 -> back to 01-towns.md with Leesburg
+    clock.now = new Date(2026, 10, 25, 7, 20, 0);
+    assert.deepEqual(scheduler.runDue(), ['01-towns-20261125-0720.md']);
+    assert.ok(
+      fs.readFileSync(path.join(kitchen.queued, '01-towns-20261125-0720.md'), 'utf8').includes('Town body for Leesburg.')
+    );
+    fs.rmSync(path.join(kitchen.queued, '01-towns-20261125-0720.md'));
+
+    // Turn 4 at 07:30 after a scheduler restart -> 02-devices.md with UPS battery backups
+    clock.now = new Date(2026, 10, 25, 7, 30, 0);
+    assert.deepEqual(makeScheduler(kitchen, clock, logs).runDue(), ['02-devices-20261125-0730.md']);
+    assert.ok(
+      fs
+        .readFileSync(path.join(kitchen.queued, '02-devices-20261125-0730.md'), 'utf8')
+        .includes('Device body for UPS battery backups.')
+    );
+    assert.equal(IDLE_ROUTINE_MIN_INTERVAL_MS, 10 * 60 * 1000);
+    const idleStatePath = idleRoutinesStatePath(kitchen.kitchenDir);
+    assert.equal(path.dirname(idleStatePath), kitchen.kitchenDir);
+    const idleState = JSON.parse(fs.readFileSync(idleStatePath, 'utf8'));
+    assert.deepEqual(idleState.used['towns.txt'], ['Clermont', 'Leesburg']);
+    assert.deepEqual(idleState.used['devices.txt'], ['laptops and MacBooks', 'UPS battery backups']);
   } finally {
     fs.rmSync(kitchen.root, { recursive: true, force: true });
   }
