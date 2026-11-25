@@ -894,13 +894,14 @@ test('a quota error mid-run never retries on a lane that is already cold', async
       }) as unknown as typeof fetch,
     });
 
-    // claude-opus-5-5 is already cold, so the first attempt lands on gemini-4-argon and then
+    // claude-opus-5-5 is already cold, so the first attempt lands on gemini-4-carbon and then
     // that lane reports its own quota. The retry must not go back to the cold lane.
     inboxRunner.getRouter().reportQuotaError('claude-opus-5-5', 'HTTP 429 quota exceeded', now);
     const tick = await inboxRunner.tick();
     assert.equal(tick.quotaFallbackTriggered, true);
     assert.equal(seen.length, 2);
-    assert.equal(seen[0].lane, 'gemini-4-argon');
+    assert.equal(seen[0].lane, 'gemini-4-carbon');
+    assert.equal(seen[1].lane, 'gemini-4-neon');
     const cold = inboxRunner.getRouter().getActiveColdLanes(now);
     assert.equal(Boolean(cold[seen[1].lane]), false, `retry used cold lane ${seen[1].lane}`);
     assert.notEqual(seen[1].lane, seen[0].lane);
@@ -1062,6 +1063,8 @@ test('route(): with the Claude lanes in agy and every Gemini lane cold, a code-h
       lanesStatePath: path.join(tmpRoot, 'lanes-state.json'),
     });
     router.reportQuotaError('claude-opus-5-5', 'Individual quota reached. Resets in 53h', now);
+    router.reportQuotaError('gemini-4-carbon', 'Individual quota reached. Resets in 127h', now);
+    router.reportQuotaError('gemini-4-neon', 'Individual quota reached. Resets in 127h', now);
     router.reportQuotaError('gemini-4-argon', 'Individual quota reached. Resets in 127h', now);
     router.reportQuotaError('gemini-3.8-flash', 'Individual quota reached. Resets in 127h', now);
     router.reportQuotaError('claude-sonnet-5-5', 'Individual quota reached. Resets in 53h', now);
