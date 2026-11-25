@@ -172,40 +172,100 @@ test('Jev Lane Table (ops/router/lanes.json): validates ladder, node/harness/hea
   const validation = validateLaneTable(table);
   assert.equal(validation.valid, true, validation.errors.join('; '));
 
+  // Verify quotaGroups.agy-gemini includes gemini-4-carbon and gemini-4-neon
+  assert.ok(table.quotaGroups['agy-gemini'].lanes.includes('gemini-4-carbon'));
+  assert.ok(table.quotaGroups['agy-gemini'].lanes.includes('gemini-4-neon'));
+  assert.ok(table.quotaGroups['agy-gemini'].lanes.includes('gemini-4-argon'));
+  assert.ok(table.quotaGroups['agy-gemini'].lanes.includes('gemini-3.8-flash'));
+
   // Verify exact ladder assignments
   assert.equal(table.lanes.route.lane, 'gemini-3.8-flash');
   assert.equal(table.lanes.route.harness, 'agy');
+  assert.deepEqual(table.lanes.route.ladder, [
+    'gemini-3.8-flash',
+    'claude-sonnet-5-5',
+    'gemini-4-argon',
+    'last-resort',
+  ]);
   assert.equal(table.lanes.mechanical.lane, 'gemini-3.8-flash');
   assert.equal(table.lanes.mechanical.harness, 'agy');
+  assert.deepEqual(table.lanes.mechanical.ladder, [
+    'gemini-3.8-flash',
+    'claude-sonnet-5-5',
+    'gemini-4-argon',
+    'last-resort',
+  ]);
 
   assert.equal(table.lanes['code-bulk'].lane, 'claude-sonnet-5-5');
   assert.equal(table.lanes['code-bulk'].harness, 'agy');
-  assert.equal(table.lanes['code-bulk'].fallback, 'gemini-4-argon');
+  assert.equal(table.lanes['code-bulk'].fallback, 'gemini-4-carbon');
+  assert.deepEqual(table.lanes['code-bulk'].ladder, [
+    'claude-sonnet-5-5',
+    'gemini-4-carbon',
+    'gemini-4-argon',
+    'claude-opus-5-5',
+    'gemini-3.8-flash',
+    'last-resort',
+  ]);
 
   assert.equal(table.lanes['code-hard'].lane, 'claude-opus-5-5');
   assert.equal(table.lanes['code-hard'].harness, 'agy');
-  assert.equal(table.lanes['code-hard'].fallback, 'gemini-4-argon');
+  assert.equal(table.lanes['code-hard'].fallback, 'gemini-4-carbon');
+  assert.deepEqual(table.lanes['code-hard'].ladder, [
+    'claude-opus-5-5',
+    'gemini-4-carbon',
+    'gemini-4-neon',
+    'gemini-4-argon',
+    'claude-sonnet-5-5',
+    'gemini-3.8-flash',
+    'last-resort',
+  ]);
 
   assert.equal(table.lanes.engine.lane, 'gemini-4-argon');
+  assert.deepEqual(table.lanes.engine.ladder, [
+    'gemini-4-argon',
+    'claude-opus-5-5',
+    'claude-sonnet-5-5',
+    'last-resort',
+  ]);
 
   assert.equal(table.lanes['design-visual'].lane, 'claude-opus-5-5');
-  assert.equal(table.lanes['design-visual'].fallback, 'gemini-4-argon');
+  assert.equal(table.lanes['design-visual'].fallback, 'gemini-4-neon');
   assert.equal(table.lanes['design-visual'].postGate, 'eyes');
+  assert.deepEqual(table.lanes['design-visual'].ladder, [
+    'claude-opus-5-5',
+    'gemini-4-neon',
+    'gemini-4-carbon',
+    'gemini-4-argon',
+    'claude-sonnet-5-5',
+    'last-resort',
+  ]);
 
   assert.equal(table.lanes.research.lane, 'claude-opus-5-5');
-  assert.equal(table.lanes.research.fallback, 'gemini-4-argon');
+  assert.equal(table.lanes.research.fallback, 'gemini-4-neon');
   assert.equal(table.lanes.research.officialOnly, true);
+  assert.deepEqual(table.lanes.research.ladder, [
+    'claude-opus-5-5',
+    'gemini-4-neon',
+    'gemini-4-carbon',
+    'gemini-4-argon',
+    'claude-sonnet-5-5',
+    'last-resort',
+  ]);
 
   assert.equal(table.lanes.judge.lane, 'fable');
   assert.equal(table.lanes.judge.harness, 'claude-code-signed-in');
   assert.ok(table.lanes.judge.neverReceivesJobClasses.includes('route'));
+  assert.deepEqual(table.lanes.judge.ladder, ['fable', 'gemini-4-argon']);
 
   assert.equal(table.lanes['post-x'].lane, 'grok');
   assert.equal(table.lanes['post-x'].harness, 'hermes');
+  assert.deepEqual(table.lanes['post-x'].ladder, ['grok', 'gemini-3.8-flash']);
 
   assert.equal(table.lanes['youtube-upload'].lane, 'youtube-data-api');
   assert.equal(table.lanes['youtube-upload'].visibility, 'private');
   assert.equal(table.lanes['youtube-upload'].neverModel, true);
+  assert.deepEqual(table.lanes['youtube-upload'].ladder, ['youtube-data-api']);
 
   // Every Claude row in agy must have a Gemini fallback and never another Claude lane
   for (const jobClass of JEV_JOB_CLASSES) {
@@ -367,28 +427,30 @@ test('Quota and 429 cold-lane fallback with shared agy Claude quota and secret-f
     assert.equal(router.isLaneCold('claude-opus-5-5', now), true);
     assert.equal(router.isLaneCold('claude-sonnet-5-5', now), true);
     // Gemini lanes in agy have a separate quota and stay warm
+    assert.equal(router.isLaneCold('gemini-4-carbon', now), false);
+    assert.equal(router.isLaneCold('gemini-4-neon', now), false);
     assert.equal(router.isLaneCold('gemini-4-argon', now), false);
     assert.equal(router.isLaneCold('gemini-3.8-flash', now), false);
 
-    // Routing a code-hard task falls back from claude-opus-5-5 to gemini-4-argon
+    // Routing a code-hard task falls back from claude-opus-5-5 to gemini-4-carbon
     const hardDecision = router.route(
       'Fix concurrency deadlock in state machine protocol design',
       { now }
     );
     assert.equal(hardDecision.job_class, 'code-hard');
-    assert.equal(hardDecision.lane, 'gemini-4-argon');
+    assert.equal(hardDecision.lane, 'gemini-4-carbon');
     assert.equal(hardDecision.quota_fallback, true);
     assert.ok(hardDecision.reason.includes('Quota fallback: claude-opus-5-5'));
     assert.ok(hardDecision.cold_lanes['claude-opus-5-5']);
     assert.ok(hardDecision.cold_lanes['claude-sonnet-5-5']);
 
-    // Routing a code-bulk task ALSO falls back from claude-sonnet-5-5 to gemini-4-argon (shared agy-claude quota)
+    // Routing a code-bulk task ALSO falls back from claude-sonnet-5-5 to gemini-4-carbon (shared agy-claude quota)
     const bulkDecision = router.route(
       'Implement CRUD endpoints and write tests across src/services/orders.ts',
       { now }
     );
     assert.equal(bulkDecision.job_class, 'code-bulk');
-    assert.equal(bulkDecision.lane, 'gemini-4-argon');
+    assert.equal(bulkDecision.lane, 'gemini-4-carbon');
     assert.equal(bulkDecision.quota_fallback, true);
     assert.ok(bulkDecision.reason.includes('Quota fallback: claude-sonnet-5-5'));
 
@@ -794,13 +856,98 @@ test('Recipe 7 Item 2 & 5c: A lane returning 429 marks the lane cold through rep
     assert.equal(outcome.ok, true);
     assert.equal(outcome.status, 'passed');
     assert.equal(outcome.quotaFallbackTriggered, true);
-    assert.deepEqual(dispatchedLanes, ['claude-opus-5-5', 'gemini-4-argon']);
-    assert.equal(outcome.finalDecision.lane, 'gemini-4-argon');
+    assert.deepEqual(dispatchedLanes, ['claude-opus-5-5', 'gemini-4-carbon']);
+    assert.equal(outcome.finalDecision.lane, 'gemini-4-carbon');
     assert.equal(outcome.finalDecision.quota_fallback, true);
     assert.equal(outcome.prUrl, 'https://github.com/Trollz1004/dream-online/pull/92');
     // Both claude-opus-5-5 and claude-sonnet-5-5 are marked cold via shared agy-claude quota
     assert.equal(router.isLaneCold('claude-opus-5-5', now), true);
     assert.equal(router.isLaneCold('claude-sonnet-5-5', now), true);
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('Gemini 4 Carbon and Neon ladders: with both agy Claude lanes cold, code-hard and code-bulk land on gemini-4-carbon and research and design-visual land on gemini-4-neon; with all three Gemini 4 lanes cold they fall through to the next rung', () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-router-carbon-neon-'));
+  try {
+    const now = new Date('2026-11-25T15:00:00Z');
+    const router = new JevRouter({
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+    });
+
+    // 1. Mark agy-claude cold (marks both claude-opus-5-5 and claude-sonnet-5-5 cold)
+    router.reportQuotaError('claude-opus-5-5', 'Individual quota reached. Resets in 134h.', now);
+    assert.equal(router.isLaneCold('claude-opus-5-5', now), true);
+    assert.equal(router.isLaneCold('claude-sonnet-5-5', now), true);
+
+    const codeHardWarmG4 = router.route(
+      'Fix distributed state machine concurrency deadlock and race condition',
+      { now }
+    );
+    assert.equal(codeHardWarmG4.job_class, 'code-hard');
+    assert.equal(codeHardWarmG4.lane, 'gemini-4-carbon');
+
+    const codeBulkWarmG4 = router.route(
+      'Implement CRUD endpoints and write unit tests across src/api/handlers.ts',
+      { now }
+    );
+    assert.equal(codeBulkWarmG4.job_class, 'code-bulk');
+    assert.equal(codeBulkWarmG4.lane, 'gemini-4-carbon');
+
+    const researchWarmG4 = router.route(
+      'Research and literature survey on WebRTC congestion control RFC whitepaper options',
+      { now }
+    );
+    assert.equal(researchWarmG4.job_class, 'research');
+    assert.equal(researchWarmG4.lane, 'gemini-4-neon');
+
+    const designWarmG4 = router.route(
+      'Redesign hero section layout in src/styles/hud.css with side-by-side screenshot for Eyes gate',
+      { now, screenshotRequired: true }
+    );
+    assert.equal(designWarmG4.job_class, 'design-visual');
+    assert.equal(designWarmG4.lane, 'gemini-4-neon');
+
+    // 2. Mark all three Gemini 4 lanes (gemini-4-carbon, gemini-4-neon, gemini-4-argon) cold and verify fall-through to next rung
+    router.reportQuotaError('gemini-4-carbon', 'Individual quota reached. Resets in 24h.', now);
+    router.reportQuotaError('gemini-4-neon', 'Individual quota reached. Resets in 24h.', now);
+    router.reportQuotaError('gemini-4-argon', 'Individual quota reached. Resets in 24h.', now);
+
+    assert.equal(router.isLaneCold('gemini-4-carbon', now), true);
+    assert.equal(router.isLaneCold('gemini-4-neon', now), true);
+    assert.equal(router.isLaneCold('gemini-4-argon', now), true);
+
+    // With agy-claude and all three Gemini 4 lanes cold:
+    // code-hard and code-bulk fall through past claude-sonnet-5-5/claude-opus-5-5 (shared agy-claude quota) to gemini-3.8-flash;
+    // research and design-visual fall through past claude-sonnet-5-5 to last-resort.
+    const codeHardAfterG4 = router.route(
+      'Fix distributed state machine concurrency deadlock and race condition',
+      { now }
+    );
+    assert.equal(codeHardAfterG4.job_class, 'code-hard');
+    assert.equal(codeHardAfterG4.lane, 'gemini-3.8-flash');
+
+    const codeBulkAfterG4 = router.route(
+      'Implement CRUD endpoints and write unit tests across src/api/handlers.ts',
+      { now }
+    );
+    assert.equal(codeBulkAfterG4.job_class, 'code-bulk');
+    assert.equal(codeBulkAfterG4.lane, 'gemini-3.8-flash');
+
+    const researchAfterG4 = router.route(
+      'Research and literature survey on WebRTC congestion control RFC whitepaper options',
+      { now }
+    );
+    assert.equal(researchAfterG4.job_class, 'research');
+    assert.equal(researchAfterG4.lane, 'last-resort');
+
+    const designAfterG4 = router.route(
+      'Redesign hero section layout in src/styles/hud.css with side-by-side screenshot for Eyes gate',
+      { now, screenshotRequired: true }
+    );
+    assert.equal(designAfterG4.job_class, 'design-visual');
+    assert.equal(designAfterG4.lane, 'last-resort');
   } finally {
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
