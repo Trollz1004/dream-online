@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
+  IDLE_ROUTINE_MIN_INTERVAL_MS,
+  idleRoutinesStatePath,
   parseRoutine,
   ROUTINE_MIN_INTERVAL_MS,
   RoutineScheduler,
@@ -477,6 +479,12 @@ test('idle routines take turns in a fixed order and respect the ten-minute gap',
         .readFileSync(path.join(kitchen.queued, '02-devices-20261125-0730.md'), 'utf8')
         .includes('Device body for UPS battery backups.')
     );
+    assert.equal(IDLE_ROUTINE_MIN_INTERVAL_MS, 10 * 60 * 1000);
+    const idleStatePath = idleRoutinesStatePath(kitchen.kitchenDir);
+    assert.equal(path.dirname(idleStatePath), kitchen.kitchenDir);
+    const idleState = JSON.parse(fs.readFileSync(idleStatePath, 'utf8'));
+    assert.deepEqual(idleState.used['towns.txt'], ['Clermont', 'Leesburg']);
+    assert.deepEqual(idleState.used['devices.txt'], ['laptops and MacBooks', 'UPS battery backups']);
   } finally {
     fs.rmSync(kitchen.root, { recursive: true, force: true });
   }
