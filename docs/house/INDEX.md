@@ -76,6 +76,7 @@ The live list is the session's own tool list. Used so far: the link to the Alien
 - LOG.md and the session-logs folder in claude-to-claude are the record of each session.
 - The router's decisions log: written at run time into ops/router on the Alienware as decisions.log. It is not tracked in this repository.
 - `ops/node/JOURNAL.md`: the Alienware node's journal.
+- `ops/handoffs/SCOUT-MCP-TASKS-2026-11-25.md`: read-only scout of whether the kitchen can hand results back through the MCP Tasks extension instead of a timer (2026-11-25).
 
 ## Products
 
