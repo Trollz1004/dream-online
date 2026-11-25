@@ -11,7 +11,7 @@ export const HOUSE_MOTION_RULE_PATH = 'docs/house/HOUSE-MOTION-RULE.md';
 export const HOUSE_MOTION_RULE_HEADER =
   'Canonical copy. The drop box copy is the draft; this file is what lanes read.';
 export const HOUSE_MOTION_RULE_SHA256 =
-  '823d60135160daa8f514e85622958063d3a8626eb3feffc1adeaaacc5f2c22e9';
+  'a97f82e5eab300b97ebc1717ff7bea81bb29715d63d6ef7c9c97616cde32170a';
 
 export const PAYMENT_ACCOUNTS_RULE_PATH = 'docs/house/PAYMENT-ACCOUNTS-RULE.md';
 export const PAYMENT_ACCOUNTS_RULE_HEADER =

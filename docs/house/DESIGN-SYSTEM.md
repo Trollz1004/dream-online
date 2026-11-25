@@ -43,6 +43,7 @@ Ruled by Joshua on 2026-10-01 and drawn by the Claude judge lane the same night 
 3. Hit areas are 44 px or larger. Focus is visible. Real buttons and links; nothing clickable is a `div`.
 4. Every light carries its time. A stale green is a bug.
 5. Our own styles only. Nothing copied, traced or named from anyone else's work; other sites are ideas, never sources.
+6. Amended 2026-11-24: item 10 of `docs/house/HOUSE-MOTION-RULE.md` adds floating bars, the edge light and the carbon-fibre ground, and it wins over the starfield line above for new work. A starfield already shipped stays until Josh says. Where this file and the motion rule differ on text contrast, the motion rule's 7 to 1 is used.
 
 ## Where it goes
 
