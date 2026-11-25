@@ -48,6 +48,23 @@ export interface BuiltAgyCommand {
   command: string;
   args: string[];
   sanitizedPrompt: string;
+  modelId: string;
+}
+
+/**
+ * Turns a lane name and an effort into the effective model id agy uses
+ * (for example `gemini-4-argon` with effort `high` -> `gemini-4-argon-high`,
+ * `gemini-4-carbon` with effort `high` -> `gemini-4-carbon-high`,
+ * `gemini-4-neon` with effort `high` -> `gemini-4-neon-high`).
+ */
+export function resolveAgyModelId(
+  lane: string,
+  effort?: 'low' | 'medium' | 'high' | null
+): string {
+  const trimmed = lane.trim();
+  if (!effort) return trimmed;
+  const suffix = `-${effort}`;
+  return trimmed.endsWith(suffix) ? trimmed : `${trimmed}${suffix}`;
 }
 
 /**
@@ -57,6 +74,7 @@ export interface BuiltAgyCommand {
 export function buildAgyCommand(input: BuildAgyCommandInput): BuiltAgyCommand {
   const sanitizedPrompt = replaceDoubleQuotesWithSingle(input.prompt).replace(/\0/g, '');
   const printTimeout = input.printTimeout ?? '20m';
+  const modelId = resolveAgyModelId(input.lane, input.effort);
   const args = [
     '--model',
     input.lane,
@@ -72,6 +90,7 @@ export function buildAgyCommand(input: BuildAgyCommandInput): BuiltAgyCommand {
     command: input.agyExecutable ?? 'agy.exe',
     args,
     sanitizedPrompt,
+    modelId,
   };
 }
 
@@ -198,6 +217,11 @@ export class AgyDispatchAdapter implements DispatchAdapter {
       return resolveLaneEffort({ laneSettings: this.laneSettings }, lane);
     }
     return this.fallbackEffort;
+  }
+
+  /** The effective agy model id for a lane and its configured effort (e.g. `gemini-4-carbon-high`, `gemini-4-neon-high`). */
+  public modelIdForLane(lane: string): string {
+    return resolveAgyModelId(lane, this.effortForLane(lane));
   }
 
   public async dispatch(input: DispatchJobInput): Promise<DispatchHandle> {
