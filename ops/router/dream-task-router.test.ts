@@ -132,6 +132,10 @@ test('Jev Task Profiler: classifies every one of the 10 fixed job classes with p
       description: 'Research and literature survey on WebRTC congestion control RFC whitepaper options',
     },
     {
+      expectedClass: 'review',
+      description: 'Read pull request #120 and leave one comment; never pushes, merges or approves',
+    },
+    {
       expectedClass: 'judge',
       description: 'AI lanes disagree on PR #61 architecture so Fable judge must issue final ruling',
     },
@@ -183,6 +187,7 @@ test('Jev Lane Table (ops/router/lanes.json): validates ladder, node/harness/hea
   assert.equal(table.lanes.route.harness, 'agy');
   assert.deepEqual(table.lanes.route.ladder, [
     'gemini-3.8-flash',
+    'gemini-cli',
     'claude-sonnet-5-5',
     'gemini-4-argon',
     'last-resort',
@@ -191,6 +196,7 @@ test('Jev Lane Table (ops/router/lanes.json): validates ladder, node/harness/hea
   assert.equal(table.lanes.mechanical.harness, 'agy');
   assert.deepEqual(table.lanes.mechanical.ladder, [
     'gemini-3.8-flash',
+    'gemini-cli',
     'claude-sonnet-5-5',
     'gemini-4-argon',
     'last-resort',
@@ -203,6 +209,8 @@ test('Jev Lane Table (ops/router/lanes.json): validates ladder, node/harness/hea
     'claude-sonnet-5-5',
     'gemini-4-carbon',
     'gemini-4-argon',
+    'gemini-cli',
+    'codex',
     'claude-opus-5-5',
     'gemini-3.8-flash',
     'last-resort',
@@ -216,6 +224,7 @@ test('Jev Lane Table (ops/router/lanes.json): validates ladder, node/harness/hea
     'gemini-4-carbon',
     'gemini-4-neon',
     'gemini-4-argon',
+    'codex',
     'claude-sonnet-5-5',
     'gemini-3.8-flash',
     'last-resort',
@@ -919,21 +928,22 @@ test('Gemini 4 Carbon and Neon ladders: with both agy Claude lanes cold, code-ha
     assert.equal(router.isLaneCold('gemini-4-argon', now), true);
 
     // With agy-claude and all three Gemini 4 lanes cold:
-    // code-hard and code-bulk fall through past claude-sonnet-5-5/claude-opus-5-5 (shared agy-claude quota) to gemini-3.8-flash;
+    // code-hard falls through to codex (and then gemini-3.8-flash once codex is cold);
+    // code-bulk falls through to gemini-cli (and then codex -> gemini-3.8-flash);
     // research and design-visual fall through past claude-sonnet-5-5 to last-resort.
     const codeHardAfterG4 = router.route(
       'Fix distributed state machine concurrency deadlock and race condition',
       { now }
     );
     assert.equal(codeHardAfterG4.job_class, 'code-hard');
-    assert.equal(codeHardAfterG4.lane, 'gemini-3.8-flash');
+    assert.equal(codeHardAfterG4.lane, 'codex');
 
     const codeBulkAfterG4 = router.route(
       'Implement CRUD endpoints and write unit tests across src/api/handlers.ts',
       { now }
     );
     assert.equal(codeBulkAfterG4.job_class, 'code-bulk');
-    assert.equal(codeBulkAfterG4.lane, 'gemini-3.8-flash');
+    assert.equal(codeBulkAfterG4.lane, 'gemini-cli');
 
     const researchAfterG4 = router.route(
       'Research and literature survey on WebRTC congestion control RFC whitepaper options',

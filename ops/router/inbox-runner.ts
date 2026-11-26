@@ -15,6 +15,8 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   AgyDispatchAdapter,
+  CodexCliDispatchAdapter,
+  GeminiCliDispatchAdapter,
   OmnirouteClaudeCodeAdapter,
   resolveLastResortEnabled,
   type CommandExecRequest,
@@ -157,6 +159,65 @@ export const DEFAULT_ROSTER_PATH = path.join(
 );
 export const ROSTER_PORTABLE_PATH = '%USERPROFILE%\\antigravity\\.fable-kitchen\\roster\\roster.json';
 export const MAX_ROLE_COMPANION_SKILLS = 2;
+export const DEFAULT_INBOX_WORKERS = 2;
+export const INBOX_RUNNER_WORKERS_ENV = 'INBOX_RUNNER_WORKERS';
+export const LANES_NOW_FILE_NAME = 'lanes-now.json';
+export const WHEEL_HARNESSES = [
+  'agy',
+  'gemini-cli',
+  'codex-cli',
+  'omniroute-claude-code',
+] as const;
+export type WheelHarness = (typeof WHEEL_HARNESSES)[number];
+
+export interface HarnessRunningNow {
+  taskId: string;
+  fileName: string;
+  title: string;
+  repo: string;
+  lane: string;
+  jobClass: JevJobClass;
+  since: string;
+}
+
+export interface HarnessLastResult {
+  taskId: string;
+  fileName: string;
+  repo: string;
+  lane: string;
+  jobClass: JevJobClass;
+  status: 'done' | 'failed';
+  prUrl: string | null;
+  exitCode: number | null;
+  finishedAt: string;
+  reason: string;
+}
+
+export interface HarnessNowEntry {
+  harness: string;
+  status: 'running' | 'idle';
+  running: HarnessRunningNow | null;
+  taskId: string | null;
+  fileName: string | null;
+  title: string | null;
+  repo: string | null;
+  lane: string | null;
+  jobClass: JevJobClass | null;
+  since: string | null;
+  lastResult: HarnessLastResult | null;
+}
+
+export interface LanesNowState {
+  updatedAt: string;
+  maxWorkers: number;
+  activeWorkers: number;
+  harnesses: Record<string, HarnessNowEntry>;
+  [harnessKey: string]: unknown;
+}
+
+export function lanesNowPath(kitchenDir: string): string {
+  return path.join(kitchenDir, LANES_NOW_FILE_NAME);
+}
 
 export type RolePickerSource = 'ticket' | 'lane';
 
@@ -288,6 +349,14 @@ export interface InboxRunnerOptions {
   stoppedPollIntervalMs?: number;
   router?: JevRouter;
   adapter?: DispatchAdapter;
+  /** Optional per-harness or per-lane dispatch adapters for multi-harness tests. */
+  adapters?: Partial<Record<string, DispatchAdapter>>;
+  /** Number of concurrent workers across different harnesses and repos (default: 2). */
+  maxWorkers?: number;
+  /** Alias for maxWorkers (default: 2). */
+  workers?: number;
+  /** Optional path override for lanes-now.json (default: <kitchenDir>/lanes-now.json). */
+  lanesNowPath?: string;
   commandRunner?: CommandRunner;
   now?: () => Date;
   extraSecretsToRedact?: string[];
@@ -856,6 +925,7 @@ export function buildCookbookCommonRulesPreamble(options?: {
   /** Portable (%USERPROFILE%) path of the repo's code map. */
   codemapPath?: string;
   task?: Pick<ParsedInboxTask, 'role' | 'skills'> | null;
+  jobClass?: JevJobClass | null;
   rosterPath?: string;
   env?: NodeJS.ProcessEnv;
 }): string {
@@ -866,9 +936,13 @@ export function buildCookbookCommonRulesPreamble(options?: {
     rosterPath: options?.rosterPath,
     env: options?.env,
   });
+  const secondLine =
+    options?.jobClass === 'review'
+      ? 'Review only: only read the pull request and leave one comment with gh pr comment; never push, never merge, never approve, never use --no-verify or --force, never rewrite history.'
+      : `PR only: work on branch ${branchName} and open a pull request with gh against base ${prBase}; never push to main or master, never merge, never use --no-verify or --force, never rewrite history.`;
   return [
     'Use your highest reasoning level. Read docs/standards/AGENT-STANDARD.md before anything else.',
-    `PR only: work on branch ${branchName} and open a pull request with gh against base ${prBase}; never push to main or master, never merge, never use --no-verify or --force, never rewrite history.`,
+    secondLine,
     'No user folder names: never type a Windows user folder name in any file; write %USERPROFILE% and %LOCALAPPDATA%.',
     'No secrets: this repo is public; no secrets, never print an environment value, and follow docs/house/ADDRESS-DOCTRINE.md for 192.168.0.40 and 192.168.0.15 reach addresses.',
     'Proof pasted: a passing exit code is not proof; paste real command output in the PR description.',
@@ -885,6 +959,7 @@ export function prependCookbookRulesToTask(
     branchName?: string;
     baseBranch?: string;
     codemapPath?: string;
+    jobClass?: JevJobClass | null;
     rosterPath?: string;
     env?: NodeJS.ProcessEnv;
   }
@@ -992,9 +1067,14 @@ export class InboxRunner {
   private readonly stoppedPollIntervalMs: number;
   private readonly router: JevRouter;
   private readonly adapter: DispatchAdapter;
+  private readonly codexCliAdapter: CodexCliDispatchAdapter;
+  private readonly geminiCliAdapter: GeminiCliDispatchAdapter;
   private readonly lastResortAdapter: OmnirouteClaudeCodeAdapter;
-  /** True only when the caller handed in its own adapter, which then covers every lane including last-resort. */
+  private readonly customAdapters: Partial<Record<string, DispatchAdapter>>;
+  /** True only when the caller handed in its own single adapter, which then covers every lane including last-resort. */
   private readonly adapterWasInjected: boolean;
+  private readonly maxWorkers: number;
+  private readonly lanesNowPath: string;
   private readonly commandRunner: CommandRunner;
   private readonly now: () => Date;
   private readonly extraSecretsToRedact: string[];
@@ -1013,9 +1093,12 @@ export class InboxRunner {
   /** Queues due routines from the kitchen folder's orders\routines (see routines.ts). */
   private readonly routineScheduler: RoutineScheduler;
 
-  private isTickActive = false;
+  private claimChain: Promise<void> = Promise.resolve();
   private startupGhChecked = false;
+  private readonly activeTaskFiles = new Set<string>();
   private readonly activeRepos = new Set<string>();
+  private readonly activeHarnesses = new Set<string>();
+  private readonly harnessNowEntries = new Map<string, HarnessNowEntry>();
   private readonly livenessRequeuedTaskIds = new Set<string>();
   private consecutiveFailures = 0;
   private stoppedUntilFailedCleared = false;
@@ -1063,7 +1146,9 @@ export class InboxRunner {
         options?.pandaPool ||
         options?.pandaTimeoutMs !== undefined
     );
-    const isMockRunnerTest = Boolean(options?.adapter || options?.commandRunner) && !hasExplicitPandaConfig;
+    const isMockRunnerTest =
+      Boolean(options?.adapter || options?.adapters || options?.commandRunner) &&
+      !hasExplicitPandaConfig;
     this.pandaFetch =
       options?.pandaFetch ??
       (isMockRunnerTest
@@ -1081,27 +1166,55 @@ export class InboxRunner {
     this.codemapTimeoutMs = options?.codemapTimeoutMs ?? CODEMAP_BUILD_TIMEOUT_MS;
     this.rosterPath = options?.rosterPath;
     this.adapterWasInjected = Boolean(options?.adapter);
+    this.customAdapters = options?.adapters ?? {};
+    const envWorkers = Number.parseInt(
+      String(readEnvValue(this.env, INBOX_RUNNER_WORKERS_ENV) ?? '').trim(),
+      10
+    );
+    const configuredWorkers =
+      options?.maxWorkers ??
+      options?.workers ??
+      (Number.isFinite(envWorkers) && envWorkers > 0 ? envWorkers : DEFAULT_INBOX_WORKERS);
+    this.maxWorkers = Math.max(1, Math.floor(configuredWorkers));
+    const kitchenDir = path.dirname(this.inboxDir);
+    this.lanesNowPath = options?.lanesNowPath ?? lanesNowPath(kitchenDir);
+    this.initHarnessNowEntries();
     // Routines: the kitchen folder is the inbox's parent, so a test inbox in a temp folder never reaches the real kitchen.
     this.routineScheduler = new RoutineScheduler({
-      kitchenDir: path.dirname(this.inboxDir),
+      kitchenDir,
       queuedDir: path.join(this.inboxDir, 'queued'),
       runningDir: path.join(this.inboxDir, 'running'),
       now: this.now,
-      isRunning: () => this.isTickActive || this.activeRepos.size > 0,
+      isRunning: () =>
+        this.activeTaskFiles.size > 0 ||
+        this.activeRepos.size > 0 ||
+        this.activeHarnesses.size > 0,
       log: (line) => {
         this.logSafetyDecision(line, 'routine-scheduler');
       },
     });
+    this.codexCliAdapter = new CodexCliDispatchAdapter({
+      kitchenDir,
+      ghConfigDir: this.ghConfigDir,
+      runner: this.commandRunner,
+      now: this.now,
+    });
+    this.geminiCliAdapter = new GeminiCliDispatchAdapter({
+      kitchenDir,
+      ghConfigDir: this.ghConfigDir,
+      runner: this.commandRunner,
+      now: this.now,
+    });
     this.lastResortAdapter = new OmnirouteClaudeCodeAdapter({
       commandRunner: this.commandRunner,
       fleetMapPath: options?.fleetMapPath ?? DEFAULT_FLEET_MAP_PATH,
-      kitchenDir: path.dirname(this.inboxDir),
+      kitchenDir,
       env: options?.env,
     });
     this.adapter =
       options?.adapter ??
       new AgyDispatchAdapter({
-        kitchenDir: path.dirname(this.inboxDir),
+        kitchenDir,
         ghConfigDir: this.ghConfigDir,
         runner: this.commandRunner,
         lanesPath: this.lanesPath,
@@ -1123,12 +1236,168 @@ export class InboxRunner {
     return this.router;
   }
 
+  public getMaxWorkers(): number {
+    return this.maxWorkers;
+  }
+
+  public getLanesNowPath(): string {
+    return this.lanesNowPath;
+  }
+
+  private initHarnessNowEntries(): void {
+    let existing: Record<string, HarnessNowEntry> = {};
+    try {
+      if (fs.existsSync(this.lanesNowPath)) {
+        const parsed = JSON.parse(fs.readFileSync(this.lanesNowPath, 'utf8')) as {
+          harnesses?: Record<string, HarnessNowEntry>;
+        };
+        if (parsed?.harnesses && typeof parsed.harnesses === 'object') {
+          existing = parsed.harnesses;
+        }
+      }
+    } catch {
+      existing = {};
+    }
+    for (const h of WHEEL_HARNESSES) {
+      const prev = existing[h];
+      this.harnessNowEntries.set(h, {
+        harness: h,
+        status: 'idle',
+        running: null,
+        taskId: null,
+        fileName: null,
+        title: null,
+        repo: null,
+        lane: null,
+        jobClass: null,
+        since: null,
+        lastResult: prev?.lastResult ?? null,
+      });
+    }
+  }
+
+  private writeLanesNow(): void {
+    if (isOneDrivePath(this.inboxDir)) return;
+    try {
+      const harnessesObj: Record<string, HarnessNowEntry> = {};
+      for (const h of WHEEL_HARNESSES) {
+        const entry = this.harnessNowEntries.get(h) ?? {
+          harness: h,
+          status: 'idle' as const,
+          running: null,
+          taskId: null,
+          fileName: null,
+          title: null,
+          repo: null,
+          lane: null,
+          jobClass: null,
+          since: null,
+          lastResult: null,
+        };
+        harnessesObj[h] = entry;
+      }
+      for (const [h, entry] of this.harnessNowEntries.entries()) {
+        if (!harnessesObj[h]) {
+          harnessesObj[h] = entry;
+        }
+      }
+      const payload: LanesNowState = {
+        updatedAt: this.now().toISOString(),
+        maxWorkers: this.maxWorkers,
+        activeWorkers: this.activeTaskFiles.size,
+        harnesses: harnessesObj,
+        ...harnessesObj,
+      };
+      const serialized = sanitizeDecisionLogText(
+        `${JSON.stringify(payload, null, 2)}\n`,
+        this.extraSecretsToRedact
+      );
+      fs.mkdirSync(path.dirname(this.lanesNowPath), { recursive: true });
+      fs.writeFileSync(this.lanesNowPath, serialized, 'utf8');
+    } catch {
+      // Best-effort dashboard/judge tracking file; never stops the runner.
+    }
+  }
+
+  private markHarnessRunning(harness: string, info: HarnessRunningNow): void {
+    const prev = this.harnessNowEntries.get(harness);
+    this.harnessNowEntries.set(harness, {
+      harness,
+      status: 'running',
+      running: info,
+      taskId: info.taskId,
+      fileName: info.fileName,
+      title: info.title,
+      repo: info.repo,
+      lane: info.lane,
+      jobClass: info.jobClass,
+      since: info.since,
+      lastResult: prev?.lastResult ?? null,
+    });
+    this.writeLanesNow();
+  }
+
+  private markHarnessIdle(harness: string, lastResult?: HarnessLastResult | null): void {
+    const prev = this.harnessNowEntries.get(harness);
+    this.harnessNowEntries.set(harness, {
+      harness,
+      status: 'idle',
+      running: null,
+      taskId: null,
+      fileName: null,
+      title: null,
+      repo: null,
+      lane: null,
+      jobClass: null,
+      since: null,
+      lastResult: lastResult !== undefined ? lastResult : (prev?.lastResult ?? null),
+    });
+    this.writeLanesNow();
+  }
+
+  private async withClaimLock<T>(fn: () => Promise<T>): Promise<T> {
+    let release!: () => void;
+    const next = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const prev = this.claimChain;
+    this.claimChain = prev.then(() => next, () => next);
+    await prev;
+    try {
+      return await fn();
+    } finally {
+      release();
+    }
+  }
+
   /**
-   * The last-resort lane runs the Claude Code program against OmniRoute, and only when it is
-   * switched on. Every other lane keeps the configured adapter.
+   * Resolves the dispatch adapter for a lane and harness:
+   * - Custom per-lane or per-harness adapters win first.
+   * - Single injected adapter covers all lanes in single-adapter unit tests.
+   * - Otherwise dispatches codex-cli, gemini-cli, omniroute-claude-code (last-resort), or agy.
    */
-  private adapterFor(lane: string): DispatchAdapter {
-    if (lane === 'last-resort' && resolveLastResortEnabled(this.env) && !this.adapterWasInjected) {
+  private adapterFor(lane: string, harness?: string): DispatchAdapter {
+    const resolvedHarness =
+      harness ?? resolveLaneHarness(loadLaneTable(this.lanesPath), lane);
+    if (this.customAdapters[lane]) {
+      return this.customAdapters[lane]!;
+    }
+    if (this.customAdapters[resolvedHarness]) {
+      return this.customAdapters[resolvedHarness]!;
+    }
+    if (this.adapterWasInjected) {
+      return this.adapter;
+    }
+    if (resolvedHarness === 'codex-cli' || lane === 'codex') {
+      return this.codexCliAdapter;
+    }
+    if (resolvedHarness === 'gemini-cli' || lane === 'gemini-cli') {
+      return this.geminiCliAdapter;
+    }
+    if (
+      (resolvedHarness === 'omniroute-claude-code' || lane === 'last-resort') &&
+      resolveLastResortEnabled(this.env)
+    ) {
       return this.lastResortAdapter;
     }
     return this.adapter;
@@ -1711,9 +1980,33 @@ export class InboxRunner {
     pandaFallbackLogLine: string | null;
   }> {
     const now = this.now();
+    const table = loadLaneTable(this.lanesPath);
+    const initialHarness = resolveLaneHarness(table, routed.decision.lane);
     const isEngineLane =
       routed.decision.job_class === 'engine' ||
       parsed.forcedLane?.trim().toLowerCase() === 'engine';
+
+    // Non-agy harnesses (codex-cli, gemini-cli, omniroute-claude-code) and review tickets do not query Panda's agy model pool
+    if (routed.decision.job_class === 'review' || initialHarness !== 'agy') {
+      if (!this.router.isLaneCold(routed.decision.lane, now)) {
+        return {
+          decision: { ...routed.decision, harness: initialHarness },
+          pickedBy: routed.headerModelHonoured ? 'header' : 'fallback',
+          pandaFallbackLogLine: null,
+        };
+      }
+      const warm = this.router.firstWarmRung(routed.decision.job_class, now, routed.decision.lane);
+      const nextLane = warm ?? routed.decision.lane;
+      return {
+        decision: {
+          ...routed.decision,
+          lane: nextLane,
+          harness: resolveLaneHarness(table, nextLane),
+        },
+        pickedBy: 'fallback',
+        pandaFallbackLogLine: null,
+      };
+    }
 
     // 1. Task header model line wins over Panda — when a header decides the model, do not call Panda at all
     if (routed.headerModelClampedByFloor && !this.router.isLaneCold(routed.decision.lane, now)) {
@@ -1861,7 +2154,11 @@ export class InboxRunner {
     const pandaFallbackLogLine = `[panda] fallback to ${fallbackLane}: ${reasonText}`;
 
     return {
-      decision: { ...routed.decision, lane: fallbackLane },
+      decision: {
+        ...routed.decision,
+        lane: fallbackLane,
+        harness: resolveLaneHarness(table, fallbackLane),
+      },
       pickedBy: 'fallback',
       pandaFallbackLogLine,
     };
@@ -1869,219 +2166,38 @@ export class InboxRunner {
 
   /**
    * Executes one tick of the headless inbox runner.
+   * Up to maxWorkers (default 2) tickets may run at the same time when they go to different
+   * harnesses (agy, gemini-cli, codex-cli, omniroute-claude-code) and different repos.
    */
   public async tick(): Promise<InboxTickResult> {
-    // Safety 1: Refuse if inboxDir itself is under OneDrive
-    if (isOneDrivePath(this.inboxDir)) {
-      const rec = this.logSafetyDecision(
-        'Inbox runner refused to run: configured inbox directory is under OneDrive.',
-        'inbox-onedrive-guard'
-      );
-      return {
-        status: 'refused-onedrive-inbox',
-        taskId: null,
-        fileName: null,
-        repo: null,
-        repoRoot: null,
-        lane: null,
-        jobClass: null,
-        decisionHash: rec.task_hash,
-        reason: rec.reason,
-        prUrl: null,
-        prCommentBody: null,
-        requeued: false,
-        requeueCount: 0,
-        quotaFallbackTriggered: false,
-        forcedLaneRequested: null,
-        forcedLaneHonoured: false,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        worktreeRemoved: false,
-        taskFinalPath: null,
-        logFinalPath: null,
-        transitions: [],
-        attempts: [],
-      };
-    }
-
-    const folders = ensureInboxFolders(this.inboxDir);
-
-    // Routines: queue any that are due and have no copy queued or running. Never stops the runner.
-    this.routineScheduler.runDue();
-
-    // Concurrency guard and lane liveness check:
-    // If a task sits in running\ for more than ten minutes with no agy child process under the runner,
-    // the runner marks it failed with the reason 'lane process missing' and re-queues it once.
-    if (this.isTickActive) {
-      return {
-        status: 'busy',
-        taskId: null,
-        fileName: null,
-        repo: null,
-        repoRoot: null,
-        lane: null,
-        jobClass: null,
-        decisionHash: null,
-        reason: 'Inbox runner is busy: one task at a time, never two agy runs at once.',
-        prUrl: null,
-        prCommentBody: null,
-        requeued: false,
-        requeueCount: 0,
-        quotaFallbackTriggered: false,
-        forcedLaneRequested: null,
-        forcedLaneHonoured: false,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        worktreeRemoved: false,
-        taskFinalPath: null,
-        logFinalPath: null,
-        transitions: [],
-        attempts: [],
-      };
-    }
-
-    let livenessRequeuedFileName: string | null = null;
-    const transitions: string[] = [];
-    const runningFiles = listMarkdownTaskFilesSortedOldestFirst(folders.running);
-    if (runningFiles.length > 0) {
-      const runningFileName = runningFiles[0];
-      const runningPath = path.join(folders.running, runningFileName);
-      const stat = fs.statSync(runningPath);
-      const runningAgeMs = this.now().getTime() - stat.mtimeMs;
-      const isStale = runningAgeMs > LANE_LIVENESS_TIMEOUT_MS;
-      const agyAlive = isStale ? await this.hasLiveAgyChildProcess() : true;
-
-      if (!isStale || agyAlive) {
-        return {
-          status: 'busy',
-          taskId: null,
-          fileName: null,
-          repo: null,
-          repoRoot: null,
-          lane: null,
-          jobClass: null,
-          decisionHash: null,
-          reason: 'Inbox runner is busy: one task at a time, never two agy runs at once.',
-          prUrl: null,
-          prCommentBody: null,
-          requeued: false,
-          requeueCount: 0,
-          quotaFallbackTriggered: false,
-          forcedLaneRequested: null,
-          forcedLaneHonoured: false,
-          worktreePath: null,
-          branchName: null,
-          baseBranch: null,
-          worktreeRemoved: false,
-          taskFinalPath: null,
-          logFinalPath: null,
-          transitions: [],
-          attempts: [],
+    type ClaimOutcome =
+      | { kind: 'early'; result: InboxTickResult }
+      | {
+          kind: 'claimed';
+          folders: InboxFolders;
+          oldestFileName: string;
+          isLivenessRequeue: boolean;
+          queuedFilePath: string;
+          runningFilePath: string;
+          rawContent: string;
+          parsed: ParsedInboxTask;
+          repoTarget: ResolvedRepoTarget;
+          routed: ReturnType<InboxRunner['routeTaskWithOptionalForcedLane']>;
+          routedHarness: string;
+          transitions: string[];
         };
-      }
 
-      const rawStuck = fs.readFileSync(runningPath, 'utf8');
-      const parsedStuck = parseInboxTaskFile(rawStuck, runningFileName);
-      if (this.livenessRequeuedTaskIds.has(parsedStuck.id)) {
-        this.livenessRequeuedTaskIds.delete(parsedStuck.id);
-        const livenessRecord = this.logSafetyDecision(LANE_PROCESS_MISSING_REASON, rawStuck);
-        const failedTaskPath = path.join(folders.failed, runningFileName);
-        const failedLogPath = path.join(folders.failed, `${parsedStuck.id}.log`);
-        fs.renameSync(runningPath, failedTaskPath);
-        fs.writeFileSync(failedLogPath, `${LANE_PROCESS_MISSING_REASON}\n`, 'utf8');
-        transitions.push('running -> failed');
-        this.consecutiveFailures += 1;
-        if (this.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-          this.enterStoppedState(folders.failed);
-        }
+    const claim = await this.withClaimLock(async (): Promise<ClaimOutcome> => {
+      // Safety 1: Refuse if inboxDir itself is under OneDrive
+      if (isOneDrivePath(this.inboxDir)) {
+        const rec = this.logSafetyDecision(
+          'Inbox runner refused to run: configured inbox directory is under OneDrive.',
+          'inbox-onedrive-guard'
+        );
         return {
-          status: 'failed',
-          taskId: parsedStuck.id,
-          fileName: runningFileName,
-          repo: parsedStuck.repo,
-          repoRoot: null,
-          lane: null,
-          jobClass: null,
-          decisionHash: livenessRecord.task_hash,
-          reason: LANE_PROCESS_MISSING_REASON,
-          prUrl: null,
-          prCommentBody: null,
-          requeued: true,
-          requeueCount: 1,
-          quotaFallbackTriggered: false,
-          forcedLaneRequested: parsedStuck.forcedLane,
-          forcedLaneHonoured: false,
-          worktreePath: null,
-          branchName: null,
-          baseBranch: null,
-          worktreeRemoved: false,
-          taskFinalPath: failedTaskPath,
-          logFinalPath: failedLogPath,
-          transitions,
-          attempts: [],
-        };
-      }
-
-      // Mark failed with reason 'lane process missing' and re-queue it once
-      this.logSafetyDecision(LANE_PROCESS_MISSING_REASON, rawStuck);
-      this.livenessRequeuedTaskIds.add(parsedStuck.id);
-      fs.renameSync(runningPath, path.join(folders.queued, runningFileName));
-      transitions.push('running -> queued (re-queue 1)');
-      livenessRequeuedFileName = runningFileName;
-    }
-
-    // Safety 2: Stop after three consecutive failures until fewer than 3 task files remain in failed/
-    this.checkFailedFolderAndResume();
-    const failedFilesOnDisk = listMarkdownTaskFilesSortedOldestFirst(folders.failed);
-    if (
-      this.stoppedUntilFailedCleared ||
-      this.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES ||
-      failedFilesOnDisk.length >= MAX_CONSECUTIVE_FAILURES
-    ) {
-      if (!this.stoppedUntilFailedCleared) {
-        this.enterStoppedState(folders.failed);
-      }
-      const fileList = failedFilesOnDisk.length > 0 ? failedFilesOnDisk.join(', ') : 'none';
-      return {
-        status: 'stopped-three-failures',
-        taskId: null,
-        fileName: null,
-        repo: null,
-        repoRoot: null,
-        lane: null,
-        jobClass: null,
-        decisionHash: null,
-        reason: `Inbox runner stopped: ${failedFilesOnDisk.length} failures in failed\\ (${fileList}). Move them to failed-cleared\\ to resume.`,
-        prUrl: null,
-        prCommentBody: null,
-        requeued: false,
-        requeueCount: 0,
-        quotaFallbackTriggered: false,
-        forcedLaneRequested: null,
-        forcedLaneHonoured: false,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        worktreeRemoved: false,
-        taskFinalPath: null,
-        logFinalPath: null,
-        transitions: [],
-        attempts: [],
-      };
-    }
-
-    // Check queued/ for the oldest markdown task file
-    const queuedFiles = listMarkdownTaskFilesSortedOldestFirst(folders.queued);
-    if (queuedFiles.length === 0) {
-      if (!this.startupGhChecked) {
-        this.startupGhChecked = true;
-        const startupRefusal = await this.checkGhOwner();
-        if (startupRefusal) {
-          const rec = this.logSafetyDecision(startupRefusal.reason, 'startup-gh-config');
-          return {
-            status: startupRefusal.status,
+          kind: 'early',
+          result: {
+            status: 'refused-onedrive-inbox',
             taskId: null,
             fileName: null,
             repo: null,
@@ -2105,209 +2221,456 @@ export class InboxRunner {
             logFinalPath: null,
             transitions: [],
             attempts: [],
-          };
-        }
-      }
-      return {
-        status: 'idle',
-        taskId: null,
-        fileName: null,
-        repo: null,
-        repoRoot: null,
-        lane: null,
-        jobClass: null,
-        decisionHash: null,
-        reason: 'No task files in queued/.',
-        prUrl: null,
-        prCommentBody: null,
-        requeued: false,
-        requeueCount: 0,
-        quotaFallbackTriggered: false,
-        forcedLaneRequested: null,
-        forcedLaneHonoured: false,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        worktreeRemoved: false,
-        taskFinalPath: null,
-        logFinalPath: null,
-        transitions: [],
-        attempts: [],
-      };
-    }
-
-    this.startupGhChecked = true;
-
-    // Safety 3a: before any other gh call, gh api user must report the expected owner from repos.json.
-    // An empty gh config folder or a wrong account stops the task with a clear log line instead of failing silently later.
-    const ownerRefusal = await this.checkGhOwner();
-    if (ownerRefusal) {
-      const rec = this.logSafetyDecision(ownerRefusal.reason, queuedFiles[0]);
-      return {
-        status: ownerRefusal.status,
-        taskId: null,
-        fileName: queuedFiles[0],
-        repo: null,
-        repoRoot: null,
-        lane: null,
-        jobClass: null,
-        decisionHash: rec.task_hash,
-        reason: rec.reason,
-        prUrl: null,
-        prCommentBody: null,
-        requeued: false,
-        requeueCount: 0,
-        quotaFallbackTriggered: false,
-        forcedLaneRequested: null,
-        forcedLaneHonoured: false,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        worktreeRemoved: false,
-        taskFinalPath: null,
-        logFinalPath: null,
-        transitions: [],
-        attempts: [],
-      };
-    }
-
-    // Safety 3b: Refuse to run if gh is not signed in
-    const ghAuthRes = await this.runCommand({
-      command: 'gh',
-      args: ['auth', 'status'],
-      cwd: this.repoRoot,
-    });
-    if (ghAuthRes.exitCode !== 0) {
-      const portableFolder = toPortablePath(this.ghConfigDir, this.env);
-      const rec = this.logSafetyDecision(
-        `runner gh config empty: run gh auth login with GH_CONFIG_DIR set to ${portableFolder}`,
-        queuedFiles[0]
-      );
-      return {
-        status: 'refused-gh-auth',
-        taskId: null,
-        fileName: queuedFiles[0],
-        repo: null,
-        repoRoot: null,
-        lane: null,
-        jobClass: null,
-        decisionHash: rec.task_hash,
-        reason: rec.reason,
-        prUrl: null,
-        prCommentBody: null,
-        requeued: false,
-        requeueCount: 0,
-        quotaFallbackTriggered: false,
-        forcedLaneRequested: null,
-        forcedLaneHonoured: false,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        worktreeRemoved: false,
-        taskFinalPath: null,
-        logFinalPath: null,
-        transitions: [],
-        attempts: [],
-      };
-    }
-
-    const oldestFileName =
-      livenessRequeuedFileName && queuedFiles.includes(livenessRequeuedFileName)
-        ? livenessRequeuedFileName
-        : queuedFiles[0];
-    const isLivenessRequeue = oldestFileName === livenessRequeuedFileName;
-    const queuedFilePath = path.join(folders.queued, oldestFileName);
-    const runningFilePath = path.join(folders.running, oldestFileName);
-
-    this.isTickActive = true;
-    try {
-      // Move oldest file from queued/ to running/
-      fs.renameSync(queuedFilePath, runningFilePath);
-      transitions.push(isLivenessRequeue ? 'queued -> running (re-queue 1)' : 'queued -> running');
-
-      const rawContent = fs.readFileSync(runningFilePath, 'utf8');
-      const parsed = parseInboxTaskFile(rawContent, oldestFileName);
-
-      // Resolve repo: through the repo map (ops/router/repos.json); an unknown repo or a missing root is refused
-      const repoResolution = resolveRepoTarget(parsed.repo, {
-        map: this.repoMap,
-        env: this.env,
-        selfRoot: this.repoRoot,
-      });
-      if (!repoResolution.ok) {
-        return this.refuseTaskBeforeRun({
-          status: 'refused-unknown-repo',
-          reason: `Refused task ${parsed.id}: ${repoResolution.reason}`,
-          parsed,
-          oldestFileName,
-          runningFilePath,
-          failedDir: folders.failed,
-          repoName: parsed.repo,
-          repoRoot: null,
-          transitions,
-        });
-      }
-      const repoTarget = repoResolution.target;
-      if (!fs.existsSync(repoTarget.root)) {
-        return this.refuseTaskBeforeRun({
-          status: 'refused-repo-root-missing',
-          reason: `Refused task ${parsed.id}: root folder for repo ${repoTarget.name} does not exist (${toPortablePath(repoTarget.root, this.env)}); the root came from ${repoTarget.rootSource}.`,
-          parsed,
-          oldestFileName,
-          runningFilePath,
-          failedDir: folders.failed,
-          repoName: repoTarget.name,
-          repoRoot: repoTarget.root,
-          transitions,
-        });
-      }
-
-      // Repo-level concurrency guard: never two agy runs for the same repo at once
-      if (this.activeRepos.has(repoTarget.name)) {
-        fs.renameSync(runningFilePath, queuedFilePath);
-        transitions.push('running -> queued');
-        return {
-          status: 'busy',
-          taskId: parsed.id,
-          fileName: oldestFileName,
-          repo: repoTarget.name,
-          repoRoot: repoTarget.root,
-          lane: null,
-          jobClass: null,
-          decisionHash: null,
-          reason: `Repo ${repoTarget.name} already has an active agy run.`,
-          prUrl: null,
-          prCommentBody: null,
-          requeued: false,
-          requeueCount: 0,
-          quotaFallbackTriggered: false,
-          forcedLaneRequested: parsed.forcedLane,
-          forcedLaneHonoured: false,
-          worktreePath: null,
-          branchName: null,
-          baseBranch: null,
-          worktreeRemoved: false,
-          taskFinalPath: null,
-          logFinalPath: null,
-          transitions,
-          attempts: [],
+          },
         };
       }
 
-      this.activeRepos.add(repoTarget.name);
-      try {
+      const folders = ensureInboxFolders(this.inboxDir);
+
+      // Routines: queue any that are due and have no copy queued or running. Never stops the runner.
+      this.routineScheduler.runDue();
+
+      // Worker capacity guard: at most maxWorkers concurrent tickets across all harnesses
+      if (this.activeTaskFiles.size >= this.maxWorkers) {
+        return {
+          kind: 'early',
+          result: {
+            status: 'busy',
+            taskId: null,
+            fileName: null,
+            repo: null,
+            repoRoot: null,
+            lane: null,
+            jobClass: null,
+            decisionHash: null,
+            reason: `Inbox runner is busy: all ${this.maxWorkers} workers are active.`,
+            prUrl: null,
+            prCommentBody: null,
+            requeued: false,
+            requeueCount: 0,
+            quotaFallbackTriggered: false,
+            forcedLaneRequested: null,
+            forcedLaneHonoured: false,
+            worktreePath: null,
+            branchName: null,
+            baseBranch: null,
+            worktreeRemoved: false,
+            taskFinalPath: null,
+            logFinalPath: null,
+            transitions: [],
+            attempts: [],
+          },
+        };
+      }
+
+      // Lane liveness check on any orphaned file in running\ (not owned by an active in-process worker):
+      // If a task sits in running\ for more than ten minutes with no agy child process under the runner,
+      // the runner marks it failed with the reason 'lane process missing' and re-queues it once.
+      let livenessRequeuedFileName: string | null = null;
+      const preTransitions: string[] = [];
+      const orphanRunningFiles = listMarkdownTaskFilesSortedOldestFirst(folders.running).filter(
+        (name) => !this.activeTaskFiles.has(name)
+      );
+      if (orphanRunningFiles.length > 0) {
+        const runningFileName = orphanRunningFiles[0];
+        const runningPath = path.join(folders.running, runningFileName);
+        const stat = fs.statSync(runningPath);
+        const runningAgeMs = this.now().getTime() - stat.mtimeMs;
+        const isStale = runningAgeMs > LANE_LIVENESS_TIMEOUT_MS;
+        const agyAlive = isStale ? await this.hasLiveAgyChildProcess() : true;
+
+        if (!isStale || agyAlive) {
+          return {
+            kind: 'early',
+            result: {
+              status: 'busy',
+              taskId: null,
+              fileName: null,
+              repo: null,
+              repoRoot: null,
+              lane: null,
+              jobClass: null,
+              decisionHash: null,
+              reason: 'Inbox runner is busy: one task at a time, never two agy runs at once.',
+              prUrl: null,
+              prCommentBody: null,
+              requeued: false,
+              requeueCount: 0,
+              quotaFallbackTriggered: false,
+              forcedLaneRequested: null,
+              forcedLaneHonoured: false,
+              worktreePath: null,
+              branchName: null,
+              baseBranch: null,
+              worktreeRemoved: false,
+              taskFinalPath: null,
+              logFinalPath: null,
+              transitions: [],
+              attempts: [],
+            },
+          };
+        }
+
+        const rawStuck = fs.readFileSync(runningPath, 'utf8');
+        const parsedStuck = parseInboxTaskFile(rawStuck, runningFileName);
+        if (this.livenessRequeuedTaskIds.has(parsedStuck.id)) {
+          this.livenessRequeuedTaskIds.delete(parsedStuck.id);
+          const livenessRecord = this.logSafetyDecision(LANE_PROCESS_MISSING_REASON, rawStuck);
+          const failedTaskPath = path.join(folders.failed, runningFileName);
+          const failedLogPath = path.join(folders.failed, `${parsedStuck.id}.log`);
+          fs.renameSync(runningPath, failedTaskPath);
+          fs.writeFileSync(failedLogPath, `${LANE_PROCESS_MISSING_REASON}\n`, 'utf8');
+          preTransitions.push('running -> failed');
+          this.consecutiveFailures += 1;
+          if (this.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+            this.enterStoppedState(folders.failed);
+          }
+          return {
+            kind: 'early',
+            result: {
+              status: 'failed',
+              taskId: parsedStuck.id,
+              fileName: runningFileName,
+              repo: parsedStuck.repo,
+              repoRoot: null,
+              lane: null,
+              jobClass: null,
+              decisionHash: livenessRecord.task_hash,
+              reason: LANE_PROCESS_MISSING_REASON,
+              prUrl: null,
+              prCommentBody: null,
+              requeued: true,
+              requeueCount: 1,
+              quotaFallbackTriggered: false,
+              forcedLaneRequested: parsedStuck.forcedLane,
+              forcedLaneHonoured: false,
+              worktreePath: null,
+              branchName: null,
+              baseBranch: null,
+              worktreeRemoved: false,
+              taskFinalPath: failedTaskPath,
+              logFinalPath: failedLogPath,
+              transitions: preTransitions,
+              attempts: [],
+            },
+          };
+        }
+
+        // Mark failed with reason 'lane process missing' and re-queue it once
+        this.logSafetyDecision(LANE_PROCESS_MISSING_REASON, rawStuck);
+        this.livenessRequeuedTaskIds.add(parsedStuck.id);
+        fs.renameSync(runningPath, path.join(folders.queued, runningFileName));
+        preTransitions.push('running -> queued (re-queue 1)');
+        livenessRequeuedFileName = runningFileName;
+      }
+
+      // Safety 2: Stop after three consecutive failures until fewer than 3 task files remain in failed/
+      this.checkFailedFolderAndResume();
+      const failedFilesOnDisk = listMarkdownTaskFilesSortedOldestFirst(folders.failed);
+      if (
+        this.stoppedUntilFailedCleared ||
+        this.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES ||
+        failedFilesOnDisk.length >= MAX_CONSECUTIVE_FAILURES
+      ) {
+        if (!this.stoppedUntilFailedCleared) {
+          this.enterStoppedState(folders.failed);
+        }
+        const fileList = failedFilesOnDisk.length > 0 ? failedFilesOnDisk.join(', ') : 'none';
+        return {
+          kind: 'early',
+          result: {
+            status: 'stopped-three-failures',
+            taskId: null,
+            fileName: null,
+            repo: null,
+            repoRoot: null,
+            lane: null,
+            jobClass: null,
+            decisionHash: null,
+            reason: `Inbox runner stopped: ${failedFilesOnDisk.length} failures in failed\\ (${fileList}). Move them to failed-cleared\\ to resume.`,
+            prUrl: null,
+            prCommentBody: null,
+            requeued: false,
+            requeueCount: 0,
+            quotaFallbackTriggered: false,
+            forcedLaneRequested: null,
+            forcedLaneHonoured: false,
+            worktreePath: null,
+            branchName: null,
+            baseBranch: null,
+            worktreeRemoved: false,
+            taskFinalPath: null,
+            logFinalPath: null,
+            transitions: [],
+            attempts: [],
+          },
+        };
+      }
+
+      // Check queued/ for markdown task files
+      const queuedFiles = listMarkdownTaskFilesSortedOldestFirst(folders.queued);
+      if (queuedFiles.length === 0) {
+        if (!this.startupGhChecked) {
+          this.startupGhChecked = true;
+          const startupRefusal = await this.checkGhOwner();
+          if (startupRefusal) {
+            const rec = this.logSafetyDecision(startupRefusal.reason, 'startup-gh-config');
+            return {
+              kind: 'early',
+              result: {
+                status: startupRefusal.status,
+                taskId: null,
+                fileName: null,
+                repo: null,
+                repoRoot: null,
+                lane: null,
+                jobClass: null,
+                decisionHash: rec.task_hash,
+                reason: rec.reason,
+                prUrl: null,
+                prCommentBody: null,
+                requeued: false,
+                requeueCount: 0,
+                quotaFallbackTriggered: false,
+                forcedLaneRequested: null,
+                forcedLaneHonoured: false,
+                worktreePath: null,
+                branchName: null,
+                baseBranch: null,
+                worktreeRemoved: false,
+                taskFinalPath: null,
+                logFinalPath: null,
+                transitions: [],
+                attempts: [],
+              },
+            };
+          }
+        }
+        return {
+          kind: 'early',
+          result: {
+            status: 'idle',
+            taskId: null,
+            fileName: null,
+            repo: null,
+            repoRoot: null,
+            lane: null,
+            jobClass: null,
+            decisionHash: null,
+            reason: 'No task files in queued/.',
+            prUrl: null,
+            prCommentBody: null,
+            requeued: false,
+            requeueCount: 0,
+            quotaFallbackTriggered: false,
+            forcedLaneRequested: null,
+            forcedLaneHonoured: false,
+            worktreePath: null,
+            branchName: null,
+            baseBranch: null,
+            worktreeRemoved: false,
+            taskFinalPath: null,
+            logFinalPath: null,
+            transitions: [],
+            attempts: [],
+          },
+        };
+      }
+
+      this.startupGhChecked = true;
+
+      // Safety 3a: before any other gh call, gh api user must report the expected owner from repos.json.
+      const ownerRefusal = await this.checkGhOwner();
+      if (ownerRefusal) {
+        const rec = this.logSafetyDecision(ownerRefusal.reason, queuedFiles[0]);
+        return {
+          kind: 'early',
+          result: {
+            status: ownerRefusal.status,
+            taskId: null,
+            fileName: queuedFiles[0],
+            repo: null,
+            repoRoot: null,
+            lane: null,
+            jobClass: null,
+            decisionHash: rec.task_hash,
+            reason: rec.reason,
+            prUrl: null,
+            prCommentBody: null,
+            requeued: false,
+            requeueCount: 0,
+            quotaFallbackTriggered: false,
+            forcedLaneRequested: null,
+            forcedLaneHonoured: false,
+            worktreePath: null,
+            branchName: null,
+            baseBranch: null,
+            worktreeRemoved: false,
+            taskFinalPath: null,
+            logFinalPath: null,
+            transitions: [],
+            attempts: [],
+          },
+        };
+      }
+
+      // Safety 3b: Refuse to run if gh is not signed in
+      const ghAuthRes = await this.runCommand({
+        command: 'gh',
+        args: ['auth', 'status'],
+        cwd: this.repoRoot,
+      });
+      if (ghAuthRes.exitCode !== 0) {
+        const portableFolder = toPortablePath(this.ghConfigDir, this.env);
+        const rec = this.logSafetyDecision(
+          `runner gh config empty: run gh auth login with GH_CONFIG_DIR set to ${portableFolder}`,
+          queuedFiles[0]
+        );
+        return {
+          kind: 'early',
+          result: {
+            status: 'refused-gh-auth',
+            taskId: null,
+            fileName: queuedFiles[0],
+            repo: null,
+            repoRoot: null,
+            lane: null,
+            jobClass: null,
+            decisionHash: rec.task_hash,
+            reason: rec.reason,
+            prUrl: null,
+            prCommentBody: null,
+            requeued: false,
+            requeueCount: 0,
+            quotaFallbackTriggered: false,
+            forcedLaneRequested: null,
+            forcedLaneHonoured: false,
+            worktreePath: null,
+            branchName: null,
+            baseBranch: null,
+            worktreeRemoved: false,
+            taskFinalPath: null,
+            logFinalPath: null,
+            transitions: [],
+            attempts: [],
+          },
+        };
+      }
+
+      const orderedCandidates =
+        livenessRequeuedFileName && queuedFiles.includes(livenessRequeuedFileName)
+          ? [
+              livenessRequeuedFileName,
+              ...queuedFiles.filter((f) => f !== livenessRequeuedFileName),
+            ]
+          : queuedFiles;
+
+      let firstBusyResult: InboxTickResult | null = null;
+      const laneTable = loadLaneTable(this.lanesPath);
+
+      for (const candidateFileName of orderedCandidates) {
+        const isLivenessRequeue = candidateFileName === livenessRequeuedFileName;
+        const transitions = isLivenessRequeue ? [...preTransitions] : [];
+        const queuedFilePath = path.join(folders.queued, candidateFileName);
+        const runningFilePath = path.join(folders.running, candidateFileName);
+        if (!fs.existsSync(queuedFilePath)) continue;
+
+        // Move candidate file from queued/ to running/
+        fs.renameSync(queuedFilePath, runningFilePath);
+        transitions.push(
+          isLivenessRequeue ? 'queued -> running (re-queue 1)' : 'queued -> running'
+        );
+
+        const rawContent = fs.readFileSync(runningFilePath, 'utf8');
+        const parsed = parseInboxTaskFile(rawContent, candidateFileName);
+
+        // Resolve repo: through the repo map (ops/router/repos.json); an unknown repo or a missing root is refused
+        const repoResolution = resolveRepoTarget(parsed.repo, {
+          map: this.repoMap,
+          env: this.env,
+          selfRoot: this.repoRoot,
+        });
+        if (!repoResolution.ok) {
+          return {
+            kind: 'early',
+            result: this.refuseTaskBeforeRun({
+              status: 'refused-unknown-repo',
+              reason: `Refused task ${parsed.id}: ${repoResolution.reason}`,
+              parsed,
+              oldestFileName: candidateFileName,
+              runningFilePath,
+              failedDir: folders.failed,
+              repoName: parsed.repo,
+              repoRoot: null,
+              transitions,
+            }),
+          };
+        }
+        const repoTarget = repoResolution.target;
+        if (!fs.existsSync(repoTarget.root)) {
+          return {
+            kind: 'early',
+            result: this.refuseTaskBeforeRun({
+              status: 'refused-repo-root-missing',
+              reason: `Refused task ${parsed.id}: root folder for repo ${repoTarget.name} does not exist (${toPortablePath(repoTarget.root, this.env)}); the root came from ${repoTarget.rootSource}.`,
+              parsed,
+              oldestFileName: candidateFileName,
+              runningFilePath,
+              failedDir: folders.failed,
+              repoName: repoTarget.name,
+              repoRoot: repoTarget.root,
+              transitions,
+            }),
+          };
+        }
+
+        // Repo-level concurrency guard: never two tickets on the same repo at once
+        if (this.activeRepos.has(repoTarget.name)) {
+          fs.renameSync(runningFilePath, queuedFilePath);
+          transitions.push('running -> queued');
+          if (!firstBusyResult) {
+            firstBusyResult = {
+              status: 'busy',
+              taskId: parsed.id,
+              fileName: candidateFileName,
+              repo: repoTarget.name,
+              repoRoot: repoTarget.root,
+              lane: null,
+              jobClass: null,
+              decisionHash: null,
+              reason: `Repo ${repoTarget.name} already has an active agy run.`,
+              prUrl: null,
+              prCommentBody: null,
+              requeued: false,
+              requeueCount: 0,
+              quotaFallbackTriggered: false,
+              forcedLaneRequested: parsed.forcedLane,
+              forcedLaneHonoured: false,
+              worktreePath: null,
+              branchName: null,
+              baseBranch: null,
+              worktreeRemoved: false,
+              taskFinalPath: null,
+              logFinalPath: null,
+              transitions,
+              attempts: [],
+            };
+          }
+          continue;
+        }
+
         // Safety 4: Refuse a task file that names a path under OneDrive as its inbox
         if (taskNamesOneDriveInbox(rawContent, parsed.inboxHeader)) {
           const refusalRecord = this.logSafetyDecision(
             `Refused task ${parsed.id}: task file names a path under OneDrive as its inbox.`,
             rawContent
           );
-          const failedTaskPath = path.join(folders.failed, oldestFileName);
+          const failedTaskPath = path.join(folders.failed, candidateFileName);
           const failedLogPath = path.join(folders.failed, `${parsed.id}.log`);
           fs.renameSync(runningFilePath, failedTaskPath);
           fs.writeFileSync(
             failedLogPath,
-            `${ sanitizeDecisionLogText(refusalRecord.reason, this.extraSecretsToRedact) }\n`,
+            `${sanitizeDecisionLogText(refusalRecord.reason, this.extraSecretsToRedact)}\n`,
             'utf8'
           );
           transitions.push('running -> failed');
@@ -2317,37 +2680,39 @@ export class InboxRunner {
           }
 
           return {
-            status: 'refused-onedrive-inbox',
-            taskId: parsed.id,
-            fileName: oldestFileName,
-            repo: repoTarget.name,
-            repoRoot: repoTarget.root,
-            lane: null,
-            jobClass: null,
-            decisionHash: refusalRecord.task_hash,
-            reason: refusalRecord.reason,
-            prUrl: null,
-            prCommentBody: null,
-            requeued: false,
-            requeueCount: 0,
-            quotaFallbackTriggered: false,
-            forcedLaneRequested: parsed.forcedLane,
-            forcedLaneHonoured: false,
-            worktreePath: null,
-            branchName: null,
-            baseBranch: null,
-            worktreeRemoved: false,
-            taskFinalPath: failedTaskPath,
-            logFinalPath: failedLogPath,
-            transitions,
-            attempts: [],
+            kind: 'early',
+            result: {
+              status: 'refused-onedrive-inbox',
+              taskId: parsed.id,
+              fileName: candidateFileName,
+              repo: repoTarget.name,
+              repoRoot: repoTarget.root,
+              lane: null,
+              jobClass: null,
+              decisionHash: refusalRecord.task_hash,
+              reason: refusalRecord.reason,
+              prUrl: null,
+              prCommentBody: null,
+              requeued: false,
+              requeueCount: 0,
+              quotaFallbackTriggered: false,
+              forcedLaneRequested: parsed.forcedLane,
+              forcedLaneHonoured: false,
+              worktreePath: null,
+              branchName: null,
+              baseBranch: null,
+              worktreeRemoved: false,
+              taskFinalPath: failedTaskPath,
+              logFinalPath: failedLogPath,
+              transitions,
+              attempts: [],
+            },
           };
         }
 
-        // Profile the task with the core and select the lane (honouring a forced lane only if it exists in
-        // lanes.json) before any worktree exists, so a judge task never costs a fetch or a branch.
+        // Profile the task with the core and select the lane before any worktree exists
         const routed = this.routeTaskWithOptionalForcedLane(parsed);
-        const routedHarness = resolveLaneHarness(loadLaneTable(this.lanesPath), routed.decision.lane);
+        const routedHarness = resolveLaneHarness(laneTable, routed.decision.lane);
         if (
           routed.decision.job_class === 'judge' ||
           routed.decision.harness === JUDGE_HARNESS ||
@@ -2358,39 +2723,178 @@ export class InboxRunner {
             `Parked ${parsed.id} for the judge lane in for-judge/: job class ${routed.decision.job_class}, lane ${routed.decision.lane} (${routedHarness}) is not an executor, so agy was not started.`,
             this.extraSecretsToRedact
           );
-          const parkedTaskPath = path.join(folders.forJudge, oldestFileName);
+          const parkedTaskPath = path.join(folders.forJudge, candidateFileName);
           const parkedLogPath = path.join(folders.forJudge, `${parsed.id}.log`);
           fs.renameSync(runningFilePath, parkedTaskPath);
           fs.writeFileSync(parkedLogPath, `${parkNote}\n`, 'utf8');
           transitions.push('running -> for-judge');
           return {
-            status: 'parked-for-judge',
-            taskId: parsed.id,
-            fileName: oldestFileName,
-            repo: repoTarget.name,
-            repoRoot: repoTarget.root,
-            lane: routed.decision.lane,
-            jobClass: routed.decision.job_class,
-            decisionHash: routed.decision.task_hash,
-            reason: parkNote,
-            prUrl: null,
-            prCommentBody: null,
-            requeued: false,
-            requeueCount: 0,
-            quotaFallbackTriggered: false,
-            forcedLaneRequested: parsed.forcedLane,
-            forcedLaneHonoured: routed.forcedLaneHonoured,
-            worktreePath: null,
-            branchName: null,
-            baseBranch: null,
-            worktreeRemoved: false,
-            taskFinalPath: parkedTaskPath,
-            logFinalPath: parkedLogPath,
-            transitions,
-            attempts: [],
+            kind: 'early',
+            result: {
+              status: 'parked-for-judge',
+              taskId: parsed.id,
+              fileName: candidateFileName,
+              repo: repoTarget.name,
+              repoRoot: repoTarget.root,
+              lane: routed.decision.lane,
+              jobClass: routed.decision.job_class,
+              decisionHash: routed.decision.task_hash,
+              reason: parkNote,
+              prUrl: null,
+              prCommentBody: null,
+              requeued: false,
+              requeueCount: 0,
+              quotaFallbackTriggered: false,
+              forcedLaneRequested: parsed.forcedLane,
+              forcedLaneHonoured: routed.forcedLaneHonoured,
+              worktreePath: null,
+              branchName: null,
+              baseBranch: null,
+              worktreeRemoved: false,
+              taskFinalPath: parkedTaskPath,
+              logFinalPath: parkedLogPath,
+              transitions,
+              attempts: [],
+            },
           };
         }
 
+        // Harness-level concurrency guard: one worker per harness (agy, gemini-cli, codex-cli, omniroute-claude-code)
+        if (this.activeHarnesses.has(routedHarness)) {
+          fs.renameSync(runningFilePath, queuedFilePath);
+          transitions.push('running -> queued');
+          if (!firstBusyResult) {
+            firstBusyResult = {
+              status: 'busy',
+              taskId: parsed.id,
+              fileName: candidateFileName,
+              repo: repoTarget.name,
+              repoRoot: repoTarget.root,
+              lane: routed.decision.lane,
+              jobClass: routed.decision.job_class,
+              decisionHash: routed.decision.task_hash,
+              reason: `Harness ${routedHarness} already has an active run.`,
+              prUrl: null,
+              prCommentBody: null,
+              requeued: false,
+              requeueCount: 0,
+              quotaFallbackTriggered: false,
+              forcedLaneRequested: parsed.forcedLane,
+              forcedLaneHonoured: routed.forcedLaneHonoured,
+              worktreePath: null,
+              branchName: null,
+              baseBranch: null,
+              worktreeRemoved: false,
+              taskFinalPath: null,
+              logFinalPath: null,
+              transitions,
+              attempts: [],
+            };
+          }
+          continue;
+        }
+
+        // Claim worker slot, repo, and harness atomically before releasing the claim lock
+        this.activeTaskFiles.add(candidateFileName);
+        this.activeRepos.add(repoTarget.name);
+        this.activeHarnesses.add(routedHarness);
+        this.markHarnessRunning(routedHarness, {
+          taskId: parsed.id,
+          fileName: candidateFileName,
+          title: parsed.title,
+          repo: repoTarget.name,
+          lane: routed.decision.lane,
+          jobClass: routed.decision.job_class,
+          since: this.now().toISOString(),
+        });
+
+        return {
+          kind: 'claimed',
+          folders,
+          oldestFileName: candidateFileName,
+          isLivenessRequeue,
+          queuedFilePath,
+          runningFilePath,
+          rawContent,
+          parsed,
+          repoTarget,
+          routed,
+          routedHarness,
+          transitions,
+        };
+      }
+
+      return {
+        kind: 'early',
+        result: firstBusyResult ?? {
+          status: 'idle',
+          taskId: null,
+          fileName: null,
+          repo: null,
+          repoRoot: null,
+          lane: null,
+          jobClass: null,
+          decisionHash: null,
+          reason: 'No runnable task files in queued/.',
+          prUrl: null,
+          prCommentBody: null,
+          requeued: false,
+          requeueCount: 0,
+          quotaFallbackTriggered: false,
+          forcedLaneRequested: null,
+          forcedLaneHonoured: false,
+          worktreePath: null,
+          branchName: null,
+          baseBranch: null,
+          worktreeRemoved: false,
+          taskFinalPath: null,
+          logFinalPath: null,
+          transitions: [],
+          attempts: [],
+        },
+      };
+    });
+
+    if (claim.kind === 'early') {
+      return claim.result;
+    }
+
+    const {
+      folders,
+      oldestFileName,
+      isLivenessRequeue,
+      queuedFilePath,
+      runningFilePath,
+      parsed,
+      repoTarget,
+      routed,
+      transitions,
+    } = claim;
+    let activeHarness = claim.routedHarness;
+    const claimedSince = this.now().toISOString();
+
+    const switchActiveHarness = (nextLane: string, nextJobClass: JevJobClass): string => {
+      const nextHarness = resolveLaneHarness(loadLaneTable(this.lanesPath), nextLane);
+      if (nextHarness !== activeHarness) {
+        this.activeHarnesses.delete(activeHarness);
+        this.markHarnessIdle(activeHarness);
+        activeHarness = nextHarness;
+        this.activeHarnesses.add(activeHarness);
+      }
+      this.markHarnessRunning(activeHarness, {
+        taskId: parsed.id,
+        fileName: oldestFileName,
+        title: parsed.title,
+        repo: repoTarget.name,
+        lane: nextLane,
+        jobClass: nextJobClass,
+        since: claimedSince,
+      });
+      return activeHarness;
+    };
+
+    try {
+      try {
         // Resolve base branch from config line (or explicit override) and worktree paths
         const configuredBase =
           parsed.baseOverride ??
@@ -2437,11 +2941,13 @@ export class InboxRunner {
         let modelPickedBy: ModelPickerSource = selectedModel.pickedBy;
         let lastPandaFallbackLogLine: string | null = selectedModel.pandaFallbackLogLine;
         const forcedLaneHonoured = routed.forcedLaneHonoured;
+        switchActiveHarness(decision.lane, decision.job_class);
 
         const basePromptWithRules = prependCookbookRulesToTask(parsed, {
           branchName,
           baseBranch: configuredBase,
           codemapPath: toPortablePath(codemapStatus.mapPath, this.env),
+          jobClass: decision.job_class,
           rosterPath: this.rosterPath,
           env: this.env,
         });
@@ -2500,12 +3006,12 @@ export class InboxRunner {
         };
 
         // Run attempt
-        let handle = await this.adapterFor(decision.lane).dispatch({
+        let handle = await this.adapterFor(decision.lane, activeHarness).dispatch({
           jobId: isLivenessRequeue ? `${parsed.id}-requeue-1` : `${parsed.id}-attempt-1`,
           prompt: currentPrompt,
           jobClass: decision.job_class,
           lane: decision.lane,
-          harness: 'agy',
+          harness: activeHarness,
           node: 'Alienware',
           cwd: worktreePath,
           env: this.laneEnv,
@@ -2550,15 +3056,16 @@ export class InboxRunner {
           fs.renameSync(queuedFilePath, runningFilePath);
           transitions.push('queued -> running (quota fallback)');
 
-          decision = { ...decision, lane: nextLane };
+          const nextHarness = switchActiveHarness(nextLane, decision.job_class);
+          decision = { ...decision, lane: nextLane, harness: nextHarness };
           modelPickedBy = 'fallback';
 
-          handle = await this.adapterFor(decision.lane).dispatch({
+          handle = await this.adapterFor(decision.lane, activeHarness).dispatch({
             jobId: `${parsed.id}-fallback-${attempts.length}`,
             prompt: currentPrompt,
             jobClass: decision.job_class,
             lane: decision.lane,
-            harness: 'agy',
+            harness: activeHarness,
             node: 'Alienware',
             cwd: worktreePath,
             env: this.laneEnv,
@@ -2568,7 +3075,7 @@ export class InboxRunner {
           quotaCheck = detectQuotaOr429Error(pollResult.output, pollResult.error, pollResult.exitCode);
         }
 
-        // Judge evaluation helper (PR URL present, plus Eyes PASS for design-visual)
+        // Judge evaluation helper (PR URL present, plus Eyes PASS for design-visual; review tickets read a PR and leave one comment)
         const evaluateJudge = (
           res: DispatchPollResult,
           activeDecision: DecisionRecord
@@ -2578,7 +3085,11 @@ export class InboxRunner {
           eyesFirstLine: string | null;
           failureReason: string | null;
         } => {
-          const prUrl = res.prUrl ?? parsePrUrlFromOutput(res.output);
+          const isReviewJob = activeDecision.job_class === 'review';
+          const prUrl =
+            res.prUrl ??
+            parsePrUrlFromOutput(res.output) ??
+            (isReviewJob ? parsePrUrlFromOutput(currentPrompt) : null);
           const isDesignVisual =
             activeDecision.job_class === 'design-visual' || activeDecision.post_gate === 'eyes';
           const eyesVerdict = isDesignVisual
@@ -2589,7 +3100,7 @@ export class InboxRunner {
           if (typeof res.exitCode === 'number' && res.exitCode !== 0) {
             failures.push(`lane exited with code ${res.exitCode}`);
           }
-          if (!prUrl) {
+          if (!prUrl && !isReviewJob) {
             failures.push('missing PR URL in lane output');
           }
           if (isDesignVisual && (!eyesVerdict || !eyesVerdict.passed)) {
@@ -2601,7 +3112,7 @@ export class InboxRunner {
           }
 
           return {
-            passed: failures.length === 0 && Boolean(prUrl),
+            passed: failures.length === 0 && (Boolean(prUrl) || isReviewJob),
             prUrl: prUrl ?? null,
             eyesFirstLine: eyesVerdict?.firstLine ?? res.eyesReportFirstLine ?? null,
             failureReason:
@@ -2610,11 +3121,12 @@ export class InboxRunner {
         };
 
         // When the lane pushed but did not open a PR (its own gh trouble), the runner opens it with gh
-        // so finished work is never marked failed because of the lane's gh.
+        // so finished work is never marked failed because of the lane's gh. Review tickets never push or open a PR.
         const ensurePrForResult = async (
           res: DispatchPollResult,
           activeDecision: DecisionRecord
         ): Promise<DispatchPollResult> => {
+          if (activeDecision.job_class === 'review') return res;
           if (res.prUrl ?? parsePrUrlFromOutput(res.output)) return res;
           const ensured = await this.ensurePullRequest({
             repoRoot: repoTarget.root,
@@ -2665,13 +3177,14 @@ export class InboxRunner {
           if (lastPandaFallbackLogLine) {
             combinedLogs.push(lastPandaFallbackLogLine);
           }
+          switchActiveHarness(decision.lane, decision.job_class);
 
-          handle = await this.adapterFor(decision.lane).dispatch({
+          handle = await this.adapterFor(decision.lane, activeHarness).dispatch({
             jobId: `${parsed.id}-requeue-1`,
             prompt: currentPrompt,
             jobClass: decision.job_class,
             lane: decision.lane,
-            harness: 'agy',
+            harness: activeHarness,
             node: 'Alienware',
             cwd: worktreePath,
             env: this.laneEnv,
@@ -2720,21 +3233,24 @@ export class InboxRunner {
         // Earlier failed attempts of that same task do not count toward the three-failure stop.
         const effectivePrUrl =
           judgeEval.prUrl ?? attempts.find((a) => Boolean(a.prUrl))?.prUrl ?? null;
+        const isReviewJob = decision.job_class === 'review';
         const isFallbackOrRequeue = quotaFallbackTriggered || requeueCount > 0;
         const lastAttemptExitedZero =
-          pollResult.exitCode === 0 || /\bagy exit 0\b/i.test(pollResult.output);
+          pollResult.exitCode === 0 ||
+          /\b(?:agy|codex-cli|gemini-cli) exit 0\b/i.test(pollResult.output);
         const hadPriorProcessOrQuotaFailure =
           quotaFallbackTriggered ||
           attempts
             .slice(0, -1)
             .some((a) => a.quotaError || (typeof a.exitCode === 'number' && a.exitCode !== 0));
         const succeeded =
-          (judgeEval.passed && Boolean(effectivePrUrl)) ||
+          (judgeEval.passed && (Boolean(effectivePrUrl) || isReviewJob)) ||
           (isFallbackOrRequeue &&
             lastAttemptExitedZero &&
             (Boolean(effectivePrUrl) ||
+              isReviewJob ||
               hadPriorProcessOrQuotaFailure ||
-              /\bagy exit 0\b/i.test(pollResult.output)));
+              /\b(?:agy|codex-cli|gemini-cli) exit 0\b/i.test(pollResult.output)));
 
         if (succeeded) {
           finalStatus = 'done';
@@ -2747,7 +3263,7 @@ export class InboxRunner {
             }
           }
           const testSummary = extractTestSummaryFromLog(pollResult.output);
-          if (effectivePrUrl) {
+          if (effectivePrUrl && !isReviewJob) {
             prCommentBody = formatRouterPrComment({
               lane: decision.lane,
               node: 'Alienware',
@@ -2805,6 +3321,25 @@ export class InboxRunner {
           worktreeRemoved = rmRes.exitCode === 0;
         }
 
+        const finalReason = succeeded
+          ? decision.reason
+          : isLivenessRequeue
+            ? `${LANE_PROCESS_MISSING_REASON}; ${judgeEval.failureReason ?? 'Judge check failed.'}`
+            : judgeEval.failureReason ?? 'Judge check failed.';
+
+        this.markHarnessIdle(activeHarness, {
+          taskId: parsed.id,
+          fileName: oldestFileName,
+          repo: repoTarget.name,
+          lane: decision.lane,
+          jobClass: decision.job_class,
+          status: finalStatus,
+          prUrl: effectivePrUrl,
+          exitCode: pollResult.exitCode ?? null,
+          finishedAt: this.now().toISOString(),
+          reason: finalReason,
+        });
+
         return {
           status: finalStatus,
           taskId: parsed.id,
@@ -2817,11 +3352,7 @@ export class InboxRunner {
           rolePickedBy,
           jobClass: decision.job_class,
           decisionHash: decision.task_hash,
-          reason: succeeded
-            ? decision.reason
-            : isLivenessRequeue
-              ? `${LANE_PROCESS_MISSING_REASON}; ${judgeEval.failureReason ?? 'Judge check failed.'}`
-              : judgeEval.failureReason ?? 'Judge check failed.',
+          reason: finalReason,
           prUrl: effectivePrUrl,
           prCommentBody,
           requeued: requeueCount > 0,
@@ -2842,7 +3373,12 @@ export class InboxRunner {
         this.activeRepos.delete(repoTarget.name);
       }
     } finally {
-      this.isTickActive = false;
+      this.activeHarnesses.delete(activeHarness);
+      this.activeTaskFiles.delete(oldestFileName);
+      const currentEntry = this.harnessNowEntries.get(activeHarness);
+      if (currentEntry?.status === 'running') {
+        this.markHarnessIdle(activeHarness);
+      }
     }
   }
 }

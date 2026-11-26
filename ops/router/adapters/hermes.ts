@@ -38,6 +38,7 @@ const KNOWN_HERMES_JOB_CLASSES: ReadonlySet<string> = new Set([
   'engine',
   'design-visual',
   'research',
+  'review',
   'judge',
   'post-x',
   'youtube-upload',

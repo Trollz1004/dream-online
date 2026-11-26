@@ -44,6 +44,12 @@
       "reason": "Highest source synthesis accuracy across official Opus and Argon lanes only.",
       "sources": ["ops/router/lanes.json", "docs/standards/AGENT-STANDARD.md"]
     },
+    "review": {
+      "ranked": ["codex", "gemini-cli"],
+      "lane": "codex",
+      "reason": "Signed-in Codex CLI leads pull request review tickets with Gemini CLI as fallback.",
+      "sources": ["ops/router/lanes.json", "docs/standards/AGENT-STANDARD.md"]
+    },
     "judge": {
       "ranked": ["fable", "gemini-4-argon"],
       "lane": "fable",

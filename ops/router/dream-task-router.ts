@@ -12,6 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   AgyDispatchAdapter,
+  CodexCliDispatchAdapter,
   ConsoleCreditAdapter,
   type ConsoleCreditAdapterOptions,
   detectQuotaOr429Error,
@@ -20,6 +21,7 @@ import {
   type DispatchJobInput,
   type DispatchPollResult,
   FreeClaudeCodeDispatchAdapter,
+  GeminiCliDispatchAdapter,
   HermesDispatchAdapter,
   LANE_EFFORT_VALUES,
   type LaneSetting,
@@ -47,6 +49,7 @@ export const JEV_JOB_CLASSES = [
   'engine',
   'design-visual',
   'research',
+  'review',
   'judge',
   'post-x',
   'youtube-upload',
@@ -61,6 +64,7 @@ export const EXECUTOR_JOB_CLASSES = [
   'code-hard',
   'design-visual',
   'research',
+  'review',
 ] as const;
 
 export type ExecutorJobClass = (typeof EXECUTOR_JOB_CLASSES)[number];
@@ -76,6 +80,8 @@ const KNOWN_EXECUTOR_MODEL_LANES = new Set([
   'gemini-3.8-flash',
   'claude-sonnet-5-5',
   'claude-opus-5-5',
+  'codex',
+  'gemini-cli',
   'grok',
   'youtube-data-api',
 ]);
@@ -269,6 +275,18 @@ const DOC_GUARD_WORK_REGEX = /\b(optimi[sz]e|implement|rewrite|render|animate|si
 
 /** A title starting with Fable: (with optional markdown heading or brackets) is a Fable-class signal. */
 const FABLE_TITLE_PREFIX_REGEX = /^(?:#+\s*)?\[?fable\]?\s*:/i;
+
+/** A title starting with Review: (with optional markdown heading or brackets) or a read-only comment review ticket. */
+const REVIEW_TITLE_PREFIX_REGEX = /^(?:#+\s*)?\[?review\]?\s*:/i;
+const REVIEW_TICKET_KEYWORDS = [
+  'leave one comment',
+  'leaves one comment',
+  'only reads a pull request',
+  'only reads pull request',
+  'never pushes, merges or approves',
+  'read-only pr review',
+  'comment on pull request',
+] as const;
 
 interface ExtractedTaskParts {
   title: string;
@@ -582,6 +600,23 @@ export function profileTask(
     }
   }
 
+  // 4b. Review (read-only PR review that leaves one comment and never pushes, merges or approves)
+  const reviewHits = [
+    ...(REVIEW_TITLE_PREFIX_REGEX.test(parts.title.trim()) ? ['review:'] : []),
+    ...matchKeywordList(lower, REVIEW_TICKET_KEYWORDS),
+  ];
+  if (reviewHits.length > 0) {
+    return {
+      jobClass: 'review',
+      reason: toSingleSentence(
+        `The task is a pull request review that leaves one comment without pushing, merging or approving (${reviewHits.join(', ')}) and is classified as review for Codex CLI then Gemini CLI`
+      ),
+      keywordsMatched: reviewHits,
+      fileTypesNamed,
+      screenshotRequired: false,
+    };
+  }
+
   // 5. Judge (Fable on signed-in Claude Code; when no lane header is given, Fable-class signals are matched against the task title / first line only, never the body)
   if (!hasExplicitExecutorModelLane) {
     const judgeHits = matchJudgeSignals(parts.title);
@@ -855,6 +890,14 @@ export function validateLaneTable(table: LaneTable): { valid: boolean; errors: s
     !table.lanes.research?.officialOnly
   ) {
     errors.push('research must go to Opus or Argon through official lanes only');
+  }
+  if (
+    table.lanes.review?.lane !== 'codex' ||
+    table.lanes.review?.harness !== 'codex-cli' ||
+    table.lanes.review?.ladder?.[0] !== 'codex' ||
+    table.lanes.review?.ladder?.[1] !== 'gemini-cli'
+  ) {
+    errors.push('review must go to codex on codex-cli with ladder codex, then gemini-cli');
   }
   if (
     table.lanes.judge?.lane !== 'fable' ||
@@ -1715,6 +1758,7 @@ export class JevRouter {
       };
     }
 
+    const selectedHarness = resolveLaneHarness(table, selectedLane);
     const decision: DecisionRecord = {
       timestamp: now.toISOString(),
       task_hash: taskHash,
@@ -1723,7 +1767,7 @@ export class JevRouter {
       jobClass,
       lane: selectedLane,
       node: row.node,
-      harness: row.harness,
+      harness: selectedHarness,
       headless: row.headless,
       post_gate: row.postGate,
       reason: sanitizedReason,
@@ -1764,6 +1808,12 @@ export class JevRouter {
       if (options?.adapter) return options.adapter;
       if (options?.adapters?.[decision.lane]) return options.adapters[decision.lane]!;
       if (options?.adapters?.[decision.harness]) return options.adapters[decision.harness]!;
+      if (decision.harness === 'codex-cli') {
+        return new CodexCliDispatchAdapter();
+      }
+      if (decision.harness === 'gemini-cli') {
+        return new GeminiCliDispatchAdapter();
+      }
       if (decision.harness === 'hermes') {
         return new HermesDispatchAdapter();
       }

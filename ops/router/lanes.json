@@ -10,6 +10,8 @@
     "claude-opus-5-5": { "effort": "high" },
     "claude-sonnet-5-5": { "effort": "high" },
     "gemini-3.8-flash": { "effort": "none", "note": "agy 1.5.0 rejects --effort for this model, so the adapter omits the flag." },
+    "codex": { "effort": "none", "note": "Official signed-in Codex CLI (codex on PATH) run headless in the ticket worktree." },
+    "gemini-cli": { "effort": "none", "note": "Official signed-in Gemini CLI (gemini on PATH) run headless in the ticket worktree. Separate quota from agy." },
     "last-resort": { "effort": "none", "note": "The Claude Code program pointed at OmniRoute with model auto. An executor lane: PR only, never merges, never the tools reserved for the trusted three. Takes a job only when every rung above it is cold. LAST_RESORT_ENABLED defaults to on." },
     "fable": { "effort": "none", "note": "agy 1.5.0 rejects --effort for this model; fable is a judge lane and never runs through agy." }
   },
@@ -27,13 +29,27 @@
       "sharedQuota": false,
       "fallbackMustBeFamily": "gemini",
       "note": "Gemini models in agy have their own quota separate from Claude models in agy."
+    },
+    "codex-cli": {
+      "harness": "codex-cli",
+      "lanes": ["codex"],
+      "sharedQuota": false,
+      "fallbackMustBeFamily": "gemini",
+      "note": "Signed-in Codex CLI on the Alienware has its own quota separate from agy and Gemini CLI."
+    },
+    "gemini-cli": {
+      "harness": "gemini-cli",
+      "lanes": ["gemini-cli"],
+      "sharedQuota": false,
+      "fallbackMustBeFamily": "gemini",
+      "note": "Signed-in Gemini CLI on the Alienware has its own quota separate from agy."
     }
   },
   "lanes": {
     "route": {
       "jobClass": "route",
       "lane": "gemini-3.8-flash",
-      "ladder": ["gemini-3.8-flash", "claude-sonnet-5-5", "gemini-4-argon", "last-resort"],
+      "ladder": ["gemini-3.8-flash", "gemini-cli", "claude-sonnet-5-5", "gemini-4-argon", "last-resort"],
       "node": "Alienware",
       "harness": "agy",
       "headless": true,
@@ -48,7 +64,7 @@
     "mechanical": {
       "jobClass": "mechanical",
       "lane": "gemini-3.8-flash",
-      "ladder": ["gemini-3.8-flash", "claude-sonnet-5-5", "gemini-4-argon", "last-resort"],
+      "ladder": ["gemini-3.8-flash", "gemini-cli", "claude-sonnet-5-5", "gemini-4-argon", "last-resort"],
       "node": "Alienware",
       "harness": "agy",
       "headless": true,
@@ -63,7 +79,7 @@
     "code-bulk": {
       "jobClass": "code-bulk",
       "lane": "claude-sonnet-5-5",
-      "ladder": ["claude-sonnet-5-5", "gemini-4-carbon", "gemini-4-argon", "claude-opus-5-5", "gemini-3.8-flash", "last-resort"],
+      "ladder": ["claude-sonnet-5-5", "gemini-4-carbon", "gemini-4-argon", "gemini-cli", "codex", "claude-opus-5-5", "gemini-3.8-flash", "last-resort"],
       "node": "Alienware",
       "harness": "agy",
       "headless": true,
@@ -78,7 +94,7 @@
     "code-hard": {
       "jobClass": "code-hard",
       "lane": "claude-opus-5-5",
-      "ladder": ["claude-opus-5-5", "gemini-4-carbon", "gemini-4-neon", "gemini-4-argon", "claude-sonnet-5-5", "gemini-3.8-flash", "last-resort"],
+      "ladder": ["claude-opus-5-5", "gemini-4-carbon", "gemini-4-neon", "gemini-4-argon", "codex", "claude-sonnet-5-5", "gemini-3.8-flash", "last-resort"],
       "node": "Alienware",
       "harness": "agy",
       "headless": true,
@@ -129,6 +145,51 @@
       "headless": true,
       "fallback": "gemini-4-neon",
       "quotaGroup": "agy-claude",
+      "postGate": null,
+      "officialOnly": true,
+      "neverModel": false,
+      "visibility": null,
+      "neverReceivesJobClasses": []
+    },
+    "review": {
+      "jobClass": "review",
+      "lane": "codex",
+      "ladder": ["codex", "gemini-cli"],
+      "node": "Alienware",
+      "harness": "codex-cli",
+      "headless": true,
+      "fallback": "gemini-cli",
+      "quotaGroup": "codex-cli",
+      "postGate": null,
+      "officialOnly": true,
+      "neverModel": false,
+      "visibility": null,
+      "neverReceivesJobClasses": []
+    },
+    "codex": {
+      "jobClass": "code-hard",
+      "lane": "codex",
+      "ladder": ["codex", "gemini-cli", "last-resort"],
+      "node": "Alienware",
+      "harness": "codex-cli",
+      "headless": true,
+      "fallback": "gemini-cli",
+      "quotaGroup": "codex-cli",
+      "postGate": null,
+      "officialOnly": true,
+      "neverModel": false,
+      "visibility": null,
+      "neverReceivesJobClasses": []
+    },
+    "gemini-cli": {
+      "jobClass": "mechanical",
+      "lane": "gemini-cli",
+      "ladder": ["gemini-cli", "claude-sonnet-5-5", "gemini-4-argon", "last-resort"],
+      "node": "Alienware",
+      "harness": "gemini-cli",
+      "headless": true,
+      "fallback": "gemini-4-argon",
+      "quotaGroup": "gemini-cli",
       "postGate": null,
       "officialOnly": true,
       "neverModel": false,

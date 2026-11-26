@@ -24,7 +24,7 @@ test('LADDER-WALK quota error walks whole ladder ends on last-resort in done', a
     );
     const QUOTA = 'AGY_ERROR: {"short_error":"RESOURCE_EXHAUSTED (code 429): Individual quota reached."}';
     const lanesCalled: string[] = [];
-    const quotaLanes = new Set(['gemini-3.8-flash', 'claude-sonnet-5-5', 'claude-opus-5-5', 'gemini-4-argon']);
+    const quotaLanes = new Set(['gemini-3.8-flash', 'gemini-cli', 'claude-sonnet-5-5', 'claude-opus-5-5', 'gemini-4-argon']);
     const adapter: DispatchAdapter = {
       name: 'agy',
       async dispatch(input: DispatchJobInput): Promise<DispatchHandle> {
@@ -68,6 +68,7 @@ test('LADDER-WALK quota error walks whole ladder ends on last-resort in done', a
     assert.ok(!fs.existsSync(path.join(folders.failed, 'ladder-task.md')));
     assert.deepEqual(lanesCalled, [
       'gemini-3.8-flash',
+      'gemini-cli',
       'claude-sonnet-5-5',
       'gemini-4-argon',
       'last-resort',
@@ -254,11 +255,11 @@ test('CARBON-NEON-LADDERS with both agy Claude lanes cold, code-hard and code-bu
 
     const hardFallthrough = await dropAndRun('05-hard-fallthrough', 'code-hard');
     assert.equal(hardFallthrough.status, 'done');
-    assert.equal(hardFallthrough.lane, 'gemini-3.8-flash');
+    assert.equal(hardFallthrough.lane, 'codex');
 
     const bulkFallthrough = await dropAndRun('06-bulk-fallthrough', 'code-bulk');
     assert.equal(bulkFallthrough.status, 'done');
-    assert.equal(bulkFallthrough.lane, 'gemini-3.8-flash');
+    assert.equal(bulkFallthrough.lane, 'gemini-cli');
 
     const researchFallthrough = await dropAndRun('07-research-fallthrough', 'research');
     assert.equal(researchFallthrough.status, 'done');
