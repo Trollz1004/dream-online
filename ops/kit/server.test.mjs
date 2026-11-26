@@ -706,6 +706,25 @@ test('HTTP transport refuses to start without HOUSE_MCP_KEY, binds Alienware hou
     assert.equal(callRes.status, 200);
     const callJson = await callRes.json();
     assert.match(callJson.result.content[0].text, /# House Index/);
+
+    // Verify CLI spawn with HOUSE_MCP_HTTP=1 and no HOUSE_MCP_KEY exits non-zero and never prints a key
+    const noKeyExit = await new Promise((resolve) => {
+      const child = spawn(process.execPath, [SERVER_PATH], {
+        env: {
+          ...process.env,
+          HOUSE_MCP_HTTP: '1',
+          HOUSE_MCP_KEY: '',
+        },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      let stderr = '';
+      child.stderr.on('data', (d) => {
+        stderr += d.toString('utf8');
+      });
+      child.on('close', (code) => resolve({ code, stderr }));
+    });
+    assert.notEqual(noKeyExit.code, 0);
+    assert.match(noKeyExit.stderr, /HOUSE_MCP_KEY/i);
   } finally {
     if (handle) await handle.close();
     fs.rmSync(fx.root, { recursive: true, force: true });

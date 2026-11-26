@@ -43,7 +43,7 @@ One fact has one home. If the same fact sits in two places, keep the home, repla
 
 ## Finding code without reading all of it
 
-- The starter kit connection, named kit: `ops/kit/server.mjs`, with its method card `ops/kit/METHOD.md`. Ask it first: map_search and map_section find code, memory_search and memory_add keep notes, role_get and method_get load one role and one method.
+- The house and starter kit connection, named kit: `ops/kit/server.mjs`, with its method card `ops/kit/METHOD.md` (stdio by default, or LAN streamable HTTP on the Alienware house address when HOUSE_MCP_HTTP is on and HOUSE_MCP_KEY is set). Ask it first: house_index and house_search read house rules and standards, map_search and map_section find code, skills_list and skills_get read repo and OneDrive AGENCY SKILLS, memory_search and memory_add keep notes, role_get and method_get load one role and one method, and wheel_status and wheel_queue check or queue wheel inbox tickets.
 - `ops/codemap`: the code map the kit searches, with its tests.
 - Open a file only after the map has named it.
 
