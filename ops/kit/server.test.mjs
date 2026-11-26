@@ -13,6 +13,14 @@ import {
   memoryAdd,
   roleGet,
   methodGet,
+  houseIndex,
+  houseSearch,
+  skillsList,
+  skillsGet,
+  wheelStatus,
+  wheelQueue,
+  resolveHttpBindHost,
+  startHttpServer,
   handleJsonRpcMessage,
 } from './server.mjs';
 
@@ -356,12 +364,18 @@ test('handleJsonRpcMessage supports initialize, notifications/initialized, ping,
   const listResp = await handleJsonRpcMessage({ jsonrpc: '2.0', id: 3, method: 'tools/list' });
   const toolNames = listResp.result.tools.map((t) => t.name).sort();
   assert.deepEqual(toolNames, [
+    'house_index',
+    'house_search',
     'map_search',
     'map_section',
     'memory_add',
     'memory_search',
     'method_get',
     'role_get',
+    'skills_get',
+    'skills_list',
+    'wheel_queue',
+    'wheel_status',
   ]);
 });
 
@@ -421,12 +435,298 @@ test('stdio JSON-RPC roundtrip over child_process spawn executes initialize, too
     child.stdin.end();
 
     assert.equal(responses.find((r) => r.id === 1).result.serverInfo.name, 'dream-kit');
-    assert.equal(responses.find((r) => r.id === 2).result.tools.length, 6);
+    assert.equal(responses.find((r) => r.id === 2).result.tools.length, 12);
     assert.match(responses.find((r) => r.id === 3).result.content[0].text, /Starter Kit Method Card/);
     assert.match(responses.find((r) => r.id === 4).result.content[0].text, /\/api\/gm\/health/);
     assert.match(responses.find((r) => r.id === 5).result.content[0].text, /Backend Architect/);
     assert.equal(responses.find((r) => r.id === 6).result.isError, true);
   } finally {
+    fs.rmSync(fx.root, { recursive: true, force: true });
+  }
+});
+
+test('house_index returns docs/house/INDEX.md', () => {
+  const res = houseIndex();
+  assert.equal(res.path, 'docs/house/INDEX.md');
+  assert.match(res.text, /# House Index/);
+  assert.match(res.text, /ops\/kit\/server\.mjs/);
+});
+
+test('house_search searches across docs/house and docs/standards', () => {
+  const houseHit = houseSearch({ query: '192.168.0.40' });
+  assert.ok(Array.isArray(houseHit.matches));
+  assert.ok(houseHit.matches.length > 0);
+  assert.ok(houseHit.matches.some((m) => m.file.startsWith('docs/house/')));
+
+  const standardsHit = houseSearch({ query: 'Remake gate' });
+  assert.ok(standardsHit.matches.some((m) => m.file.startsWith('docs/standards/')));
+});
+
+test('skills_list and skills_get list and read from .agents/skills and OneDrive AGENCY SKILLS without modifying files', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kit-skills-test-'));
+  try {
+    const repoSkillsDir = path.join(root, 'repo-skills');
+    const oneDriveDir = path.join(root, 'OneDriveFake');
+    const agencySkillsDir = path.join(oneDriveDir, 'AGENCY SKILLS');
+
+    fs.mkdirSync(path.join(repoSkillsDir, 'tdd'), { recursive: true });
+    const tddPath = path.join(repoSkillsDir, 'tdd', 'SKILL.md');
+    const tddText = '---\nname: tdd\ndescription: "Mandatory Test-Driven Development."\n---\n\n# TDD Skill Body\nWrite failing tests first.\n';
+    fs.writeFileSync(tddPath, tddText, 'utf8');
+
+    fs.mkdirSync(path.join(agencySkillsDir, 'custom-agency-skill'), { recursive: true });
+    const agencySkillPath = path.join(agencySkillsDir, 'custom-agency-skill', 'SKILL.md');
+    const agencySkillText = '---\nname: Custom Agency Skill\ndescription: "OneDrive agency skill description."\n---\n\n# Custom Agency Skill\nRead-only OneDrive skill text.\n';
+    fs.writeFileSync(agencySkillPath, agencySkillText, 'utf8');
+
+    const listed = skillsList(
+      {},
+      {
+        repoSkillsDir,
+        env: { OneDrive: oneDriveDir },
+      },
+    );
+    assert.equal(listed.count, 2);
+    assert.ok(listed.skills.some((s) => s.id === 'tdd' && s.source === '.agents/skills'));
+    assert.ok(listed.skills.some((s) => s.id === 'custom-agency-skill' && s.source === 'agency-skills'));
+
+    const gotRepo = skillsGet(
+      { id: 'tdd' },
+      {
+        repoSkillsDir,
+        env: { OneDrive: oneDriveDir },
+      },
+    );
+    assert.equal(gotRepo.found, true);
+    assert.match(gotRepo.text, /# TDD Skill Body/);
+    assert.equal(fs.readFileSync(tddPath, 'utf8'), tddText);
+
+    const gotAgency = skillsGet(
+      { id: 'custom-agency-skill' },
+      {
+        repoSkillsDir,
+        env: { OneDrive: oneDriveDir },
+      },
+    );
+    assert.equal(gotAgency.found, true);
+    assert.equal(gotAgency.source, 'agency-skills');
+    assert.match(gotAgency.text, /Read-only OneDrive skill text/);
+    assert.equal(fs.readFileSync(agencySkillPath, 'utf8'), agencySkillText);
+
+    assert.throws(
+      () => skillsGet({ id: '../secret' }, { repoSkillsDir, env: { OneDrive: oneDriveDir } }),
+      /Invalid skill id/i,
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('wheel_status reports counts and names for queued, running, done today, and failed tickets', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kit-wheel-status-'));
+  try {
+    const inboxDir = path.join(root, 'inbox');
+    for (const sub of ['queued', 'running', 'done', 'failed']) {
+      fs.mkdirSync(path.join(inboxDir, sub), { recursive: true });
+    }
+
+    fs.writeFileSync(path.join(inboxDir, 'queued', 'q1-first.md'), '# Q1\n', 'utf8');
+    fs.writeFileSync(path.join(inboxDir, 'queued', 'q2-second.md'), '# Q2\n', 'utf8');
+    fs.writeFileSync(path.join(inboxDir, 'running', 'r1-active.md'), '# R1\n', 'utf8');
+    fs.writeFileSync(path.join(inboxDir, 'failed', 'f1-broken.md'), '# F1\n', 'utf8');
+    fs.writeFileSync(path.join(inboxDir, 'failed', 'f1-broken.log'), 'failure log\n', 'utf8');
+
+    const todayDone = path.join(inboxDir, 'done', 'd1-today.md');
+    fs.writeFileSync(todayDone, '# D1\n', 'utf8');
+    const oldDone = path.join(inboxDir, 'done', 'd0-old.md');
+    fs.writeFileSync(oldDone, '# D0\n', 'utf8');
+    const pastDate = new Date('2026-01-02T12:00:00Z');
+    fs.utimesSync(oldDone, pastDate, pastDate);
+
+    const status = wheelStatus({ inboxDir, now: () => new Date() });
+    assert.equal(status.queued.count, 2);
+    assert.deepEqual(status.queued.names, ['q1-first.md', 'q2-second.md']);
+    assert.equal(status.running.count, 1);
+    assert.deepEqual(status.running.names, ['r1-active.md']);
+    assert.equal(status.doneToday.count, 1);
+    assert.deepEqual(status.doneToday.names, ['d1-today.md']);
+    assert.equal(status.failed.count, 1);
+    assert.deepEqual(status.failed.names, ['f1-broken.md']);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('wheel_queue writes UTF-8 without BOM through a staging file and move, and rejects unknown lane or repo', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kit-wheel-queue-'));
+  try {
+    const inboxDir = path.join(root, 'inbox');
+    fs.mkdirSync(path.join(inboxDir, 'queued'), { recursive: true });
+
+    assert.throws(
+      () =>
+        wheelQueue(
+          {
+            id: 'bad-lane-ticket',
+            title: 'Bad lane test',
+            lane: 'non-existent-lane-xyz',
+            repo: 'dream-online',
+            body: 'Should be rejected.',
+          },
+          { inboxDir },
+        ),
+      /unknown lane|not listed/i,
+    );
+
+    assert.throws(
+      () =>
+        wheelQueue(
+          {
+            id: 'bad-repo-ticket',
+            title: 'Bad repo test',
+            lane: 'code-hard',
+            repo: 'non-existent-repo-xyz',
+            body: 'Should be rejected.',
+          },
+          { inboxDir },
+        ),
+      /unknown repo|not listed/i,
+    );
+
+    const queued = wheelQueue(
+      {
+        id: 'hm1-test-ticket',
+        title: 'Test queued ticket from House MCP',
+        lane: 'code-hard',
+        repo: 'dream-online',
+        body: 'Verify stage and move without BOM.',
+      },
+      { inboxDir },
+    );
+
+    assert.equal(queued.queued, true);
+    assert.equal(queued.fileName, 'hm1-test-ticket.md');
+    const writtenPath = path.join(inboxDir, 'queued', 'hm1-test-ticket.md');
+    assert.equal(fs.existsSync(writtenPath), true);
+
+    const rawBytes = fs.readFileSync(writtenPath);
+    assert.notEqual(rawBytes[0], 0xef, 'Ticket file must not start with UTF-8 BOM');
+    const text = rawBytes.toString('utf8');
+    assert.match(text, /^# Test queued ticket from House MCP\n/);
+    assert.match(text, /\nlane: code-hard\n/);
+    assert.match(text, /\nrepo: dream-online\n/);
+    assert.match(text, /\n\nVerify stage and move without BOM\.\n$/);
+
+    const leftoverTmp = fs.readdirSync(path.join(inboxDir, 'queued')).filter((f) => f.endsWith('.tmp'));
+    assert.deepEqual(leftoverTmp, []);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('HTTP transport refuses to start without HOUSE_MCP_KEY, binds Alienware house address from fleet-map.json, and returns 401 on wrong key', async () => {
+  const bindHost = resolveHttpBindHost();
+  assert.equal(bindHost, '192.168.0.40');
+  assert.throws(() => resolveHttpBindHost({ host: '0.0.0.0' }), /never all interfaces|Refused/i);
+
+  await assert.rejects(
+    () => startHttpServer({ env: { HOUSE_MCP_KEY: '' }, port: 0 }),
+    /HOUSE_MCP_KEY/i,
+  );
+
+  const testKey = 'house-mcp-stage1-test-key-987654321';
+  const fx = makeTempFixture();
+  let handle;
+  try {
+    handle = await startHttpServer({
+      env: { HOUSE_MCP_KEY: testKey },
+      port: 0,
+      codemapDir: fx.codemapDir,
+      rosterDir: fx.rosterDir,
+      rolesLocalDir: fx.rolesLocalDir,
+      memoryFile: fx.memoryFile,
+      aiMemoryUrl: '',
+    });
+
+    assert.equal(handle.host, '192.168.0.40');
+    assert.ok(handle.port > 0);
+    const endpoint = `http://${handle.host}:${handle.port}/mcp`;
+
+    const noAuthRes = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'ping' }),
+    });
+    assert.equal(noAuthRes.status, 401);
+
+    const wrongKeyRes = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: 'Bearer wrong-key-value',
+      },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'ping' }),
+    });
+    assert.equal(wrongKeyRes.status, 401);
+
+    const initRes = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json, text/event-stream',
+        authorization: `Bearer ${testKey}`,
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: { protocolVersion: '2025-06-18' },
+      }),
+    });
+    assert.equal(initRes.status, 200);
+    const sessionId = initRes.headers.get('mcp-session-id');
+    assert.ok(sessionId);
+    const initJson = await initRes.json();
+    assert.equal(initJson.result.serverInfo.name, 'dream-kit');
+
+    const callRes = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${testKey}`,
+        'mcp-session-id': sessionId,
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/call',
+        params: { name: 'house_index', arguments: {} },
+      }),
+    });
+    assert.equal(callRes.status, 200);
+    const callJson = await callRes.json();
+    assert.match(callJson.result.content[0].text, /# House Index/);
+
+    // Verify CLI spawn with HOUSE_MCP_HTTP=1 and no HOUSE_MCP_KEY exits non-zero and never prints a key
+    const noKeyExit = await new Promise((resolve) => {
+      const child = spawn(process.execPath, [SERVER_PATH], {
+        env: {
+          ...process.env,
+          HOUSE_MCP_HTTP: '1',
+          HOUSE_MCP_KEY: '',
+        },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      let stderr = '';
+      child.stderr.on('data', (d) => {
+        stderr += d.toString('utf8');
+      });
+      child.on('close', (code) => resolve({ code, stderr }));
+    });
+    assert.notEqual(noKeyExit.code, 0);
+    assert.match(noKeyExit.stderr, /HOUSE_MCP_KEY/i);
+  } finally {
+    if (handle) await handle.close();
     fs.rmSync(fx.root, { recursive: true, force: true });
   }
 });
