@@ -1185,6 +1185,10 @@ export class InboxRunner {
       queuedDir: path.join(this.inboxDir, 'queued'),
       runningDir: path.join(this.inboxDir, 'running'),
       now: this.now,
+      isRunning: () =>
+        this.activeTaskFiles.size > 0 ||
+        this.activeRepos.size > 0 ||
+        this.activeHarnesses.size > 0,
       log: (line) => {
         this.logSafetyDecision(line, 'routine-scheduler');
       },

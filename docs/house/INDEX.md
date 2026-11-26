@@ -21,6 +21,7 @@ One fact has one home. If the same fact sits in two places, keep the home, repla
 ## Rules
 
 - `docs/house/SPINE.md`: pointers to every rule file (the House, addresses, nodes, pipeline, trusted models, motion, payment accounts).
+- `docs/house/MOTION-GRAMMAR.md`: how the reference page moves, in numbers; read with the motion rule before any site or dashboard build.
 - `docs/standards/AGENT-STANDARD.md`: the standard every agent follows.
 - `AGENTS.md` and `CLAUDE.md`: the short routers each agent program loads.
 - Payments are settled and are not re-audited. The record is docs/PAYMENTS-TRUTH.md in the repository Trollz1004/ANTIGRAVITY.
@@ -75,6 +76,7 @@ The live list is the session's own tool list. Used so far: the link to the Alien
 - LOG.md and the session-logs folder in claude-to-claude are the record of each session.
 - The router's decisions log: written at run time into ops/router on the Alienware as decisions.log. It is not tracked in this repository.
 - `ops/node/JOURNAL.md`: the Alienware node's journal.
+- `ops/handoffs/SCOUT-MCP-TASKS-2026-11-25.md`: read-only scout of whether the kitchen can hand results back through the MCP Tasks extension instead of a timer (2026-11-25).
 
 ## Products
 

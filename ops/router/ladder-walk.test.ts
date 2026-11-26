@@ -160,3 +160,115 @@ test('JevRouter with no options writes no lanes-state file', () => {
   const after = fs.existsSync(kitchenFile) ? fs.readFileSync(kitchenFile) : null;
   assert.deepEqual(after, before);
 });
+
+test('CARBON-NEON-LADDERS with both agy Claude lanes cold, code-hard and code-bulk tickets land on gemini-4-carbon and research and design-visual tickets land on gemini-4-neon; with all three Gemini 4 lanes cold they fall through to the next rung', async () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-inbox-carbon-neon-'));
+  try {
+    const now = new Date('2026-11-25T16:00:00Z');
+    const inboxDir = path.join(tmpRoot, 'antigravity', '.fable-kitchen', 'inbox');
+    const folders = ensureInboxFolders(inboxDir);
+    const coldLanes = new Set<string>(['claude-opus-5-5', 'claude-sonnet-5-5']);
+    const QUOTA = 'AGY_ERROR: {"short_error":"RESOURCE_EXHAUSTED (code 429): Individual quota reached."}';
+    const adapter: DispatchAdapter = {
+      name: 'agy',
+      async dispatch(input: DispatchJobInput): Promise<DispatchHandle> {
+        const isCold = coldLanes.has(input.lane);
+        const output = isCold
+          ? QUOTA
+          : [
+              'PASS · Eyes gate v1.1 · average 4.8 of 5 · lowest 4 · design-check',
+              'Opened pull request https://github.com/Trollz1004/dream-online/pull/601',
+            ].join('\n');
+        return {
+          jobId: input.jobId ?? 'carbon-neon-job',
+          adapter: 'agy',
+          lane: input.lane,
+          harness: 'agy',
+          promptPath: path.join(tmpRoot, 'prompt.txt'),
+          sanitizedPrompt: input.prompt,
+          mode: 'headless-cli',
+          httpSessionSupported: false,
+          note: 'mock carbon neon ladder walk',
+          poll: async () => ({
+            done: true,
+            prUrl: isCold ? null : parsePrUrlFromOutput(output),
+            output,
+            exitCode: isCold ? 1 : 0,
+          }),
+        };
+      },
+    };
+    const { runner: cmdRunner } = createMockInboxCommandRunner({ ghSignedIn: true });
+    const inboxRunner = new InboxRunner({
+      inboxDir,
+      worktreeParentDir: path.join(tmpRoot, 'antigravity'),
+      decisionsLogPath: path.join(tmpRoot, 'decisions.log'),
+      adapter,
+      commandRunner: cmdRunner,
+      now: () => now,
+      pandaPool: {
+        'gemini-3.8-flash': 'openrouter-gemini-3.8-flash',
+        'claude-sonnet-5-5': 'claude-sonnet-5.5',
+        'claude-opus-5-5': 'claude-opus-5.5',
+        'gemini-4-argon': 'openrouter-gemini-4-argon',
+      },
+      pandaFetch: (async () => {
+        throw new Error('connect ECONNREFUSED 192.168.0.40:8765');
+      }) as unknown as typeof fetch,
+    });
+
+    // Both agy Claude lanes cold
+    inboxRunner.getRouter().reportQuotaError('claude-opus-5-5', 'Individual quota reached. Resets in 134h.', now);
+    assert.equal(inboxRunner.getRouter().isLaneCold('claude-opus-5-5', now), true);
+    assert.equal(inboxRunner.getRouter().isLaneCold('claude-sonnet-5-5', now), true);
+
+    const dropAndRun = async (id: string, laneHeader: string) => {
+      fs.writeFileSync(
+        path.join(folders.queued, `${id}.md`),
+        [`# Ticket ${id}`, `lane: ${laneHeader}`, '', `Work on ${id}.`].join('\n'),
+        'utf8'
+      );
+      return inboxRunner.tick();
+    };
+
+    const hardRes = await dropAndRun('01-hard', 'code-hard');
+    assert.equal(hardRes.status, 'done');
+    assert.equal(hardRes.lane, 'gemini-4-carbon');
+
+    const researchRes = await dropAndRun('02-research', 'research');
+    assert.equal(researchRes.status, 'done');
+    assert.equal(researchRes.lane, 'gemini-4-neon');
+
+    const designRes = await dropAndRun('03-design', 'design-visual');
+    assert.equal(designRes.status, 'done');
+    assert.equal(designRes.lane, 'gemini-4-neon');
+
+    const bulkRes = await dropAndRun('04-bulk', 'code-bulk');
+    assert.equal(bulkRes.status, 'done');
+    assert.equal(bulkRes.lane, 'gemini-4-carbon');
+
+    // Now mark all three Gemini 4 lanes cold and verify fall-through to the next rung
+    for (const g4 of ['gemini-4-carbon', 'gemini-4-neon', 'gemini-4-argon']) {
+      coldLanes.add(g4);
+      inboxRunner.getRouter().reportQuotaError(g4, 'Individual quota reached. Resets in 24h.', now);
+    }
+
+    const hardFallthrough = await dropAndRun('05-hard-fallthrough', 'code-hard');
+    assert.equal(hardFallthrough.status, 'done');
+    assert.equal(hardFallthrough.lane, 'codex');
+
+    const bulkFallthrough = await dropAndRun('06-bulk-fallthrough', 'code-bulk');
+    assert.equal(bulkFallthrough.status, 'done');
+    assert.equal(bulkFallthrough.lane, 'gemini-cli');
+
+    const researchFallthrough = await dropAndRun('07-research-fallthrough', 'research');
+    assert.equal(researchFallthrough.status, 'done');
+    assert.equal(researchFallthrough.lane, 'last-resort');
+
+    const designFallthrough = await dropAndRun('08-design-fallthrough', 'design-visual');
+    assert.equal(designFallthrough.status, 'done');
+    assert.equal(designFallthrough.lane, 'last-resort');
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});

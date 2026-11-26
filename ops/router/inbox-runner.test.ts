@@ -404,10 +404,10 @@ test('Inbox Item 5d: a 429 marks the lane cold through the core and retries on t
     const result = await inboxRunner.tick();
     assert.equal(result.status, 'done');
     assert.equal(result.quotaFallbackTriggered, true);
-    assert.deepEqual(lanesCalled, ['claude-opus-5-5', 'gemini-4-argon']);
-    assert.equal(result.lane, 'gemini-4-argon');
+    assert.deepEqual(lanesCalled, ['claude-opus-5-5', 'gemini-4-carbon']);
+    assert.equal(result.lane, 'gemini-4-carbon');
     assert.equal(result.prUrl, 'https://github.com/Trollz1004/dream-online/pull/125');
-    assert.ok(result.prCommentBody?.startsWith('Router report: gemini-4-argon on Alienware'));
+    assert.ok(result.prCommentBody?.startsWith('Router report: gemini-4-carbon on Alienware'));
 
     // Verify core marked claude-opus-5-5 (and shared agy-claude lane claude-sonnet-5-5) cold
     assert.equal(inboxRunner.getRouter().isLaneCold('claude-opus-5-5', now), true);

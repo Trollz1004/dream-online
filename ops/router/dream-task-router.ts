@@ -75,6 +75,8 @@ export function isExecutorJobClass(value: string): value is ExecutorJobClass {
 
 const KNOWN_EXECUTOR_MODEL_LANES = new Set([
   'gemini-4-argon',
+  'gemini-4-carbon',
+  'gemini-4-neon',
   'gemini-3.8-flash',
   'claude-sonnet-5-5',
   'claude-opus-5-5',
@@ -869,7 +871,7 @@ export function validateLaneTable(table: LaneTable): { valid: boolean; errors: s
     errors.push('code-bulk must go to claude-sonnet-5-5 in agy');
   }
   if (
-    !['claude-opus-5-5', 'gemini-4-argon'].includes(table.lanes['code-hard']?.lane) ||
+    !['claude-opus-5-5', 'gemini-4-carbon', 'gemini-4-neon', 'gemini-4-argon'].includes(table.lanes['code-hard']?.lane) ||
     table.lanes['code-hard']?.harness !== 'agy'
   ) {
     errors.push('code-hard must go to claude-opus-5-5 in agy or gemini-4-argon');
@@ -878,13 +880,13 @@ export function validateLaneTable(table: LaneTable): { valid: boolean; errors: s
     errors.push('engine must go to gemini-4-argon');
   }
   if (
-    !['claude-opus-5-5', 'gemini-4-argon'].includes(table.lanes['design-visual']?.lane) ||
+    !['claude-opus-5-5', 'gemini-4-neon', 'gemini-4-carbon', 'gemini-4-argon'].includes(table.lanes['design-visual']?.lane) ||
     table.lanes['design-visual']?.postGate !== 'eyes'
   ) {
     errors.push('design-visual must go to claude-opus-5-5 or gemini-4-argon and be followed by the Eyes gate');
   }
   if (
-    !['claude-opus-5-5', 'gemini-4-argon'].includes(table.lanes.research?.lane) ||
+    !['claude-opus-5-5', 'gemini-4-neon', 'gemini-4-carbon', 'gemini-4-argon'].includes(table.lanes.research?.lane) ||
     !table.lanes.research?.officialOnly
   ) {
     errors.push('research must go to Opus or Argon through official lanes only');
@@ -1694,8 +1696,11 @@ export class JevRouter {
       candidateLane = 'youtube-data-api';
     }
 
-    // Enforce research uses official lanes only (claude-opus-5-5 or gemini-4-argon in agy)
-    if (jobClass === 'research' && !['claude-opus-5-5', 'gemini-4-argon'].includes(candidateLane)) {
+    // Enforce research uses official lanes only (claude-opus-5-5, gemini-4-neon, gemini-4-carbon, or gemini-4-argon in agy)
+    if (
+      jobClass === 'research' &&
+      !['claude-opus-5-5', 'gemini-4-neon', 'gemini-4-carbon', 'gemini-4-argon'].includes(candidateLane)
+    ) {
       candidateLane = row.lane;
       reasonParts.push('Guard enforced: research uses official Opus or Argon lanes only.');
     }

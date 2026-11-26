@@ -92,6 +92,8 @@ test('lanes.json: resolveLaneHarness maps fable to claude-code-signed-in and agy
   const table = loadLaneTable();
   assert.equal(resolveLaneHarness(table, 'fable'), 'claude-code-signed-in');
   assert.equal(resolveLaneHarness(table, 'gemini-4-argon'), 'agy');
+  assert.equal(resolveLaneHarness(table, 'gemini-4-carbon'), 'agy');
+  assert.equal(resolveLaneHarness(table, 'gemini-4-neon'), 'agy');
   assert.equal(resolveLaneHarness(table, 'gemini-3.8-flash'), 'agy');
   assert.equal(resolveLaneHarness(table, 'claude-opus-5-5'), 'agy');
 });
@@ -231,10 +233,12 @@ test('runner: a docs cleanup that names Godot and a FABLE file runs on the mecha
 
 // ---- 2. effort per lane ----
 
-test('lanes.json: laneSettings carry effort per lane (Argon, Opus, Sonnet high; Flash and fable none) and validate', () => {
+test('lanes.json: laneSettings carry effort per lane (Argon, Carbon, Neon, Opus, Sonnet high; Flash and fable none) and validate', () => {
   const table = loadLaneTable();
   assert.deepEqual(validateLaneTable(table).errors, []);
   assert.equal(resolveLaneEffort(table, 'gemini-4-argon'), 'high');
+  assert.equal(resolveLaneEffort(table, 'gemini-4-carbon'), 'high');
+  assert.equal(resolveLaneEffort(table, 'gemini-4-neon'), 'high');
   assert.equal(resolveLaneEffort(table, 'claude-opus-5-5'), 'high');
   assert.equal(resolveLaneEffort(table, 'claude-sonnet-5-5'), 'high');
   assert.equal(resolveLaneEffort(table, 'gemini-3.8-flash'), null);
@@ -246,7 +250,7 @@ test('lanes.json: laneSettings carry effort per lane (Argon, Opus, Sonnet high; 
   assert.ok(validateLaneTable(bad).errors.some((e: string) => e.includes('laneSettings.gemini-4-argon.effort')));
 });
 
-test('agy adapter: the Flash command line carries no --effort and the Argon one does (fake runner)', async () => {
+test('agy adapter: the Flash command line carries no --effort and Argon, Carbon, Neon carry --effort high and resolve to gemini-4-carbon-high and gemini-4-neon-high (fake runner)', async () => {
   const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-agy-effort-'));
   try {
     const calls: CommandExecRequest[] = [];
@@ -264,6 +268,10 @@ test('agy adapter: the Flash command line carries no --effort and the Argon one 
     await flash.poll();
     const argon = await adapter.dispatch({ ...base, jobId: 'argon-job', lane: 'gemini-4-argon' });
     await argon.poll();
+    const carbon = await adapter.dispatch({ ...base, jobId: 'carbon-job', lane: 'gemini-4-carbon' });
+    await carbon.poll();
+    const neon = await adapter.dispatch({ ...base, jobId: 'neon-job', lane: 'gemini-4-neon' });
+    await neon.poll();
     const opus = await adapter.dispatch({ ...base, jobId: 'opus-job', lane: 'claude-opus-5-5' });
     await opus.poll();
     const sonnet = await adapter.dispatch({ ...base, jobId: 'sonnet-job', lane: 'claude-sonnet-5-5' });
@@ -277,8 +285,27 @@ test('agy adapter: the Flash command line carries no --effort and the Argon one 
     assert.ok(!byModel('gemini-3.8-flash').includes('--effort'), 'Flash must not get --effort');
     const argonArgs = byModel('gemini-4-argon');
     assert.equal(argonArgs[argonArgs.indexOf('--effort') + 1], 'high');
+    const carbonArgs = byModel('gemini-4-carbon');
+    assert.equal(carbonArgs[carbonArgs.indexOf('--effort') + 1], 'high');
+    const neonArgs = byModel('gemini-4-neon');
+    assert.equal(neonArgs[neonArgs.indexOf('--effort') + 1], 'high');
     assert.equal(byModel('claude-opus-5-5')[byModel('claude-opus-5-5').indexOf('--effort') + 1], 'high');
     assert.equal(byModel('claude-sonnet-5-5')[byModel('claude-sonnet-5-5').indexOf('--effort') + 1], 'high');
+
+    // Verify how the agy adapter turns lane name + effort into the effective model id agy uses
+    assert.equal(adapter.modelIdForLane('gemini-4-argon'), 'gemini-4-argon-high');
+    assert.equal(adapter.modelIdForLane('gemini-4-carbon'), 'gemini-4-carbon-high');
+    assert.equal(adapter.modelIdForLane('gemini-4-neon'), 'gemini-4-neon-high');
+    assert.equal(adapter.modelIdForLane('gemini-3.8-flash'), 'gemini-3.8-flash');
+    assert.equal(
+      buildAgyCommand({ lane: 'gemini-4-carbon', prompt: 'test', effort: adapter.effortForLane('gemini-4-carbon') }).modelId,
+      'gemini-4-carbon-high'
+    );
+    assert.equal(
+      buildAgyCommand({ lane: 'gemini-4-neon', prompt: 'test', effort: adapter.effortForLane('gemini-4-neon') }).modelId,
+      'gemini-4-neon-high'
+    );
+
     // the rest of the command line is unchanged
     assert.ok(byModel('gemini-3.8-flash').includes('--dangerously-skip-permissions'));
     assert.ok(byModel('gemini-3.8-flash').some((a) => a.startsWith('--print=')));
