@@ -110,6 +110,12 @@ Describe 'ops/agents/render-agent-files.ps1' {
     $agentsText | Should Match '<!-- TROLLZ1004-SPINE:END -->'
     $agentsText | Should Match '192\.168\.0\.40'
     $agentsText | Should Match '192\.168\.0\.15'
+    $agentsText | Should Match 'First read: the house index, https://github\.com/Trollz1004/dream-online/blob/main/docs/house/INDEX\.md'
+    $agentsText | Should Match 'Funding comes first and game work is paused \(ruled 2026-11-13\)\.'
+    $agentsText | Should Match 'The wheel: tickets in the \.fable-kitchen inbox on the Alienware; runner ops/router/inbox-runner\.ts in dream-online; lane rules in orders/RULES\.md in the kitchen\.'
+    $agentsText | Should Match 'Merging \(ruled 2026-11-16\): nothing merges with a failing required check'
+    $agentsText | Should Match 'Public text passes the go gate: the product does what the text says'
+    $agentsText | Should Match 'Marketing team log: https://github\.com/Trollz1004/ANTIGRAVITY/tree/main/marketing/team \(public; nothing private goes in\)\.'
 
     # JSON validity & byte-preserved outer keys + mcpServers.kit timeoutSeconds=120
     $settingsText = [System.IO.File]::ReadAllText((Join-Path $fx.FakeProfile '.gemini\settings.json'))

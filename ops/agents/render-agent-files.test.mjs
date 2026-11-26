@@ -303,6 +303,12 @@ test('render-agent-files.ps1 renders boundary-stating GrinDroid notes, skips gen
     const renderedAgents = fs.readFileSync(path.join(repo, 'AGENTS.md'), 'utf8');
     assert.match(renderedAgents, /<!-- TROLLZ1004-SPINE:START -->/);
     assert.match(renderedAgents, /ADDRESS-DOCTRINE\.md, NODES\.md, PIPELINE\.md, TRUSTED-MODELS\.md, THE-HOUSE\.md/);
+    assert.match(renderedAgents, /First read: the house index, https:\/\/github\.com\/Trollz1004\/dream-online\/blob\/main\/docs\/house\/INDEX\.md, then the newest rulings in the claude\.ai project Ai-Dream-Team as the index describes\./);
+    assert.match(renderedAgents, /Funding comes first and game work is paused \(ruled 2026-11-13\)\./);
+    assert.match(renderedAgents, /The wheel: tickets in the \.fable-kitchen inbox on the Alienware; runner ops\/router\/inbox-runner\.ts in dream-online; lane rules in orders\/RULES\.md in the kitchen\./);
+    assert.match(renderedAgents, /Merging \(ruled 2026-11-16\): nothing merges with a failing required check; platform and marketing changes need the checks plus one trusted review; game and engine work keeps two offerings and two judges; whoever merges looks at the files and leaves a one-line verdict\./);
+    assert.match(renderedAgents, /Public text passes the go gate: the product does what the text says, stop-slop plus a humanizer pass, only what is true, every outside fact links the exact page\./);
+    assert.match(renderedAgents, /Marketing team log: https:\/\/github\.com\/Trollz1004\/ANTIGRAVITY\/tree\/main\/marketing\/team \(public; nothing private goes in\)\./);
     assert.equal(fs.readFileSync(path.join(repo, 'CLAUDE.md'), 'utf8'), "# Persona File\nYou're **Mira** in private mode.\n");
 
     assert.match(fs.readFileSync(path.join(profile, '.claude', 'CLAUDE.md'), 'utf8'), /<!-- TROLLZ1004-SPINE:START -->/);

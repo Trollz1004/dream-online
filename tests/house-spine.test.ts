@@ -331,3 +331,44 @@ test('Stage E1: ops/fleet/fleet-map.json, .mjs, and .cjs expose spine, repos, ha
     'omniroute',
   ]);
 });
+
+const REQUIRED_SPINE_BLOCK_LINES = [
+  '- `First read: the house index, https://github.com/Trollz1004/dream-online/blob/main/docs/house/INDEX.md, then the newest rulings in the claude.ai project Ai-Dream-Team as the index describes.`',
+  '- `Funding comes first and game work is paused (ruled 2026-11-13).`',
+  '- `The wheel: tickets in the .fable-kitchen inbox on the Alienware; runner ops/router/inbox-runner.ts in dream-online; lane rules in orders/RULES.md in the kitchen.`',
+  '- `Merging (ruled 2026-11-16): nothing merges with a failing required check; platform and marketing changes need the checks plus one trusted review; game and engine work keeps two offerings and two judges; whoever merges looks at the files and leaves a one-line verdict.`',
+  '- `Public text passes the go gate: the product does what the text says, stop-slop plus a humanizer pass, only what is true, every outside fact links the exact page.`',
+  '- `Marketing team log: https://github.com/Trollz1004/ANTIGRAVITY/tree/main/marketing/team (public; nothing private goes in).`',
+] as const;
+
+test('CLAUDE.md, AGENTS.md, and GEMINI.md carry the new house pointers inside the rendered spine block and have no duplicate or dead file pointers above the block', () => {
+  for (const relPath of ['CLAUDE.md', 'AGENTS.md', 'GEMINI.md'] as const) {
+    const content = readRepoFile(relPath);
+    const startIdx = content.indexOf('<!-- TROLLZ1004-SPINE:START -->');
+    const endIdx = content.indexOf('<!-- TROLLZ1004-SPINE:END -->');
+    assert.ok(startIdx >= 0 && endIdx > startIdx, `${relPath} must contain TROLLZ1004-SPINE block`);
+    const above = content.slice(0, startIdx);
+    const block = content.slice(startIdx, endIdx + '<!-- TROLLZ1004-SPINE:END -->'.length);
+
+    for (const line of REQUIRED_SPINE_BLOCK_LINES) {
+      assert.ok(block.includes(line), `${relPath} spine block missing line: ${line}`);
+    }
+
+    assert.equal(
+      /^- Address doctrine:/m.test(above),
+      false,
+      `${relPath} must not repeat the Address doctrine line above the spine block`,
+    );
+    assert.equal(
+      above.includes('ops/handoffs/FABLE-HANDOFFS-2026-11-06.md'),
+      false,
+      `${relPath} must not point to removed file ops/handoffs/FABLE-HANDOFFS-2026-11-06.md`,
+    );
+    assert.equal(
+      above.includes('graphify-out/graph.json') || above.includes('Agent Universal/agent-workflow-graphy.json'),
+      false,
+      `${relPath} must not point to removed Graphy files`,
+    );
+  }
+});
+
