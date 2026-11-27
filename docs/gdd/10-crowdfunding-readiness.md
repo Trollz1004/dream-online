@@ -1,6 +1,17 @@
 # What a crowdfunding-ready slice still needs
 
-Status: honest state check, written 2026-09-22 by the Claude judge lane at Joshua's direction, after research into what backers of an indie RPG campaign actually look at and what a combo-driven action combat hotbar system does. Read this before promising anything to a backer, and update it every time a session changes what is built rather than letting it go stale.
+Status: updated 2026-11-12 with founder rulings on funding slice priorities and visual gates; original state check written 2026-09-22 by the Claude judge lane at Joshua's direction. Read this before promising anything to a backer, and update it every time a session changes what is built rather than letting it go stale.
+
+## What the funding slice shows: pitch order and rules (founder rulings 2026-11-11 and 2026-11-12)
+
+1. **Stop leading with AI memory.** Games with AI memory are everywhere now, so it is no longer a first or a differentiator.
+2. **Lead with, in this exact order:**
+   1. **The visuals and feel of play.**
+   2. **The world that shifts between a fantasy day and a city night** (a high-fantasy day and a neon metropolis night).
+   3. **No pay to win and free to play** (free to play for all; cosmetics and convenience only).
+   4. **Real AI that speaks back** (AI that speaks back to the player).
+3. **The equipment and costume window belongs in the slice** (`docs/gdd/13-equipment-and-costume-slots.md`).
+4. **The Eyes gate and funding boundary:** No crowdfunding and no funding ask goes out until a slice passes the Eyes gate against Josh's references. The visuals of the in-house game are what separates it, and the crowdfunding and playable-slice plans stay parked until this visual standard is met.
 
 ## What "ready" means, and where that came from
 
