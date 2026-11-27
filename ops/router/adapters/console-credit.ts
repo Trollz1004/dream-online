@@ -3,10 +3,18 @@
  *
  * Strict rules enforced by this module:
  * 1. Ships switched OFF behind ROUTER_CONSOLE_ENABLED=false; refuses to run when false or unset.
- * 2. Used ONLY for the judge step's text checks (purpose === 'judge-text-check'), NEVER for routing decisions.
+ * 2. Used ONLY for the judge step's text checks, the pre-judge first read and the bracket check
+ *    (purpose 'judge-text-check', 'pre-judge' or 'bracket'), NEVER for routing decisions.
  * 3. Enforces a hard per-day call cap read from ROUTER_CONSOLE_DAILY_CAP in the env.
- * 4. Reads the single Console key from the node env file by key name and NEVER prints or logs its value.
- * 5. Logs every call's token count (input_tokens, output_tokens, total_tokens) to ops/router/decisions.log.
+ * 4. Enforces a token budget read from ROUTER_CONSOLE_TOKEN_BUDGET (required, positive). The budget is the
+ *    sum of total_tokens over this lane's own lines in decisions.log; the lane refuses once it is reached.
+ *    Only token counts are kept or compared here: no prices and no dollar sums.
+ * 5. Reads the model id from ROUTER_CONSOLE_MODEL (default 'claude-sonnet-5-5').
+ * 6. Reads the single Console key from the node env file by key name and NEVER prints or logs its value.
+ * 7. Logs every call's token count (input_tokens, output_tokens, total_tokens) to ops/router/decisions.log.
+ *
+ * When a caller passes an explicit `env` map, that map is the whole environment for this adapter: nothing
+ * falls through to the env file or to process.env. Tests rely on this so a machine's own settings never leak in.
  */
 
 import fs from 'node:fs';
@@ -22,10 +30,15 @@ import {
 
 export const DEFAULT_ROUTER_CONSOLE_ENABLED = false;
 export const DEFAULT_CONSOLE_KEY_ENV_NAME = 'CLAUDE_CONSOLE_KEY';
+export const DEFAULT_CONSOLE_MODEL = 'claude-sonnet-5-5';
+
+/** The only purposes the lane will run. Routing decisions and everything else are refused. */
+export const CONSOLE_ALLOWED_PURPOSES = ['judge-text-check', 'pre-judge', 'bracket'] as const;
+export type ConsoleAllowedPurpose = (typeof CONSOLE_ALLOWED_PURPOSES)[number];
 
 export interface ConsoleJudgeCheckRequest {
   prompt: string;
-  purpose: 'judge-text-check' | string;
+  purpose: ConsoleAllowedPurpose | string;
   jobClass?: JevJobClass;
   now?: Date;
 }
@@ -38,6 +51,9 @@ export interface ConsoleJudgeCheckResult {
   totalTokens: number;
   dailyCallNumber: number;
   dailyCap: number;
+  tokenBudget: number;
+  /** Total tokens used by this lane so far, including the call just made. */
+  tokensUsedTotal: number;
 }
 
 export type ConsoleFetchFn = (
@@ -104,6 +120,17 @@ export function readNamedKeyFromEnvFile(
     : undefined;
 }
 
+/** Total tokens one log line of this lane stands for (total_tokens, else token_count, else 0). */
+function totalTokensOfLine(entry: {
+  token_count?: number;
+  console_tokens?: { total_tokens?: number };
+}): number {
+  const fromTokens = Number(entry.console_tokens?.total_tokens);
+  if (Number.isFinite(fromTokens) && fromTokens > 0) return fromTokens;
+  const fromCount = Number(entry.token_count);
+  return Number.isFinite(fromCount) && fromCount > 0 ? fromCount : 0;
+}
+
 export class ConsoleCreditAdapter {
   private readonly env?: Record<string, string | undefined>;
   private readonly envFilePath?: string;
@@ -113,30 +140,50 @@ export class ConsoleCreditAdapter {
   private readonly maxTokens: number;
   private readonly fetchImpl: ConsoleFetchFn;
   private readonly inMemoryDailyCounts = new Map<string, number>();
+  private inMemoryTokensUsed = 0;
 
   constructor(options?: ConsoleCreditAdapterOptions) {
     this.env = options?.env;
     this.envFilePath = options?.envFilePath;
     this.consoleKeyEnvName =
       options?.consoleKeyEnvName ??
-      readNamedKeyFromEnvFile('ROUTER_CONSOLE_KEY_ENV', options?.envFilePath, options?.env) ??
+      this.readName('ROUTER_CONSOLE_KEY_ENV') ??
       DEFAULT_CONSOLE_KEY_ENV_NAME;
     this.decisionsLogPath = options?.decisionsLogPath ?? DEFAULT_DECISIONS_LOG_PATH;
-    this.model = options?.model ?? 'claude-sonnet-4-20250514';
+    this.model = options?.model ?? this.readName('ROUTER_CONSOLE_MODEL') ?? DEFAULT_CONSOLE_MODEL;
     this.maxTokens = options?.maxTokens ?? 512;
     this.fetchImpl = options?.fetchImpl ?? (globalThis.fetch as unknown as ConsoleFetchFn);
   }
 
+  /** Reads one setting by name. An explicit env map is the whole environment; otherwise env file, then process env. */
+  private readName(name: string): string | undefined {
+    if (this.env) {
+      const value = this.env[name];
+      return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+    }
+    return readNamedKeyFromEnvFile(name, this.envFilePath);
+  }
+
+  public getModel(): string {
+    return this.model;
+  }
+
   public isEnabled(): boolean {
-    const raw =
-      readNamedKeyFromEnvFile('ROUTER_CONSOLE_ENABLED', this.envFilePath, this.env) ?? 'false';
+    const raw = this.readName('ROUTER_CONSOLE_ENABLED') ?? 'false';
     return raw.trim().toLowerCase() === 'true';
   }
 
   public getDailyCap(): number {
     const raw =
-      readNamedKeyFromEnvFile('ROUTER_CONSOLE_DAILY_CAP', this.envFilePath, this.env) ??
-      readNamedKeyFromEnvFile('ROUTER_CONSOLE_MAX_CALLS_PER_DAY', this.envFilePath, this.env);
+      this.readName('ROUTER_CONSOLE_DAILY_CAP') ?? this.readName('ROUTER_CONSOLE_MAX_CALLS_PER_DAY');
+    if (!raw) return 0;
+    const parsed = Number(raw);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+  }
+
+  /** The token budget from ROUTER_CONSOLE_TOKEN_BUDGET: a positive whole number, or 0 when missing or invalid. */
+  public getTokenBudget(): number {
+    const raw = this.readName('ROUTER_CONSOLE_TOKEN_BUDGET');
     if (!raw) return 0;
     const parsed = Number(raw);
     return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
@@ -153,6 +200,14 @@ export class ConsoleCreditAdapter {
     return Math.max(memCount, logged);
   }
 
+  /** Adds up total tokens over this lane's own lines in decisions.log (other lanes never count). */
+  public getTokensUsed(): number {
+    const logged = readDecisionLog(this.decisionsLogPath)
+      .filter((entry) => entry.lane === 'console-credit')
+      .reduce((sum, entry) => sum + totalTokensOfLine(entry), 0);
+    return Math.max(this.inMemoryTokensUsed, logged);
+  }
+
   public async runJudgeTextCheck(
     request: ConsoleJudgeCheckRequest
   ): Promise<ConsoleJudgeCheckResult> {
@@ -163,10 +218,13 @@ export class ConsoleCreditAdapter {
       );
     }
 
-    // 2. Refuse any routing decision or non-judge check
-    if (request.purpose !== 'judge-text-check' || request.jobClass === 'route') {
+    // 2. Refuse any routing decision and any purpose that is not on the short allowed list
+    if (
+      !(CONSOLE_ALLOWED_PURPOSES as readonly string[]).includes(request.purpose) ||
+      request.jobClass === 'route'
+    ) {
       throw new Error(
-        'Console-credit lane refused to run: restricted to the judge step text checks only and never used for routing decisions.'
+        `Console-credit lane refused to run: allowed only for the purposes ${CONSOLE_ALLOWED_PURPOSES.join(', ')}, and never used for routing decisions.`
       );
     }
 
@@ -187,10 +245,23 @@ export class ConsoleCreditAdapter {
       );
     }
 
-    // 4. Read the single Console key by name from the node env file (never printed)
+    // 4. Enforce the token budget: required, positive, counted from this lane's own log lines
+    const tokenBudget = this.getTokenBudget();
+    if (tokenBudget <= 0) {
+      throw new Error(
+        'Console-credit lane refused to run: ROUTER_CONSOLE_TOKEN_BUDGET must be set to a positive whole number in the env.'
+      );
+    }
+    const tokensUsedBefore = this.getTokensUsed();
+    if (tokensUsedBefore >= tokenBudget) {
+      throw new Error(
+        `Console-credit lane refused to run: token budget (${tokenBudget}) reached; ${tokensUsedBefore} tokens used so far.`
+      );
+    }
+
+    // 5. Read the single Console key by name from the node env file (never printed)
     const keyValue =
-      readNamedKeyFromEnvFile(this.consoleKeyEnvName, this.envFilePath, this.env) ??
-      readNamedKeyFromEnvFile('CLAUDE_CONSOLE_API_KEY', this.envFilePath, this.env);
+      this.readName(this.consoleKeyEnvName) ?? this.readName('CLAUDE_CONSOLE_API_KEY');
 
     if (!keyValue) {
       throw new Error(
@@ -198,7 +269,7 @@ export class ConsoleCreditAdapter {
       );
     }
 
-    // 5. Call the Claude Messages API for the judge text check
+    // 6. Call the Claude Messages API for the check
     const response = await this.fetchImpl('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -238,8 +309,10 @@ export class ConsoleCreditAdapter {
 
     const dailyCallNumber = usedToday + 1;
     this.inMemoryDailyCounts.set(utcDateStr, dailyCallNumber);
+    const tokensUsedTotal = tokensUsedBefore + totalTokens;
+    this.inMemoryTokensUsed = tokensUsedTotal;
 
-    // 6. Log every call's token count to decisions.log (with the key redacted if it ever appeared)
+    // 7. Log every call's token count to decisions.log (with the key redacted if it ever appeared)
     const taskHash = hashTaskDescription(request.prompt);
     appendDecisionRecord(
       {
@@ -253,7 +326,7 @@ export class ConsoleCreditAdapter {
         harness: 'claude-console-api',
         headless: true,
         post_gate: null,
-        reason: `Console-credit judge text check completed (${totalTokens} tokens: ${inputTokens} in, ${outputTokens} out; call ${dailyCallNumber}/${dailyCap} on ${utcDateStr}).`,
+        reason: `Console-credit ${request.purpose} check completed (${totalTokens} tokens: ${inputTokens} in, ${outputTokens} out; call ${dailyCallNumber}/${dailyCap} on ${utcDateStr}; ${tokensUsedTotal}/${tokenBudget} tokens used).`,
         ranking_date: utcDateStr,
         rankingDateUsed: utcDateStr,
         ranking_status: 'fresh ranking',
@@ -281,6 +354,8 @@ export class ConsoleCreditAdapter {
       totalTokens,
       dailyCallNumber,
       dailyCap,
+      tokenBudget,
+      tokensUsedTotal,
     };
   }
 }

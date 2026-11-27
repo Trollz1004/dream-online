@@ -40,6 +40,7 @@ One fact has one home. If the same fact sits in two places, keep the home, repla
 - `ops/router/lanes.json`: the lanes and their fallback ladders.
 - `ops/router/rankings`: dated model rankings. A ranking older than a week is not trusted.
 - `ops/router/roster`: builds the roster of roles and skills.
+- `ops/router/INBOX.md` section 7: the Console credit lane (ships switched off), its settings, and the pre-judge command `ops/router/console-prejudge.ts`.
 
 ## Finding code without reading all of it
 

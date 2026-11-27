@@ -1008,7 +1008,7 @@ test('Recipe 7 Item 3 & 5d: Console-credit adapter refuses to run when disabled 
     const enabledAdapter = new ConsoleCreditAdapter({
       env: {
         ROUTER_CONSOLE_ENABLED: 'true',
-        ROUTER_CONSOLE_DAILY_CAP: '1',
+        ROUTER_CONSOLE_DAILY_CAP: '1', ROUTER_CONSOLE_TOKEN_BUDGET: '100000',
         CLAUDE_CONSOLE_KEY: fakeKey,
       },
       decisionsLogPath: logPath,

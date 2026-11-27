@@ -96,3 +96,16 @@ Routine work is done by the lanes from routines written once. The head of kitche
 - No routine runs more often than every 30 minutes, whatever its header says.
 - A routine with no schedule line, a bad value, or two schedule lines is skipped with one line in `decisions.log` and never stops the runner. Fix the file and it is picked up on the next tick.
 - Code: `ops/router/routines.ts`. Tests: `ops/router/routines.test.ts`, which use a temp folder and never touch the real kitchen.
+
+## 7. Console credit lane (ships switched off)
+
+The Console credit lane is for the judge side only. Code: `ops/router/adapters/console-credit.ts`. It never picks a lane.
+
+- It refuses to run unless `ROUTER_CONSOLE_ENABLED` is `true`. It ships `false`.
+- It runs for three purposes only: `judge-text-check`, `pre-judge` and `bracket`. Routing decisions and any other purpose are refused.
+- `ROUTER_CONSOLE_DAILY_CAP` is a hard cap on calls per day. `ROUTER_CONSOLE_TOKEN_BUDGET` is a hard cap on tokens. Both are required and must be positive whole numbers.
+- The token budget is the sum of total tokens over the lane's own lines in `ops/router/decisions.log`. The lane refuses once the budget is reached. Only token counts are kept: no prices and no dollar sums.
+- `ROUTER_CONSOLE_MODEL` names the model. The default is `claude-sonnet-5-5`.
+- The one Console key is read by name from the node env and never printed or logged. `docs/standards/AGENT-STANDARD.md` forbids an Anthropic API key on any machine, so only Josh switches this lane on.
+- First read of a pull request: `npx tsx ops/router/console-prejudge.ts Trollz1004/<repo> <pull request number>`. It reads the title, body and diff with gh, sends them with purpose `pre-judge`, and posts the answer as a PR comment that begins "First read by MODEL on the Console credit. This is not the judge's verdict." If the lane is switched off it prints one line and exits 0.
+- Tests: `ops/router/adapters/console-credit.test.ts` and `ops/router/console-prejudge.test.ts`. Both use a fake fetch and a fake gh and never call the real API.
